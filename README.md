@@ -10,7 +10,7 @@ A powerful, modular tmux status bar framework with 33+ built-in plugins for disp
 ## ✨ Features
 
 - 🎨 **Multiple themes** - Tokyo Night (night, storm, moon, day) and Kiribyte (dark)
-- 🔌 **33+ built-in plugins** - System monitoring, development tools, security keys, media players
+- 🔌 **36+ built-in plugins** - System monitoring, development tools, security keys, media players
 - ⚡ **Performance optimized** - Intelligent caching with configurable TTL
 - 🎯 **Fully customizable** - Semantic colors, icons, formats, and separators
 - 🖥️ **Cross-platform** - macOS, Linux, and BSD support
@@ -137,6 +137,9 @@ The theme includes 33+ built-in plugins organized by category:
 ### 💻 Development
 
 - **[git](../../wiki/Git)** - Git branch with dynamic color for modified repos
+- **[github](../../wiki/GitHub)** - Monitor GitHub open issues and PRs with filtering
+- **[gitlab](../../wiki/GitLab)** - Monitor GitLab open issues and MRs with filtering
+- **[bitbucket](../../wiki/Bitbucket)** - Monitor Bitbucket open issues and PRs with filtering
 - **[kubernetes](../../wiki/Kubernetes)** - K8s context with interactive selectors
 - **[cloud](../../wiki/Cloud)** - Cloud provider context (AWS/GCP/Azure)
 - **[terraform](../../wiki/Terraform)** - Terraform/OpenTofu workspace with prod warnings
@@ -197,6 +200,9 @@ See **[Plugin System Overview](../../wiki/Plugin-System-Overview)** for complete
 | **external_ip** | ✅ | ✅ | ✅ | Requires internet connection |
 | **fan** | ✅ | ⚠️ | ✅ | Linux: hwmon, macOS: requires smctemp |
 | **git** | ✅ | ✅ | ✅ | Requires git repository |
+| **github** | ✅ | ✅ | ✅ | Status issues/PRs from GitHub |
+| `bitbucket` | ✅ | ✅ | ✅ | Status issues/PRs from Bitbucket Cloud |
+| **gitlab** | ✅ | ✅ | ✅ | Status issues/MRs from GitLab |
 | **hostname** | ✅ | ✅ | ✅ | Universal |
 | **kubernetes** | ✅ | ✅ | ✅ | Requires `kubectl` |
 | **loadavg** | ✅ | ✅ | ✅ | Native support |
