@@ -1,0 +1,227 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Plugin: gitlab - Monitor GitLab repositories for issues and MRs
+# Description: Display open issues and MRs from repositories (aggregated)
+# Dependencies: curl, jq
+# =============================================================================
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$ROOT_DIR/../plugin_bootstrap.sh"
+
+plugin_init "gitlab"
+
+# =============================================================================
+# Configuration
+# =============================================================================
+
+GITLAB_URL=$(get_tmux_option "@powerkit_plugin_gitlab_url" "$POWERKIT_PLUGIN_GITLAB_URL")
+GITLAB_REPOS=$(get_tmux_option "@powerkit_plugin_gitlab_repos" "$POWERKIT_PLUGIN_GITLAB_REPOS")
+GITLAB_SHOW_ISSUES=$(get_tmux_option "@powerkit_plugin_gitlab_show_issues" "$POWERKIT_PLUGIN_GITLAB_SHOW_ISSUES")
+GITLAB_SHOW_MRS=$(get_tmux_option "@powerkit_plugin_gitlab_show_mrs" "$POWERKIT_PLUGIN_GITLAB_SHOW_MRS")
+GITLAB_ICON_ISSUE=$(get_tmux_option "@powerkit_plugin_gitlab_icon_issue" "$POWERKIT_PLUGIN_GITLAB_ICON_ISSUE")
+GITLAB_ICON_MR=$(get_tmux_option "@powerkit_plugin_gitlab_icon_mr" "$POWERKIT_PLUGIN_GITLAB_ICON_MR")
+GITLAB_TOKEN=$(get_tmux_option "@powerkit_plugin_gitlab_token" "$POWERKIT_PLUGIN_GITLAB_TOKEN")
+GITLAB_WARNING_THRESHOLD=$(get_tmux_option "@powerkit_plugin_gitlab_warning_threshold" "$POWERKIT_PLUGIN_GITLAB_WARNING_THRESHOLD")
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+# URL encode string (for Project ID: owner/repo -> owner%2Frepo)
+url_encode() {
+    local string="${1}"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
+
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+        c=${string:$pos:1}
+        case "$c" in
+            [-_.~a-zA-Z0-9] ) o="${c}" ;;
+            * )               printf -v o '%%%02x' "'$c"
+        esac
+        encoded+="${o}"
+    done
+    echo "${encoded}"
+}
+
+make_gitlab_api_call() {
+    local url="$1"
+    local auth_header=""
+    
+    if [[ -n "$GITLAB_TOKEN" ]]; then
+        auth_header="-H \"PRIVATE-TOKEN: $GITLAB_TOKEN\""
+    fi
+    
+    eval curl -s $auth_header "\"$url\"" 2>/dev/null
+}
+
+# =============================================================================
+# Data Retrieval
+# =============================================================================
+
+count_issues() {
+    local project_encoded="$1"
+    local url="$GITLAB_URL/api/v4/projects/$project_encoded/issues?state=opened&per_page=1"
+    
+    local response
+    response=$(make_gitlab_api_call "$url")
+    
+    # Check X-Total header would be better but curl -I needs separate call.
+    # We can rely on pagination info in json if needed, or just count returned if small?
+    # GitLab does not return total count in body by default unless requested.
+    # Actually, default response is list. 
+    # To get count efficiently without pulling all data, we can use GraphQL or statistics API?
+    # Or just ?per_page=1&with_stats=true ? No.
+    # HEAD request specifically for X-Total headers is best practice for count
+    
+    if [[ -n "$GITLAB_TOKEN" ]]; then
+        curl -s -I -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$url" 2>/dev/null | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r' || echo "0"
+    else
+        curl -s -I "$url" 2>/dev/null | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r' || echo "0"
+    fi
+}
+
+count_mrs() {
+    local project_encoded="$1"
+    local url="$GITLAB_URL/api/v4/projects/$project_encoded/merge_requests?state=opened&per_page=1"
+    
+    if [[ -n "$GITLAB_TOKEN" ]]; then
+        curl -s -I -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$url" 2>/dev/null | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r' || echo "0"
+    else
+        curl -s -I "$url" 2>/dev/null | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r' || echo "0"
+    fi
+}
+
+# =============================================================================
+# Display Logic
+# =============================================================================
+
+format_status() {
+    local issues="$1"
+    local mrs="$2"
+    
+    local parts=()
+    
+    if [[ "$GITLAB_SHOW_ISSUES" == "on" ]]; then
+        parts+=("${GITLAB_ICON_ISSUE} ${issues}")
+    fi
+    
+    if [[ "$GITLAB_SHOW_MRS" == "on" ]]; then
+        parts+=("${GITLAB_ICON_MR} ${mrs}")
+    fi
+    
+    local output
+    IFS="/" output="${parts[*]}"
+    echo "$output"
+}
+
+get_gitlab_info() {
+    local repos_csv="$1"
+    
+    # Split repos
+    IFS=',' read -ra repos <<< "$repos_csv"
+    
+    local total_issues=0
+    local total_mrs=0
+    local active=false
+    
+    for repo_spec in "${repos[@]}"; do
+        repo_spec="$(echo "$repo_spec" | xargs)"
+        [[ -z "$repo_spec" ]] && continue
+        
+        # Ensure owner/repo format for encoding
+        if [[ "$repo_spec" != *"/"* ]]; then
+            continue 
+        fi
+        
+        local project_encoded
+        project_encoded=$(url_encode "$repo_spec")
+        
+        local issues=0
+        local mrs=0
+        
+        if [[ "$GITLAB_SHOW_ISSUES" == "on" ]]; then
+            issues=$(count_issues "$project_encoded")
+            # If curl fails or returns empty, treat as 0
+            [[ -z "$issues" ]] && issues=0
+        fi
+        
+        if [[ "$GITLAB_SHOW_MRS" == "on" ]]; then
+            mrs=$(count_mrs "$project_encoded")
+            [[ -z "$mrs" ]] && mrs=0
+        fi
+        
+        total_issues=$((total_issues + issues))
+        total_mrs=$((total_mrs + mrs))
+    done
+    
+    if [[ "$total_issues" -gt 0 ]] || [[ "$total_mrs" -gt 0 ]]; then
+        active=true
+    fi
+    
+    if [[ "$active" == "false" ]]; then
+        echo "no activity"
+        return
+    fi
+    
+    format_status "$total_issues" "$total_mrs"
+}
+
+# =============================================================================
+# Plugin Interface
+# =============================================================================
+
+plugin_get_type() { 
+    printf 'conditional'
+}
+
+plugin_get_display_info() {
+    local content="$1"
+    
+    if [[ -z "$content" || "$content" == "no activity" ]]; then
+        printf '0:::'
+        return 0
+    fi
+    
+    # Extract numbers for threshold check
+    local total_count=0
+    # Simple regex to sum numbers found in output "ICON 10 / ICON 5"
+    # Not strictly parsing per icon, just sum of all numbers
+    local temp_content="$content"
+    while [[ "$temp_content" =~ ([0-9]+) ]]; do
+        total_count=$((total_count + BASH_REMATCH[1]))
+        temp_content="${temp_content#*${BASH_REMATCH[1]}}"
+    done
+
+    if [[ $total_count -ge $GITLAB_WARNING_THRESHOLD ]]; then
+        local warning_color
+        local warning_icon
+        warning_color=$(get_tmux_option "@powerkit_plugin_gitlab_warning_accent_color" "$POWERKIT_PLUGIN_GITLAB_WARNING_ACCENT_COLOR")
+        warning_icon=$(get_tmux_option "@powerkit_plugin_gitlab_warning_accent_color_icon" "$POWERKIT_PLUGIN_GITLAB_WARNING_ACCENT_COLOR_ICON")
+        printf '1:%s:%s:' "$warning_color" "$warning_icon"
+    else
+        local accent_color
+        local accent_icon
+        accent_color=$(get_tmux_option "@powerkit_plugin_gitlab_accent_color" "$POWERKIT_PLUGIN_GITLAB_ACCENT_COLOR")
+        accent_icon=$(get_tmux_option "@powerkit_plugin_gitlab_accent_color_icon" "$POWERKIT_PLUGIN_GITLAB_ACCENT_COLOR_ICON")
+        printf '1:%s:%s:' "$accent_color" "$accent_icon"
+    fi
+}
+
+load_plugin() {
+    local CACHE_KEY="gitlab_status"
+    local cached
+    if cached=$(cache_get "$CACHE_KEY" "$GITLAB_CACHE_TTL"); then
+        printf '%s' "$cached"
+        return 0
+    fi
+    
+    local status
+    status=$(get_gitlab_info "$GITLAB_REPOS")
+    
+    cache_set "$CACHE_KEY" "$status"
+    printf '%s' "$status"
+}
+
+[[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true
