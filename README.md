@@ -137,6 +137,7 @@ The theme includes 33+ built-in plugins organized by category:
 ### 💻 Development
 
 - **[git](../../wiki/Git)** - Git branch with dynamic color for modified repos
+- **[github](../../wiki/GitHub)** - Monitor GitHub open issues and PRs with filtering
 - **[kubernetes](../../wiki/Kubernetes)** - K8s context with interactive selectors
 - **[cloud](../../wiki/Cloud)** - Cloud provider context (AWS/GCP/Azure)
 - **[terraform](../../wiki/Terraform)** - Terraform/OpenTofu workspace with prod warnings
@@ -197,6 +198,7 @@ See **[Plugin System Overview](../../wiki/Plugin-System-Overview)** for complete
 | **external_ip** | ✅ | ✅ | ✅ | Requires internet connection |
 | **fan** | ✅ | ⚠️ | ✅ | Linux: hwmon, macOS: requires smctemp |
 | **git** | ✅ | ✅ | ✅ | Requires git repository |
+| **github** | ✅ | ✅ | ✅ | Requires curl, jq |
 | **hostname** | ✅ | ✅ | ✅ | Universal |
 | **kubernetes** | ✅ | ✅ | ✅ | Requires `kubectl` |
 | **loadavg** | ✅ | ✅ | ✅ | Native support |
