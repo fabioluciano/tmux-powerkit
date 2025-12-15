@@ -1,3 +1,10 @@
+## [3.8.3](https://github.com/fabioluciano/tmux-powerkit/compare/v3.8.2...v3.8.3) (2025-12-15)
+
+
+### Bug Fixes
+
+* interoperability between oses ([#120](https://github.com/fabioluciano/tmux-powerkit/issues/120)) ([e92b559](https://github.com/fabioluciano/tmux-powerkit/commit/e92b559faddd10dee76f874a0de8b39eaed7f481))
+
 ## [3.8.2](https://github.com/fabioluciano/tmux-powerkit/compare/v3.8.1...v3.8.2) (2025-12-15)
 
 
