@@ -45,8 +45,6 @@ make_github_api_call() {
     eval curl -s "$auth_header" "\"$url\"" 2>/dev/null
 }
 
-# Track if we've already shown an error toast this session
-_GITHUB_ERROR_SHOWN=""
 
 # Extract error message from API response
 get_api_error_message() {
