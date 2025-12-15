@@ -11,7 +11,7 @@ select_input_device() {
     local -a menu_items=() device_names=()
     
     if is_macos; then
-        command -v SwitchAudioSource &>/dev/null || { tmux display-message "❌ Install: brew install switchaudio-osx"; return 1; }
+        command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 1; }
         audio_system="macos"
         current_input=$(SwitchAudioSource -c -t input 2>/dev/null || echo "")
         while IFS= read -r device; do
@@ -31,10 +31,10 @@ select_input_device() {
             menu_items+=("$marker $description"); device_names+=("$name")
         done < <(pactl list short sources 2>/dev/null)
     else
-        tmux display-message "❌ No supported audio system found"; return 1
+        toast "❌ No supported audio system found" "simple"; return 1
     fi
     
-    [[ ${#menu_items[@]} -eq 0 ]] && { tmux display-message "❌ No input devices found"; return 1; }
+    [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No input devices found" "simple"; return 1; }
     
     local -a menu_args=()
     for i in "${!menu_items[@]}"; do
@@ -50,7 +50,7 @@ select_output_device() {
     local -a menu_items=() device_names=()
     
     if is_macos; then
-        command -v SwitchAudioSource &>/dev/null || { tmux display-message "❌ Install: brew install switchaudio-osx"; return 1; }
+        command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 1; }
         audio_system="macos"
         current_output=$(SwitchAudioSource -c -t output 2>/dev/null || echo "")
         while IFS= read -r device; do
@@ -69,10 +69,10 @@ select_output_device() {
             menu_items+=("$marker $description"); device_names+=("$name")
         done < <(pactl list short sinks 2>/dev/null)
     else
-        tmux display-message "❌ No supported audio system found"; return 1
+        toast "❌ No supported audio system found" "simple"; return 1
     fi
     
-    [[ ${#menu_items[@]} -eq 0 ]] && { tmux display-message "❌ No output devices found"; return 1; }
+    [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No output devices found" "simple"; return 1; }
     
     local -a menu_args=()
     for i in "${!menu_items[@]}"; do

@@ -16,12 +16,12 @@ microphone_is_available() {
 
 toggle_microphone_mute() {
     if ! is_linux; then
-        tmux display-message "Microphone mute toggle not supported on this platform" 2>/dev/null || true
+        toast "Microphone mute toggle not supported on this platform" "simple"
         return
     fi
     
     if ! command -v pactl >/dev/null 2>&1; then
-        tmux display-message "pactl not found - PulseAudio required" 2>/dev/null || true
+        toast "pactl not found - PulseAudio required" "simple"
         return
     fi
     
@@ -29,7 +29,7 @@ toggle_microphone_mute() {
     default_source=$(pactl get-default-source 2>/dev/null)
     
     if [[ -z "$default_source" ]]; then
-        tmux display-message "No microphone found" 2>/dev/null || true
+        toast "No microphone found" "simple"
         return
     fi
     
@@ -37,10 +37,10 @@ toggle_microphone_mute() {
         rm -f "${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit/microphone.cache" 2>/dev/null
         local is_muted="unmuted"
         pactl get-source-mute "$default_source" 2>/dev/null | grep -q "yes" && is_muted="muted"
-        tmux display-message "Microphone $is_muted" 2>/dev/null || true
+        toast "🎤 Microphone $is_muted" "simple"
         tmux refresh-client -S 2>/dev/null || true
     else
-        tmux display-message "Failed to toggle microphone" 2>/dev/null || true
+        toast "Failed to toggle microphone" "simple"
     fi
 }
 

@@ -222,76 +222,270 @@ build_display_info() {
 # Generic toast notification that stays visible until user dismisses
 # =============================================================================
 
-# Show a toast notification with custom content from a file
-# Usage: show_toast_notification <title> <content_file> [width] [height]
-# Example: show_toast_notification "⚠️  Warning" "/path/to/content.log" 70 20
+# Show a toast notification with custom content
+# Usage: show_toast_notification <title> <content> [width] [height] [type]
+#   - content: file path (if exists) OR direct string message
+#   - type: "file" (auto-detect), "string" (force string), "error", "warning", "info", "success"
+# Examples:
+#   show_toast_notification "Warning" "/path/to/file.log"
+#   show_toast_notification "Error" "Something went wrong!" 60 20 "error"
+#   show_toast_notification "Info" "Operation completed" 50 10 "success"
 show_toast_notification() {
     local title="$1"
-    local content_file="$2"
+    local content="$2"
     local popup_width="${3:-70}"
     local popup_height="${4:-20}"
+    local content_type="${5:-auto}"
     
-    [[ ! -f "$content_file" ]] && {
-        tmux display-message -d 3000 "Toast error: content file not found" 2>/dev/null || true
-        return 1
-    }
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    mkdir -p "$cache_dir"
     
-    # Check if tmux supports display-popup (tmux >= 3.2)
-    local tmux_version
+    local content_file=""
+    local is_temp_file=false
+    
+    # Determine content type: file path or string message
+    if [[ "$content_type" == "auto" ]]; then
+        [[ -f "$content" ]] && content_type="file" || content_type="string"
+    fi
+    
+    # Prepare content file
+    if [[ "$content_type" == "file" ]]; then
+        content_file="$content"
+        [[ ! -f "$content_file" ]] && {
+            tmux display-message -d 3000 "Toast error: content file not found" 2>/dev/null || true
+            return 1
+        }
+    else
+        # String content - create temp file with optional styling
+        content_file="${cache_dir}/.toast_content_$$.log"
+        is_temp_file=true
+        
+        local color_code=""
+        case "$content_type" in
+            error)   color_code='\033[1;31m' ;;  # Red
+            warning) color_code='\033[1;33m' ;;  # Yellow
+            success) color_code='\033[1;32m' ;;  # Green
+            info)    color_code='\033[1;36m' ;;  # Cyan
+            *)       color_code='\033[0m' ;;     # Default
+        esac
+        
+        {
+            echo ""
+            if [[ -n "$color_code" && "$content_type" != "string" ]]; then
+                echo -e "  ${color_code}${content}\033[0m"
+            else
+                echo -e "  $content"
+            fi
+            echo ""
+        } > "$content_file"
+    fi
+    
+    # Check tmux version for popup support (>= 3.2)
+    local tmux_version major minor
     tmux_version=$(tmux -V 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
-    local major minor
     major="${tmux_version%%.*}"
     minor="${tmux_version##*.}"
     
-    # If tmux >= 3.2, use display-popup for better UX
     if [[ "$major" -gt 3 ]] || { [[ "$major" -eq 3 ]] && [[ "$minor" -ge 2 ]]; }; then
-        # Create a temporary script for the popup content
-        local popup_script="${CACHE_DIR}/toast_notification.sh"
+        # Create popup script
+        local popup_script="${cache_dir}/toast_notification.sh"
         
         cat > "$popup_script" << 'TOAST_EOF'
 #!/usr/bin/env bash
-# PowerKit Toast Notification
-
-# Colors
-RED='\033[0;31m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-DIM='\033[2m'
-NC='\033[0m'
-
 clear
 echo ""
-
-# Display content from file
-content_file="$1"
-if [[ -f "$content_file" ]]; then
-    cat "$content_file"
-fi
-
+[[ -f "$1" ]] && cat "$1"
 echo ""
-echo -e "  ${DIM}─────────────────────────────────────────────────────────────${NC}"
-echo -e "  ${WHITE}Press any key to dismiss...${NC}"
+echo -e "  \033[2m─────────────────────────────────────────────────────────────\033[0m"
+echo -e "  \033[1;37mPress any key to dismiss...\033[0m"
 echo ""
-
 read -rsn1
 TOAST_EOF
-
         chmod +x "$popup_script"
         
-        # Show popup (runs async, user dismisses with any key)
         tmux display-popup -E -w "$popup_width" -h "$popup_height" \
             -T " $title " \
             "bash '$popup_script' '$content_file'" 2>/dev/null || {
-            # Fallback to display-message if popup fails
+            # Fallback
             local first_line
-            first_line=$(head -n1 "$content_file" 2>/dev/null)
+            first_line=$(head -n1 "$content_file" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
             tmux display-message -d 10000 "$title - $first_line" 2>/dev/null || true
         }
     else
-        # Fallback for older tmux versions - longer display time
+        # Fallback for older tmux
         local first_line
-        first_line=$(head -n1 "$content_file" 2>/dev/null)
+        first_line=$(head -n1 "$content_file" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
         tmux display-message -d 10000 "$title - $first_line" 2>/dev/null || true
+    fi
+    
+    # Cleanup temp file
+    [[ "$is_temp_file" == true ]] && rm -f "$content_file" 2>/dev/null
+}
+
+# Shorthand for quick toast messages
+# Usage: toast <message> [type] [duration_ms]
+toast() {
+    local message="$1"
+    local type="${2:-info}"
+    local duration="${3:-3000}"
+    
+    # For simple messages, use display-message (faster, non-blocking)
+    if [[ "$type" == "simple" ]]; then
+        tmux display-message -d "$duration" "$message" 2>/dev/null || true
+        return
+    fi
+    
+    # Use popup for styled messages
+    local title
+    case "$type" in
+        error)   title="⚠️  Error" ;;
+        warning) title="⚡ Warning" ;;
+        success) title="✅ Success" ;;
+        info)    title="ℹ️  Info" ;;
+        *)       title="📢 Notice" ;;
+    esac
+    
+    show_toast_notification "$title" "$message" 50 10 "$type"
+}
+
+# =============================================================================
+# Plugin Error Handling & Debug
+# Execute plugin with error trapping and optional toast on failure
+# =============================================================================
+
+# Global flag to enable/disable error toasts (can be set via tmux option)
+_POWERKIT_DEBUG_MODE=""
+
+# Check if debug mode is enabled
+is_debug_mode() {
+    [[ -z "$_POWERKIT_DEBUG_MODE" ]] && {
+        _POWERKIT_DEBUG_MODE=$(get_tmux_option "@powerkit_debug" "false")
+    }
+    [[ "$_POWERKIT_DEBUG_MODE" == "true" || "$_POWERKIT_DEBUG_MODE" == "1" ]]
+}
+
+# Execute a plugin script with error trapping
+# Usage: execute_plugin_safe <plugin_script> [args...]
+# Returns: plugin output on success, empty on error (with toast if debug mode)
+execute_plugin_safe() {
+    local plugin_script="$1"
+    shift
+    local plugin_args=("$@")
+    
+    local plugin_name
+    plugin_name=$(basename "$plugin_script" .sh)
+    
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    mkdir -p "$cache_dir"
+    
+    local error_file="${cache_dir}/.plugin_error_${plugin_name}.log"
+    local output_file="${cache_dir}/.plugin_output_${plugin_name}.log"
+    
+    # Execute plugin capturing stdout and stderr
+    local exit_code=0
+    if [[ -x "$plugin_script" ]]; then
+        "$plugin_script" "${plugin_args[@]}" > "$output_file" 2> "$error_file" || exit_code=$?
+    elif [[ -f "$plugin_script" ]]; then
+        bash "$plugin_script" "${plugin_args[@]}" > "$output_file" 2> "$error_file" || exit_code=$?
+    else
+        echo "Plugin not found: $plugin_script" > "$error_file"
+        exit_code=127
+    fi
+    
+    # Check for errors
+    if [[ $exit_code -ne 0 ]] || [[ -s "$error_file" ]]; then
+        if is_debug_mode; then
+            _show_plugin_error_toast "$plugin_name" "$exit_code" "$error_file" "$output_file"
+        fi
+        
+        # Graceful degradation - still output whatever plugin produced
+        [[ -s "$output_file" ]] && cat "$output_file"
+        rm -f "$error_file" "$output_file" 2>/dev/null
+        return $exit_code
+    fi
+    
+    cat "$output_file"
+    rm -f "$error_file" "$output_file" 2>/dev/null
+    return 0
+}
+
+# Internal: Build and show error toast for plugin failure
+_show_plugin_error_toast() {
+    local plugin_name="$1"
+    local exit_code="$2"
+    local error_file="$3"
+    local output_file="$4"
+    
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    local toast_content="${cache_dir}/.toast_error_${plugin_name}.log"
+    
+    {
+        echo -e "  \033[1;31m━━━ Plugin Error Report ━━━\033[0m"
+        echo ""
+        echo -e "  \033[1;37mPlugin:\033[0m    $plugin_name"
+        echo -e "  \033[1;37mExit Code:\033[0m $exit_code"
+        echo -e "  \033[1;37mTime:\033[0m      $(date '+%Y-%m-%d %H:%M:%S')"
+        echo ""
+        
+        if [[ -s "$error_file" ]]; then
+            echo -e "  \033[1;31m┌─ stderr ─────────────────────────────────────────┐\033[0m"
+            sed 's/^/  │ /' "$error_file" | head -20
+            echo -e "  \033[1;31m└──────────────────────────────────────────────────┘\033[0m"
+            echo ""
+        fi
+        
+        if [[ -s "$output_file" ]]; then
+            echo -e "  \033[1;33m┌─ stdout ─────────────────────────────────────────┐\033[0m"
+            sed 's/^/  │ /' "$output_file" | head -10
+            echo -e "  \033[1;33m└──────────────────────────────────────────────────┘\033[0m"
+            echo ""
+        fi
+        
+        echo -e "  \033[2mTip: Disable debug with: set -g @powerkit_debug 'false'\033[0m"
+    } > "$toast_content"
+    
+    # Show toast asynchronously
+    (show_toast_notification "⚠️  PowerKit: $plugin_name" "$toast_content" 60 25 &) 2>/dev/null
+}
+
+# Execute command with error trapping
+# Usage: trap_errors <command> [args...]
+trap_errors() {
+    local cmd="$1"
+    shift
+    
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    mkdir -p "$cache_dir"
+    
+    local error_file="${cache_dir}/.trap_error_$$.log"
+    local exit_code=0
+    
+    "$cmd" "$@" 2> "$error_file" || exit_code=$?
+    
+    if [[ $exit_code -ne 0 ]] && is_debug_mode && [[ -s "$error_file" ]]; then
+        local error_msg
+        error_msg=$(cat "$error_file")
+        toast "Command failed: $cmd\nExit code: $exit_code\n\n$error_msg" "error"
+    fi
+    
+    rm -f "$error_file" 2>/dev/null
+    return $exit_code
+}
+
+# Log error to file and optionally show toast
+# Usage: log_plugin_error <plugin_name> <message> [show_toast]
+log_plugin_error() {
+    local plugin_name="$1"
+    local message="$2"
+    local show_toast="${3:-false}"
+    
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    mkdir -p "$cache_dir"
+    
+    local log_file="${cache_dir}/errors.log"
+    printf '[%s] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$plugin_name" "$message" >> "$log_file"
+    
+    if [[ "$show_toast" == "true" ]] && is_debug_mode; then
+        toast "[$plugin_name] $message\n\nLogged to: $log_file" "error"
     fi
 }

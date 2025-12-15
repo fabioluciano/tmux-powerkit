@@ -86,17 +86,18 @@ Learn more: **[Theme Variations](../../wiki/Theme-Variations)**
 
 ## ⌨️ Interactive Features
 
+All interactive keybindings use `Alt` modifier to avoid conflicts with tmux defaults.
+
 | Keybinding | Feature |
 |------------|---------|
-| `prefix + ?` | **Options viewer** - Browse all theme settings |
-| `prefix + B` | **Keybindings viewer** - View all keybindings |
-| `prefix + J` | **Audio input selector** - Switch microphone devices |
-| `prefix + O` | **Audio output selector** - Switch speaker/headphone devices |
-| `prefix + m` | **Microphone mute toggle** - Toggle microphone mute state |
-| `prefix + K` | **Kubernetes context selector** - Switch contexts |
-| `prefix + N` | **Kubernetes namespace selector** - Switch namespaces |
-| `prefix + W` | **Terraform workspace selector** - Switch workspaces |
-| `prefix + Q` | **Cache cleaner** - Clear all plugin caches for instant refresh |
+| `prefix + Alt-?` | **Options viewer** - Browse all theme settings |
+| `prefix + Alt-b` | **Keybindings viewer** - View all keybindings |
+| `prefix + Alt-r` | **Cache cleaner** - Clear all plugin caches (refresh) |
+| `prefix + Alt-a` | **Audio input selector** - Switch microphone devices |
+| `prefix + Alt-s` | **Audio output selector** - Switch speaker/headphone devices |
+| `prefix + Alt-k` | **Kubernetes context selector** - Switch contexts |
+| `prefix + Alt-j` | **Kubernetes namespace selector** - Switch namespaces |
+| `prefix + Alt-t` | **Terraform workspace selector** - Switch workspaces |
 
 ![Options Viewer](./assets/keybinding-options-viewer.gif)
 

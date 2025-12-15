@@ -45,6 +45,70 @@ make_github_api_call() {
     eval curl -s "$auth_header" "\"$url\"" 2>/dev/null
 }
 
+# Track if we've already shown an error toast this session
+_GITHUB_ERROR_SHOWN=""
+
+# Extract error message from API response
+get_api_error_message() {
+    local response="$1"
+    echo "$response" | jq -r '.message // empty' 2>/dev/null
+}
+
+# Show API error using toast (only once per cache cycle)
+show_github_api_error() {
+    local error_msg="$1"
+    local error_cache="${CACHE_DIR}/github_error.cache"
+    
+    # Check if we already showed this error recently (within TTL)
+    if [[ -f "$error_cache" ]]; then
+        local cached_error=$(<"$error_cache")
+        [[ "$cached_error" == "$error_msg" ]] && return 0
+    fi
+    
+    # Determine if error is important enough to show without debug mode
+    local is_critical=false
+    case "$error_msg" in
+        *"rate limit"*|*"Rate limit"*) is_critical=true ;;
+        *"Bad credentials"*|*"Unauthorized"*) is_critical=true ;;
+        *"Not Found"*) is_critical=true ;;  # Repo doesn't exist or no access
+    esac
+    
+    # Show toast if critical error or debug mode
+    if [[ "$is_critical" == "true" ]] || is_debug_mode; then
+        local short_msg="${error_msg:0:50}"
+        [[ ${#error_msg} -gt 50 ]] && short_msg="${short_msg}..."
+        toast "⚠️ GitHub: $short_msg" "warning"
+        
+        # Cache the error message to avoid spam
+        printf '%s' "$error_msg" > "$error_cache"
+    fi
+}
+
+# Validate API response (check for error messages)
+is_valid_api_response() {
+    local response="$1"
+    
+    # Empty response is invalid
+    [[ -z "$response" ]] && return 1
+    
+    # Check if response is an error object (has "message" key indicating error)
+    local error_msg
+    error_msg=$(get_api_error_message "$response")
+    if [[ -n "$error_msg" ]]; then
+        show_github_api_error "$error_msg"
+        return 1
+    fi
+    
+    # Check if response is an array (expected for lists)
+    if echo "$response" | jq -e 'type == "array"' &>/dev/null; then
+        # Clear error cache on successful response
+        rm -f "${CACHE_DIR}/github_error.cache" 2>/dev/null
+        return 0
+    fi
+    
+    return 1
+}
+
 # Check API rate limit
 check_rate_limit() {
     local response
@@ -65,6 +129,12 @@ count_issues() {
 
     local response
     response=$(make_github_api_call "$url")
+    
+    # Validate response before processing
+    if ! is_valid_api_response "$response"; then
+        echo "0"
+        return 1
+    fi
 
     if [[ -z "$filter_user" ]]; then
         # Count all issues (excluding PRs)
@@ -86,6 +156,12 @@ count_prs() {
 
     local response
     response=$(make_github_api_call "$url")
+    
+    # Validate response before processing
+    if ! is_valid_api_response "$response"; then
+        echo "0"
+        return 1
+    fi
 
     if [[ -z "$filter_user" ]]; then
         # Count all PRs
@@ -107,6 +183,12 @@ count_pr_comments() {
 
     local response
     response=$(make_github_api_call "$url")
+    
+    # Validate response before processing
+    if ! is_valid_api_response "$response"; then
+        echo "0"
+        return 1
+    fi
 
     # Get all open PR numbers
     local pr_numbers
@@ -123,6 +205,11 @@ count_pr_comments() {
         local comments_url="$GITHUB_API/repos/$user/$repo/issues/$pr_number/comments?per_page=100"
         local comments_response
         comments_response=$(make_github_api_call "$comments_url")
+        
+        # Validate comments response
+        if ! is_valid_api_response "$comments_response"; then
+            continue
+        fi
 
         if [[ -z "$filter_user" ]]; then
             local count

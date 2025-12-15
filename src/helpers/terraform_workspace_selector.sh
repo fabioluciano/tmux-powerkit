@@ -3,6 +3,9 @@
 
 set -euo pipefail
 
+CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$CURRENT_DIR/../utils.sh" 2>/dev/null || . "${CURRENT_DIR%/*}/utils.sh" 2>/dev/null || true
+
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit"
 
 # Detect terraform or tofu
@@ -40,12 +43,12 @@ select_workspace() {
     
     # Check if we're in a terraform directory
     if ! is_tf_directory "$pane_path"; then
-        tmux display-message "❌ Not in a Terraform directory"
+        toast "❌ Not in a Terraform directory" "simple"
         return 1
     fi
     
     # Detect tool
-    tool=$(detect_tool) || { tmux display-message "❌ terraform/tofu not found"; return 1; }
+    tool=$(detect_tool) || { toast "❌ terraform/tofu not found" "simple"; return 1; }
     
     # Get current workspace
     current_ws=$(cd "$pane_path" && "$tool" workspace show 2>/dev/null) || current_ws="default"
@@ -61,7 +64,7 @@ select_workspace() {
         workspaces+=("$ws")
     done < <(cd "$pane_path" && "$tool" workspace list 2>/dev/null)
     
-    [[ ${#workspaces[@]} -eq 0 ]] && { tmux display-message "❌ No workspaces found"; return 1; }
+    [[ ${#workspaces[@]} -eq 0 ]] && { toast "❌ No workspaces found" "simple"; return 1; }
     
     # Build menu
     local -a menu_args=()

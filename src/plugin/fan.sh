@@ -225,10 +225,12 @@ plugin_get_display_info() {
 # =============================================================================
 
 load_plugin() {
-    local hide_when_idle fan_selection fan_separator
+    local hide_when_idle fan_selection fan_separator show_when_unavailable placeholder
     hide_when_idle=$(get_cached_option "@powerkit_plugin_fan_hide_when_idle" "$POWERKIT_PLUGIN_FAN_HIDE_WHEN_IDLE")
     fan_selection=$(get_cached_option "@powerkit_plugin_fan_selection" "$POWERKIT_PLUGIN_FAN_SELECTION")
     fan_separator=$(get_cached_option "@powerkit_plugin_fan_separator" "$POWERKIT_PLUGIN_FAN_SEPARATOR")
+    show_when_unavailable=$(get_cached_option "@powerkit_plugin_fan_show_when_unavailable" "$POWERKIT_PLUGIN_FAN_SHOW_WHEN_UNAVAILABLE")
+    placeholder=$(get_cached_option "@powerkit_plugin_fan_placeholder" "$POWERKIT_PLUGIN_FAN_PLACEHOLDER")
 
     local cached
     if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
@@ -319,7 +321,14 @@ load_plugin() {
             ;;
     esac
 
-    [[ -z "$result" ]] && return 0
+    if [[ -z "$result" ]]; then
+        # If user opts to show placeholder when no RPM data available
+        if [[ "$show_when_unavailable" == "true" ]]; then
+            result="$placeholder"
+        else
+            return 0
+        fi
+    fi
     cache_set "$CACHE_KEY" "$result"
     printf '%s' "$result"
 }
