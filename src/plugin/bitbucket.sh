@@ -22,6 +22,7 @@ BITBUCKET_ICON_ISSUE=$(get_tmux_option "@powerkit_plugin_bitbucket_icon_issue" "
 BITBUCKET_ICON_PR=$(get_tmux_option "@powerkit_plugin_bitbucket_icon_pr" "$POWERKIT_PLUGIN_BITBUCKET_ICON_PR")
 BITBUCKET_TOKEN=$(get_tmux_option "@powerkit_plugin_bitbucket_token" "$POWERKIT_PLUGIN_BITBUCKET_TOKEN")
 BITBUCKET_WARNING_THRESHOLD=$(get_tmux_option "@powerkit_plugin_bitbucket_warning_threshold" "$POWERKIT_PLUGIN_BITBUCKET_WARNING_THRESHOLD")
+BITBUCKET_SEPARATOR=$(get_tmux_option "@powerkit_plugin_bitbucket_separator" "$POWERKIT_PLUGIN_BITBUCKET_SEPARATOR")
 
 # =============================================================================
 # Helper Functions
@@ -89,8 +90,12 @@ format_status() {
         parts+=("${BITBUCKET_ICON_PR} ${prs}")
     fi
     
-    local output
-    IFS="/" output="${parts[*]}"
+    local output=""
+    local sep=""
+    for part in "${parts[@]}"; do
+        output+="${sep}${part}"
+        sep="$BITBUCKET_SEPARATOR"
+    done
     echo "$output"
 }
 

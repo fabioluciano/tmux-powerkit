@@ -22,6 +22,7 @@ GITLAB_ICON_ISSUE=$(get_tmux_option "@powerkit_plugin_gitlab_icon_issue" "$POWER
 GITLAB_ICON_MR=$(get_tmux_option "@powerkit_plugin_gitlab_icon_mr" "$POWERKIT_PLUGIN_GITLAB_ICON_MR")
 GITLAB_TOKEN=$(get_tmux_option "@powerkit_plugin_gitlab_token" "$POWERKIT_PLUGIN_GITLAB_TOKEN")
 GITLAB_WARNING_THRESHOLD=$(get_tmux_option "@powerkit_plugin_gitlab_warning_threshold" "$POWERKIT_PLUGIN_GITLAB_WARNING_THRESHOLD")
+GITLAB_SEPARATOR=$(get_tmux_option "@powerkit_plugin_gitlab_separator" "$POWERKIT_PLUGIN_GITLAB_SEPARATOR")
 
 # =============================================================================
 # Helper Functions
@@ -111,8 +112,12 @@ format_status() {
         parts+=("${GITLAB_ICON_MR} ${mrs}")
     fi
     
-    local output
-    IFS="/" output="${parts[*]}"
+    local output=""
+    local sep=""
+    for part in "${parts[@]}"; do
+        output+="${sep}${part}"
+        sep="$GITLAB_SEPARATOR"
+    done
     echo "$output"
 }
 
