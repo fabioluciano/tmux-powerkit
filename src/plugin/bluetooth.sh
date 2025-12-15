@@ -9,6 +9,7 @@ plugin_init "bluetooth"
 # Configuration
 _show_device=$(get_tmux_option "@powerkit_plugin_bluetooth_show_device" "$POWERKIT_PLUGIN_BLUETOOTH_SHOW_DEVICE")
 _show_battery=$(get_tmux_option "@powerkit_plugin_bluetooth_show_battery" "$POWERKIT_PLUGIN_BLUETOOTH_SHOW_BATTERY")
+_battery_type=$(get_tmux_option "@powerkit_plugin_bluetooth_battery_type" "${POWERKIT_PLUGIN_BLUETOOTH_BATTERY_TYPE:-min}")
 _format=$(get_tmux_option "@powerkit_plugin_bluetooth_format" "$POWERKIT_PLUGIN_BLUETOOTH_FORMAT")
 _max_len=$(get_tmux_option "@powerkit_plugin_bluetooth_max_length" "$POWERKIT_PLUGIN_BLUETOOTH_MAX_LENGTH")
 
@@ -16,13 +17,55 @@ _max_len=$(get_tmux_option "@powerkit_plugin_bluetooth_max_length" "$POWERKIT_PL
 get_bt_macos() {
     if command -v blueutil &>/dev/null; then
         [[ "$(blueutil -p)" == "0" ]] && { echo "off:"; return; }
-        local devs="" line name mac bat
+        local devs="" line name mac bat sp_bat
+        
+        # Get battery info from system_profiler (since blueutil doesn't provide it for AirPods)
+        local sp_info=$(system_profiler SPBluetoothDataType 2>/dev/null)
+        
         while IFS= read -r line; do
-            [[ "$line" =~ name:\ \"([^\"]+)\" ]] && name="${BASH_REMATCH[1]}" || continue
-            [[ "$line" =~ address:\ ([0-9a-f-]+) ]] && mac="${BASH_REMATCH[1]}"
-            bat=$(blueutil --info "$mac" 2>/dev/null | grep -i battery | grep -oE '[0-9]+%' | tr -d '%' | head -1)
+            name=""
+            mac=""
+            bat=""
+            [[ "$line" =~ name:\ \"([^\"]+)\" ]] && name="${BASH_REMATCH[1]}"
+            [[ "$line" =~ address:\ ([0-9a-f:-]+) ]] && mac="${BASH_REMATCH[1]}"
+            [[ -z "$name" ]] && continue
+            
+            # Try blueutil first (for devices that report battery)
+            bat=$(blueutil --info "$mac" 2>/dev/null | grep -i battery | grep -oE '[0-9]+' | head -1)
+            
+            # Fallback to system_profiler for devices like AirPods
+            local battery_info=""
+            if [[ -z "$bat" && -n "$sp_info" ]]; then
+                # Extract all battery information for this device
+                # Use grep with device name, then AWK to extract batteries
+                battery_info=$(echo "$sp_info" | grep -A 20 "$name" | awk '
+                    /Battery Level:/ {
+                        type = ""
+                        if (/Left/) type = "L"
+                        else if (/Right/) type = "R"
+                        else if (/Case/) type = "C"
+                        else type = "B"
+                        
+                        match($0, /[0-9]+/)
+                        if (RSTART) {
+                            val = substr($0, RSTART, RLENGTH)
+                            if (batteries != "") batteries = batteries ":"
+                            batteries = batteries type "=" val
+                        }
+                    }
+                    END { print batteries }
+                ')
+            fi
+            
             [[ -n "$devs" ]] && devs+="|"
-            devs+="${name}@${bat}"
+            # Format: name@battery_info (e.g. "AirPods@L=68:R=67:C=60" or "Magic Mouse@B=75")
+            if [[ -n "$bat" ]]; then
+                devs+="${name}@B=${bat}"
+            elif [[ -n "$battery_info" ]]; then
+                devs+="${name}@${battery_info}"
+            else
+                devs+="${name}@"
+            fi
         done <<< "$(blueutil --connected 2>/dev/null)"
         [[ -n "$devs" ]] && echo "connected:$devs" || echo "on:"
         return
@@ -36,12 +79,26 @@ get_bt_macos() {
     local devs=$(echo "$info" | awk '
         /^[[:space:]]+Connected:$/ { in_con=1; next }
         /^[[:space:]]+Not Connected:$/ { exit }
-        in_con && /^[[:space:]]+[^[:space:]].*:$/ && !/Address:|Vendor|Product|Firmware|Minor|Serial|Case|Chipset|State|Discoverable|Transport|Supported|Battery|RSSI|Services/ {
-            if (dev != "") print dev "@" bat
-            gsub(/^[[:space:]]+|:$/, ""); dev=$0; bat=""
+        in_con && /^[[:space:]]+[^[:space:]].*:$/ && !/Address:|Vendor|Product|Firmware|Minor|Serial|Chipset|State|Discoverable|Transport|Supported|RSSI|Services|Battery/ {
+            if (dev != "") print dev "@" batteries
+            gsub(/^[[:space:]]+|:$/, ""); dev=$0; batteries=""
         }
-        in_con && /Battery Level:/ { match($0, /[0-9]+%/); if (RSTART) bat=substr($0, RSTART, RLENGTH-1) }
-        END { if (dev != "") print dev "@" bat }
+        in_con && /Battery Level:/ {
+            # Extract battery type and value
+            type = ""
+            if (/Left/) type = "L"
+            else if (/Right/) type = "R"
+            else if (/Case/) type = "C"
+            else type = "B"  # Generic battery
+            
+            match($0, /[0-9]+/)
+            if (RSTART) {
+                val = substr($0, RSTART, RLENGTH)
+                if (batteries != "") batteries = batteries ":"
+                batteries = batteries type "=" val
+            }
+        }
+        END { if (dev != "") print dev "@" batteries }
     ' | tr '\n' '|' | sed 's/|$//')
     [[ -n "$devs" ]] && echo "connected:$devs" || echo "on:"
 }
@@ -106,8 +163,64 @@ plugin_get_display_info() {
 }
 
 fmt_device() {
-    local e="$1" name="${1%%@*}" bat="${1#*@}"
-    [[ "$_show_battery" == "true" && -n "$bat" && "$bat" != "$name" ]] && echo "$name ($bat%)" || echo "$name"
+    local e="$1"
+    local name="${e%%@*}"
+    local battery_str="${e#*@}"
+    
+    if [[ "$_show_battery" != "true" || -z "$battery_str" ]]; then
+        echo "$name"
+        return
+    fi
+    
+    # Parse battery info: B=75 or L=68:R=67:C=60
+    declare -A bats
+    local IFS=':'
+    for bat_entry in $battery_str; do
+        local type="${bat_entry%%=*}"
+        local val="${bat_entry#*=}"
+        [[ -n "$type" && -n "$val" ]] && bats[$type]="$val"
+    done
+    
+    # Determine what to display based on battery_type
+    local bat_display=""
+    case "$_battery_type" in
+        left)
+            [[ -n "${bats[L]}" ]] && bat_display="L:${bats[L]}%"
+            ;;
+        right)
+            [[ -n "${bats[R]}" ]] && bat_display="R:${bats[R]}%"
+            ;;
+        case)
+            [[ -n "${bats[C]}" ]] && bat_display="C:${bats[C]}%"
+            ;;
+        all)
+            local bat_parts=()
+            [[ -n "${bats[L]}" ]] && bat_parts+=("L:${bats[L]}%")
+            [[ -n "${bats[R]}" ]] && bat_parts+=("R:${bats[R]}%")
+            [[ -n "${bats[C]}" ]] && bat_parts+=("C:${bats[C]}%")
+            [[ -n "${bats[B]}" ]] && bat_parts+=("${bats[B]}%")
+            bat_display=$(printf '%s / ' "${bat_parts[@]}" | sed 's/ \/ $//')
+            ;;
+        min|*)
+            # For TWS (L/R): show minimum, ignore case
+            # For single battery: show it
+            if [[ -n "${bats[L]}" && -n "${bats[R]}" ]]; then
+                local left=${bats[L]} right=${bats[R]}
+                local min=$((left < right ? left : right))
+                bat_display="$min%"
+            elif [[ -n "${bats[L]}" ]]; then
+                bat_display="${bats[L]}%"
+            elif [[ -n "${bats[R]}" ]]; then
+                bat_display="${bats[R]}%"
+            elif [[ -n "${bats[B]}" ]]; then
+                bat_display="${bats[B]}%"
+            elif [[ -n "${bats[C]}" ]]; then
+                bat_display="${bats[C]}%"
+            fi
+            ;;
+    esac
+    
+    [[ -n "$bat_display" ]] && echo "$name ($bat_display)" || echo "$name"
 }
 
 load_plugin() {
