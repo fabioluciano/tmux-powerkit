@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 26+ plugins for displaying system information with a semantic color system that works across multiple themes. Distributed through TPM (Tmux Plugin Manager).
+PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 36+ plugins for displaying system information with a semantic color system that works across multiple themes. Distributed through TPM (Tmux Plugin Manager).
 
 ## Development Commands
 
