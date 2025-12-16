@@ -4,8 +4,18 @@ A powerful, modular tmux status bar framework with 36+ built-in plugins for disp
 
 > **📢 Note:** This project was formerly known as `tmux-tokyo-night`. See [Migration Guide](../../wiki/Migration-Guide) for upgrade instructions.
 
-![PowerKit Theme](./assets/tokyo-night-bar.png)
 ![PowerKit Theme](./assets/tokyo-night-theme.png)
+
+<details>
+<summary><b>📍 Status Bar Elements</b></summary>
+
+| # | Element | Description |
+|---|---------|-------------|
+| ① | **Session Indicator** | Shows OS icon and session name. Changes color based on state: 🟢 normal, 🟡 prefix pressed, 🟣 copy mode |
+| ② | **Window List** | Active and inactive windows with icons. Active window is highlighted |
+| ③ | **Plugins** | Right-side status plugins (datetime, cpu, memory, git, battery, etc.) |
+
+</details>
 
 ## ✨ Features
 
@@ -91,8 +101,8 @@ All interactive keybindings use `Ctrl` modifier (`prefix + Ctrl+key`) for cross-
 | Keybinding | Feature |
 |------------|---------||
 | `prefix + Ctrl-e` | **Options viewer** - Browse all theme settings |
-| `prefix + Ctrl-b` | **Keybindings viewer** - View all keybindings |
-| `prefix + Ctrl-r` | **Cache cleaner** - Clear all plugin caches (refresh) |
+| `prefix + Ctrl-g` | **Keybindings viewer** - View all keybindings |
+| `prefix + Ctrl-x` | **Cache cleaner** - Clear all plugin caches (refresh) |
 | `prefix + Ctrl-i` | **Audio input selector** - Switch microphone devices |
 | `prefix + Ctrl-s` | **Audio output selector** - Switch speaker/headphone devices |
 | `prefix + Ctrl-q` | **Kubernetes context selector** - Switch contexts |

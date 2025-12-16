@@ -14,24 +14,36 @@ create_session_segment() {
     local session_icon=$(get_tmux_option "@powerkit_session_icon" "$POWERKIT_DEFAULT_SESSION_ICON")
     local separator_char=$(get_separator_char)
     local text_color=$(get_powerkit_color 'surface')
-    local warning_bg=$(get_powerkit_color 'warning')
-    local success_bg=$(get_powerkit_color 'success')
     local transparent=$(get_tmux_option "@powerkit_transparent_status_bar" "false")
+    
+    # Get colors for different states
+    local prefix_color_name=$(get_tmux_option "@powerkit_session_prefix_color" "$POWERKIT_DEFAULT_SESSION_PREFIX_COLOR")
+    local copy_color_name=$(get_tmux_option "@powerkit_session_copy_mode_color" "$POWERKIT_DEFAULT_SESSION_COPY_MODE_COLOR")
+    local normal_color_name=$(get_tmux_option "@powerkit_session_normal_color" "$POWERKIT_DEFAULT_SESSION_NORMAL_COLOR")
+    
+    local prefix_bg=$(get_powerkit_color "$prefix_color_name")
+    local copy_bg=$(get_powerkit_color "$copy_color_name")
+    local normal_bg=$(get_powerkit_color "$normal_color_name")
     
     # Auto-detect OS icon if needed
     if [[ "$session_icon" == "auto" ]]; then
         session_icon=$(get_os_icon)
     fi
     
-    # Handle transparency
+    # Build conditional background color: prefix -> warning, copy_mode -> accent, else -> success
+    # Priority: prefix > copy_mode > normal
+    local bg_condition="#{?client_prefix,${prefix_bg},#{?pane_in_mode,${copy_bg},${normal_bg}}}"
+    
+    # Handle transparency for separator
     local separator_end
     if [[ "$transparent" == "true" ]]; then
-        separator_end="#[bg=default]#{?client_prefix,#[fg=${warning_bg}],#[fg=${success_bg}]}${separator_char}#[none]"
+        separator_end="#[bg=default]#[fg=${bg_condition}]${separator_char}#[none]"
     else
-        separator_end="#{?client_prefix,#[fg=${warning_bg}],#[fg=${success_bg}]}${separator_char}#[none]"
+        separator_end="#[fg=${bg_condition}]${separator_char}#[none]"
     fi
     
-    echo "#[fg=${text_color},bold]#{?client_prefix,#[bg=${warning_bg}],#[bg=${success_bg}]}${session_icon} #S${separator_end}"
+    # Final segment with dynamic background (icon stays the same, only color changes)
+    echo "#[fg=${text_color},bold,bg=${bg_condition}]${session_icon} #S${separator_end}"
 }
 
 # Build status left format

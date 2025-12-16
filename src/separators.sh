@@ -18,9 +18,17 @@ get_previous_window_background() {
     local current_window_state="$1"  # "active" or "inactive"
     local separator_color
     
-    # Session colors (for first window)
-    local session_success=$(get_powerkit_color 'success')
-    local session_warning=$(get_powerkit_color 'warning')
+    # Session colors (for first window) - now with copy mode support
+    local prefix_color_name=$(get_tmux_option "@powerkit_session_prefix_color" "$POWERKIT_DEFAULT_SESSION_PREFIX_COLOR")
+    local copy_color_name=$(get_tmux_option "@powerkit_session_copy_mode_color" "$POWERKIT_DEFAULT_SESSION_COPY_MODE_COLOR")
+    local normal_color_name=$(get_tmux_option "@powerkit_session_normal_color" "$POWERKIT_DEFAULT_SESSION_NORMAL_COLOR")
+    
+    local session_prefix=$(get_powerkit_color "$prefix_color_name")
+    local session_copy=$(get_powerkit_color "$copy_color_name")
+    local session_normal=$(get_powerkit_color "$normal_color_name")
+    
+    # Build session color condition: prefix -> warning, copy_mode -> accent, else -> success
+    local session_color="#{?client_prefix,$session_prefix,#{?pane_in_mode,$session_copy,$session_normal}}"
     
     # Window content colors
     local active_content_bg_option=$(get_tmux_option "@powerkit_active_window_content_bg" "$POWERKIT_DEFAULT_ACTIVE_WINDOW_CONTENT_BG")
@@ -29,10 +37,10 @@ get_previous_window_background() {
     
     if [[ "$current_window_state" == "active" ]]; then
         # For active window: previous window is always inactive (or session for first)
-        separator_color="#{?#{==:#{window_index},1},#{?client_prefix,$session_warning,$session_success},$inactive_content_bg}"
+        separator_color="#{?#{==:#{window_index},1},$session_color,$inactive_content_bg}"
     else
         # For inactive window: check if previous window is active
-        separator_color="#{?#{==:#{e|-:#{window_index},1},0},#{?client_prefix,$session_warning,$session_success},#{?#{==:#{e|-:#{window_index},1},#{active_window_index}},$active_content_bg,$inactive_content_bg}}"
+        separator_color="#{?#{==:#{e|-:#{window_index},1},0},$session_color,#{?#{==:#{e|-:#{window_index},1},#{active_window_index}},$active_content_bg,$inactive_content_bg}}"
     fi
     
     echo "$separator_color"
