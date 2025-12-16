@@ -1,21 +1,11 @@
 # ⚡ PowerKit for tmux
 
-A powerful, modular tmux status bar framework with 36+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with beautiful themes including Tokyo Night and Kiribyte.
+A powerful, modular tmux status bar framework with 33+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with beautiful themes including Tokyo Night and Kiribyte.
 
 > **📢 Note:** This project was formerly known as `tmux-tokyo-night`. See [Migration Guide](../../wiki/Migration-Guide) for upgrade instructions.
 
+![PowerKit Theme](./assets/tokyo-night-bar.png)
 ![PowerKit Theme](./assets/tokyo-night-theme.png)
-
-<details>
-<summary><b>📍 Status Bar Elements</b></summary>
-
-| # | Element | Description |
-|---|---------|-------------|
-| ① | **Session Indicator** | Shows OS icon and session name. Changes color based on state: 🟢 normal, 🟡 prefix pressed, 🟣 copy mode |
-| ② | **Window List** | Active and inactive windows with icons. Active window is highlighted |
-| ③ | **Plugins** | Right-side status plugins (datetime, cpu, memory, git, battery, etc.) |
-
-</details>
 
 ## ✨ Features
 
@@ -34,7 +24,7 @@ A powerful, modular tmux status bar framework with 36+ built-in plugins for disp
 - **[Migration Guide](../../wiki/Migration-Guide)** - Upgrade from tmux-tokyo-night
 - **[Theme Variations](../../wiki/Theme-Variations)** - Explore available themes
 - **[Global Configuration](../../wiki/Global-Configuration)** - Configure status bar layout and separators
-- **[Plugin System](../../wiki/Plugin-System-Overview)** - Complete reference for all 36+ plugins
+- **[Plugin System](../../wiki/Plugin-System-Overview)** - Complete reference for all 32+ plugins
 - **[Interactive Keybindings](../../wiki/Interactive-Keybindings)** - Popup helpers and selectors
 - **[Custom Colors & Theming](../../wiki/Custom-Colors-Theming)** - Advanced customization
 - **[Performance & Caching](../../wiki/Performance-Caching)** - Optimize for your workflow
@@ -96,18 +86,18 @@ Learn more: **[Theme Variations](../../wiki/Theme-Variations)**
 
 ## ⌨️ Interactive Features
 
-All interactive keybindings use `Ctrl` modifier (`prefix + Ctrl+key`) for cross-platform compatibility.
+All interactive keybindings use `Alt` modifier to avoid conflicts with tmux defaults.
 
 | Keybinding | Feature |
-|------------|---------||
-| `prefix + Ctrl-e` | **Options viewer** - Browse all theme settings |
-| `prefix + Ctrl-g` | **Keybindings viewer** - View all keybindings |
-| `prefix + Ctrl-x` | **Cache cleaner** - Clear all plugin caches (refresh) |
-| `prefix + Ctrl-i` | **Audio input selector** - Switch microphone devices |
-| `prefix + Ctrl-s` | **Audio output selector** - Switch speaker/headphone devices |
-| `prefix + Ctrl-q` | **Kubernetes context selector** - Switch contexts |
-| `prefix + Ctrl-w` | **Kubernetes namespace selector** - Switch namespaces |
-| `prefix + Ctrl-t` | **Terraform workspace selector** - Switch workspaces |
+|------------|---------|
+| `prefix + Alt-?` | **Options viewer** - Browse all theme settings |
+| `prefix + Alt-b` | **Keybindings viewer** - View all keybindings |
+| `prefix + Alt-r` | **Cache cleaner** - Clear all plugin caches (refresh) |
+| `prefix + Alt-a` | **Audio input selector** - Switch microphone devices |
+| `prefix + Alt-s` | **Audio output selector** - Switch speaker/headphone devices |
+| `prefix + Alt-k` | **Kubernetes context selector** - Switch contexts |
+| `prefix + Alt-j` | **Kubernetes namespace selector** - Switch namespaces |
+| `prefix + Alt-t` | **Terraform workspace selector** - Switch workspaces |
 
 ![Options Viewer](./assets/keybinding-options-viewer.gif)
 
@@ -115,7 +105,7 @@ Learn more: **[Interactive Keybindings](../../wiki/Interactive-Keybindings)**
 
 ## 🔌 Available Plugins
 
-The theme includes 36+ built-in plugins organized by category:
+The theme includes 33+ built-in plugins organized by category:
 
 ### 📅 Time & Date
 
