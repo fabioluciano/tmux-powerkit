@@ -13,11 +13,11 @@ configure_tmux_appearance() {
     # Load PowerKit theme
     load_powerkit_theme
     
-    # Pane borders
-    local border_style_active_pane_default=$(get_powerkit_color 'border-strong')
-    local border_style_inactive_pane_default=$(get_powerkit_color 'surface')
-    local border_style_active_pane=$(get_tmux_option "@powerkit_active_pane_border_style" "$border_style_active_pane_default")
-    local border_style_inactive_pane=$(get_tmux_option "@powerkit_inactive_pane_border_style" "$border_style_inactive_pane_default")
+    # Pane borders - get user config (semantic name) and resolve to actual color
+    local border_style_active_pane_name=$(get_tmux_option "@powerkit_active_pane_border_style" "$POWERKIT_DEFAULT_ACTIVE_PANE_BORDER_STYLE")
+    local border_style_inactive_pane_name=$(get_tmux_option "@powerkit_inactive_pane_border_style" "$POWERKIT_DEFAULT_INACTIVE_PANE_BORDER_STYLE")
+    local border_style_active_pane=$(get_powerkit_color "$border_style_active_pane_name")
+    local border_style_inactive_pane=$(get_powerkit_color "$border_style_inactive_pane_name")
     
     tmux set-option -g pane-active-border-style "fg=$border_style_active_pane"
     if ! tmux set-option -g pane-border-style "#{?pane_synchronized,fg=$border_style_active_pane,fg=$border_style_inactive_pane}" &>/dev/null; then
