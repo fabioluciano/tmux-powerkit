@@ -99,7 +99,7 @@ Learn more: **[Theme Variations](../../wiki/Theme-Variations)**
 All interactive keybindings use `Ctrl` modifier (`prefix + Ctrl+key`) for cross-platform compatibility.
 
 | Keybinding | Feature |
-|------------|---------||
+|------------|---------|
 | `prefix + Ctrl-e` | **Options viewer** - Browse all theme settings |
 | `prefix + Ctrl-g` | **Keybindings viewer** - View all keybindings |
 | `prefix + Ctrl-x` | **Cache cleaner** - Clear all plugin caches (refresh) |
