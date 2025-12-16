@@ -24,8 +24,15 @@ _invalidate_if_upgraded() {
     local log_file="${_PKG_LOG_FILES[$1]:-}"
     local cache_file="${CACHE_DIR}/${CACHE_KEY}.cache"
     
-    # brew: use Cellar dir mtime
-    [[ "$1" == "brew" ]] && log_file="$(command brew --prefix 2>/dev/null)/Cellar"
+    # brew: use var/homebrew/linked dir mtime (updated on install/upgrade/uninstall)
+    if [[ "$1" == "brew" ]]; then
+        local brew_prefix
+        brew_prefix="$(command brew --prefix 2>/dev/null)"
+        # Try linked dir first (most reliable), then locks, then Cellar
+        for dir in "$brew_prefix/var/homebrew/linked" "$brew_prefix/var/homebrew/locks" "$brew_prefix/Cellar"; do
+            [[ -d "$dir" ]] && { log_file="$dir"; break; }
+        done
+    fi
     
     [[ ! -e "$log_file" || ! -f "$cache_file" ]] && return
     [[ "$log_file" -nt "$cache_file" ]] && cache_invalidate "$CACHE_KEY"
