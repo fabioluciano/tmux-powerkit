@@ -44,14 +44,14 @@ declare -A THEME_COLORS=(
     [disabled]="#bdae93"             # bg3 - Disabled state
 
     # Additional Variants (Faded colors)
-    [success-subtle]="#98971a"       # bright green
-    [success-strong]="#3e3b06"       # Strong success (15% darker)
-    [warning-strong]="#af3a03"       # orange
-    [error-strong]="#cc241d"         # bright red
-    [info-subtle]="#458588"          # bright blue
-    [info-strong]="#076678"          # dark blue (faded)
-    [error-subtle]="#cc241d"         # bright red
-    [warning-subtle]="#d79921"       # bright yellow
+    [success-subtle]="#928e3b"       # Subtle success (18.9% lighter)
+    [success-strong]="#434007"       # Strong success (44.2% darker)
+    [warning-strong]="#6a4a1b"       # Strong warning (44.2% darker)
+    [error-strong]="#570003"         # Strong error (44.2% darker)
+    [info-subtle]="#358291"          # Subtle info (18.9% lighter)
+    [info-strong]="#033842"          # Strong info (44.2% darker)
+    [error-subtle]="#af3035"         # Subtle error (18.9% lighter)
+    [warning-subtle]="#ca9c57"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # bg0_h (lightest)

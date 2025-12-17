@@ -44,14 +44,14 @@ declare -A THEME_COLORS=(
     [disabled]="#93a1a1"             # base1 - Disabled state
 
     # Additional Variants
-    [success-subtle]="#96ab05"       # Lighter green
-    [success-strong]="#444e00"       # Strong success (15% darker)
-    [warning-strong]="#cb4b16"       # orange
-    [error-strong]="#b52a27"         # Darker red
-    [info-subtle]="#35bdb4"          # Lighter cyan
-    [info-strong]="#1a7a73"          # Darker cyan
-    [error-subtle]="#e35d5b"         # Lighter red
-    [warning-subtle]="#dda520"       # Lighter yellow
+    [success-subtle]="#9cac30"       # Subtle success (18.9% lighter)
+    [success-strong]="#4a5500"       # Strong success (44.2% darker)
+    [warning-strong]="#6a5411"       # Strong warning (44.2% darker)
+    [error-strong]="#7a1b1a"         # Strong error (44.2% darker)
+    [info-subtle]="#4fa0da"          # Subtle info (18.9% lighter)
+    [info-strong]="#154d75"          # Strong info (44.2% darker)
+    [error-subtle]="#e25856"         # Subtle error (18.9% lighter)
+    [warning-subtle]="#caaa49"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # Pure white (for plugin text contrast)

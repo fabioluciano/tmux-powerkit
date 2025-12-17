@@ -44,14 +44,14 @@ declare -A THEME_COLORS=(
     [disabled]="#6e6a86"             # Muted - Disabled state
 
     # Additional Variants
-    [success-subtle]="#b3e1e8"       # Lighter foam
-    [success-strong]="#4f696e"       # Strong success (15% darker)
-    [warning-strong]="#ea9d34"       # Darker gold
-    [error-strong]="#d84f76"         # Darker love
-    [info-subtle]="#5aadcb"          # Lighter pine
-    [info-strong]="#2d7a95"          # Darker pine
-    [error-subtle]="#f092ad"         # Lighter love
-    [warning-subtle]="#f8d5a8"       # Lighter gold
+    [success-subtle]="#aed8df"       # Subtle success (18.9% lighter)
+    [success-strong]="#577378"       # Strong success (44.2% darker)
+    [warning-strong]="#896f4b"       # Strong warning (44.2% darker)
+    [error-strong]="#833d51"         # Strong error (44.2% darker)
+    [info-subtle]="#aed8df"          # Subtle info (18.9% lighter)
+    [info-strong]="#577378"          # Strong info (44.2% darker)
+    [error-subtle]="#ee8aa6"         # Subtle error (18.9% lighter)
+    [warning-subtle]="#f7d29d"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # Text

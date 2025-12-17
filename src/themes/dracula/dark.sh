@@ -44,14 +44,14 @@ declare -A THEME_COLORS=(
     [disabled]="#6272a4"             # Comment
 
     # Additional Variants
-    [success-subtle]="#69ff94"       # Lighter green
-    [success-strong]="#287f3e"       # Strong success (15% darker)
-    [warning-strong]="#ff9e64"       # Darker orange
-    [error-strong]="#ff3333"         # Darker red
-    [info-subtle]="#a4ffff"          # Lighter cyan
-    [info-strong]="#59c2c6"          # Darker cyan
-    [error-subtle]="#ff7777"         # Lighter red
-    [warning-subtle]="#ffcc99"       # Lighter orange
+    [success-subtle]="#71fa93"       # Subtle success (18.9% lighter)
+    [success-strong]="#2c8b44"       # Strong success (44.2% darker)
+    [warning-strong]="#8e6b45"       # Strong warning (44.2% darker)
+    [error-strong]="#8e2f2f"         # Strong error (44.2% darker)
+    [info-subtle]="#a0edfd"          # Subtle info (18.9% lighter)
+    [info-strong]="#4d828d"          # Strong info (44.2% darker)
+    [error-subtle]="#ff7575"         # Subtle error (18.9% lighter)
+    [warning-subtle]="#ffcb95"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # Foreground

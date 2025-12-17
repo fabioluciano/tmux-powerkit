@@ -44,14 +44,14 @@ declare -A THEME_COLORS=(
     [disabled]="#6e738d"             # Overlay1 - Disabled state
 
     # Additional Variants
-    [success-subtle]="#8bd5ca"       # Teal
-    [success-strong]="#546e4b"       # Strong success (15% darker)
-    [warning-strong]="#f5a97f"       # Peach
-    [error-strong]="#ee99a0"         # Maroon
-    [info-subtle]="#b7bdf8"          # Lavender
-    [info-strong]="#8aadf4"          # Blue
-    [error-subtle]="#f5bde6"         # Pink
-    [warning-subtle]="#f4dbd6"       # Rosewater
+    [success-subtle]="#b6e0a9"       # Subtle success (18.9% lighter)
+    [success-strong]="#5c7953"       # Strong success (44.2% darker)
+    [warning-strong]="#85795e"       # Strong warning (44.2% darker)
+    [error-strong]="#844b53"         # Strong error (44.2% darker)
+    [info-subtle]="#a5dee8"          # Subtle info (18.9% lighter)
+    [info-strong]="#50777e"          # Strong info (44.2% darker)
+    [error-subtle]="#f09da9"         # Subtle error (18.9% lighter)
+    [warning-subtle]="#f2e0ba"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # Text
