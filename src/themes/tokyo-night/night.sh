@@ -30,24 +30,28 @@ declare -A THEME_COLORS=(
   [accent]="#bb9af7"               # Main accent color (magenta)
   [primary]="#9d7cd8"              # Primary brand color (blue)
   [secondary]="#394b70"            # Secondary color (blue-gray)
+  [secondary-strong]="#222d47"     # Strong secondary (40% darker)
   
   # Status Colors (PowerKit Standard)
   [success]="#9ece6a"              # Success state (green)
-  [warning]="#c49a5a"              # Warning state (yellow)
+  [warning]="#e0af68"              # Warning state (yellow)
   [error]="#f7768e"                # Error state (red)
   [info]="#7dcfff"                 # Informational state (cyan)
   
   # Interactive States
   [hover]="#292e42"                # Hover state
-  [active]="#3d59a1"               # Active state  
+  [active]="#46608a"               # Active state (10% mais clara que secondary)
   [focus]="#7aa2f7"                # Focus state
   [disabled]="#565f89"             # Disabled state
   
   # Additional Variants
-  [success-subtle]="#73daca"       # Subtle success
-  [warning-strong]="#e0af68"       # Strong warning (orange)
-  [error-strong]="#de5971"         # Strong error
-  [info-subtle]="#2ac3de"          # Subtle info
+  [success-subtle]="#abd88c"       # Subtle success (5% darker que o tom claro anterior)
+  [warning-strong]="#a6833e"       # Strong warning (40% darker)
+  [error-strong]="#c44a55"         # Strong error (40% darker)
+  [info-subtle]="#99d6e6"          # Subtle info (5% mais escuro que o tom claro anterior)
+  [info-strong]="#3990b3"          # Strong info (darker cyan)
+  [error-subtle]="#f18fa0"          # Subtle error (5% mais clara)
+  [warning-subtle]="#eac07a"        # Subtle warning (um pouco mais clara que warning)
   
   # System Colors
   [white]="#ffffff"                # Pure white

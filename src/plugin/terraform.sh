@@ -58,15 +58,15 @@ get_workspace() {
 detect_tool() {
     local preferred
     preferred=$(get_cached_option "@powerkit_plugin_terraform_tool" "$POWERKIT_PLUGIN_TERRAFORM_TOOL")
-    
+
     case "$preferred" in
         tofu|opentofu)
-            command -v tofu &>/dev/null && { echo "tofu"; return 0; }
-            command -v terraform &>/dev/null && { echo "terraform"; return 0; }
+            require_cmd tofu 1 && { echo "tofu"; return 0; }
+            require_cmd terraform 1 && { echo "terraform"; return 0; }
             ;;
         terraform|*)
-            command -v terraform &>/dev/null && { echo "terraform"; return 0; }
-            command -v tofu &>/dev/null && { echo "tofu"; return 0; }
+            require_cmd terraform 1 && { echo "terraform"; return 0; }
+            require_cmd tofu 1 && { echo "tofu"; return 0; }
             ;;
     esac
     return 1

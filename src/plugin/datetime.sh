@@ -32,6 +32,10 @@ _separator=$(get_tmux_option "@powerkit_plugin_datetime_separator" "$POWERKIT_PL
 
 plugin_get_type() { printf 'static'; }
 
+plugin_get_display_info() {
+    build_display_info "1" "" "" ""
+}
+
 # Resolve predefined or custom format
 resolve_format() {
     local f="${1:-}"

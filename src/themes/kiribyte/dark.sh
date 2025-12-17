@@ -29,24 +29,28 @@ declare -A THEME_COLORS=(
     [accent]="#d4c5ff"               # Main accent color (lavender pastel)
     [primary]="#b8a3e8"              # Primary brand color (purple pastel)
     [secondary]="#687aa3"            # Secondary color (blue-gray pastel)
+    [secondary-strong]="#3e4962"     # Strong secondary (40% darker)
     
     # Status Colors (PowerKit Standard)
-    [success]="#c7e8a8"              # Success state (mint green pastel)
+    [success]="#a9c98c"              # Success state (mint green pastel, 5% mais escuro)
     [warning]="#e0c49a"              # Warning state (beige pastel)
     [error]="#ff6b85"                # Error state (rose pastel)
     [info]="#ade5ff"                 # Informational state (baby blue pastel)
     
     # Interactive States
     [hover]="#313342"                # Hover state (subtle dark)
-    [active]="#99afd9"               # Active state (medium blue)
+    [active]="#7d96c2"               # Active state (10% mais clara que secondary)
     [focus]="#a4c5ff"                # Focus state (sky blue pastel)
     [disabled]="#8a8fb5"             # Disabled state (muted)
     
     # Additional Variants
-    [success-subtle]="#a8e8db"       # Subtle success (aqua pastel)
-    [warning-strong]="#f0d1a3"       # Strong warning (cream pastel)
-    [error-strong]="#ff8fa3"         # Strong error (coral pastel)
-    [info-subtle]="#7ddcf0"          # Subtle info (turquoise pastel)
+    [success-subtle]="#c8e8b8"       # Subtle success (5% mais escuro que o tom claro anterior)
+    [warning-strong]="#a6925c"       # Strong warning (40% darker)
+    [error-strong]="#cc4050"         # Strong error (40% darker)
+    [info-subtle]="#bde0ea"          # Subtle info (5% mais escuro que o tom claro anterior)
+    [info-strong]="#6bb0c0"          # Strong info (darker baby blue)
+    [error-subtle]="#ff8197"         # Subtle error (15% lighter than error)
+    [warning-subtle]="#fff0d1"       # Subtle warning (lighter beige pastel)
     
     # System Colors
     [white]="#ffffff"                # Pure white

@@ -30,25 +30,20 @@ detect_macos() {
 
 # Linux detection
 detect_linux() {
-    # Check video devices
-    lsof /dev/video* 2>/dev/null | grep -q "/dev/video" && { echo "active"; return; }
-    fuser /dev/video* 2>/dev/null | grep -q "[0-9]" && { echo "active"; return; }
+    # Method 1: lsof (most reliable)
+    require_cmd lsof 1 && lsof /dev/video* 2>/dev/null | grep -q "/dev/video" && { printf 'active'; return; }
 
-    # Check camera apps
-    local apps=("gstreamer" "ffmpeg" "vlc" "cheese" "guvcview" "kamoso" "obs" "zoom" "teams" "skype" "discord")
-    for app in "${apps[@]}"; do
-        for pid in $(pgrep -f "$app" 2>/dev/null); do
-            check_cpu "$pid" 2 && { echo "active"; return; }
-        done
+    # Method 2: fuser (faster than lsof)
+    require_cmd fuser 1 && fuser /dev/video* 2>/dev/null | grep -q "[0-9]" && { printf 'active'; return; }
+
+    # Method 3: Check common camera apps with CPU usage
+    local apps="gstreamer|ffmpeg|vlc|cheese|obs|zoom|teams|skype"
+    local pid
+    for pid in $(pgrep -f "$apps" 2>/dev/null); do
+        check_cpu "$pid" 2 && { printf 'active'; return; }
     done
 
-    # Check v4l2
-    pgrep -f "v4l2" &>/dev/null && { echo "active"; return; }
-
-    # Check /proc for video fd
-    find /proc/[0-9]*/fd -type l -exec ls -l {} + 2>/dev/null | grep -q "/dev/video" && { echo "active"; return; }
-
-    echo "inactive"
+    printf 'inactive'
 }
 
 detect_camera() {

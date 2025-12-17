@@ -8,6 +8,12 @@ plugin_init "uptime"
 
 plugin_get_type() { printf 'static'; }
 
+plugin_get_display_info() {
+    local content="${1:-}"
+    [[ -z "$content" || "$content" == "N/A" ]] && { build_display_info "0" "" "" ""; return; }
+    build_display_info "1" "" "" ""
+}
+
 format_uptime() {
     local seconds=$1
     local days=$((seconds / 86400))
@@ -36,20 +42,20 @@ get_uptime_macos() {
     format_uptime "$uptime_seconds"
 }
 
-load_plugin() {
-    local cached_value
-    if cached_value=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        printf '%s' "$cached_value"
-        return
-    fi
-
+_compute_uptime() {
     local result
-    is_linux && result=$(get_uptime_linux)
-    is_macos && result=$(get_uptime_macos)
-    [[ -z "$result" ]] && result="N/A"
-
-    cache_set "$CACHE_KEY" "$result"
+    if is_linux; then
+        result=$(get_uptime_linux)
+    elif is_macos; then
+        result=$(get_uptime_macos)
+    else
+        result="N/A"
+    fi
     printf '%s' "$result"
+}
+
+load_plugin() {
+    cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_uptime
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

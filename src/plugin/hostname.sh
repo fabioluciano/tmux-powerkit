@@ -6,6 +6,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 plugin_get_type() { printf 'static'; }
 
+plugin_get_display_info() {
+    build_display_info "1" "" "" ""
+}
+
 load_plugin() {
     local fmt=$(get_tmux_option "@powerkit_plugin_hostname_format" "$POWERKIT_PLUGIN_HOSTNAME_FORMAT")
     case "$fmt" in

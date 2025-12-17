@@ -12,7 +12,8 @@ plugin_get_type() { printf 'conditional'; }
 bytes_to_speed() {
     local bytes=$1
     [[ $bytes -le 0 ]] && { printf '0B'; return; }
-    
+
+    # Compact output with consistent formatting
     if [[ $bytes -ge $POWERKIT_BYTE_GB ]]; then
         awk "BEGIN {printf \"%.1fG\", $bytes / $POWERKIT_BYTE_GB}"
     elif [[ $bytes -ge $POWERKIT_BYTE_MB ]]; then
@@ -124,7 +125,11 @@ load_plugin() {
         return
     fi
     
-    local result="↓$(bytes_to_speed "$rx_speed") ↑$(bytes_to_speed "$tx_speed")"
+    local down up result
+    down=$(bytes_to_speed "$rx_speed")
+    up=$(bytes_to_speed "$tx_speed")
+    # Fixed width: 4 chars right-aligned + arrow
+    printf -v result '%4s↓ %4s↑' "$down" "$up"
     cache_set "$CACHE_KEY" "$result"
     printf '%s' "$result"
 }

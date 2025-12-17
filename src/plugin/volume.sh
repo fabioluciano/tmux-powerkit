@@ -28,28 +28,30 @@ get_volume_amixer() { amixer sget Master 2>/dev/null | grep -oP '\[\d+%\]' | hea
 is_muted_amixer() { amixer sget Master 2>/dev/null | grep -q '\[off\]'; }
 
 volume_get_percentage() {
-    local percentage=""
-    if is_macos; then
-        percentage=$(get_volume_macos)
-    elif command -v wpctl &>/dev/null; then
-        percentage=$(get_volume_wpctl)
-    elif command -v pactl &>/dev/null; then
-        percentage=$(get_volume_pactl)
-    elif command -v pamixer &>/dev/null; then
-        percentage=$(get_volume_pamixer)
-    elif command -v amixer &>/dev/null; then
-        percentage=$(get_volume_amixer)
-    fi
+    local backend percentage=""
+    backend=$(detect_audio_backend)
+
+    case "$backend" in
+        macos)      percentage=$(get_volume_macos) ;;
+        pipewire)   percentage=$(get_volume_wpctl) ;;
+        pulseaudio) percentage=$(get_volume_pactl) ;;
+        alsa)       percentage=$(get_volume_amixer) ;;
+    esac
+
     [[ -n "$percentage" && "$percentage" =~ ^[0-9]+$ ]] && printf '%s' "$percentage"
 }
 
 volume_is_muted() {
-    is_macos && { is_muted_macos && return 0; return 1; }
-    command -v wpctl &>/dev/null && { is_muted_wpctl && return 0; return 1; }
-    command -v pactl &>/dev/null && { is_muted_pactl && return 0; return 1; }
-    command -v pamixer &>/dev/null && { is_muted_pamixer && return 0; return 1; }
-    command -v amixer &>/dev/null && { is_muted_amixer && return 0; return 1; }
-    return 1
+    local backend
+    backend=$(detect_audio_backend)
+
+    case "$backend" in
+        macos)      is_muted_macos ;;
+        pipewire)   is_muted_wpctl ;;
+        pulseaudio) is_muted_pactl ;;
+        alsa)       is_muted_amixer ;;
+        *)          return 1 ;;
+    esac
 }
 
 plugin_get_display_info() {

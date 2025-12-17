@@ -72,7 +72,7 @@ check_k8s_connectivity() {
     timeout=$(get_tmux_option "@powerkit_plugin_kubernetes_connectivity_timeout" "$POWERKIT_PLUGIN_KUBERNETES_CONNECTIVITY_TIMEOUT")
     
     # Try to connect to the cluster with timeout
-    if command -v kubectl >/dev/null 2>&1; then
+    if require_cmd kubectl 1; then
         kubectl cluster-info --request-timeout="${timeout}s" &>/dev/null
         return $?
     fi

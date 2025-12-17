@@ -15,7 +15,7 @@ _max_len=$(get_tmux_option "@powerkit_plugin_bluetooth_max_length" "$POWERKIT_PL
 
 # macOS: blueutil or system_profiler
 get_bt_macos() {
-    if command -v blueutil &>/dev/null; then
+    if require_cmd blueutil 1; then
         [[ "$(blueutil -p)" == "0" ]] && { echo "off:"; return; }
         local devs="" line name mac bat sp_bat
         
@@ -71,7 +71,7 @@ get_bt_macos() {
         return
     fi
 
-    command -v system_profiler &>/dev/null || return 1
+    require_cmd system_profiler 1 || return 1
     local info=$(system_profiler SPBluetoothDataType 2>/dev/null)
     [[ -z "$info" ]] && return 1
     echo "$info" | grep -q "State: On" || { echo "off:"; return; }
@@ -105,7 +105,7 @@ get_bt_macos() {
 
 # Linux: bluetoothctl or hcitool
 get_bt_linux() {
-    if command -v bluetoothctl &>/dev/null; then
+    if require_cmd bluetoothctl 1; then
         local pwr
         pwr=$(timeout 2 bluetoothctl show 2>/dev/null | awk '/Powered:/ {print $2}') || return 1
         [[ -z "$pwr" ]] && return 1
@@ -125,7 +125,7 @@ get_bt_linux() {
         return
     fi
 
-    command -v hcitool &>/dev/null || return 1
+    require_cmd hcitool 1 || return 1
     hcitool dev 2>/dev/null | grep -q "hci" || { echo "off:"; return; }
     local mac=$(hcitool con 2>/dev/null | grep -v "Connections:" | head -1 | awk '{print $3}')
     if [[ -n "$mac" ]]; then

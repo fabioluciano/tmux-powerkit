@@ -3,12 +3,31 @@
 # PowerKit Utility Functions - KISS/DRY Version
 # =============================================================================
 # shellcheck disable=SC2034
+#
+# GLOBAL VARIABLES EXPORTED:
+#   - _PLATFORM_OS, _PLATFORM_DISTRO, _PLATFORM_ARCH, _PLATFORM_ICON
+#   - POWERKIT_THEME_COLORS (associative array)
+#
+# FUNCTIONS PROVIDED:
+#   - Platform: is_macos(), is_linux(), is_bsd(), get_os(), get_distro()
+#   - Options: get_tmux_option()
+#   - Colors: get_powerkit_color(), get_color(), load_powerkit_theme()
+#   - Helpers: extract_numeric(), evaluate_condition(), build_display_info()
+#   - Toast: show_toast_notification(), toast()
+#   - Debug: is_debug_mode(), execute_plugin_safe()
+#   - Logging: log_debug(), log_info(), log_warn(), log_error()
+#   - Logging: log_plugin_error(), log_missing_dep(), get_log_file()
+#
+# DEPENDENCIES: source_guard.sh, defaults.sh
+# =============================================================================
 
 # Source guard
-[[ -n "${_POWERKIT_UTILS_LOADED:-}" ]] && return 0
-_POWERKIT_UTILS_LOADED=1
-
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=src/source_guard.sh
+. "$CURRENT_DIR/source_guard.sh"
+source_guard "utils" && return 0
+
+# shellcheck source=src/defaults.sh
 . "$CURRENT_DIR/defaults.sh"
 
 # =============================================================================
@@ -101,16 +120,50 @@ get_arch()   { printf '%s' "$_PLATFORM_ARCH"; }
 get_os_icon(){ printf ' %s' "$_PLATFORM_ICON"; }
 
 # =============================================================================
-# Tmux Option Getter
+# Tmux Option Getter (with optional batch caching for performance)
 # =============================================================================
+
+# Associative array to cache tmux options (avoids repeated tmux calls)
+declare -gA _TMUX_OPTIONS_CACHE
+
+# Batch load all @powerkit options into cache (performance optimization)
+# Call this once at startup to avoid multiple tmux show-option calls
+_batch_load_tmux_options() {
+    [[ -n "${_TMUX_OPTIONS_BATCH_LOADED:-}" ]] && return 0
+    _TMUX_OPTIONS_BATCH_LOADED=1
+
+    local line key value
+    while IFS= read -r line; do
+        # Parse: @powerkit_option "value" or @powerkit_option value
+        if [[ "$line" =~ ^(@powerkit[^[:space:]]+)[[:space:]]+(.*) ]]; then
+            key="${BASH_REMATCH[1]}"
+            value="${BASH_REMATCH[2]}"
+            # Remove surrounding quotes if present
+            value="${value%\"}"
+            value="${value#\"}"
+            _TMUX_OPTIONS_CACHE["$key"]="$value"
+        fi
+    done < <(tmux show-options -g 2>/dev/null | grep '^@powerkit')
+}
 
 get_tmux_option() {
     local option="$1"
     local default_value="$2"
+
+    # Check cache first (for @powerkit options)
+    if [[ "$option" == @powerkit* && -n "${_TMUX_OPTIONS_CACHE[$option]+x}" ]]; then
+        printf '%s' "${_TMUX_OPTIONS_CACHE[$option]}"
+        return 0
+    fi
+
+    # Fallback to direct tmux call
     local value
     value=$(tmux show-option -gqv "$option" 2>/dev/null)
     printf '%s' "${value:-$default_value}"
 }
+
+# Initialize batch loading on first source
+_batch_load_tmux_options
 
 # =============================================================================
 # Theme Color System
@@ -176,11 +229,11 @@ get_color() { get_powerkit_color "$@"; }
 # Generic Utility Functions
 # =============================================================================
 
-# Extract first numeric value from a string
+# Extract first numeric value from a string (performance: uses bash regex instead of grep)
 # Usage: extract_numeric "CPU: 45%" -> "45"
 extract_numeric() {
     local content="$1"
-    echo "$content" | grep -oE '[0-9]+' | head -1
+    [[ "$content" =~ ([0-9]+) ]] && printf '%s' "${BASH_REMATCH[1]}" || printf ''
 }
 
 # Evaluate a numeric condition
@@ -472,20 +525,256 @@ trap_errors() {
     return $exit_code
 }
 
-# Log error to file and optionally show toast
+# =============================================================================
+# Centralized Logging System
+# =============================================================================
+
+# Log levels: debug, info, warn, error
+# Logs to: ~/.cache/tmux-powerkit/powerkit.log
+
+_POWERKIT_LOG_FILE=""
+
+_get_log_file() {
+    [[ -n "$_POWERKIT_LOG_FILE" ]] && { printf '%s' "$_POWERKIT_LOG_FILE"; return; }
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    mkdir -p "$cache_dir"
+    _POWERKIT_LOG_FILE="${cache_dir}/powerkit.log"
+    printf '%s' "$_POWERKIT_LOG_FILE"
+}
+
+# Internal logging function
+# Usage: _log <level> <source> <message>
+_log() {
+    local level="$1"
+    local source="$2"
+    local message="$3"
+
+    # Only log debug messages if debug mode is enabled
+    [[ "$level" == "DEBUG" ]] && ! is_debug_mode && return 0
+
+    local log_file
+    log_file=$(_get_log_file)
+
+    # Rotate log if > 1MB
+    if [[ -f "$log_file" ]]; then
+        local size
+        if is_macos; then
+            size=$(stat -f%z "$log_file" 2>/dev/null || echo 0)
+        else
+            size=$(stat -c%s "$log_file" 2>/dev/null || echo 0)
+        fi
+        [[ "$size" -gt 1048576 ]] && mv "$log_file" "${log_file}.old" 2>/dev/null
+    fi
+
+    printf '[%s] [%-5s] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$level" "$source" "$message" >> "$log_file"
+}
+
+# Public logging functions
+# Usage: log_debug <source> <message>
+log_debug() { _log "DEBUG" "$1" "$2"; }
+
+# Usage: log_info <source> <message>
+log_info() { _log "INFO" "$1" "$2"; }
+
+# Usage: log_warn <source> <message>
+log_warn() { _log "WARN" "$1" "$2"; }
+
+# Usage: log_error <source> <message>
+log_error() { _log "ERROR" "$1" "$2"; }
+
+# Log error to file and optionally show toast (backwards compatible)
 # Usage: log_plugin_error <plugin_name> <message> [show_toast]
 log_plugin_error() {
     local plugin_name="$1"
     local message="$2"
     local show_toast="${3:-false}"
-    
-    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
-    mkdir -p "$cache_dir"
-    
-    local log_file="${cache_dir}/errors.log"
-    printf '[%s] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$plugin_name" "$message" >> "$log_file"
-    
+
+    log_error "$plugin_name" "$message"
+
     if [[ "$show_toast" == "true" ]] && is_debug_mode; then
+        local log_file
+        log_file=$(_get_log_file)
         toast "[$plugin_name] $message\n\nLogged to: $log_file" "error"
     fi
+}
+
+# Log missing dependency
+# Usage: log_missing_dep <plugin_name> <dependency>
+log_missing_dep() {
+    local plugin_name="$1"
+    local dependency="$2"
+    log_warn "$plugin_name" "Missing dependency: $dependency"
+}
+
+# Get log file path (for users)
+# Usage: get_log_file
+get_log_file() { _get_log_file; }
+
+# =============================================================================
+# Performance Telemetry System (Optional)
+# =============================================================================
+
+# Telemetry state
+_POWERKIT_TELEMETRY_FILE=""
+_POWERKIT_TELEMETRY_ENABLED=""
+
+# Check if telemetry is enabled
+is_telemetry_enabled() {
+    [[ -z "$_POWERKIT_TELEMETRY_ENABLED" ]] && {
+        _POWERKIT_TELEMETRY_ENABLED=$(get_tmux_option "@powerkit_telemetry" "$POWERKIT_TELEMETRY_ENABLED")
+    }
+    [[ "$_POWERKIT_TELEMETRY_ENABLED" == "true" || "$_POWERKIT_TELEMETRY_ENABLED" == "1" ]]
+}
+
+# Get telemetry log file
+_get_telemetry_file() {
+    [[ -n "$_POWERKIT_TELEMETRY_FILE" ]] && { printf '%s' "$_POWERKIT_TELEMETRY_FILE"; return; }
+    local custom_file
+    custom_file=$(get_tmux_option "@powerkit_telemetry_log_file" "$POWERKIT_TELEMETRY_LOG_FILE")
+    if [[ -n "$custom_file" ]]; then
+        _POWERKIT_TELEMETRY_FILE="$custom_file"
+    else
+        local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+        mkdir -p "$cache_dir"
+        _POWERKIT_TELEMETRY_FILE="${cache_dir}/telemetry.log"
+    fi
+    printf '%s' "$_POWERKIT_TELEMETRY_FILE"
+}
+
+# Get current timestamp in milliseconds
+_get_timestamp_ms() {
+    if is_macos; then
+        # macOS: use python for millisecond precision
+        python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || printf '%s000' "$(date +%s)"
+    else
+        # Linux: date with nanoseconds
+        date +%s%3N 2>/dev/null || printf '%s000' "$(date +%s)"
+    fi
+}
+
+# Record telemetry event
+# Usage: telemetry_record <event_type> <source> <duration_ms> [extra_data]
+telemetry_record() {
+    is_telemetry_enabled || return 0
+
+    local event_type="$1"
+    local source="$2"
+    local duration_ms="$3"
+    local extra_data="${4:-}"
+
+    local telemetry_file
+    telemetry_file=$(_get_telemetry_file)
+
+    # Rotate log if > max size
+    if [[ -f "$telemetry_file" ]]; then
+        local max_size
+        max_size=$(get_tmux_option "@powerkit_telemetry_max_log_size" "$POWERKIT_TELEMETRY_MAX_LOG_SIZE")
+        local size
+        if is_macos; then
+            size=$(stat -f%z "$telemetry_file" 2>/dev/null || echo 0)
+        else
+            size=$(stat -c%s "$telemetry_file" 2>/dev/null || echo 0)
+        fi
+        [[ "$size" -gt "$max_size" ]] && mv "$telemetry_file" "${telemetry_file}.old" 2>/dev/null
+    fi
+
+    printf '%s|%s|%s|%d|%s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$event_type" "$source" "$duration_ms" "$extra_data" >> "$telemetry_file"
+}
+
+# Record plugin execution time
+# Usage: telemetry_plugin_start <plugin_name>
+# Returns: start timestamp
+telemetry_plugin_start() {
+    is_telemetry_enabled || return 0
+    _get_timestamp_ms
+}
+
+# Record plugin execution end
+# Usage: telemetry_plugin_end <plugin_name> <start_timestamp> [cache_hit]
+telemetry_plugin_end() {
+    is_telemetry_enabled || return 0
+
+    local plugin_name="$1"
+    local start_ts="$2"
+    local cache_hit="${3:-false}"
+
+    local end_ts duration_ms
+    end_ts=$(_get_timestamp_ms)
+    duration_ms=$((end_ts - start_ts))
+
+    # Log slow plugins
+    local slow_threshold
+    slow_threshold=$(get_tmux_option "@powerkit_telemetry_slow_threshold" "$POWERKIT_TELEMETRY_SLOW_THRESHOLD")
+    if [[ "$duration_ms" -ge "$slow_threshold" ]]; then
+        log_warn "telemetry" "Slow plugin: $plugin_name took ${duration_ms}ms"
+    fi
+
+    # Record telemetry
+    local event_type="plugin_exec"
+    [[ "$cache_hit" == "true" ]] && event_type="cache_hit"
+    telemetry_record "$event_type" "$plugin_name" "$duration_ms" "cache_hit=$cache_hit"
+}
+
+# Record cache operation
+# Usage: telemetry_cache <operation> <key> <hit>
+telemetry_cache() {
+    is_telemetry_enabled || return 0
+
+    local track_cache
+    track_cache=$(get_tmux_option "@powerkit_telemetry_track_cache_hits" "$POWERKIT_TELEMETRY_TRACK_CACHE_HITS")
+    [[ "$track_cache" != "true" ]] && return 0
+
+    local operation="$1"  # get, set, invalidate
+    local key="$2"
+    local hit="${3:-}"    # true/false for get operations
+
+    telemetry_record "cache_$operation" "$key" 0 "hit=$hit"
+}
+
+# Get telemetry summary
+# Usage: telemetry_summary [hours]
+telemetry_summary() {
+    is_telemetry_enabled || { printf 'Telemetry disabled'; return; }
+
+    local hours="${1:-1}"
+    local telemetry_file
+    telemetry_file=$(_get_telemetry_file)
+
+    [[ ! -f "$telemetry_file" ]] && { printf 'No telemetry data'; return; }
+
+    local cutoff_time
+    cutoff_time=$(date -d "-${hours} hours" +%s 2>/dev/null || date -v-"${hours}"H +%s 2>/dev/null)
+
+    # Calculate summary
+    local total_events=0 total_time=0 slow_count=0 cache_hits=0 cache_misses=0
+
+    while IFS='|' read -r timestamp event_type source duration extra; do
+        total_events=$((total_events + 1))
+        total_time=$((total_time + duration))
+
+        local slow_threshold
+        slow_threshold=$(get_tmux_option "@powerkit_telemetry_slow_threshold" "$POWERKIT_TELEMETRY_SLOW_THRESHOLD")
+        [[ "$duration" -ge "$slow_threshold" ]] && slow_count=$((slow_count + 1))
+
+        [[ "$event_type" == "cache_hit" ]] && cache_hits=$((cache_hits + 1))
+        [[ "$event_type" == "cache_get" && "$extra" == *"hit=false"* ]] && cache_misses=$((cache_misses + 1))
+    done < "$telemetry_file"
+
+    local avg_time=0
+    [[ "$total_events" -gt 0 ]] && avg_time=$((total_time / total_events))
+
+    local cache_total=$((cache_hits + cache_misses))
+    local hit_rate=0
+    [[ "$cache_total" -gt 0 ]] && hit_rate=$((cache_hits * 100 / cache_total))
+
+    printf 'Events: %d | Avg: %dms | Slow: %d | Cache hit: %d%%\n' \
+        "$total_events" "$avg_time" "$slow_count" "$hit_rate"
+}
+
+# Clear telemetry data
+telemetry_clear() {
+    local telemetry_file
+    telemetry_file=$(_get_telemetry_file)
+    rm -f "$telemetry_file" "${telemetry_file}.old" 2>/dev/null
+    log_info "telemetry" "Telemetry data cleared"
 }

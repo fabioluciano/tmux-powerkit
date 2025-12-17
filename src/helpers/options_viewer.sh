@@ -69,17 +69,17 @@ get_plugin_option_description() {
 print_option() {
     local option="$1" default="$2" possible="$3" description="$4"
     local current; current=$(tmux show-option -gqv "$option" 2>/dev/null || echo "")
-    
+
     # If no default provided, try to get it from defaults.sh for plugin options
     if [[ -z "$default" && "$option" == @powerkit_plugin_* ]]; then
         default=$(get_plugin_default_value "$option")
     fi
-    
+
     # If no description provided, generate one based on option name
     if [[ -z "$description" || "$description" == "Plugin option" ]] && [[ "$option" == @powerkit_plugin_* ]]; then
         description=$(get_plugin_option_description "$option")
     fi
-    
+
     printf "${GREEN}%-45s${RESET}" "$option"
     if [[ -n "$current" && "$current" != "$default" ]]; then
         echo -e " ${YELLOW}= $current${RESET} ${DIM}(default: ${default:-<empty>})${RESET}"
@@ -100,7 +100,7 @@ print_tpm_option() {
 
 discover_plugin_options() {
     local -A plugin_options=()
-    
+
     # Scan plugin files for get_tmux_option and get_cached_option calls
     while IFS= read -r file; do
         while IFS= read -r line; do
@@ -113,7 +113,7 @@ discover_plugin_options() {
             fi
         done < "$file"
     done < <(find "$ROOT_DIR/plugin" -name "*.sh" -type f 2>/dev/null)
-    
+
     # Also scan defaults.sh to discover all POWERKIT_PLUGIN_* defaults and convert to @powerkit_plugin_* format
     if [[ -f "$ROOT_DIR/defaults.sh" ]]; then
         while IFS= read -r line; do
@@ -124,19 +124,19 @@ discover_plugin_options() {
             fi
         done < "$ROOT_DIR/defaults.sh"
     fi
-    
+
     printf '%s\n' "${!plugin_options[@]}" | sort
 }
 
 scan_tpm_plugin_options() {
     local plugin_dir="$1" plugin_name; plugin_name=$(basename "$plugin_dir")
     [[ "$plugin_name" == "tpm" || "$plugin_name" == "tmux-powerkit" ]] && return
-    
+
     local -a options=()
     while IFS= read -r opt; do
         [[ "$opt" =~ [-_] ]] && [[ ${#opt} -gt 10 ]] && options+=("$opt")
     done < <(grep -rhI --include='*.sh' --include='*.tmux' -oE '@[a-z][a-z0-9_-]+' "$plugin_dir" 2>/dev/null | sort -u)
-    
+
     if [[ ${#options[@]} -gt 0 ]]; then
         print_section "📦 ${plugin_name}" "$BLUE"
         for opt in "${options[@]}"; do print_tpm_option "$opt"; done
@@ -146,17 +146,17 @@ scan_tpm_plugin_options() {
 display_options() {
     local filter="${1:-}"
     print_header
-    
+
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════════════════════════╗${RESET}"
     echo -e "${BOLD}${CYAN}║  🌃 Tokyo Night Theme Options                                             ║${RESET}"
     echo -e "${BOLD}${CYAN}╚═══════════════════════════════════════════════════════════════════════════╝${RESET}"
-    
+
     print_section "Theme Core Options" "$MAGENTA"
     for opt in "${THEME_OPTIONS[@]}"; do
         IFS='|' read -r option default possible description <<< "$opt"
         [[ -z "$filter" || "$option" == *"$filter"* || "$description" == *"$filter"* ]] && print_option "$option" "$default" "$possible" "$description"
     done
-    
+
     # Get list of known plugin names from plugin directory
     local -a known_plugins=()
     while IFS= read -r plugin_file; do
@@ -164,14 +164,14 @@ display_options() {
         pname=$(basename "$plugin_file" .sh)
         known_plugins+=("$pname")
     done < <(find "$ROOT_DIR/plugin" -name "*.sh" -type f 2>/dev/null | sort)
-    
+
     # Discover and group plugin options by matching against known plugin names
     local -A grouped_options=()
     while IFS= read -r option; do
         [[ -z "$option" ]] && continue
         local temp plugin_name matched=false
         temp="${option#@powerkit_plugin_}"
-        
+
         # Try to match against known plugin names (longest match first)
         for pname in "${known_plugins[@]}"; do
             if [[ "$temp" == "${pname}_"* || "$temp" == "$pname" ]]; then
@@ -180,15 +180,15 @@ display_options() {
                 break
             fi
         done
-        
+
         # Fallback: use first part before underscore
         if [[ "$matched" == "false" ]]; then
             plugin_name="${temp%%_*}"
         fi
-        
+
         grouped_options["$plugin_name"]+="$option "
     done < <(discover_plugin_options)
-    
+
     for plugin_name in $(printf '%s\n' "${!grouped_options[@]}" | sort); do
         local has_visible=false display_name
         # Convert plugin name to title case with proper formatting
@@ -201,18 +201,19 @@ display_options() {
             }
         done
     done
-    
+
     echo -e "\n\n${BOLD}${BLUE}╔═══════════════════════════════════════════════════════════════════════════╗${RESET}"
     echo -e "${BOLD}${BLUE}║  📦 Other TPM Plugins Options                                             ║${RESET}"
     echo -e "${BOLD}${BLUE}╚═══════════════════════════════════════════════════════════════════════════╝${RESET}"
-    
+
     [[ -d "$TPM_PLUGINS_DIR" ]] && for plugin_dir in "$TPM_PLUGINS_DIR"/*/; do [[ -d "$plugin_dir" ]] && scan_tpm_plugin_options "$plugin_dir"; done
-    
+
     echo -e "\n${DIM}Press 'q' to exit, '/' to search${RESET}\n"
 }
 
 [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { echo "Usage: $0 [filter]"; exit 0; }
-# Display options using temporary file to avoid pipe limitations
+
+# Display options using less for navigation within display-popup
 output_file=$(mktemp)
 trap "rm -f '$output_file'" EXIT
 display_options "${1:-}" > "$output_file"

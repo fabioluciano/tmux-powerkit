@@ -48,24 +48,19 @@ plugin_get_type() { printf 'conditional'; }
 plugin_get_display_info() {
     local content="${1:-}"
     local show="1" accent="" accent_icon=""
-    
+
     [[ -z "$content" ]] && { build_display_info "0" "" "" ""; return; }
-    
-    local value warning_threshold critical_threshold
-    value=$(echo "$content" | grep -oE '[0-9]+' | head -1)
+
+    local value threshold_result
+    value=$(extract_numeric "$content")
     [[ -z "$value" ]] && { build_display_info "0" "" "" ""; return; }
-    
-    warning_threshold=$(get_cached_option "@powerkit_plugin_ping_warning_threshold" "$POWERKIT_PLUGIN_PING_WARNING_THRESHOLD")
-    critical_threshold=$(get_cached_option "@powerkit_plugin_ping_critical_threshold" "$POWERKIT_PLUGIN_PING_CRITICAL_THRESHOLD")
-    
-    if [[ "$value" -ge "$critical_threshold" ]]; then
-        accent=$(get_cached_option "@powerkit_plugin_ping_critical_accent_color" "$POWERKIT_PLUGIN_PING_CRITICAL_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_ping_critical_accent_color_icon" "$POWERKIT_PLUGIN_PING_CRITICAL_ACCENT_COLOR_ICON")
-    elif [[ "$value" -ge "$warning_threshold" ]]; then
-        accent=$(get_cached_option "@powerkit_plugin_ping_warning_accent_color" "$POWERKIT_PLUGIN_PING_WARNING_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_ping_warning_accent_color_icon" "$POWERKIT_PLUGIN_PING_WARNING_ACCENT_COLOR_ICON")
+
+    # Apply threshold colors using centralized helper
+    if threshold_result=$(apply_threshold_colors "$value" "ping"); then
+        accent="${threshold_result%%:*}"
+        accent_icon="${threshold_result#*:}"
     fi
-    
+
     build_display_info "$show" "$accent" "$accent_icon" ""
 }
 

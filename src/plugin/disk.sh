@@ -11,7 +11,9 @@ _mount=$(get_tmux_option "@powerkit_plugin_disk_mount" "$POWERKIT_PLUGIN_DISK_MO
 _format=$(get_tmux_option "@powerkit_plugin_disk_format" "$POWERKIT_PLUGIN_DISK_FORMAT")
 
 get_disk_info() {
-    df -Pk "$1" 2>/dev/null | awk -v fmt="$_format" -v KB="$POWERKIT_BYTE_KB" \
+    local mount="$1"
+    local format="$2"
+    df -Pk "$mount" 2>/dev/null | awk -v fmt="$format" -v KB="$POWERKIT_BYTE_KB" \
         -v MB="$POWERKIT_BYTE_MB" -v GB="$POWERKIT_BYTE_GB" -v TB="$POWERKIT_BYTE_TB" '
         NR==2 {
             gsub(/%/, "", $5)
@@ -29,18 +31,20 @@ get_disk_info() {
         }'
 }
 
+_compute_disk() {
+    get_disk_info "$_mount" "$_format"
+}
+
 plugin_get_type() { printf 'static'; }
 
-load_plugin() {
-    local cached
-    if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        printf '%s' "$cached"
-        return
-    fi
+plugin_get_display_info() {
+    local content="${1:-}"
+    [[ -z "$content" || "$content" == "N/A" ]] && { build_display_info "0" "" "" ""; return; }
+    build_display_info "1" "" "" ""
+}
 
-    local r=$(get_disk_info "$_mount")
-    [[ -n "$r" && "$r" != "N/A" ]] && cache_set "$CACHE_KEY" "$r"
-    printf '%s' "$r"
+load_plugin() {
+    cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_disk
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

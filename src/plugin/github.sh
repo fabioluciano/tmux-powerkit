@@ -36,13 +36,7 @@ GITHUB_SEPARATOR=$(get_tmux_option "@powerkit_plugin_github_separator" "$POWERKI
 # Make authenticated API call
 make_github_api_call() {
     local url="$1"
-    local auth_header=""
-
-    if [[ -n "$GITHUB_TOKEN" ]]; then
-        auth_header="-H \"Authorization: token $GITHUB_TOKEN\""
-    fi
-
-    eval curl -s "$auth_header" "\"$url\"" 2>/dev/null
+    make_api_call "$url" "bearer" "$GITHUB_TOKEN" 5
 }
 
 
@@ -56,13 +50,16 @@ get_api_error_message() {
 show_github_api_error() {
     local error_msg="$1"
     local error_cache="${CACHE_DIR}/github_error.cache"
-    
+
+    # Log error
+    log_error "github" "API error: $error_msg"
+
     # Check if we already showed this error recently (within TTL)
     if [[ -f "$error_cache" ]]; then
         local cached_error=$(<"$error_cache")
         [[ "$cached_error" == "$error_msg" ]] && return 0
     fi
-    
+
     # Determine if error is important enough to show without debug mode
     local is_critical=false
     case "$error_msg" in
@@ -70,13 +67,13 @@ show_github_api_error() {
         *"Bad credentials"*|*"Unauthorized"*) is_critical=true ;;
         *"Not Found"*) is_critical=true ;;  # Repo doesn't exist or no access
     esac
-    
+
     # Show toast if critical error or debug mode
     if [[ "$is_critical" == "true" ]] || is_debug_mode; then
         local short_msg="${error_msg:0:50}"
         [[ ${#error_msg} -gt 50 ]] && short_msg="${short_msg}..."
         toast "⚠️ GitHub: $short_msg" "warning"
-        
+
         # Cache the error message to avoid spam
         printf '%s' "$error_msg" > "$error_cache"
     fi
@@ -300,9 +297,8 @@ get_github_info() {
     local filter_user="$2"
     local show_comments="$3"
 
-    # Check if jq is available
-    if ! command -v jq &>/dev/null; then
-        echo "jq required"
+    # Check dependencies
+    if ! check_dependencies curl jq; then
         return 1
     fi
 
@@ -396,22 +392,13 @@ plugin_get_display_info() {
     fi
 }
 
+_compute_github() {
+    get_github_info "$GITHUB_REPOS" "$GITHUB_FILTER_USER" "$GITHUB_SHOW_COMMENTS"
+}
+
 load_plugin() {
-    # Check cache first
-    local cached
-    if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        printf '%s' "$cached"
-        return 0
-    fi
-
-    # Get fresh data
-    local status
-    status=$(get_github_info "$GITHUB_REPOS" "$GITHUB_FILTER_USER" "$GITHUB_SHOW_COMMENTS")
-
-    # Cache result
-    cache_set "$CACHE_KEY" "$status"
-
-    printf '%s' "$status"
+    # Use defer_plugin_load for network operations with lazy loading
+    defer_plugin_load "$CACHE_KEY" cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_github
 }
 
 # Only run if executed directly (not sourced)

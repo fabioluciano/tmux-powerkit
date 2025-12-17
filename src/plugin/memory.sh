@@ -8,6 +8,12 @@ plugin_init "memory"
 
 plugin_get_type() { printf 'static'; }
 
+plugin_get_display_info() {
+    local content="${1:-}"
+    [[ -z "$content" || "$content" == "N/A" ]] && { build_display_info "0" "" "" ""; return; }
+    build_display_info "1" "" "" ""
+}
+
 bytes_to_human() {
     local bytes=$1
     local gb=$((bytes / 1073741824))
@@ -79,24 +85,18 @@ get_memory_macos() {
     fi
 }
 
-load_plugin() {
-    local cached_value
-    if cached_value=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        printf '%s' "$cached_value"
-        return
-    fi
-
-    local result
+_compute_memory() {
     if is_linux; then
-        result=$(get_memory_linux)
+        get_memory_linux
     elif is_macos; then
-        result=$(get_memory_macos)
+        get_memory_macos
     else
-        result="N/A"
+        printf 'N/A'
     fi
+}
 
-    cache_set "$CACHE_KEY" "$result"
-    printf '%s' "$result"
+load_plugin() {
+    cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_memory
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

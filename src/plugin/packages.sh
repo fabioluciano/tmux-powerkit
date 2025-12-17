@@ -40,16 +40,16 @@ _invalidate_if_upgraded() {
 
 detect_backend() {
     [[ -n "$_DETECTED_PACKAGE_MANAGER" ]] && { echo "$_DETECTED_PACKAGE_MANAGER"; return; }
-    
+
     local backend
     backend=$(get_cached_option "@powerkit_plugin_packages_backend" "$POWERKIT_PLUGIN_PACKAGES_BACKEND")
-    
+
     case "$backend" in
         brew|yay|apt|dnf|pacman)
-            command -v "$backend" &>/dev/null && _DETECTED_PACKAGE_MANAGER="$backend" && echo "$backend" && return ;;
+            require_cmd "$backend" 1 && _DETECTED_PACKAGE_MANAGER="$backend" && echo "$backend" && return ;;
         auto|*)
             for pm in brew yay dnf apt pacman; do
-                command -v "$pm" &>/dev/null && _DETECTED_PACKAGE_MANAGER="$pm" && echo "$pm" && return
+                require_cmd "$pm" 1 && _DETECTED_PACKAGE_MANAGER="$pm" && echo "$pm" && return
             done ;;
     esac
     echo ""

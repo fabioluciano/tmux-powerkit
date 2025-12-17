@@ -83,7 +83,7 @@ check_macos_vpn() {
 }
 
 check_networkmanager() {
-    command -v nmcli &>/dev/null || return 1
+    require_cmd nmcli 1 || return 1
     local vpn
     vpn=$(nmcli -t -f NAME,TYPE,STATE connection show --active 2>/dev/null | grep ":vpn:activated" | cut -d: -f1 | head -1)
     [[ -n "$vpn" ]] && { echo "$vpn"; return 0; }

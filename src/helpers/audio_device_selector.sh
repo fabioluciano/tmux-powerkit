@@ -4,14 +4,23 @@
 set -euo pipefail
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-. "$CURRENT_DIR/../utils.sh" 2>/dev/null || . "${CURRENT_DIR%/*}/utils.sh" 2>/dev/null || true
+ROOT_DIR="$CURRENT_DIR/.."
+
+# Source dependencies (defaults first, then utils for toast function)
+. "$ROOT_DIR/defaults.sh" 2>/dev/null || true
+. "$ROOT_DIR/utils.sh" 2>/dev/null || true
+
+# Fallback toast if utils.sh didn't load
+if ! command -v toast &>/dev/null; then
+    toast() { tmux display-message "$1" 2>/dev/null || echo "$1"; }
+fi
 
 select_input_device() {
     local audio_system="" current_input=""
     local -a menu_items=() device_names=()
     
     if is_macos; then
-        command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 1; }
+        command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 0; }
         audio_system="macos"
         current_input=$(SwitchAudioSource -c -t input 2>/dev/null || echo "")
         while IFS= read -r device; do
@@ -31,10 +40,10 @@ select_input_device() {
             menu_items+=("$marker $description"); device_names+=("$name")
         done < <(pactl list short sources 2>/dev/null)
     else
-        toast "❌ No supported audio system found" "simple"; return 1
+        toast "❌ No supported audio system found" "simple"; return 0
     fi
     
-    [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No input devices found" "simple"; return 1; }
+    [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No input devices found" "simple"; return 0; }
     
     local -a menu_args=()
     for i in "${!menu_items[@]}"; do
@@ -50,7 +59,7 @@ select_output_device() {
     local -a menu_items=() device_names=()
     
     if is_macos; then
-        command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 1; }
+        command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 0; }
         audio_system="macos"
         current_output=$(SwitchAudioSource -c -t output 2>/dev/null || echo "")
         while IFS= read -r device; do
@@ -69,10 +78,10 @@ select_output_device() {
             menu_items+=("$marker $description"); device_names+=("$name")
         done < <(pactl list short sinks 2>/dev/null)
     else
-        toast "❌ No supported audio system found" "simple"; return 1
+        toast "❌ No supported audio system found" "simple"; return 0
     fi
     
-    [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No output devices found" "simple"; return 1; }
+    [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No output devices found" "simple"; return 0; }
     
     local -a menu_args=()
     for i in "${!menu_items[@]}"; do

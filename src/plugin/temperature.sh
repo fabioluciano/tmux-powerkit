@@ -60,7 +60,7 @@ get_temp_linux_hwmon() {
 }
 
 get_temp_linux_sensors() {
-    command -v sensors &>/dev/null || return 1
+    require_cmd sensors 1 || return 1
     local temp
     temp=$(sensors 2>/dev/null | grep -E "^(Package|Tctl|Tdie|CPU)" | head -1 | grep -oE '[0-9]+\.?[0-9]*' | head -1)
     [[ -z "$temp" ]] && temp=$(sensors 2>/dev/null | grep "Core 0" | grep -oE '[0-9]+\.?[0-9]*' | head -1)

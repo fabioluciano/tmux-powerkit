@@ -10,7 +10,7 @@ plugin_get_type() { printf 'conditional'; }
 
 microphone_is_available() {
     is_macos && return 1
-    is_linux && { command -v pactl >/dev/null 2>&1 || command -v amixer >/dev/null 2>&1; } && return 0
+    is_linux && { require_cmd pactl 1 || require_cmd amixer 1; } && return 0
     return 1
 }
 
@@ -19,8 +19,8 @@ toggle_microphone_mute() {
         toast "Microphone mute toggle not supported on this platform" "simple"
         return
     fi
-    
-    if ! command -v pactl >/dev/null 2>&1; then
+
+    if ! require_cmd pactl 1; then
         toast "pactl not found - PulseAudio required" "simple"
         return
     fi
@@ -47,7 +47,7 @@ toggle_microphone_mute() {
 # Keybinding removido: a maioria dos teclados possui tecla dedicada para mute
 
 detect_microphone_mute_status_linux() {
-    if command -v pactl >/dev/null 2>&1; then
+    if require_cmd pactl 1; then
         local default_source mute_status
         default_source=$(pactl get-default-source 2>/dev/null)
         [[ -n "$default_source" ]] && {
@@ -55,20 +55,20 @@ detect_microphone_mute_status_linux() {
             [[ "$mute_status" == "yes" ]] && { echo "muted"; return; }
         }
     fi
-    
-    if command -v amixer >/dev/null 2>&1; then
+
+    if require_cmd amixer 1; then
         amixer get Capture 2>/dev/null | grep -q "\[off\]" && { echo "muted"; return; }
     fi
-    
+
     echo "unmuted"
 }
 
 detect_microphone_usage_linux() {
-    if command -v pactl >/dev/null 2>&1; then
+    if require_cmd pactl 1; then
         pactl list short source-outputs 2>/dev/null | grep -q . && { echo "active"; return; }
     fi
-    
-    if command -v lsof >/dev/null 2>&1; then
+
+    if require_cmd lsof 1; then
         local active_capture
         active_capture=$(lsof /dev/snd/* 2>/dev/null | grep -E "pcmC[0-9]+D[0-9]+c" | grep -cvE "(pipewire|wireplumb|pulseaudio)")
         [[ "${active_capture:-0}" -gt 0 ]] && { echo "active"; return; }

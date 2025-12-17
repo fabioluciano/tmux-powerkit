@@ -105,7 +105,7 @@ get_azure_subscription() {
     [[ -n "${AZURE_SUBSCRIPTION_ID:-}" ]] && { echo "$AZURE_SUBSCRIPTION_ID"; return 0; }
     
     local cfg="$HOME/.azure/azureProfile.json"
-    [[ -f "$cfg" ]] && command -v jq &>/dev/null && {
+    [[ -f "$cfg" ]] && require_cmd jq 1 && {
         local sub
         sub=$(jq -r '.subscriptions[] | select(.isDefault==true) | .name' "$cfg" 2>/dev/null | head -1)
         [[ -n "$sub" ]] && { echo "$sub"; return 0; }

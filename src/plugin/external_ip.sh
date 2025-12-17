@@ -6,26 +6,24 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 plugin_init "external_ip"
 
-get_ip() {
-    command -v curl &>/dev/null || return 1
-    local ip=$(curl -s --connect-timeout 3 --max-time 5 https://api.ipify.org 2>/dev/null)
+_compute_external_ip() {
+    require_cmd curl || return 1
+    local ip
+    ip=$(safe_curl "https://api.ipify.org" 3)
     [[ -n "$ip" ]] && printf '%s' "$ip"
 }
 
 plugin_get_type() { printf 'conditional'; }
 
+plugin_get_display_info() {
+    local content="${1:-}"
+    [[ -z "$content" ]] && { build_display_info "0" "" "" ""; return; }
+    build_display_info "1" "" "" ""
+}
+
 load_plugin() {
-    local cached
-    if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        printf '%s' "$cached"
-        return 0
-    fi
-
-    local ip=$(get_ip)
-    [[ -z "$ip" ]] && return 0
-
-    cache_set "$CACHE_KEY" "$ip"
-    printf '%s' "$ip"
+    # Use defer_plugin_load for network operations with lazy loading
+    defer_plugin_load "$CACHE_KEY" cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_external_ip
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

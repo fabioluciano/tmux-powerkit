@@ -17,9 +17,9 @@ plugin_get_type() { printf 'static'; }
 
 # Detect audio system
 get_audio_system() {
-    if is_macos && command -v SwitchAudioSource &>/dev/null; then
+    if is_macos && require_cmd SwitchAudioSource 1; then
         echo "macos"
-    elif command -v pactl &>/dev/null; then
+    elif require_cmd pactl 1; then
         echo "linux"
     else
         echo "none"

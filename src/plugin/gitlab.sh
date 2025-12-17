@@ -48,13 +48,7 @@ url_encode() {
 
 make_gitlab_api_call() {
     local url="$1"
-    local auth_header=""
-    
-    if [[ -n "$GITLAB_TOKEN" ]]; then
-        auth_header="-H \"PRIVATE-TOKEN: $GITLAB_TOKEN\""
-    fi
-    
-    eval curl -s $auth_header "\"$url\"" 2>/dev/null
+    make_api_call "$url" "private-token" "$GITLAB_TOKEN" 5
 }
 
 # =============================================================================
@@ -123,53 +117,58 @@ format_status() {
 
 get_gitlab_info() {
     local repos_csv="$1"
-    
+
     # Split repos
     IFS=',' read -ra repos <<< "$repos_csv"
-    
+
     local total_issues=0
     local total_mrs=0
     local active=false
-    
+
+    log_debug "gitlab" "Fetching info for repos: $repos_csv"
+
     for repo_spec in "${repos[@]}"; do
         repo_spec="$(echo "$repo_spec" | xargs)"
         [[ -z "$repo_spec" ]] && continue
-        
+
         # Ensure owner/repo format for encoding
         if [[ "$repo_spec" != *"/"* ]]; then
-            continue 
+            log_warn "gitlab" "Invalid repo format (missing /): $repo_spec"
+            continue
         fi
-        
+
         local project_encoded
         project_encoded=$(url_encode "$repo_spec")
-        
+
         local issues=0
         local mrs=0
-        
+
         if [[ "$GITLAB_SHOW_ISSUES" == "on" ]]; then
             issues=$(count_issues "$project_encoded")
             # If curl fails or returns empty, treat as 0
             [[ -z "$issues" ]] && issues=0
         fi
-        
+
         if [[ "$GITLAB_SHOW_MRS" == "on" ]]; then
             mrs=$(count_mrs "$project_encoded")
             [[ -z "$mrs" ]] && mrs=0
         fi
-        
+
         total_issues=$((total_issues + issues))
         total_mrs=$((total_mrs + mrs))
     done
-    
+
     if [[ "$total_issues" -gt 0 ]] || [[ "$total_mrs" -gt 0 ]]; then
         active=true
     fi
-    
+
+    log_debug "gitlab" "Total issues: $total_issues, MRs: $total_mrs"
+
     if [[ "$active" == "false" ]]; then
         echo "no activity"
         return
     fi
-    
+
     format_status "$total_issues" "$total_mrs"
 }
 
@@ -196,7 +195,7 @@ plugin_get_display_info() {
     local temp_content="$content"
     while [[ "$temp_content" =~ ([0-9]+) ]]; do
         total_count=$((total_count + BASH_REMATCH[1]))
-        temp_content="${temp_content#*${BASH_REMATCH[1]}}"
+        temp_content="${temp_content#*"${BASH_REMATCH[1]}"}"
     done
 
     if [[ $total_count -ge $GITLAB_WARNING_THRESHOLD ]]; then
@@ -214,19 +213,16 @@ plugin_get_display_info() {
     fi
 }
 
+_compute_gitlab() {
+    get_gitlab_info "$GITLAB_REPOS"
+}
+
 load_plugin() {
-    local CACHE_KEY="gitlab_status"
-    local cached
-    if cached=$(cache_get "$CACHE_KEY" "$GITLAB_CACHE_TTL"); then
-        printf '%s' "$cached"
-        return 0
-    fi
-    
-    local status
-    status=$(get_gitlab_info "$GITLAB_REPOS")
-    
-    cache_set "$CACHE_KEY" "$status"
-    printf '%s' "$status"
+    # Check dependencies
+    require_cmd curl || return 0
+
+    # Use defer_plugin_load for network operations with lazy loading
+    defer_plugin_load "$CACHE_KEY" cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_gitlab
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

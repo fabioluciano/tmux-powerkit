@@ -52,7 +52,7 @@ get_wifi_macos_airport() {
 }
 
 get_wifi_macos_networksetup() {
-    command -v networksetup &>/dev/null || return 1
+    require_cmd networksetup 1 || return 1
     local wifi_interface
     wifi_interface=$(networksetup -listallhardwareports 2>/dev/null | awk '/Wi-Fi|AirPort/{getline; print $2}')
     [[ -z "$wifi_interface" ]] && wifi_interface="en0"
@@ -68,12 +68,12 @@ get_wifi_macos() { get_wifi_macos_ipconfig || get_wifi_macos_system_profiler || 
 
 # Linux methods
 get_wifi_linux_nmcli() {
-    command -v nmcli &>/dev/null || return 1
+    require_cmd nmcli 1 || return 1
     nmcli -t -f active,ssid,signal dev wifi 2>/dev/null | awk -F: '/^yes:/ && $2 != "" {gsub(/"/, "", $2); printf "%s:%d\n", $2, ($3 ? $3 : 0); exit 0} END {exit 1}'
 }
 
 get_wifi_linux_iw() {
-    command -v iw &>/dev/null || return 1
+    require_cmd iw 1 || return 1
     local interface
     interface=$(iw dev 2>/dev/null | awk '/Interface/{print $2}' | head -1)
     [[ -z "$interface" ]] && return 1
@@ -90,7 +90,7 @@ get_wifi_linux_iw() {
 }
 
 get_wifi_linux_iwconfig() {
-    command -v iwconfig &>/dev/null || return 1
+    require_cmd iwconfig 1 || return 1
     local interface
     interface=$(iwconfig 2>&1 | grep -o "^[a-zA-Z0-9]*" | head -1)
     [[ -z "$interface" ]] && return 1
@@ -118,7 +118,7 @@ get_wifi_ip() {
         [[ -z "$ip" ]] && { local iface; iface=$(networksetup -listallhardwareports 2>/dev/null | awk '/Wi-Fi|AirPort/{getline; print $2}'); [[ -n "$iface" ]] && ip=$(ipconfig getifaddr "$iface" 2>/dev/null); }
     elif is_linux; then
         local iface
-        command -v iw &>/dev/null && iface=$(iw dev 2>/dev/null | awk '/Interface/{print $2}' | head -1)
+        require_cmd iw 1 && iface=$(iw dev 2>/dev/null | awk '/Interface/{print $2}' | head -1)
         for i in ${iface:-wlan0} wlan0 wlp0s20f3 wlp2s0; do
             ip=$(ip -4 addr show "$i" 2>/dev/null | awk '/inet /{print $2}' | cut -d'/' -f1)
             [[ -n "$ip" ]] && break

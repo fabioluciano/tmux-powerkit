@@ -1,6 +1,6 @@
 # ⚡ PowerKit for tmux
 
-A powerful, modular tmux status bar framework with 36+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with beautiful themes including Tokyo Night and Kiribyte.
+A powerful, modular tmux status bar framework with 37+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with 9 beautiful themes including Tokyo Night, Catppuccin, Dracula, Gruvbox, Nord, One Dark, Rosé Pine, and Solarized.
 
 > **📢 Note:** This project was formerly known as `tmux-tokyo-night`. See [Migration Guide](../../wiki/Migration-Guide) for upgrade instructions.
 
@@ -19,8 +19,8 @@ A powerful, modular tmux status bar framework with 36+ built-in plugins for disp
 
 ## ✨ Features
 
-- 🎨 **Multiple themes** - Tokyo Night (night, storm, moon, day) and Kiribyte (dark)
-- 🔌 **36+ built-in plugins** - System monitoring, development tools, security keys, media players
+- 🎨 **9 themes** - Tokyo Night, Catppuccin (4 variants), Dracula, Gruvbox, Kiribyte, Nord, One Dark, Rosé Pine (3 variants), Solarized
+- 🔌 **37+ built-in plugins** - System monitoring, development tools, security keys, media players
 - ⚡ **Performance optimized** - Intelligent caching with configurable TTL
 - 🎯 **Fully customizable** - Semantic colors, icons, formats, and separators
 - 🖥️ **Cross-platform** - macOS, Linux, and BSD support
@@ -70,26 +70,46 @@ See **[Quick Start Guide](../../wiki/Quick-Start)** for more examples.
 
 ## 🎨 Available Themes
 
-### Tokyo Night
-
-| Variant | Description |
-|---------|-------------|
-| `night` | Deep dark theme (default) |
-
-### Kiribyte
-
-| Variant | Description |
-|---------|-------------|
-| `dark` | Pastel dark theme with soft colors |
+| Theme | Variants | Description |
+|-------|----------|-------------|
+| **Tokyo Night** | `night` | Deep dark theme with vibrant accents (default) |
+| **Catppuccin** | `mocha`, `macchiato`, `frappe`, `latte` | Soothing pastel theme with 4 flavor variants |
+| **Dracula** | `dark` | Dark theme with vibrant colors |
+| **Gruvbox** | `dark`, `light` | Retro groove color scheme |
+| **Kiribyte** | `dark` | Pastel dark theme with soft colors |
+| **Nord** | `dark` | Arctic, north-bluish color palette |
+| **One Dark** | `dark` | Atom-inspired dark theme |
+| **Rosé Pine** | `main`, `moon`, `dawn` | All-natural pine, faux fur and soho vibes |
+| **Solarized** | `dark`, `light` | Precision colors for machines and people |
 
 ```bash
 # Tokyo Night (default)
 set -g @powerkit_theme 'tokyo-night'
 set -g @powerkit_theme_variant 'night'
 
-# Kiribyte
-set -g @powerkit_theme 'kiribyte'
+# Catppuccin Mocha
+set -g @powerkit_theme 'catppuccin'
+set -g @powerkit_theme_variant 'mocha'
+
+# Dracula
+set -g @powerkit_theme 'dracula'
 set -g @powerkit_theme_variant 'dark'
+
+# Gruvbox Dark
+set -g @powerkit_theme 'gruvbox'
+set -g @powerkit_theme_variant 'dark'
+
+# Nord
+set -g @powerkit_theme 'nord'
+set -g @powerkit_theme_variant 'dark'
+
+# Rosé Pine
+set -g @powerkit_theme 'rose-pine'
+set -g @powerkit_theme_variant 'main'
+
+# Solarized Light
+set -g @powerkit_theme 'solarized'
+set -g @powerkit_theme_variant 'light'
 ```
 
 Learn more: **[Theme Variations](../../wiki/Theme-Variations)**
@@ -99,15 +119,18 @@ Learn more: **[Theme Variations](../../wiki/Theme-Variations)**
 All interactive keybindings use `Ctrl` modifier (`prefix + Ctrl+key`) for cross-platform compatibility.
 
 | Keybinding | Feature |
-|------------|---------||
+|------------|---------|
 | `prefix + Ctrl-e` | **Options viewer** - Browse all theme settings |
-| `prefix + Ctrl-g` | **Keybindings viewer** - View all keybindings |
-| `prefix + Ctrl-x` | **Cache cleaner** - Clear all plugin caches (refresh) |
-| `prefix + Ctrl-i` | **Audio input selector** - Switch microphone devices |
-| `prefix + Ctrl-s` | **Audio output selector** - Switch speaker/headphone devices |
-| `prefix + Ctrl-q` | **Kubernetes context selector** - Switch contexts |
-| `prefix + Ctrl-w` | **Kubernetes namespace selector** - Switch namespaces |
-| `prefix + Ctrl-t` | **Terraform workspace selector** - Switch workspaces |
+| `prefix + Ctrl-y` | **Keybindings viewer** - View all keybindings |
+| `prefix + Ctrl-r` | **Theme selector** - Switch themes interactively |
+| `prefix + Ctrl-d` | **Cache cleaner** - Clear all plugin caches (refresh) |
+| `prefix + Ctrl-q` | **Audio input selector** - Switch microphone devices |
+| `prefix + Ctrl-u` | **Audio output selector** - Switch speaker/headphone devices |
+| `prefix + Ctrl-g` | **Kubernetes context selector** - Switch contexts |
+| `prefix + Ctrl-s` | **Kubernetes namespace selector** - Switch namespaces |
+| `prefix + Ctrl-f` | **Terraform workspace selector** - Switch workspaces |
+| `prefix + Ctrl-v` | **Bitwarden password selector** - Select password from vault |
+| `prefix + Ctrl-w` | **Bitwarden unlock** - Unlock Bitwarden vault |
 
 ![Options Viewer](./assets/keybinding-options-viewer.gif)
 
@@ -115,7 +138,7 @@ Learn more: **[Interactive Keybindings](../../wiki/Interactive-Keybindings)**
 
 ## 🔌 Available Plugins
 
-The theme includes 36+ built-in plugins organized by category:
+The theme includes 37+ built-in plugins organized by category:
 
 ### 📅 Time & Date
 
@@ -158,6 +181,7 @@ The theme includes 36+ built-in plugins organized by category:
 ### 🔐 Security
 
 - **[smartkey](../../wiki/SmartKey)** - Hardware security key detection (YubiKey, SoloKeys, Nitrokey)
+- **[bitwarden](../../wiki/Bitwarden)** - Bitwarden vault status with password selector keybindings
 
 ### 🎵 Media & Audio
 
@@ -201,10 +225,13 @@ See **[Plugin System Overview](../../wiki/Plugin-System-Overview)** for complete
 |--------|-------|-------|-----|-------|
 | **audiodevices** | ✅ | ✅ | ✅ | Requires `pactl` (Linux), `SwitchAudioSource` (macOS) |
 | **battery** | ✅ | ✅ | ✅ | Requires `acpi`/`upower` (Linux), `pmset` (macOS) |
+| **bitwarden** | ✅ | ✅ | ✅ | Requires `bw` (official CLI) or `rbw` (Rust client) |
+| **bitbucket** | ✅ | ✅ | ✅ | Status issues/PRs from Bitbucket Cloud |
 | **bluetooth** | ✅ | ✅ | ⚠️ | Limited battery support on macOS |
 | **brightness** | ✅ | ❌ | ✅ | Requires `brightnessctl`/`light`/`xbacklight` |
 | **camera** | ✅ | ❌ | ❌ | Requires `v4l2`/`lsof` (Linux) |
 | **cloud** | ✅ | ✅ | ✅ | AWS/GCP/Azure context detection |
+| **cloudstatus** | ✅ | ✅ | ✅ | Cloud provider status monitoring |
 | **cpu** | ✅ | ✅ | ✅ | Native support |
 | **datetime** | ✅ | ✅ | ✅ | Universal |
 | **disk** | ✅ | ✅ | ✅ | Uses `df` command |
@@ -212,8 +239,8 @@ See **[Plugin System Overview](../../wiki/Plugin-System-Overview)** for complete
 | **fan** | ✅ | ⚠️ | ✅ | Linux: hwmon, macOS: requires smctemp |
 | **git** | ✅ | ✅ | ✅ | Requires git repository |
 | **github** | ✅ | ✅ | ✅ | Status issues/PRs from GitHub |
-| `bitbucket` | ✅ | ✅ | ✅ | Status issues/PRs from Bitbucket Cloud |
 | **gitlab** | ✅ | ✅ | ✅ | Status issues/MRs from GitLab |
+| **gpu** | ✅ | ✅ | ⚠️ | NVIDIA/AMD/Intel/Apple Silicon |
 | **hostname** | ✅ | ✅ | ✅ | Universal |
 | **kubernetes** | ✅ | ✅ | ✅ | Requires `kubectl` |
 | **loadavg** | ✅ | ✅ | ✅ | Native support |

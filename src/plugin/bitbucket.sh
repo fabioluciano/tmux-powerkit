@@ -30,15 +30,8 @@ BITBUCKET_SEPARATOR=$(get_tmux_option "@powerkit_plugin_bitbucket_separator" "$P
 
 make_bitbucket_api_call() {
     local url="$1"
-    local auth_header=""
-    
-    # Check if token is provided (Basic Auth: username:app_password)
     # Bitbucket uses Basic Auth for API with App Passwords
-    if [[ -n "$BITBUCKET_TOKEN" ]]; then
-        auth_header="-u $BITBUCKET_TOKEN"
-    fi
-    
-    eval curl -s $auth_header "\"$url\"" 2>/dev/null
+    make_api_call "$url" "basic" "$BITBUCKET_TOKEN" 5
 }
 
 # =============================================================================
@@ -101,52 +94,57 @@ format_status() {
 
 get_bitbucket_info() {
     local repos_csv="$1"
-    
+
     # Split repos
     IFS=',' read -ra repos <<< "$repos_csv"
-    
+
     local total_issues=0
     local total_prs=0
     local active=false
-    
+
+    log_debug "bitbucket" "Fetching info for repos: $repos_csv"
+
     for repo_spec in "${repos[@]}"; do
         repo_spec="$(echo "$repo_spec" | xargs)"
         [[ -z "$repo_spec" ]] && continue
-        
+
         # Ensure workspace/repo_slug format
         if [[ "$repo_spec" != *"/"* ]]; then
-            continue 
+            log_warn "bitbucket" "Invalid repo format (missing /): $repo_spec"
+            continue
         fi
-        
+
         local workspace="${repo_spec%%/*}"
         local repo_slug="${repo_spec#*/}"
-        
+
         local issues=0
         local prs=0
-        
+
         if [[ "$BITBUCKET_SHOW_ISSUES" == "on" ]]; then
             issues=$(count_issues "$workspace" "$repo_slug")
             [[ -z "$issues" ]] && issues=0
         fi
-        
+
         if [[ "$BITBUCKET_SHOW_PRS" == "on" ]]; then
             prs=$(count_prs "$workspace" "$repo_slug")
             [[ -z "$prs" ]] && prs=0
         fi
-        
+
         total_issues=$((total_issues + issues))
         total_prs=$((total_prs + prs))
     done
-    
+
     if [[ "$total_issues" -gt 0 ]] || [[ "$total_prs" -gt 0 ]]; then
         active=true
     fi
-    
+
+    log_debug "bitbucket" "Total issues: $total_issues, PRs: $total_prs"
+
     if [[ "$active" == "false" ]]; then
         echo "no activity"
         return
     fi
-    
+
     format_status "$total_issues" "$total_prs"
 }
 
@@ -171,7 +169,7 @@ plugin_get_display_info() {
     local temp_content="$content"
     while [[ "$temp_content" =~ ([0-9]+) ]]; do
         total_count=$((total_count + BASH_REMATCH[1]))
-        temp_content="${temp_content#*${BASH_REMATCH[1]}}"
+        temp_content="${temp_content#*"${BASH_REMATCH[1]}"}"
     done
 
     if [[ $total_count -ge $BITBUCKET_WARNING_THRESHOLD ]]; then
@@ -189,19 +187,16 @@ plugin_get_display_info() {
     fi
 }
 
+_compute_bitbucket() {
+    get_bitbucket_info "$BITBUCKET_REPOS"
+}
+
 load_plugin() {
-    local CACHE_KEY="bitbucket_status"
-    local cached
-    if cached=$(cache_get "$CACHE_KEY" "$BITBUCKET_CACHE_TTL"); then
-        printf '%s' "$cached"
-        return 0
-    fi
-    
-    local status
-    status=$(get_bitbucket_info "$BITBUCKET_REPOS")
-    
-    cache_set "$CACHE_KEY" "$status"
-    printf '%s' "$status"
+    # Check dependencies
+    check_dependencies curl jq || return 0
+
+    # Use defer_plugin_load for network operations with lazy loading
+    defer_plugin_load "$CACHE_KEY" cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_bitbucket
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

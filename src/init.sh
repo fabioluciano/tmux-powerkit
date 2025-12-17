@@ -3,25 +3,43 @@
 # PowerKit Initialization
 # Main entry point - orchestrates all PowerKit modules
 # =============================================================================
-set -euo pipefail
+#
+# DEPENDENCY LOADING ORDER (CRITICAL - DO NOT CHANGE):
+# ┌─────────────────────────────────────────────────────────────────────────┐
+# │ 1. source_guard.sh  - Base guard mechanism (no dependencies)            │
+# │ 2. defaults.sh      - Configuration defaults (depends: source_guard)    │
+# │ 3. utils.sh         - Utility functions (depends: source_guard,defaults)│
+# │ 4. cache.sh         - Cache system (depends: source_guard, utils)       │
+# │ 5. Module files     - Feature modules (depend on above)                 │
+# └─────────────────────────────────────────────────────────────────────────┘
+#
+# GLOBAL VARIABLES SET:
+#   - All from defaults.sh, utils.sh, cache.sh
+#   - Module-specific variables
+#
+# =============================================================================
+set -eu
+# Note: pipefail removed - it causes issues with plugins using pipes (grep -q exits early)
 export LC_ALL=en_US.UTF-8
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # =============================================================================
-# Source Dependencies (order matters)
+# Source Dependencies (ORDER MATTERS - see diagram above)
 # =============================================================================
-. "$CURRENT_DIR/defaults.sh"
-. "$CURRENT_DIR/utils.sh"
-. "$CURRENT_DIR/cache.sh"
 
-# Module files
-. "$CURRENT_DIR/keybindings.sh"
-. "$CURRENT_DIR/separators.sh"
-. "$CURRENT_DIR/window_format.sh"
-. "$CURRENT_DIR/status_bar.sh"
-. "$CURRENT_DIR/plugin_integration.sh"
-. "$CURRENT_DIR/tmux_config.sh"
+# Core dependencies (loaded in dependency order)
+. "$CURRENT_DIR/defaults.sh"    # Configuration defaults
+. "$CURRENT_DIR/utils.sh"       # Platform detection, tmux options, colors
+. "$CURRENT_DIR/cache.sh"       # Caching system
+
+# Feature modules (depend on core)
+. "$CURRENT_DIR/keybindings.sh"       # Keybinding management
+. "$CURRENT_DIR/separators.sh"        # Powerline separators
+. "$CURRENT_DIR/window_format.sh"     # Window formatting
+. "$CURRENT_DIR/status_bar.sh"        # Status bar generation
+. "$CURRENT_DIR/plugin_integration.sh" # Plugin system
+. "$CURRENT_DIR/tmux_config.sh"       # Tmux appearance configuration
 
 # =============================================================================
 # MAIN INITIALIZATION

@@ -41,19 +41,21 @@ get_cpu_macos() {
 
 plugin_get_type() { printf 'static'; }
 
-load_plugin() {
-    local cached
-    if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        printf '%s' "$cached"
-        return
-    fi
+plugin_get_display_info() {
+    local content="${1:-}"
+    [[ -z "$content" || "$content" == "N/A" ]] && { build_display_info "0" "" "" ""; return; }
+    build_display_info "1" "" "" ""
+}
 
+_compute_cpu() {
     local r
     is_linux && r=$(get_cpu_linux) || { is_macos && r=$(get_cpu_macos) || r="N/A"; }
     [[ "$r" != "N/A" ]] && r=$(printf '%3d%%' "$r")
-
-    cache_set "$CACHE_KEY" "$r"
     printf '%s' "$r"
+}
+
+load_plugin() {
+    cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_cpu
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

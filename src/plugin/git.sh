@@ -45,9 +45,9 @@ plugin_get_display_info() {
 get_cache_key() {
     local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
     local hash
-    if command -v md5sum &>/dev/null; then
+    if require_cmd md5sum 1; then
         hash=$(printf '%s' "$path" | md5sum | cut -d' ' -f1)
-    elif command -v md5 &>/dev/null; then
+    elif require_cmd md5 1; then
         hash=$(printf '%s' "$path" | md5 -q)
     else
         hash="${path//[^a-zA-Z0-9]/_}"

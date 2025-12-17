@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 36+ plugins for displaying system information with a semantic color system that works across multiple themes. Distributed through TPM (Tmux Plugin Manager).
+PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 37+ plugins for displaying system information with a semantic color system that works across 9 themes. Distributed through TPM (Tmux Plugin Manager).
 
 ## Development Commands
 
@@ -19,7 +19,25 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 
 ### Testing
 
-Manual testing is required:
+**Automated Testing:**
+
+```bash
+# Run plugin test suite
+./tests/test_plugins.sh
+
+# Test specific plugin
+./tests/test_plugins.sh cpu
+
+# Available test types:
+# - syntax: bash -n validation
+# - source: file can be sourced
+# - functions: required functions exist (plugin_get_type, plugin_get_display_info, load_plugin)
+# - display_info: output format validation
+# - caching: cache functions work correctly
+# - shellcheck: static analysis
+```
+
+**Manual testing:**
 
 1. Install the plugin via TPM in a test tmux configuration
 2. Source the plugin: `tmux source ~/.tmux.conf`
@@ -34,11 +52,19 @@ Manual testing is required:
 
 ### Core Components
 
+**`src/source_guard.sh`** - Source Guard Helper (Base Module)
+
+- Prevents multiple sourcing of files for performance
+- Must be sourced first by all other modules
+- Provides `source_guard(module_name)` function
+- Usage: `source_guard "module_name" && return 0`
+- Creates guard variables: `_POWERKIT_<MODULE>_LOADED`
+
 **`src/defaults.sh`** - Centralized Default Values (DRY/KISS)
 
 - Contains ALL default values in one place
 - Uses semantic color names (`secondary`, `warning`, `error`, etc.)
-- Source guard: `_POWERKIT_DEFAULTS_LOADED`
+- Uses `source_guard "defaults"` for protection
 - Helper: `get_powerkit_plugin_default(plugin, option)`
 - Variables follow: `POWERKIT_PLUGIN_<NAME>_<OPTION>` (e.g., `POWERKIT_PLUGIN_BATTERY_ICON`)
 - Base defaults reused across plugins: `_DEFAULT_ACCENT`, `_DEFAULT_WARNING`, `_DEFAULT_CRITICAL`
@@ -53,10 +79,12 @@ Manual testing is required:
 
 **`src/utils.sh`** - Utility Functions
 
-- `get_tmux_option(option, default)` - Retrieves tmux options with fallback
+- `get_tmux_option(option, default)` - Retrieves tmux options with fallback (uses batch loading cache)
 - `get_powerkit_color(semantic_name)` - Resolves semantic color to hex
 - `load_powerkit_theme()` - Loads theme file and populates `POWERKIT_THEME_COLORS`
-- `get_os()` / `is_macos()` / `is_linux()` - OS detection (cached)
+- `get_os()` / `is_macos()` / `is_linux()` - OS detection (cached in `_CACHED_OS`)
+- `extract_numeric(string)` - Extracts first numeric value using bash regex (no fork)
+- `_batch_load_tmux_options()` - Pre-loads all `@powerkit_*` options in single tmux call
 - Status bar generation functions
 
 **`src/cache.sh`** - Caching System
@@ -64,6 +92,13 @@ Manual testing is required:
 - `cache_get(key, ttl)` - Returns cached value if valid
 - `cache_set(key, value)` - Stores value in cache
 - `cache_clear_all()` - Clears all cached data
+- `cache_get_or_compute(key, ttl, cmd...)` - Get cached value or compute and cache
+- `cache_age(key)` - Get cache age in seconds
+- `cache_exists(key)` - Check if cache file exists (ignores TTL)
+- `cache_size(key)` - Get cache file size in bytes
+- `cache_list()` - List all cache keys
+- `cache_total_size()` - Get total cache directory size
+- `cache_invalidate_pattern(pattern)` - Invalidate caches matching glob pattern
 - Cache location: `$XDG_CACHE_HOME/tmux-powerkit/` or `~/.cache/tmux-powerkit/`
 
 **`src/render_plugins.sh`** - Plugin Rendering
@@ -75,12 +110,59 @@ Manual testing is required:
 - Handles external plugins with format: `EXTERNAL|icon|content|accent|accent_icon|ttl`
 - Executes `$(command)` and `#(command)` in external plugin content
 - Supports caching for external plugins via TTL parameter
+- Uses `set -eu` (note: `pipefail` removed due to issues with `grep -q` in pipes)
+- `_string_hash()` - Pure bash hash function (avoids md5sum fork)
+- `_process_external_plugin()` / `_process_internal_plugin()` - Modular plugin processing
+
+**`src/init.sh`** - Module Initialization
+
+- Central initialization for loading all core modules
+- Defines dependency loading order (critical for correct operation)
+- Sources: `source_guard.sh` → `defaults.sh` → `utils.sh` → `cache.sh`
+- Uses `set -eu` (note: `pipefail` removed due to issues with `grep -q` in pipes)
 
 **`src/plugin_bootstrap.sh`** - Plugin Bootstrap
 
 - Common initialization for all plugins
-- Sets up `ROOT_DIR`, sources utilities
+- Sets up `ROOT_DIR`, sources utilities via `init.sh`
 - Provides `plugin_init(name)` function
+
+**`src/plugin_helpers.sh`** - Plugin Helper Functions
+
+- **Dependency Checking:**
+  - `require_cmd(cmd, optional)` - Check if command exists (logs if missing)
+  - `require_any_cmd(cmd1, cmd2, ...)` - Check if ANY command exists
+  - `check_dependencies(cmd1, cmd2, ...)` - Check multiple dependencies
+  - `get_missing_deps()` - Get list of missing dependencies as string
+- **Timeout & Safe Execution:**
+  - `run_with_timeout(seconds, cmd...)` - Run command with timeout
+  - `safe_curl(url, timeout, args...)` - Safe curl with error handling
+- **Configuration Validation:**
+  - `validate_range(value, min, max, default)` - Validate numeric range
+  - `validate_option(value, default, opt1, opt2, ...)` - Validate against options
+  - `validate_bool(value, default)` - Validate boolean value
+- **Threshold Colors:**
+  - `apply_threshold_colors(value, plugin, invert)` - Apply warning/critical colors
+- **API & Audio:**
+  - `make_api_call(url, auth_type, token)` - Authenticated API call
+  - `detect_audio_backend()` - Detect macos/pipewire/pulseaudio/alsa
+- **Lazy Loading:**
+  - `should_load_plugin(name)` - Check if plugin should load
+  - `precheck_plugin(name)` - Precheck plugin requirements
+  - `get_plugin_priority(name)` - Get plugin load priority
+  - `defer_plugin_load(name, callback)` - Deferred execution wrapper
+
+**Logging System** (in `src/utils.sh`)
+
+- **Centralized Logging** (logs to `~/.cache/tmux-powerkit/powerkit.log`):
+  - `log_debug(source, message)` - Debug level (only when @powerkit_debug=true)
+  - `log_info(source, message)` - Info level
+  - `log_warn(source, message)` - Warning level
+  - `log_error(source, message)` - Error level
+  - `log_plugin_error(plugin, message, show_toast)` - Plugin error with optional toast
+  - `log_missing_dep(plugin, dependency)` - Log missing dependency
+  - `get_log_file()` - Get log file path
+- Log rotation: automatically rotates when > 1MB
 
 ### Theme System
 
@@ -88,10 +170,31 @@ Located in `src/themes/<theme>/<variant>.sh`:
 
 ```text
 src/themes/
-├── tokyo-night/
-│   ├── night.sh
-└── kiribyte/
-    └── dark.sh
+├── catppuccin/
+│   ├── frappe.sh
+│   ├── latte.sh
+│   ├── macchiato.sh
+│   └── mocha.sh
+├── dracula/
+│   └── dark.sh
+├── gruvbox/
+│   ├── dark.sh
+│   └── light.sh
+├── kiribyte/
+│   └── dark.sh
+├── nord/
+│   └── dark.sh
+├── onedark/
+│   └── dark.sh
+├── rose-pine/
+│   ├── dawn.sh
+│   ├── main.sh
+│   └── moon.sh
+├── solarized/
+│   ├── dark.sh
+│   └── light.sh
+└── tokyo-night/
+    └── night.sh
 ```
 
 Each theme defines a `THEME_COLORS` associative array with semantic color names:
@@ -126,10 +229,16 @@ declare -A THEME_COLORS=(
 
 1. Source `plugin_bootstrap.sh`
 2. Call `plugin_init "name"` to set up cache key and TTL
-3. Define `plugin_get_type()` - returns `static` or `dynamic`
+3. Define `plugin_get_type()` - returns `static`, `dynamic`, or `conditional`
 4. Define `plugin_get_display_info()` - returns `visible:accent:accent_icon:icon`
 5. Define `load_plugin()` - outputs the display content
 6. Optional: `setup_keybindings()` for interactive features
+
+**Plugin Types:**
+
+- `static` - Always visible, content doesn't change colors based on value
+- `dynamic` - Content can trigger threshold colors (warning/error)
+- `conditional` - Can be hidden based on conditions (e.g., battery when full)
 
 **Example Plugin:**
 
@@ -153,15 +262,15 @@ load_plugin() {
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true
 ```
 
-**Available Plugins (26+):**
+**Available Plugins (37+):**
 
 | Category | Plugins |
 |----------|---------|
-| Time | datetime |
-| System | cpu, memory, disk, loadavg, temperature, uptime, brightness |
-| Network | network, wifi, vpn, external_ip, bluetooth, weather |
-| Development | git, kubernetes, cloud |
-| Security | smartkey |
+| Time | datetime, timezones |
+| System | cpu, gpu, memory, disk, loadavg, temperature, fan, uptime, brightness |
+| Network | network, wifi, vpn, external_ip, ping, ssh, bluetooth, weather |
+| Development | git, github, gitlab, bitbucket, kubernetes, cloud, cloudstatus, terraform |
+| Security | smartkey, bitwarden |
 | Media | audiodevices, microphone, nowplaying, volume, camera |
 | Packages | packages |
 | Info | battery, hostname |
@@ -173,8 +282,8 @@ All options use `@powerkit_*` prefix:
 
 ```bash
 # Core
-@powerkit_theme              # Theme name (tokyo-night, kiribyte)
-@powerkit_theme_variant      # Variant (night, storm, moon, day, dark)
+@powerkit_theme              # Theme name (tokyo-night, catppuccin, dracula, gruvbox, kiribyte, nord, onedark, rose-pine, solarized)
+@powerkit_theme_variant      # Variant (depends on theme: night, dark, light, mocha, frappe, latte, macchiato, dawn, main, moon)
 @powerkit_plugins            # Comma-separated plugin list
 @powerkit_transparent        # true/false
 
@@ -193,7 +302,23 @@ All options use `@powerkit_*` prefix:
 @powerkit_plugin_<name>_accent_color
 @powerkit_plugin_<name>_accent_color_icon
 @powerkit_plugin_<name>_cache_ttl
-@powerkit_plugin_<name>_*    # Plugin-specific options
+@powerkit_plugin_<name>_show           # on/off - enable/disable plugin
+@powerkit_plugin_<name>_lazy           # on/off - enable lazy loading for plugin
+@powerkit_plugin_<name>_priority       # load priority (lower = first)
+@powerkit_plugin_<name>_*              # Plugin-specific options
+
+# Lazy Loading (optional)
+@powerkit_lazy_loading       # on/off - enable lazy loading system
+
+# Telemetry (optional performance tracking)
+@powerkit_telemetry          # true/false - enable performance telemetry
+@powerkit_telemetry_log_file # Custom telemetry log file path
+@powerkit_telemetry_slow_threshold  # Milliseconds to consider plugin "slow" (default: 500)
+
+# Helper keybindings
+@powerkit_options_key        # Key for options viewer (default: C-e)
+@powerkit_keybindings_key    # Key for keybindings viewer (default: C-y)
+@powerkit_theme_selector_key # Key for theme selector (default: C-r)
 ```
 
 ### External Plugins
@@ -289,16 +414,31 @@ Required semantic colors:
 
 ## Performance Optimizations
 
-- **Source guards**: Prevent multiple sourcing of utilities
-- **Cached OS detection**: `_CACHED_OS` variable set once
-- **File-based caching**: Plugins cache expensive operations
+- **Source guards**: Centralized in `source_guard.sh`, prevents multiple sourcing of modules
+- **Batch tmux options**: All `@powerkit_*` options loaded in single tmux call via `_batch_load_tmux_options()`
+- **Cached OS detection**: `_CACHED_OS` variable set once, avoids repeated `uname` calls
+- **Bash regex over grep**: `extract_numeric()` uses `[[ =~ ]]` with `BASH_REMATCH` instead of forking grep
+- **Pure bash hash**: `_string_hash()` avoids md5sum fork for cache key generation
+- **File-based caching**: Plugins cache expensive operations to disk
 - **Single execution**: Plugins sourced once, `load_plugin()` called
 - **Semantic color caching**: Colors resolved once per render
+- **Lazy loading**: Optional deferred plugin loading with priority system
+- **Timeout protection**: External commands protected via `run_with_timeout()`
+- **Safe curl**: Network requests with proper timeouts via `safe_curl()`
+- **Audio backend caching**: `detect_audio_backend()` cached in `_AUDIO_BACKEND`
+- **Telemetry system**: Optional performance tracking with `telemetry_plugin_start/end()`
+- **DRY plugin defaults**: `_plugin_defaults()` function auto-applies standard colors
 
 ## Important Notes
 
 - All scripts use `#!/usr/bin/env bash`
-- Strict mode in render_plugins.sh: `set -euo pipefail`
+- Strict mode: `set -eu` (note: `pipefail` was removed - causes issues with `grep -q` in pipes)
 - Options read via `get_tmux_option()` with defaults from `defaults.sh`
 - Plugin colors use semantic names resolved via `get_powerkit_color()`
 - Keybindings always set up even when plugin `show='off'`
+- Battery plugin: threshold colors persist even when charging (intentional behavior)
+
+## Known Issues / Gotchas
+
+- **`set -o pipefail`**: Do NOT use in scripts that pipe to `grep -q`. When grep finds a match and exits early, the pipe breaks and pipefail treats this as an error, causing the entire script to fail.
+- **Source order matters**: Always source `source_guard.sh` before any other module. The dependency order is documented in `init.sh`.

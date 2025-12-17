@@ -8,6 +8,7 @@ plugin_init "weather"
 
 WEATHER_LOCATION_CACHE_KEY="weather_location"
 WEATHER_LOCATION_CACHE_TTL="3600"
+WEATHER_SYMBOL_CACHE_KEY="weather_symbol"
 
 plugin_get_type() { printf 'conditional'; }
 
@@ -27,13 +28,12 @@ weather_detect_location() {
         printf '%s' "$cached_location"
         return 0
     fi
-    
-    command -v jq &>/dev/null || return 1
-    
+
+    require_cmd jq 1 || return 1
+
     local location
-    location=$(curl -s --connect-timeout 5 --max-time 10 http://ip-api.com/json 2>/dev/null | \
-        jq -r '"\(.city), \(.country)"' 2>/dev/null)
-    
+    location=$(safe_curl "http://ip-api.com/json" 5 | jq -r '"\(.city), \(.country)"' 2>/dev/null)
+
     if [[ -n "$location" && "$location" != "null, null" && "$location" != ", " ]]; then
         cache_set "$WEATHER_LOCATION_CACHE_KEY" "$location"
         printf '%s' "$location"
@@ -47,41 +47,47 @@ weather_fetch() {
     local format unit
     format=$(get_cached_option "@powerkit_plugin_weather_format" "$POWERKIT_PLUGIN_WEATHER_FORMAT")
     unit=$(get_cached_option "@powerkit_plugin_weather_unit" "$POWERKIT_PLUGIN_WEATHER_UNIT")
-    
+
+    # resolve_format handles both presets and custom formats
     local resolved_format
     resolved_format=$(resolve_format "$format")
-    
+
     local url="wttr.in/"
     [[ -n "$location" ]] && url+="$(printf '%s' "$location" | sed 's/ /%20/g; s/,/%2C/g')"
     url+="?"
     [[ -n "$unit" ]] && url+="${unit}&"
     url+="format=$(printf '%s' "$resolved_format" | sed 's/%/%25/g; s/ /%20/g; s/:/%3A/g; s/+/%2B/g')"
-    
+
     local weather
-    weather=$(curl -sL --connect-timeout 5 --max-time 10 "$url" 2>/dev/null)
+    weather=$(safe_curl "$url" 5 -L)
     weather=$(printf '%s' "$weather" | sed 's/%$//; s/^[[:space:]]*//; s/[[:space:]]*$//')
     command -v perl &>/dev/null && weather=$(printf '%s' "$weather" | perl -CS -pe 's/\x{FE0E}|\x{FE0F}//g')
-    
-    [[ -z "$weather" || "$weather" == *"Unknown"* || "$weather" == *"ERROR"* || ${#weather} -gt 100 ]] && { printf 'N/A'; return 1; }
+
+    if [[ -z "$weather" || "$weather" == *"Unknown"* || "$weather" == *"ERROR"* || ${#weather} -gt 100 ]]; then
+        log_warn "weather" "Failed to fetch weather data for location: ${location:-auto}"
+        printf 'N/A'
+        return 1
+    fi
+    log_debug "weather" "Successfully fetched weather: $weather"
     printf '%s' "$weather"
 }
 
-    # Fetch only condition symbol (%c) for dynamic icon mapping
-    weather_fetch_symbol() {
-        local location="$1"
-        local unit
-        unit=$(get_cached_option "@powerkit_plugin_weather_unit" "$POWERKIT_PLUGIN_WEATHER_UNIT")
-        local url="wttr.in/"
-        [[ -n "$location" ]] && url+="$(printf '%s' "$location" | sed 's/ /%20/g; s/,/%2C/g')"
-        url+="?"
-        [[ -n "$unit" ]] && url+="${unit}&"
-        url+="format=%25c"
-        local symbol
-        symbol=$(curl -sL --connect-timeout 5 --max-time 10 "$url" 2>/dev/null)
-        symbol=$(printf '%s' "$symbol" | sed 's/%$//; s/[[:space:]]*$//')
-        command -v perl &>/dev/null && symbol=$(printf '%s' "$symbol" | perl -CS -pe 's/\x{FE0E}|\x{FE0F}//g')
-        printf '%s' "$symbol"
-    }
+# Fetch only condition symbol (%c) for dynamic icon mapping
+weather_fetch_symbol() {
+    local location="$1"
+    local unit
+    unit=$(get_cached_option "@powerkit_plugin_weather_unit" "$POWERKIT_PLUGIN_WEATHER_UNIT")
+    local url="wttr.in/"
+    [[ -n "$location" ]] && url+="$(printf '%s' "$location" | sed 's/ /%20/g; s/,/%2C/g')"
+    url+="?"
+    [[ -n "$unit" ]] && url+="${unit}&"
+    url+="format=%25c"
+    local symbol
+    symbol=$(safe_curl "$url" 5 -L)
+    symbol=$(printf '%s' "$symbol" | sed 's/%$//; s/[[:space:]]*$//')
+    command -v perl &>/dev/null && symbol=$(printf '%s' "$symbol" | perl -CS -pe 's/\x{FE0E}|\x{FE0F}//g')
+    printf '%s' "$symbol "
+}
 
 plugin_get_display_info() {
     local content="${1:-}"
@@ -97,15 +103,9 @@ plugin_get_display_info() {
     local icon_mode
     icon_mode=$(get_cached_option "@powerkit_plugin_weather_icon_mode" "$POWERKIT_PLUGIN_WEATHER_ICON_MODE")
     if [[ "$show" == "1" && "$icon_mode" == "dynamic" ]]; then
-        # Always fetch the condition symbol directly from wttr, independent of the text format
-        local symbol location
-        location=$(get_cached_option "@powerkit_plugin_weather_location" "$POWERKIT_PLUGIN_WEATHER_LOCATION")
-        symbol=$(weather_fetch_symbol "$location")
-
-        # Fallback: if the fetch failed, try extracting the last token from content
-        if [[ -z "$symbol" || "$symbol" == "N/A" ]]; then
-            symbol=$(printf '%s' "$content" | awk '{print $NF}' | sed 's/%$//; s/[[:space:]]*$//')
-        fi
+        # Read symbol from cache (set by load_plugin)
+        local symbol
+        symbol=$(cache_get "$WEATHER_SYMBOL_CACHE_KEY" "$CACHE_TTL" 2>/dev/null) || symbol=""
 
         if [[ -n "$symbol" && "$symbol" != "N/A" ]]; then
             icon="$symbol"
@@ -115,22 +115,30 @@ plugin_get_display_info() {
     echo "${show}:${accent}:${accent_icon}:${icon}"
 }
 
-load_plugin() {
-    command -v curl &>/dev/null || return 0
-    
-    local cached_value
-    if cached_value=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
-        [[ "$cached_value" != "N/A" ]] && { printf '%s' "$cached_value"; return 0; }
-    fi
-    
+_compute_weather() {
     local location
     location=$(get_cached_option "@powerkit_plugin_weather_location" "$POWERKIT_PLUGIN_WEATHER_LOCATION")
-    
+
     local result
     result=$(weather_fetch "$location")
-    
-    cache_set "$CACHE_KEY" "$result"
+
+    # Fetch and cache symbol for dynamic icon mode (independent of format)
+    local icon_mode
+    icon_mode=$(get_cached_option "@powerkit_plugin_weather_icon_mode" "$POWERKIT_PLUGIN_WEATHER_ICON_MODE")
+    if [[ "$icon_mode" == "dynamic" ]]; then
+        local symbol
+        symbol=$(weather_fetch_symbol "$location")
+        [[ -n "$symbol" ]] && cache_set "$WEATHER_SYMBOL_CACHE_KEY" "$symbol"
+    fi
+
     printf '%s' "$result"
+}
+
+load_plugin() {
+    require_cmd curl || return 0
+
+    # Use defer_plugin_load for network operations with lazy loading
+    defer_plugin_load "$CACHE_KEY" cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_weather
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

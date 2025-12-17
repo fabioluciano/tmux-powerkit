@@ -55,14 +55,16 @@ check_keybinding_conflicts() {
     }
     
     # Core keybindings
-    local options_key keybindings_key cache_clear_key
+    local options_key keybindings_key cache_clear_key theme_selector_key
     options_key=$(get_tmux_option "@powerkit_options_key" "$POWERKIT_DEFAULT_OPTIONS_KEY")
     keybindings_key=$(get_tmux_option "@powerkit_keybindings_key" "$POWERKIT_DEFAULT_KEYBINDINGS_KEY")
     cache_clear_key=$(get_tmux_option "@powerkit_plugin_cache_clear_key" "$POWERKIT_PLUGIN_CACHE_CLEAR_KEY")
-    
+    theme_selector_key=$(get_tmux_option "@powerkit_theme_selector_key" "$POWERKIT_DEFAULT_THEME_SELECTOR_KEY")
+
     _check_key "$options_key" "core:options_viewer"
     _check_key "$keybindings_key" "core:keybindings_viewer"
     _check_key "$cache_clear_key" "core:cache_clear"
+    _check_key "$theme_selector_key" "core:theme_selector"
     
     # Plugin keybindings - only check if plugin is enabled
     local -a plugins=()
@@ -92,6 +94,15 @@ check_keybinding_conflicts() {
                 local ws_key
                 ws_key=$(get_tmux_option "@powerkit_plugin_terraform_workspace_key" "$POWERKIT_PLUGIN_TERRAFORM_WORKSPACE_KEY")
                 _check_key "$ws_key" "terraform:workspace_selector"
+                ;;
+            bitwarden)
+                local bw_key bw_unlock_key bw_lock_key
+                bw_key=$(get_tmux_option "@powerkit_plugin_bitwarden_password_selector_key" "$POWERKIT_PLUGIN_BITWARDEN_PASSWORD_SELECTOR_KEY")
+                bw_unlock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_unlock_key" "$POWERKIT_PLUGIN_BITWARDEN_UNLOCK_KEY")
+                bw_lock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_lock_key" "$POWERKIT_PLUGIN_BITWARDEN_LOCK_KEY")
+                _check_key "$bw_key" "bitwarden:password_selector"
+                _check_key "$bw_unlock_key" "bitwarden:unlock_vault"
+                _check_key "$bw_lock_key" "bitwarden:lock_vault"
                 ;;
         esac
     done
@@ -188,18 +199,22 @@ _format_conflict_toast() {
 
 register_helper_keybindings() {
     local helpers_dir="${CURRENT_DIR}/helpers"
-    
-    # Options viewer (prefix + ?)
+
+    # Options viewer (prefix + ?) - display-popup with less for navigation
     local options_key=$(get_tmux_option "@powerkit_options_key" "$POWERKIT_DEFAULT_OPTIONS_KEY")
     local options_width=$(get_tmux_option "@powerkit_options_width" "$POWERKIT_DEFAULT_OPTIONS_WIDTH")
     local options_height=$(get_tmux_option "@powerkit_options_height" "$POWERKIT_DEFAULT_OPTIONS_HEIGHT")
     [[ -n "$options_key" ]] && tmux bind-key "$options_key" display-popup -E -w "$options_width" -h "$options_height" \
         "bash '$helpers_dir/options_viewer.sh'"
-    
-    # Keybindings viewer (prefix + B)
+
+    # Keybindings viewer (prefix + B) - display-popup with less for navigation
     local keybindings_key=$(get_tmux_option "@powerkit_keybindings_key" "$POWERKIT_DEFAULT_KEYBINDINGS_KEY")
     local keybindings_width=$(get_tmux_option "@powerkit_keybindings_width" "$POWERKIT_DEFAULT_KEYBINDINGS_WIDTH")
     local keybindings_height=$(get_tmux_option "@powerkit_keybindings_height" "$POWERKIT_DEFAULT_KEYBINDINGS_HEIGHT")
     [[ -n "$keybindings_key" ]] && tmux bind-key "$keybindings_key" display-popup -E -w "$keybindings_width" -h "$keybindings_height" \
         "bash '$helpers_dir/keybindings_viewer.sh'"
+
+    # Theme selector (prefix + T) - uses tmux display-menu
+    local theme_key=$(get_tmux_option "@powerkit_theme_selector_key" "$POWERKIT_DEFAULT_THEME_SELECTOR_KEY")
+    [[ -n "$theme_key" ]] && tmux bind-key "$theme_key" run-shell "bash '$helpers_dir/theme_selector.sh' select"
 }

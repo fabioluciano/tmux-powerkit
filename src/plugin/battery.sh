@@ -9,7 +9,7 @@ plugin_init "battery"
 
 # Platform detection
 is_wsl() { [[ -f /proc/version ]] && grep -qiE "microsoft|wsl" /proc/version 2>/dev/null; }
-cmd() { command -v "$1" &>/dev/null; }
+cmd() { require_cmd "$1" 1; }
 
 # Get battery percentage
 get_percentage() {
@@ -110,20 +110,24 @@ plugin_get_display_info() {
     accent=$(get_cached_option "@powerkit_plugin_battery_accent_color" "$POWERKIT_PLUGIN_BATTERY_ACCENT_COLOR")
     accent_icon=$(get_cached_option "@powerkit_plugin_battery_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_ACCENT_COLOR_ICON")
 
+    # Get thresholds
+    local low_t=$(get_cached_option "@powerkit_plugin_battery_low_threshold" "$POWERKIT_PLUGIN_BATTERY_LOW_THRESHOLD")
+    local warn_t=$(get_cached_option "@powerkit_plugin_battery_warning_threshold" "$POWERKIT_PLUGIN_BATTERY_WARNING_THRESHOLD")
+
+    # Apply threshold colors regardless of charging state
+    # (battery level alerts should persist even while charging)
+    if [[ -n "$value" && "$value" -le "$low_t" ]]; then
+        accent=$(get_cached_option "@powerkit_plugin_battery_low_accent_color" "$POWERKIT_PLUGIN_BATTERY_LOW_ACCENT_COLOR")
+        accent_icon=$(get_cached_option "@powerkit_plugin_battery_low_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_LOW_ACCENT_COLOR_ICON")
+        icon=$(get_cached_option "@powerkit_plugin_battery_icon_low" "$POWERKIT_PLUGIN_BATTERY_ICON_LOW")
+    elif [[ -n "$value" && "$value" -le "$warn_t" ]]; then
+        accent=$(get_cached_option "@powerkit_plugin_battery_warning_accent_color" "$POWERKIT_PLUGIN_BATTERY_WARNING_ACCENT_COLOR")
+        accent_icon=$(get_cached_option "@powerkit_plugin_battery_warning_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_WARNING_ACCENT_COLOR_ICON")
+    fi
+
+    # Set charging icon (but keep threshold colors)
     if is_charging; then
         icon=$(get_cached_option "@powerkit_plugin_battery_icon_charging" "$POWERKIT_PLUGIN_BATTERY_ICON_CHARGING")
-    else
-        local low_t=$(get_cached_option "@powerkit_plugin_battery_low_threshold" "$POWERKIT_PLUGIN_BATTERY_LOW_THRESHOLD")
-        local warn_t=$(get_cached_option "@powerkit_plugin_battery_warning_threshold" "$POWERKIT_PLUGIN_BATTERY_WARNING_THRESHOLD")
-
-        if [[ -n "$value" && "$value" -le "$low_t" ]]; then
-            accent=$(get_cached_option "@powerkit_plugin_battery_low_accent_color" "$POWERKIT_PLUGIN_BATTERY_LOW_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_battery_low_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_LOW_ACCENT_COLOR_ICON")
-            icon=$(get_cached_option "@powerkit_plugin_battery_icon_low" "$POWERKIT_PLUGIN_BATTERY_ICON_LOW")
-        elif [[ -n "$value" && "$value" -le "$warn_t" ]]; then
-            accent=$(get_cached_option "@powerkit_plugin_battery_warning_accent_color" "$POWERKIT_PLUGIN_BATTERY_WARNING_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_battery_warning_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_WARNING_ACCENT_COLOR_ICON")
-        fi
     fi
 
     build_display_info "$show" "$accent" "$accent_icon" "$icon"

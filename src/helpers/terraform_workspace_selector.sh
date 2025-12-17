@@ -4,9 +4,18 @@
 set -euo pipefail
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-. "$CURRENT_DIR/../utils.sh" 2>/dev/null || . "${CURRENT_DIR%/*}/utils.sh" 2>/dev/null || true
+ROOT_DIR="$CURRENT_DIR/.."
+
+# Source dependencies (defaults first, then utils for toast function)
+. "$ROOT_DIR/defaults.sh" 2>/dev/null || true
+. "$ROOT_DIR/utils.sh" 2>/dev/null || true
 
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit"
+
+# Fallback toast if utils.sh didn't load
+if ! command -v toast &>/dev/null; then
+    toast() { tmux display-message "$1" 2>/dev/null || echo "$1"; }
+fi
 
 # Detect terraform or tofu
 detect_tool() {
@@ -40,15 +49,15 @@ is_tf_directory() {
 select_workspace() {
     local pane_path tool current_ws
     pane_path=$(get_pane_path)
-    
+
     # Check if we're in a terraform directory
     if ! is_tf_directory "$pane_path"; then
         toast "❌ Not in a Terraform directory" "simple"
-        return 1
+        return 0  # Return 0 to avoid tmux showing error message
     fi
-    
+
     # Detect tool
-    tool=$(detect_tool) || { toast "❌ terraform/tofu not found" "simple"; return 1; }
+    tool=$(detect_tool) || { toast "❌ terraform/tofu not found" "simple"; return 0; }
     
     # Get current workspace
     current_ws=$(cd "$pane_path" && "$tool" workspace show 2>/dev/null) || current_ws="default"
@@ -64,7 +73,7 @@ select_workspace() {
         workspaces+=("$ws")
     done < <(cd "$pane_path" && "$tool" workspace list 2>/dev/null)
     
-    [[ ${#workspaces[@]} -eq 0 ]] && { toast "❌ No workspaces found" "simple"; return 1; }
+    [[ ${#workspaces[@]} -eq 0 ]] && { toast "❌ No workspaces found" "simple"; return 0; }
     
     # Build menu
     local -a menu_args=()

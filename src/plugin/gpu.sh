@@ -17,13 +17,13 @@ plugin_init "gpu"
 # Detect available GPU and return type
 detect_gpu() {
     # NVIDIA (most common for monitoring)
-    command -v nvidia-smi &>/dev/null && { echo "nvidia"; return 0; }
+    require_cmd nvidia-smi 1 && { echo "nvidia"; return 0; }
 
     # AMD ROCm
-    command -v rocm-smi &>/dev/null && { echo "amd"; return 0; }
+    require_cmd rocm-smi 1 && { echo "amd"; return 0; }
 
     # Intel (Linux)
-    command -v intel_gpu_top &>/dev/null && { echo "intel"; return 0; }
+    require_cmd intel_gpu_top 1 && { echo "intel"; return 0; }
 
     # Apple Silicon - no user-accessible GPU metrics without sudo
     # Skip detection on macOS as we can't provide useful data
@@ -106,26 +106,15 @@ plugin_get_display_info() {
         nvidia) icon=$(get_cached_option "@powerkit_plugin_gpu_icon_nvidia" "$POWERKIT_PLUGIN_GPU_ICON_NVIDIA") ;;
         amd)    icon=$(get_cached_option "@powerkit_plugin_gpu_icon_amd" "$POWERKIT_PLUGIN_GPU_ICON_AMD") ;;
         intel)  icon=$(get_cached_option "@powerkit_plugin_gpu_icon_intel" "$POWERKIT_PLUGIN_GPU_ICON_INTEL") ;;
-        apple)  icon=$(get_cached_option "@powerkit_plugin_gpu_icon_apple" "$POWERKIT_PLUGIN_GPU_ICON_APPLE") ;;
         *)      icon=$(get_cached_option "@powerkit_plugin_gpu_icon" "$POWERKIT_PLUGIN_GPU_ICON") ;;
     esac
 
-    # Extract percentage for threshold checking
-    local pct
-    pct=$(echo "$content" | grep -oE '^[0-9]+' | head -1)
-
-    if [[ -n "$pct" ]]; then
-        local warn_thresh crit_thresh
-        warn_thresh=$(get_cached_option "@powerkit_plugin_gpu_warning_threshold" "$POWERKIT_PLUGIN_GPU_WARNING_THRESHOLD")
-        crit_thresh=$(get_cached_option "@powerkit_plugin_gpu_critical_threshold" "$POWERKIT_PLUGIN_GPU_CRITICAL_THRESHOLD")
-
-        if [[ "$pct" -ge "$crit_thresh" ]]; then
-            accent=$(get_cached_option "@powerkit_plugin_gpu_critical_accent_color" "$POWERKIT_PLUGIN_GPU_CRITICAL_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_gpu_critical_accent_color_icon" "$POWERKIT_PLUGIN_GPU_CRITICAL_ACCENT_COLOR_ICON")
-        elif [[ "$pct" -ge "$warn_thresh" ]]; then
-            accent=$(get_cached_option "@powerkit_plugin_gpu_warning_accent_color" "$POWERKIT_PLUGIN_GPU_WARNING_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_gpu_warning_accent_color_icon" "$POWERKIT_PLUGIN_GPU_WARNING_ACCENT_COLOR_ICON")
-        fi
+    # Apply threshold colors using centralized helper
+    local pct threshold_result
+    pct=$(extract_numeric "$content")
+    if threshold_result=$(apply_threshold_colors "$pct" "gpu"); then
+        accent="${threshold_result%%:*}"
+        accent_icon="${threshold_result#*:}"
     fi
 
     build_display_info "$show" "$accent" "$accent_icon" "$icon"
@@ -152,7 +141,6 @@ load_plugin() {
         nvidia) result=$(get_nvidia "$show_mem") ;;
         amd)    result=$(get_amd "$show_mem") ;;
         intel)  result=$(get_intel) ;;
-        apple)  result=$(get_apple) ;;
         *)      return 0 ;;
     esac
 
