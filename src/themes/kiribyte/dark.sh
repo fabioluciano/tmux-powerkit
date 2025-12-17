@@ -44,7 +44,8 @@ declare -A THEME_COLORS=(
     [disabled]="#8a8fb5"             # Disabled state (muted)
     
     # Additional Variants
-    [success-subtle]="#c8e8b8"       # Subtle success (5% mais escuro que o tom claro anterior)
+    [success-subtle]="#c8e8b8"       # Subtle success
+    [success-strong]="#657854"       # Strong success (40% darker) (5% mais escuro que o tom claro anterior)
     [warning-strong]="#a6925c"       # Strong warning (40% darker)
     [error-strong]="#cc4050"         # Strong error (40% darker)
     [info-subtle]="#bde0ea"          # Subtle info (5% mais escuro que o tom claro anterior)

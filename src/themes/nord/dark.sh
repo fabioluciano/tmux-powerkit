@@ -44,7 +44,8 @@ declare -A THEME_COLORS=(
     [disabled]="#4c566a"             # nord3 - Disabled state
 
     # Additional Variants
-    [success-subtle]="#8fbcbb"       # nord7 - Subtle success (frost teal)
+    [success-subtle]="#8fbcbb"       # nord7 - Subtle success
+    [success-strong]="#627254"       # Strong success (40% darker) (frost teal)
     [warning-strong]="#d08770"       # nord12 - Strong warning (aurora orange)
     [error-strong]="#a54a52"         # Darker red
     [info-subtle]="#b48ead"          # nord15 - Subtle info (aurora purple)

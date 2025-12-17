@@ -45,6 +45,7 @@ declare -A THEME_COLORS=(
 
     # Additional Variants
     [success-subtle]="#b3e1e8"       # Lighter foam
+    [success-strong]="#5e7c82"       # Strong success (40% darker)
     [warning-strong]="#ea9d34"       # Darker gold
     [error-strong]="#d84f76"         # Darker love
     [info-subtle]="#5aadcb"          # Lighter pine

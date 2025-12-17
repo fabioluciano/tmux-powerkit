@@ -45,6 +45,7 @@ declare -A THEME_COLORS=(
 
     # Additional Variants
     [success-subtle]="#aed095"       # Lighter green
+    [success-strong]="#5b7548"       # Strong success (40% darker)
     [warning-strong]="#d19a66"       # Orange (darker warm)
     [error-strong]="#be5046"         # Dark red
     [info-subtle]="#7ec8d3"          # Lighter cyan

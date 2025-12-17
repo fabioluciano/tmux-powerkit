@@ -45,6 +45,7 @@ declare -A THEME_COLORS=(
 
     # Additional Variants
     [success-subtle]="#8bd5ca"       # Teal
+    [success-strong]="#638259"       # Strong success (40% darker)
     [warning-strong]="#f5a97f"       # Peach
     [error-strong]="#ee99a0"         # Maroon
     [info-subtle]="#b7bdf8"          # Lavender

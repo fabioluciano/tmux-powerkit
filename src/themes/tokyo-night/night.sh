@@ -46,6 +46,7 @@ declare -A THEME_COLORS=(
   
   # Additional Variants
   [success-subtle]="#abd88c"       # Subtle success (5% darker que o tom claro anterior)
+  [success-strong]="#6b9c3a"       # Strong success (40% darker)
   [warning-strong]="#a6833e"       # Strong warning (40% darker)
   [error-strong]="#c44a55"         # Strong error (40% darker)
   [info-subtle]="#99d6e6"          # Subtle info (5% mais escuro que o tom claro anterior)
