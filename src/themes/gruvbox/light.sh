@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#79740e"              # green
-    [warning]="#b57614"              # yellow
+    [warning]="#bc832b"              # Yellow (10% lighter)
     [error]="#9d0006"                # red
     [info]="#076678"                 # blue
 
@@ -45,7 +45,7 @@ declare -A THEME_COLORS=(
 
     # Additional Variants (Faded colors)
     [success-subtle]="#98971a"       # bright green
-    [success-strong]="#494608"       # Strong success (40% darker)
+    [success-strong]="#3e3b06"       # Strong success (15% darker)
     [warning-strong]="#af3a03"       # orange
     [error-strong]="#cc241d"         # bright red
     [info-subtle]="#458588"          # bright blue

@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#9ccfd8"              # Foam
-    [warning]="#f6c177"              # Gold
+    [warning]="#f6c784"              # Gold (10% lighter)
     [error]="#eb6f92"                # Love
     [info]="#31748f"                 # Pine
 
@@ -45,7 +45,7 @@ declare -A THEME_COLORS=(
 
     # Additional Variants
     [success-subtle]="#b3e1e8"       # Lighter foam
-    [success-strong]="#5e7c82"       # Strong success (40% darker)
+    [success-strong]="#4f696e"       # Strong success (15% darker)
     [warning-strong]="#ea9d34"       # Darker gold
     [error-strong]="#d84f76"         # Darker love
     [info-subtle]="#4a95b0"          # Lighter pine

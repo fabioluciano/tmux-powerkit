@@ -94,9 +94,9 @@ load_plugin() {
     local prev_data
     prev_data=$(cache_get "$CACHE_KEY_PREV" "$POWERKIT_TIMING_CACHE_LONG" 2>/dev/null || echo "")
     cache_set "$CACHE_KEY_PREV" "$current_rx $current_tx $current_time"
-    
+
+    # First run - no previous data, don't cache empty result (so next run recalculates immediately)
     if [[ -z "$prev_data" ]]; then
-        cache_set "$CACHE_KEY" ""
         return
     fi
     

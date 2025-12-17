@@ -256,27 +256,27 @@ format_repo_status() {
     # Issues
     if [[ "$GITHUB_SHOW_ISSUES" == "on" ]]; then
         if [[ "$GITHUB_FORMAT" == "detailed" ]]; then
-            parts+=("${GITHUB_ICON_ISSUE} ${issues}i")
+            parts+=("${GITHUB_ICON_ISSUE} $(format_number "$issues")i")
         else
-            parts+=("${GITHUB_ICON_ISSUE} ${issues}")
+            parts+=("${GITHUB_ICON_ISSUE} $(format_number "$issues")")
         fi
     fi
 
     # PRs
     if [[ "$GITHUB_SHOW_PRS" == "on" ]]; then
         if [[ "$GITHUB_FORMAT" == "detailed" ]]; then
-            parts+=("${GITHUB_ICON_PR} ${prs}p")
+            parts+=("${GITHUB_ICON_PR} $(format_number "$prs")p")
         else
-            parts+=("${GITHUB_ICON_PR} ${prs}")
+            parts+=("${GITHUB_ICON_PR} $(format_number "$prs")")
         fi
     fi
 
     # Comments
     if [[ "$show_comments" == "on" ]]; then
         if [[ "$GITHUB_FORMAT" == "detailed" ]]; then
-            parts+=("${comments}c")
+            parts+=("$(format_number "$comments")c")
         else
-            parts+=("${comments}")
+            parts+=("$(format_number "$comments")")
         fi
     fi
 

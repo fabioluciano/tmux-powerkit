@@ -57,24 +57,27 @@ make_gitlab_api_call() {
 
 count_issues() {
     local project_encoded="$1"
-    local url="$GITLAB_URL/api/v4/projects/$project_encoded/issues?state=opened&per_page=1"
-    
+    # Use issues_statistics endpoint - more reliable than X-Total header
+    local url="$GITLAB_URL/api/v4/projects/$project_encoded/issues_statistics?scope=all"
+
     local response
-    response=$(make_gitlab_api_call "$url")
-    
-    # Check X-Total header would be better but curl -I needs separate call.
-    # We can rely on pagination info in json if needed, or just count returned if small?
-    # GitLab does not return total count in body by default unless requested.
-    # Actually, default response is list. 
-    # To get count efficiently without pulling all data, we can use GraphQL or statistics API?
-    # Or just ?per_page=1&with_stats=true ? No.
-    # HEAD request specifically for X-Total headers is best practice for count
-    
     if [[ -n "$GITLAB_TOKEN" ]]; then
-        curl -s -I -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$url" 2>/dev/null | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r' || echo "0"
+        response=$(curl -s -H "PRIVATE-TOKEN: $GITLAB_TOKEN" "$url" 2>/dev/null)
     else
-        curl -s -I "$url" 2>/dev/null | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r' || echo "0"
+        response=$(curl -s "$url" 2>/dev/null)
     fi
+
+    # Extract opened count from statistics
+    local count
+    if command -v jq &>/dev/null; then
+        count=$(echo "$response" | jq -r '.statistics.counts.opened // 0' 2>/dev/null)
+    else
+        # Fallback: extract with grep/sed
+        count=$(echo "$response" | grep -o '"opened":[0-9]*' | grep -o '[0-9]*' | head -1)
+    fi
+
+    [[ -z "$count" || "$count" == "null" ]] && count=0
+    echo "$count"
 }
 
 count_mrs() {
@@ -95,17 +98,17 @@ count_mrs() {
 format_status() {
     local issues="$1"
     local mrs="$2"
-    
+
     local parts=()
-    
+
     if [[ "$GITLAB_SHOW_ISSUES" == "on" ]]; then
-        parts+=("${GITLAB_ICON_ISSUE} ${issues}")
+        parts+=("${GITLAB_ICON_ISSUE} $(format_number "$issues")")
     fi
-    
+
     if [[ "$GITLAB_SHOW_MRS" == "on" ]]; then
-        parts+=("${GITLAB_ICON_MR} ${mrs}")
+        parts+=("${GITLAB_ICON_MR} $(format_number "$mrs")")
     fi
-    
+
     local output=""
     local sep=""
     for part in "${parts[@]}"; do

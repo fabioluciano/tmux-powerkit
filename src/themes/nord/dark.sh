@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#a3be8c"              # nord14 - Success (aurora green)
-    [warning]="#ebcb8b"              # nord13 - Warning (aurora yellow)
+    [warning]="#edd096"              # Warning (10% lighter)
     [error]="#bf616a"                # nord11 - Error (aurora red)
     [info]="#81a1c1"                 # nord9 - Info (frost blue)
 
@@ -45,7 +45,7 @@ declare -A THEME_COLORS=(
 
     # Additional Variants
     [success-subtle]="#8fbcbb"       # nord7 - Subtle success
-    [success-strong]="#627254"       # Strong success (40% darker) (frost teal)
+    [success-strong]="#536047"       # Strong success (15% darker)
     [warning-strong]="#d08770"       # nord12 - Strong warning (aurora orange)
     [error-strong]="#a54a52"         # Darker red
     [info-subtle]="#b48ead"          # nord15 - Subtle info (aurora purple)

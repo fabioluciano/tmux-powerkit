@@ -72,17 +72,17 @@ count_prs() {
 format_status() {
     local issues="$1"
     local prs="$2"
-    
+
     local parts=()
-    
+
     if [[ "$BITBUCKET_SHOW_ISSUES" == "on" ]]; then
-        parts+=("${BITBUCKET_ICON_ISSUE} ${issues}")
+        parts+=("${BITBUCKET_ICON_ISSUE} $(format_number "$issues")")
     fi
-    
+
     if [[ "$BITBUCKET_SHOW_PRS" == "on" ]]; then
-        parts+=("${BITBUCKET_ICON_PR} ${prs}")
+        parts+=("${BITBUCKET_ICON_PR} $(format_number "$prs")")
     fi
-    
+
     local output=""
     local sep=""
     for part in "${parts[@]}"; do

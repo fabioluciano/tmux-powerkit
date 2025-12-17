@@ -93,7 +93,7 @@ plugin_get_type() { printf 'conditional'; }
 plugin_get_display_info() {
     local content="$1"
     local show="0"
-    local icon accent accent_icon
+    local icon="" accent="" accent_icon=""
 
     # Get configured options
     local show_when_locked show_when_unlocked
@@ -179,6 +179,14 @@ setup_keybindings() {
     lock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_lock_key" "$POWERKIT_PLUGIN_BITWARDEN_LOCK_KEY")
     [[ -n "$lock_key" ]] && tmux bind-key "$lock_key" run-shell \
         "bash '$helpers_dir/bitwarden_password_selector.sh' lock"
+
+    # TOTP selector (prefix + C-t for TOTP codes)
+    local totp_key totp_width totp_height
+    totp_key=$(get_tmux_option "@powerkit_plugin_bitwarden_totp_selector_key" "$POWERKIT_PLUGIN_BITWARDEN_TOTP_SELECTOR_KEY")
+    totp_width=$(get_tmux_option "@powerkit_plugin_bitwarden_totp_selector_width" "$POWERKIT_PLUGIN_BITWARDEN_TOTP_SELECTOR_WIDTH")
+    totp_height=$(get_tmux_option "@powerkit_plugin_bitwarden_totp_selector_height" "$POWERKIT_PLUGIN_BITWARDEN_TOTP_SELECTOR_HEIGHT")
+    [[ -n "$totp_key" ]] && tmux bind-key "$totp_key" display-popup -E -w "$totp_width" -h "$totp_height" \
+        "bash '$helpers_dir/bitwarden_totp_selector.sh' select"
 }
 
 # Only run if executed directly (not sourced)

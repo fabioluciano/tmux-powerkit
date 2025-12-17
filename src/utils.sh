@@ -259,6 +259,48 @@ evaluate_condition() {
     esac
 }
 
+# Format large numbers with K/M/B suffixes
+# Usage: format_number <number> [precision]
+# Examples: 1234 -> 1.2K, 47000 -> 47K, 1234567 -> 1.2M
+format_number() {
+    local num="${1:-0}"
+    local precision="${2:-1}"
+
+    # Handle non-numeric or empty input
+    [[ ! "$num" =~ ^[0-9]+$ ]] && { echo "$num"; return; }
+
+    if (( num >= 1000000000 )); then
+        # Billions
+        local div=$((num / 1000000000))
+        local rem=$(( (num % 1000000000) / 100000000 ))
+        if (( rem > 0 && precision > 0 )); then
+            printf '%d.%dB' "$div" "$rem"
+        else
+            printf '%dB' "$div"
+        fi
+    elif (( num >= 1000000 )); then
+        # Millions
+        local div=$((num / 1000000))
+        local rem=$(( (num % 1000000) / 100000 ))
+        if (( rem > 0 && precision > 0 )); then
+            printf '%d.%dM' "$div" "$rem"
+        else
+            printf '%dM' "$div"
+        fi
+    elif (( num >= 1000 )); then
+        # Thousands
+        local div=$((num / 1000))
+        local rem=$(( (num % 1000) / 100 ))
+        if (( rem > 0 && precision > 0 )); then
+            printf '%d.%dK' "$div" "$rem"
+        else
+            printf '%dK' "$div"
+        fi
+    else
+        printf '%d' "$num"
+    fi
+}
+
 # Build display info string for plugins
 # Usage: build_display_info <show> [accent] [accent_icon] [icon]
 build_display_info() {
@@ -266,7 +308,7 @@ build_display_info() {
     local accent="${2:-}"
     local accent_icon="${3:-}"
     local icon="${4:-}"
-    
+
     printf '%s:%s:%s:%s' "$show" "$accent" "$accent_icon" "$icon"
 }
 

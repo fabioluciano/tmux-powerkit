@@ -348,10 +348,18 @@ for ((i=0; i<total; i++)); do
         output+="${sep_start}#[fg=${TEXT_COLOR},bg=${accent_icon},bold]${icon} ${sep_mid}"
     fi
     
+    # Content text: use accent-strong + bold when threshold is triggered for better visibility
+    content_fg="${TEXT_COLOR}"
+    content_style=""
+    if [[ "$has_threshold" == "1" && -n "$accent_strong" ]]; then
+        content_fg="$accent_strong"
+        content_style=",bold"
+    fi
+
     if [[ $i -eq $((total-1)) ]]; then
-        output+="#[fg=${TEXT_COLOR},bg=${accent}] ${content} "
+        output+="#[fg=${content_fg},bg=${accent}${content_style}] ${content} "
     else
-        output+="#[fg=${TEXT_COLOR},bg=${accent}] ${content} #[none]"
+        output+="#[fg=${content_fg},bg=${accent}${content_style}] ${content} #[none]"
     fi
     
     prev_accent="$accent"
