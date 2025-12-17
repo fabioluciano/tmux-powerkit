@@ -47,12 +47,12 @@ declare -A THEME_COLORS=(
   # Additional Variants
   [success-subtle]="#abd88c"       # Subtle success (5% darker que o tom claro anterior)
   [success-strong]="#5a8431"       # Strong success (15% darker than previous)
-  [warning-strong]="#a6833e"       # Strong warning (40% darker)
-  [error-strong]="#c44a55"         # Strong error (40% darker)
-  [info-subtle]="#99d6e6"          # Subtle info (5% mais escuro que o tom claro anterior)
-  [info-strong]="#3990b3"          # Strong info (darker cyan)
-  [error-subtle]="#f18fa0"          # Subtle error (5% mais clara)
-  [warning-subtle]="#eac07a"        # Subtle warning (um pouco mais clara que warning)
+  [warning-strong]="#786344"       # Strong warning (44.2% darker)
+  [error-strong]="#89414f"         # Strong error (44.2% darker)
+  [info-subtle]="#95d8ff"          # Subtle info (18.9% lighter)
+  [info-strong]="#45738e"          # Strong info (44.2% darker)
+  [error-subtle]="#f88fa3"          # Subtle error (18.9% lighter)
+  [warning-subtle]="#e0c193"        # Subtle warning (18.9% lighter)
   
   # System Colors
   [white]="#ffffff"                # Pure white

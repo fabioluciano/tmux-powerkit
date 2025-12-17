@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#9ccfd8"              # Foam
-    [warning]="#f6c784"              # Gold (10% lighter)
+    [warning]="#f6c887"              # Gold (13% lighter)
     [error]="#eb6f92"                # Love
     [info]="#3e8fb0"                 # Pine
 

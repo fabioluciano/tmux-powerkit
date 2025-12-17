@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#a3be8c"              # nord14 - Success (aurora green)
-    [warning]="#edd096"              # Warning (10% lighter)
+    [warning]="#edd199"              # Warning (13% lighter)
     [error]="#bf616a"                # nord11 - Error (aurora red)
     [info]="#81a1c1"                 # nord9 - Info (frost blue)
 

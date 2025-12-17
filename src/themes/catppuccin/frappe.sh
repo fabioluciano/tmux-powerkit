@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#a6d189"              # Green
-    [warning]="#e7cd9b"              # Yellow (10% lighter)
+    [warning]="#e7ce9e"              # Yellow (13% lighter)
     [error]="#e78284"                # Red
     [info]="#99d1db"                 # Sky
 
@@ -44,14 +44,14 @@ declare -A THEME_COLORS=(
     [disabled]="#737994"             # Overlay1 - Disabled state
 
     # Additional Variants
-    [success-subtle]="#81c8be"       # Teal
-    [success-strong]="#546c45"       # Strong success (15% darker)
-    [warning-strong]="#ef9f76"       # Peach
-    [error-strong]="#ea999c"         # Maroon
-    [info-subtle]="#babbf1"          # Lavender
-    [info-strong]="#8caaee"          # Blue
-    [error-subtle]="#f4b8e4"         # Pink
-    [warning-subtle]="#f2d5cf"       # Rosewater
+    [success-subtle]="#b6d99f"       # Subtle success (18.9% lighter)
+    [success-strong]="#5c744c"       # Strong success (44.2% darker)
+    [warning-strong]="#807258"       # Strong warning (44.2% darker)
+    [error-strong]="#804849"         # Strong error (44.2% darker)
+    [info-subtle]="#acd9e1"          # Subtle info (18.9% lighter)
+    [info-strong]="#55747a"          # Strong info (44.2% darker)
+    [error-subtle]="#eb999b"         # Subtle error (18.9% lighter)
+    [warning-subtle]="#ebd7b0"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # Text

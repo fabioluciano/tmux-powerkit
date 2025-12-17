@@ -33,7 +33,7 @@ declare -A THEME_COLORS=(
 
     # Status Colors (PowerKit Standard)
     [success]="#859900"              # green
-    [warning]="#bc9419"              # Yellow (10% lighter)
+    [warning]="#be971f"              # Yellow (13% lighter)
     [error]="#dc322f"                # red
     [info]="#2aa198"                 # cyan
 
