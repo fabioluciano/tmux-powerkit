@@ -1,3 +1,10 @@
+## [4.0.2](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.1...v4.0.2) (2025-12-17)
+
+
+### Bug Fixes
+
+* correct typo in Bitwarden unlock height variable ([#132](https://github.com/fabioluciano/tmux-powerkit/issues/132)) ([127517a](https://github.com/fabioluciano/tmux-powerkit/commit/127517a42704b24601ca3fe8e31c189db014c89c))
+
 ## [4.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.0...v4.0.1) (2025-12-17)
 
 
