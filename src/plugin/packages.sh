@@ -46,10 +46,10 @@ detect_backend() {
 
     case "$backend" in
         brew|yay|apt|dnf|pacman)
-            require_cmd "$backend" 1 && _DETECTED_PACKAGE_MANAGER="$backend" && echo "$backend" && return ;;
+            require_cmd "$backend" && _DETECTED_PACKAGE_MANAGER="$backend" && echo "$backend" && return ;;
         auto|*)
             for pm in brew yay dnf apt pacman; do
-                require_cmd "$pm" 1 && _DETECTED_PACKAGE_MANAGER="$pm" && echo "$pm" && return
+                require_cmd "$pm" && _DETECTED_PACKAGE_MANAGER="$pm" && echo "$pm" && return
             done ;;
     esac
     echo ""

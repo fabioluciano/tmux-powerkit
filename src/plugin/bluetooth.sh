@@ -182,39 +182,40 @@ fmt_device() {
     done
     
     # Determine what to display based on battery_type
+    # Note: Use ${bats[X]:-} syntax to avoid "unbound variable" error with set -eu
     local bat_display=""
     case "$_battery_type" in
         left)
-            [[ -n "${bats[L]}" ]] && bat_display="L:${bats[L]}%"
+            [[ -n "${bats[L]:-}" ]] && bat_display="L:${bats[L]}%"
             ;;
         right)
-            [[ -n "${bats[R]}" ]] && bat_display="R:${bats[R]}%"
+            [[ -n "${bats[R]:-}" ]] && bat_display="R:${bats[R]}%"
             ;;
         case)
-            [[ -n "${bats[C]}" ]] && bat_display="C:${bats[C]}%"
+            [[ -n "${bats[C]:-}" ]] && bat_display="C:${bats[C]}%"
             ;;
         all)
             local bat_parts=()
-            [[ -n "${bats[L]}" ]] && bat_parts+=("L:${bats[L]}%")
-            [[ -n "${bats[R]}" ]] && bat_parts+=("R:${bats[R]}%")
-            [[ -n "${bats[C]}" ]] && bat_parts+=("C:${bats[C]}%")
-            [[ -n "${bats[B]}" ]] && bat_parts+=("${bats[B]}%")
+            [[ -n "${bats[L]:-}" ]] && bat_parts+=("L:${bats[L]}%")
+            [[ -n "${bats[R]:-}" ]] && bat_parts+=("R:${bats[R]}%")
+            [[ -n "${bats[C]:-}" ]] && bat_parts+=("C:${bats[C]}%")
+            [[ -n "${bats[B]:-}" ]] && bat_parts+=("${bats[B]}%")
             bat_display=$(printf '%s / ' "${bat_parts[@]}" | sed 's/ \/ $//')
             ;;
         min|*)
             # For TWS (L/R): show minimum, ignore case
             # For single battery: show it
-            if [[ -n "${bats[L]}" && -n "${bats[R]}" ]]; then
+            if [[ -n "${bats[L]:-}" && -n "${bats[R]:-}" ]]; then
                 local left=${bats[L]} right=${bats[R]}
                 local min=$((left < right ? left : right))
                 bat_display="$min%"
-            elif [[ -n "${bats[L]}" ]]; then
+            elif [[ -n "${bats[L]:-}" ]]; then
                 bat_display="${bats[L]}%"
-            elif [[ -n "${bats[R]}" ]]; then
+            elif [[ -n "${bats[R]:-}" ]]; then
                 bat_display="${bats[R]}%"
-            elif [[ -n "${bats[B]}" ]]; then
+            elif [[ -n "${bats[B]:-}" ]]; then
                 bat_display="${bats[B]}%"
-            elif [[ -n "${bats[C]}" ]]; then
+            elif [[ -n "${bats[C]:-}" ]]; then
                 bat_display="${bats[C]}%"
             fi
             ;;

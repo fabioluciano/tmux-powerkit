@@ -1,3 +1,24 @@
+## [4.0.4](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.3...v4.0.4) (2025-12-17)
+
+
+### Bug Fixes
+
+* handle unbound variable errors in battery display and package manager detection; enhance SSH destination retrieval ([1ff6133](https://github.com/fabioluciano/tmux-powerkit/commit/1ff613319aa1c19e212c06484c757d28d57c2cf3))
+
+## [4.0.3](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.2...v4.0.3) (2025-12-17)
+
+
+### Bug Fixes
+
+* update theme colors for improved consistency across various themes ([#133](https://github.com/fabioluciano/tmux-powerkit/issues/133)) ([8b7d092](https://github.com/fabioluciano/tmux-powerkit/commit/8b7d092bdf490384a3777dfc223cc55777cea009))
+
+## [4.0.2](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.1...v4.0.2) (2025-12-17)
+
+
+### Bug Fixes
+
+* correct typo in Bitwarden unlock height variable ([#132](https://github.com/fabioluciano/tmux-powerkit/issues/132)) ([127517a](https://github.com/fabioluciano/tmux-powerkit/commit/127517a42704b24601ca3fe8e31c189db014c89c))
+
 ## [4.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.0...v4.0.1) (2025-12-17)
 
 

@@ -34,17 +34,64 @@ is_ssh_in_pane() {
     return 1
 }
 
+# Get SSH destination from pane's ssh process
+get_ssh_destination() {
+    local pane_pid
+    pane_pid=$(tmux display-message -p "#{pane_pid}" 2>/dev/null)
+    [[ -z "$pane_pid" ]] && return 1
+
+    local pid cmd args dest
+    for pid in $pane_pid $(pgrep -P "$pane_pid" 2>/dev/null); do
+        cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
+        if [[ "$cmd" == "ssh" ]]; then
+            args=$(ps -p "$pid" -o args= 2>/dev/null)
+            # Extract destination: skip flags (-X, -p 22, etc) and get user@host or host
+            # Parse args to find the destination (first non-flag argument after 'ssh')
+            dest=$(echo "$args" | awk '
+            {
+                for (i=2; i<=NF; i++) {
+                    # Skip flags and their arguments
+                    if ($i ~ /^-[bcDEeFIiJLlmOopQRSWw]$/) { i++; continue }
+                    if ($i ~ /^-/) continue
+                    # First non-flag is the destination
+                    print $i
+                    exit
+                }
+            }')
+            [[ -n "$dest" ]] && { printf '%s' "$dest"; return 0; }
+        fi
+    done
+
+    return 1
+}
+
 get_ssh_info() {
     local format
     format=$(get_cached_option "@powerkit_plugin_ssh_format" "$POWERKIT_PLUGIN_SSH_FORMAT")
 
+    # Check if we're in an incoming SSH session or outgoing SSH connection
+    local is_incoming=false
+    is_ssh_session && is_incoming=true
+
     case "$format" in
         host)
-            # Remote host from SSH_CONNECTION
-            [[ -n "${SSH_CONNECTION:-}" ]] && printf '%s' "${SSH_CONNECTION%% *}"
+            if [[ "$is_incoming" == "true" ]]; then
+                # Remote host from SSH_CONNECTION (incoming)
+                [[ -n "${SSH_CONNECTION:-}" ]] && printf '%s' "${SSH_CONNECTION%% *}"
+            else
+                # Outgoing SSH: get destination from process
+                local dest
+                dest=$(get_ssh_destination) && printf '%s' "${dest#*@}"
+            fi
             ;;
         user)
-            whoami 2>/dev/null
+            if [[ "$is_incoming" == "true" ]]; then
+                whoami 2>/dev/null
+            else
+                local dest
+                dest=$(get_ssh_destination)
+                [[ "$dest" == *@* ]] && printf '%s' "${dest%%@*}" || whoami 2>/dev/null
+            fi
             ;;
         indicator)
             local text
@@ -53,7 +100,13 @@ get_ssh_info() {
             ;;
         *)
             # Default: user@hostname
-            printf '%s@%s' "$(whoami)" "$(hostname -s 2>/dev/null || hostname)"
+            if [[ "$is_incoming" == "true" ]]; then
+                printf '%s@%s' "$(whoami)" "$(hostname -s 2>/dev/null || hostname)"
+            else
+                # Outgoing SSH: show destination
+                local dest
+                dest=$(get_ssh_destination) && printf '%s' "$dest"
+            fi
             ;;
     esac
 }
