@@ -44,7 +44,6 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 3. Verify visual appearance and plugin functionality
 4. Test different themes and plugin combinations
 
-
 ## Architecture
 
 ### Entry Point
