@@ -28,18 +28,18 @@ declare -A THEME_COLORS=(
     # Semantic Colors (PowerKit Standard)
     [accent]="#d79921"               # yellow - Main accent (warm)
     [primary]="#458588"              # blue - Primary
-    [secondary]="#504945"            # bg2 - Secondary
+    [secondary]="#504945"            # bg2 - Secondary (content bg)
     [secondary-strong]="#3c3836"     # bg1 - Strong secondary
 
     # Status Colors (PowerKit Standard)
     [success]="#98971a"              # green
-    [warning]="#dca53d"              # Yellow (13% lighter)
+    [warning]="#d79921"              # yellow (original gruvbox)
     [error]="#cc241d"                # red
     [info]="#458588"                 # blue
 
     # Interactive States
     [hover]="#3c3836"                # bg1 - Hover state
-    [active]="#689d6a"               # aqua - Active state
+    [active]="#665c54"               # bg3 - Active state (icon bg, lighter)
     [focus]="#fabd2f"                # bright yellow - Focus state
     [disabled]="#665c54"             # bg3 - Disabled state
 

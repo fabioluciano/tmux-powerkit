@@ -174,26 +174,51 @@ declare -A POWERKIT_THEME_COLORS
 # Load theme and populate POWERKIT_THEME_COLORS
 load_powerkit_theme() {
     local theme="" theme_variant="" theme_dir="" theme_file=""
-    
-    # Get theme name
-    theme=$(get_tmux_option "@powerkit_theme" "$POWERKIT_DEFAULT_THEME")
-    theme_variant=$(get_tmux_option "@powerkit_theme_variant" "")
-    
-    # Auto-detect variant if not specified
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/${_DEFAULT_CACHE_DIRECTORY:-tmux-powerkit}"
+    local theme_cache_file="$cache_dir/current_theme"
+
+    # First, try to read from persistent cache (survives kill-server)
+    if [[ -f "$theme_cache_file" ]]; then
+        local cached_theme
+        cached_theme=$(cat "$theme_cache_file" 2>/dev/null)
+        if [[ -n "$cached_theme" && "$cached_theme" == *"/"* ]]; then
+            theme="${cached_theme%%/*}"
+            theme_variant="${cached_theme##*/}"
+        fi
+    fi
+
+    # Fallback to tmux options if cache didn't provide values
+    [[ -z "$theme" ]] && theme=$(get_tmux_option "@powerkit_theme" "$POWERKIT_DEFAULT_THEME")
+    [[ -z "$theme_variant" ]] && theme_variant=$(get_tmux_option "@powerkit_theme_variant" "")
+
+    # Final fallback for theme
+    [[ -z "$theme" ]] && theme="tokyo-night"
+
+    theme_dir="$CURRENT_DIR/themes/${theme}"
+
+    # Check if specified variant exists, otherwise auto-detect first available
+    if [[ -n "$theme_variant" ]]; then
+        theme_file="$CURRENT_DIR/themes/${theme}/${theme_variant}.sh"
+        if [[ ! -f "$theme_file" ]]; then
+            # Variant doesn't exist for this theme - log warning and auto-detect
+            log_warn "theme" "Variant '$theme_variant' not found for theme '$theme', auto-detecting..."
+            theme_variant=""
+        fi
+    fi
+
+    # Auto-detect variant if not specified or not found
     if [[ -z "$theme_variant" ]]; then
-        theme_dir="$CURRENT_DIR/themes/${theme}"
         if [[ -d "$theme_dir" ]]; then
             theme_variant=$(ls "$theme_dir"/*.sh 2>/dev/null | head -1 | xargs basename -s .sh 2>/dev/null || echo "")
         fi
     fi
-    
+
     # Fallback to defaults
     [[ -z "$theme_variant" ]] && theme_variant="$POWERKIT_DEFAULT_THEME_VARIANT"
-    
-    # Final fallback
-    [[ -z "$theme" ]] && theme="tokyo-night"
+
+    # Final fallback for variant
     [[ -z "$theme_variant" ]] && theme_variant="night"
-    
+
     # Load theme file
     theme_file="$CURRENT_DIR/themes/${theme}/${theme_variant}.sh"
     if [[ -f "$theme_file" ]]; then
@@ -203,6 +228,18 @@ load_powerkit_theme() {
             for key in "${!THEME_COLORS[@]}"; do
                 POWERKIT_THEME_COLORS["$key"]="${THEME_COLORS[$key]}"
             done
+        fi
+    else
+        # Theme file still not found - load default tokyo-night as last resort
+        log_error "theme" "Theme file not found: $theme_file, loading default tokyo-night/night"
+        theme_file="$CURRENT_DIR/themes/tokyo-night/night.sh"
+        if [[ -f "$theme_file" ]]; then
+            . "$theme_file"
+            if declare -p THEME_COLORS &>/dev/null; then
+                for key in "${!THEME_COLORS[@]}"; do
+                    POWERKIT_THEME_COLORS["$key"]="${THEME_COLORS[$key]}"
+                done
+            fi
         fi
     fi
 }

@@ -28,18 +28,18 @@ declare -A THEME_COLORS=(
     # Semantic Colors (PowerKit Standard)
     [accent]="#268bd2"               # blue - Main accent
     [primary]="#6c71c4"              # violet - Primary
-    [secondary]="#073642"            # base02 - Secondary
-    [secondary-strong]="#002b36"     # base03 - Strong secondary
+    [secondary]="#073642"            # base02 - Secondary (plugin content bg)
+    [secondary-strong]="#002b36"     # base03 - Strong secondary (darker)
 
     # Status Colors (PowerKit Standard)
     [success]="#859900"              # green
-    [warning]="#be971f"              # Yellow (13% lighter)
+    [warning]="#b58900"              # yellow (original solarized)
     [error]="#dc322f"                # red
     [info]="#2aa198"                 # cyan
 
     # Interactive States
     [hover]="#073642"                # base02 - Hover state
-    [active]="#d33682"               # magenta - Active state
+    [active]="#586e75"               # base01 - Active state (plugin icon bg)
     [focus]="#268bd2"                # blue - Focus state
     [disabled]="#586e75"             # base01 - Disabled state
 

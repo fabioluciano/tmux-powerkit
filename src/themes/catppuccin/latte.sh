@@ -21,25 +21,25 @@ declare -A THEME_COLORS=(
     [text-disabled]="#9ca0b0"        # Overlay1
 
     # Border Colors
-    [border]="#bcc0cc"               # Surface1
-    [border-subtle]="#ccd0da"        # Surface0
-    [border-strong]="#acb0be"        # Surface2
+    [border]="#bcc0cc"               # Surface1 (inactive window content bg)
+    [border-subtle]="#acb0be"        # Surface2 (inactive window index bg - visible on surface)
+    [border-strong]="#9ca0b0"        # Overlay1 - Strong border
 
     # Semantic Colors (PowerKit Standard)
     [accent]="#8839ef"               # Mauve - Main accent
-    [primary]="#1e66f5"              # Blue - Primary
-    [secondary]="#bcc0cc"            # Surface1 - Secondary
-    [secondary-strong]="#ccd0da"     # Surface0 - Strong secondary
+    [primary]="#7287fd"              # Lavender - Primary (lighter blue for dark text contrast)
+    [secondary]="#6c6f85"            # Subtext0 - Secondary (dark for white text)
+    [secondary-strong]="#4c4f69"     # Text - Strong secondary (darker)
 
     # Status Colors (PowerKit Standard)
     [success]="#40a02b"              # Green
-    [warning]="#e29c39"              # Yellow (13% lighter)
+    [warning]="#df8e1d"              # Yellow (original catppuccin)
     [error]="#d20f39"                # Red
     [info]="#04a5e5"                 # Sky
 
     # Interactive States
     [hover]="#ccd0da"                # Surface0 - Hover state
-    [active]="#209fb5"               # Sapphire - Active state
+    [active]="#7c7f93"               # Overlay0 - Active state (icon bg)
     [focus]="#7287fd"                # Lavender - Focus state
     [disabled]="#9ca0b0"             # Overlay1 - Disabled state
 

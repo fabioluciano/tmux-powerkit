@@ -21,25 +21,25 @@ declare -A THEME_COLORS=(
     [text-disabled]="#a89984"        # bg3 - Disabled text
 
     # Border Colors
-    [border]="#d5c4a1"               # bg2 - Default border
-    [border-subtle]="#ebdbb2"        # bg1 - Subtle border
+    [border]="#d5c4a1"               # bg2 - Default border (inactive window content bg)
+    [border-subtle]="#bdae93"        # bg3 - Subtle border (inactive window index bg - visible on surface)
     [border-strong]="#7c6f64"        # bg4 - Strong border
 
     # Semantic Colors (PowerKit Standard)
     [accent]="#b57614"               # yellow - Main accent (warm)
     [primary]="#076678"              # blue - Primary
-    [secondary]="#d5c4a1"            # bg2 - Secondary
-    [secondary-strong]="#ebdbb2"     # bg1 - Strong secondary
+    [secondary]="#665c54"            # gray - Secondary (dark for white text)
+    [secondary-strong]="#3c3836"     # fg1 - Strong secondary (darker)
 
     # Status Colors (PowerKit Standard)
     [success]="#79740e"              # green
-    [warning]="#be8631"              # Yellow (13% lighter)
+    [warning]="#b57614"              # yellow (original gruvbox)
     [error]="#9d0006"                # red
     [info]="#076678"                 # blue
 
     # Interactive States
     [hover]="#ebdbb2"                # bg1 - Hover state
-    [active]="#427b58"               # aqua - Active state
+    [active]="#7c6f64"               # bg4 - Active state (icon bg)
     [focus]="#d79921"                # bright yellow - Focus state
     [disabled]="#bdae93"             # bg3 - Disabled state
 

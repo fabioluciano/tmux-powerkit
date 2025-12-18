@@ -25,8 +25,8 @@ source_guard "defaults" && return 0
 _DEFAULT_CACHE_DIRECTORY=tmux-powerkit
 
 # Default colors (semantic names)
-_DEFAULT_ACCENT="secondary"
-_DEFAULT_ACCENT_ICON="active"
+_DEFAULT_ACCENT="active"
+_DEFAULT_ACCENT_ICON="secondary"
 _DEFAULT_SUCCESS="success"
 _DEFAULT_SUCCESS_ICON="success-subtle"
 _DEFAULT_INFO="info"

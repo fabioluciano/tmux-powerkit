@@ -1,6 +1,6 @@
 # ⚡ PowerKit for tmux
 
-A powerful, modular tmux status bar framework with 37+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with 9 beautiful themes including Tokyo Night, Catppuccin, Dracula, Gruvbox, Nord, One Dark, Rosé Pine, and Solarized.
+A powerful, modular tmux status bar framework with 37+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with 14 beautiful themes (25+ variants) including Tokyo Night, Catppuccin, Kanagawa, Everforest, Ayu, GitHub, Dracula, Gruvbox, Nord, One Dark, Rosé Pine, and Solarized.
 
 > **📢 Note:** This project was formerly known as `tmux-tokyo-night`. See [Migration Guide](../../wiki/Migration-Guide) for upgrade instructions.
 
@@ -19,7 +19,7 @@ A powerful, modular tmux status bar framework with 37+ built-in plugins for disp
 
 ## ✨ Features
 
-- 🎨 **9 themes** - Tokyo Night, Catppuccin (4 variants), Dracula, Gruvbox, Kiribyte, Nord, One Dark, Rosé Pine (3 variants), Solarized
+- 🎨 **14 themes (25+ variants)** - Tokyo Night, Catppuccin, Kanagawa, Everforest, Ayu, GitHub, Dracula, Gruvbox, Kiribyte, Nord, One Dark, Rosé Pine, Solarized
 - 🔌 **37+ built-in plugins** - System monitoring, development tools, security keys, media players
 - ⚡ **Performance optimized** - Intelligent caching with configurable TTL
 - 🎯 **Fully customizable** - Semantic colors, icons, formats, and separators
@@ -72,15 +72,19 @@ See **[Quick Start Guide](../../wiki/Quick-Start)** for more examples.
 
 | Theme | Variants | Description |
 |-------|----------|-------------|
-| **Tokyo Night** | `night` | Deep dark theme with vibrant accents (default) |
-| **Catppuccin** | `mocha`, `macchiato`, `frappe`, `latte` | Soothing pastel theme with 4 flavor variants |
-| **Dracula** | `dark` | Dark theme with vibrant colors |
+| **Ayu** | `dark`, `light`, `mirage` | Minimal theme with warm accents |
+| **Catppuccin** | `frappe`, `latte`, `macchiato`, `mocha` | Soothing pastel theme with 4 flavor variants |
+| **Dracula** | `dark` | Classic purple/pink dark theme |
+| **Everforest** | `dark`, `light` | Green-based theme, easy on the eyes |
+| **GitHub** | `dark`, `light` | GitHub's familiar color scheme |
 | **Gruvbox** | `dark`, `light` | Retro groove color scheme |
-| **Kiribyte** | `dark` | Pastel dark theme with soft colors |
+| **Kanagawa** | `dragon`, `lotus`, `wave` | Japanese art inspired (Hokusai) |
+| **Kiribyte** | `dark`, `light` | Soft pastel theme |
 | **Nord** | `dark` | Arctic, north-bluish color palette |
 | **One Dark** | `dark` | Atom-inspired dark theme |
-| **Rosé Pine** | `main`, `moon`, `dawn` | All-natural pine, faux fur and soho vibes |
+| **Rosé Pine** | `dawn`, `main`, `moon` | All-natural pine, faux fur and soho vibes |
 | **Solarized** | `dark`, `light` | Precision colors for machines and people |
+| **Tokyo Night** | `day`, `night`, `storm` | Neo-Tokyo inspired (default) |
 
 ```bash
 # Tokyo Night (default)
@@ -91,16 +95,20 @@ set -g @powerkit_theme_variant 'night'
 set -g @powerkit_theme 'catppuccin'
 set -g @powerkit_theme_variant 'mocha'
 
-# Dracula
-set -g @powerkit_theme 'dracula'
+# Kanagawa Wave
+set -g @powerkit_theme 'kanagawa'
+set -g @powerkit_theme_variant 'wave'
+
+# Everforest Dark
+set -g @powerkit_theme 'everforest'
 set -g @powerkit_theme_variant 'dark'
 
-# Gruvbox Dark
-set -g @powerkit_theme 'gruvbox'
-set -g @powerkit_theme_variant 'dark'
+# Ayu Mirage
+set -g @powerkit_theme 'ayu'
+set -g @powerkit_theme_variant 'mirage'
 
-# Nord
-set -g @powerkit_theme 'nord'
+# GitHub Dark
+set -g @powerkit_theme 'github'
 set -g @powerkit_theme_variant 'dark'
 
 # Rosé Pine

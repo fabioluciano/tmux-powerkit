@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file providdes guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Overview
 
-PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 37+ plugins for displaying system information with a semantic color system that works across 9 themes. Distributed through TPM (Tmux Plugin Manager).
+PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 37+ plugins for displaying system information with a semantic color system that works across 14 themes (with 25+ variants). Distributed through TPM (Tmux Plugin Manager).
 
 ## Development Commands
 
@@ -43,6 +43,7 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 2. Source the plugin: `tmux source ~/.tmux.conf`
 3. Verify visual appearance and plugin functionality
 4. Test different themes and plugin combinations
+
 
 ## Architecture
 
@@ -170,6 +171,10 @@ Located in `src/themes/<theme>/<variant>.sh`:
 
 ```text
 src/themes/
+├── ayu/
+│   ├── dark.sh
+│   ├── light.sh
+│   └── mirage.sh
 ├── catppuccin/
 │   ├── frappe.sh
 │   ├── latte.sh
@@ -177,11 +182,22 @@ src/themes/
 │   └── mocha.sh
 ├── dracula/
 │   └── dark.sh
+├── everforest/
+│   ├── dark.sh
+│   └── light.sh
+├── github/
+│   ├── dark.sh
+│   └── light.sh
 ├── gruvbox/
 │   ├── dark.sh
 │   └── light.sh
+├── kanagawa/
+│   ├── dragon.sh
+│   ├── lotus.sh
+│   └── wave.sh
 ├── kiribyte/
-│   └── dark.sh
+│   ├── dark.sh
+│   └── light.sh
 ├── nord/
 │   └── dark.sh
 ├── onedark/
@@ -194,7 +210,9 @@ src/themes/
 │   ├── dark.sh
 │   └── light.sh
 └── tokyo-night/
-    └── night.sh
+    ├── day.sh
+    ├── night.sh
+    └── storm.sh
 ```
 
 Each theme defines a `THEME_COLORS` associative array with semantic color names:
@@ -282,8 +300,8 @@ All options use `@powerkit_*` prefix:
 
 ```bash
 # Core
-@powerkit_theme              # Theme name (tokyo-night, catppuccin, dracula, gruvbox, kiribyte, nord, onedark, rose-pine, solarized)
-@powerkit_theme_variant      # Variant (depends on theme: night, dark, light, mocha, frappe, latte, macchiato, dawn, main, moon)
+@powerkit_theme              # Theme name (ayu, catppuccin, dracula, everforest, github, gruvbox, kanagawa, kiribyte, nord, onedark, rose-pine, solarized, tokyo-night)
+@powerkit_theme_variant      # Variant (depends on theme - see theme list below)
 @powerkit_plugins            # Comma-separated plugin list
 @powerkit_transparent        # true/false
 
@@ -437,6 +455,34 @@ Required semantic colors:
 - Plugin colors use semantic names resolved via `get_powerkit_color()`
 - Keybindings always set up even when plugin `show='off'`
 - Battery plugin: threshold colors persist even when charging (intentional behavior)
+
+## Theme Persistence
+
+The selected theme persists across `tmux kill-server` via a cache file:
+
+- **Cache file**: `~/.cache/tmux-powerkit/current_theme`
+- **Format**: `theme/variant` (e.g., `tokyo-night/night`)
+- **Loading order**: Cache file → tmux options → defaults
+- **Implementation**: `load_powerkit_theme()` in `src/utils.sh` reads cache first
+- **Theme selector**: `src/helpers/theme_selector.sh` saves selection to cache
+
+## Available Themes and Variants
+
+| Theme | Variants | Description |
+|-------|----------|-------------|
+| **ayu** | dark, light, mirage | Minimal with warm accents |
+| **catppuccin** | frappe, latte, macchiato, mocha | Pastel colors, 4 flavors |
+| **dracula** | dark | Classic purple/pink dark theme |
+| **everforest** | dark, light | Green-based, easy on eyes |
+| **github** | dark, light | GitHub's familiar colors |
+| **gruvbox** | dark, light | Retro groove colors |
+| **kanagawa** | dragon, lotus, wave | Japanese art inspired |
+| **kiribyte** | dark, light | Soft pastel theme |
+| **nord** | dark | Arctic, north-bluish colors |
+| **onedark** | dark | Atom One Dark inspired |
+| **rose-pine** | dawn, main, moon | All natural pine colors |
+| **solarized** | dark, light | Ethan Schoonover's classic |
+| **tokyo-night** | day, night, storm | Neo-Tokyo inspired |
 
 ## Known Issues / Gotchas
 

@@ -21,25 +21,25 @@ declare -A THEME_COLORS=(
     [text-disabled]="#9893a5"        # Muted
 
     # Border Colors
-    [border]="#f2e9e1"               # Overlay
-    [border-subtle]="#fffaf3"        # Surface
-    [border-strong]="#cecacd"        # Highlight Med
+    [border]="#dfdad9"               # Muted (inactive window content bg)
+    [border-subtle]="#cecacd"        # Highlight Med (inactive window index bg - visible on surface)
+    [border-strong]="#9893a5"        # Muted text - Strong border
 
     # Semantic Colors (PowerKit Standard)
     [accent]="#907aa9"               # Iris - Main accent
     [primary]="#d7827e"              # Rose - Primary
-    [secondary]="#f2e9e1"            # Overlay - Secondary
-    [secondary-strong]="#fffaf3"     # Surface - Strong secondary
+    [secondary]="#797593"            # Subtle - Secondary (dark for white text)
+    [secondary-strong]="#575279"     # Text - Strong secondary (darker)
 
     # Status Colors (PowerKit Standard)
     [success]="#56949f"              # Foam
-    [warning]="#eca84d"              # Gold (13% lighter)
+    [warning]="#ea9d34"              # Gold (original rose-pine)
     [error]="#b4637a"                # Love
     [info]="#286983"                 # Pine
 
     # Interactive States
     [hover]="#fffaf3"                # Surface - Hover state
-    [active]="#d7827e"               # Rose - Active state
+    [active]="#6e6a86"               # Highlight High - Active state (icon bg)
     [focus]="#907aa9"                # Iris - Focus state
     [disabled]="#9893a5"             # Muted - Disabled state
 

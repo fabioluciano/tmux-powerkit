@@ -28,18 +28,18 @@ declare -A THEME_COLORS=(
     # Semantic Colors (PowerKit Standard)
     [accent]="#bd93f9"               # Purple - Main accent
     [primary]="#ff79c6"              # Pink - Primary
-    [secondary]="#44475a"            # Current Line - Secondary
-    [secondary-strong]="#21222c"     # Darker background
+    [secondary]="#44475a"            # Current Line - Secondary (content bg)
+    [secondary-strong]="#282a36"     # Background - Strong secondary
 
     # Status Colors (PowerKit Standard)
     [success]="#50fa7b"              # Green
-    [warning]="#ffc07d"              # Orange (13% lighter)
+    [warning]="#ffb86c"              # Orange (original dracula)
     [error]="#ff5555"                # Red
     [info]="#8be9fd"                 # Cyan
 
     # Interactive States
     [hover]="#44475a"                # Current Line
-    [active]="#ff79c6"               # Pink
+    [active]="#6272a4"               # Comment - Active (icon bg, lighter than secondary)
     [focus]="#bd93f9"                # Purple
     [disabled]="#6272a4"             # Comment
 

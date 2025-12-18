@@ -9,6 +9,7 @@ THEMES_DIR="$ROOT_DIR/themes"
 POWERKIT_ENTRY="$ROOT_DIR/../tmux-powerkit.tmux"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit"
 SCRIPT_PATH="$CURRENT_DIR/theme_selector.sh"
+THEME_CACHE_FILE="$CACHE_DIR/current_theme"
 
 # Source dependencies (defaults first, then utils for toast function)
 . "$ROOT_DIR/defaults.sh" 2>/dev/null || true
@@ -19,9 +20,17 @@ if ! command -v toast &>/dev/null; then
     toast() { tmux display-message "$1" 2>/dev/null || echo "$1"; }
 fi
 
-# Get current theme
+# Get current theme (from cache file if exists, otherwise from tmux options)
 get_current_theme() {
     local theme variant
+
+    # First try to read from persistent cache
+    if [[ -f "$THEME_CACHE_FILE" ]]; then
+        cat "$THEME_CACHE_FILE"
+        return
+    fi
+
+    # Fallback to tmux options
     theme=$(tmux show-option -gqv "@powerkit_theme" 2>/dev/null)
     variant=$(tmux show-option -gqv "@powerkit_theme_variant" 2>/dev/null)
     echo "${theme:-tokyo-night}/${variant:-night}"
@@ -36,8 +45,14 @@ apply_theme() {
     tmux set-option -g "@powerkit_theme" "$theme"
     tmux set-option -g "@powerkit_theme_variant" "$variant"
 
-    # Clear cache
-    [[ -d "$CACHE_DIR" ]] && rm -rf "${CACHE_DIR:?}"/* 2>/dev/null
+    # Ensure cache directory exists
+    [[ ! -d "$CACHE_DIR" ]] && mkdir -p "$CACHE_DIR"
+
+    # Save current theme to persistent cache (survives kill-server)
+    echo "$theme/$variant" > "$THEME_CACHE_FILE"
+
+    # Clear plugin caches (but not theme cache)
+    find "$CACHE_DIR" -maxdepth 1 -type f -name "*.cache" -delete 2>/dev/null || true
 
     # Re-run PowerKit initialization
     [[ -x "$POWERKIT_ENTRY" ]] && bash "$POWERKIT_ENTRY" 2>/dev/null

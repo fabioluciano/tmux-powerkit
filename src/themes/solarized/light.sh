@@ -10,36 +10,36 @@ declare -A THEME_COLORS=(
     [none]="NONE"
 
     # Background Colors
-    [background]="#fdf6e3"           # base3 - Main background
+    [background]="#fdf6e3"           # base3 - Main background (cream)
     [background-alt]="#eee8d5"       # base2 - Alternative background
-    [surface]="#eee8d5"              # base2 - Surface
+    [surface]="#eee8d5"              # base2 - Surface (status bar bg)
     [overlay]="#93a1a1"              # base1 - Overlay
 
-    # Text Colors
-    [text]="#657b83"                 # base00 - Primary text
-    [text-muted]="#839496"           # base0 - Muted text
+    # Text Colors - DARK for light theme readability
+    [text]="#073642"                 # base02 - Primary text (darkest for max contrast)
+    [text-muted]="#586e75"           # base01 - Muted text
     [text-disabled]="#93a1a1"        # base1 - Disabled text
 
     # Border Colors
-    [border]="#eee8d5"               # base2 - Default border
-    [border-subtle]="#fdf6e3"        # base3 - Subtle border
+    [border]="#93a1a1"               # base1 - Default border (inactive window content bg)
+    [border-subtle]="#839496"        # base0 - Subtle border (inactive window index bg - visible on surface)
     [border-strong]="#586e75"        # base01 - Strong border
 
     # Semantic Colors (PowerKit Standard)
     [accent]="#268bd2"               # blue - Main accent
     [primary]="#6c71c4"              # violet - Primary
-    [secondary]="#eee8d5"            # base2 - Secondary
-    [secondary-strong]="#fdf6e3"     # base3 - Strong secondary
+    [secondary]="#586e75"            # base01 - Secondary (dark for white text contrast)
+    [secondary-strong]="#073642"     # base02 - Strong secondary (darker)
 
     # Status Colors (PowerKit Standard)
     [success]="#859900"              # green
-    [warning]="#be971f"              # Yellow (13% lighter)
+    [warning]="#b58900"              # yellow (original solarized)
     [error]="#dc322f"                # red
     [info]="#2aa198"                 # cyan
 
     # Interactive States
     [hover]="#eee8d5"                # base2 - Hover state
-    [active]="#d33682"               # magenta - Active state
+    [active]="#657b83"               # base00 - Active state (for icon bg contrast)
     [focus]="#268bd2"                # blue - Focus state
     [disabled]="#93a1a1"             # base1 - Disabled state
 

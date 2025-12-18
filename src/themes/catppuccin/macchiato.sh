@@ -28,30 +28,30 @@ declare -A THEME_COLORS=(
     # Semantic Colors (PowerKit Standard)
     [accent]="#c6a0f6"               # Mauve - Main accent
     [primary]="#8aadf4"              # Blue - Primary
-    [secondary]="#494d64"            # Surface1 - Secondary
-    [secondary-strong]="#363a4f"     # Surface0 - Strong secondary
+    [secondary]="#363a4f"            # Surface0 - Secondary (plugin content bg)
+    [secondary-strong]="#24273a"     # Base - Strong secondary (darker)
 
     # Status Colors (PowerKit Standard)
     [success]="#a6da95"              # Green
-    [warning]="#efd9aa"              # Yellow (13% lighter)
+    [warning]="#eed49f"              # Yellow - Warning (original catppuccin)
     [error]="#ed8796"                # Red
     [info]="#91d7e3"                 # Sky
 
     # Interactive States
     [hover]="#363a4f"                # Surface0 - Hover state
-    [active]="#7dc4e4"               # Sapphire - Active state
+    [active]="#5b6078"               # Surface2 - Active state (icon bg, lighter than secondary)
     [focus]="#b7bdf8"                # Lavender - Focus state
     [disabled]="#6e738d"             # Overlay1 - Disabled state
 
     # Additional Variants
     [success-subtle]="#b6e0a9"       # Subtle success (18.9% lighter)
     [success-strong]="#5c7953"       # Strong success (44.2% darker)
-    [warning-strong]="#85795e"       # Strong warning (44.2% darker)
+    [warning-strong]="#857658"       # Strong warning (44.2% darker)
     [error-strong]="#844b53"         # Strong error (44.2% darker)
     [info-subtle]="#a5dee8"          # Subtle info (18.9% lighter)
     [info-strong]="#50777e"          # Strong info (44.2% darker)
     [error-subtle]="#f09da9"         # Subtle error (18.9% lighter)
-    [warning-subtle]="#f2e0ba"       # Subtle warning (18.9% lighter)
+    [warning-subtle]="#f1ddb4"       # Subtle warning (18.9% lighter)
 
     # System Colors
     [white]="#ffffff"                # Text
