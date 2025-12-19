@@ -30,7 +30,7 @@ configure_tmux_appearance() {
     tmux set-option -g message-style "bg=${message_bg},fg=${message_fg}"
     
     # Status bar
-    local transparent=$(get_tmux_option "@powerkit_transparent_status_bar" "$POWERKIT_DEFAULT_TRANSPARENT")
+    local transparent=$(get_tmux_option "@powerkit_transparent" "$POWERKIT_DEFAULT_TRANSPARENT")
     local status_bar_bg=$(get_powerkit_color "surface")
     local status_bar_fg=$(get_powerkit_color "text")
     if [[ "$transparent" == "true" ]]; then

@@ -9,15 +9,15 @@
 #   - PLUGIN_DEPS_MISSING (array of missing dependencies)
 #
 # FUNCTIONS PROVIDED:
-#   - plugin_init(), get_plugin_option(), get_cached_option()
+#   - plugin_init(), get_plugin_option(), get_cached_option(), normalize_plugin_name()
 #   - require_cmd(), require_any_cmd(), check_dependencies(), get_missing_deps()
+#   - default_plugin_display_info()
 #   - run_with_timeout(), safe_curl()
 #   - validate_range(), validate_option(), validate_bool()
 #   - apply_threshold_colors()
 #   - make_api_call(), detect_audio_backend()
-#   - join_with_separator(), format_issue_pr_counts()
-#   - should_load_plugin(), precheck_plugin(), get_plugin_priority()
-#   - defer_plugin_load()
+#   - join_with_separator(), format_repo_metrics()
+#   - defer_plugin_load() (simplified)
 #
 # DEPENDENCIES: source_guard.sh, utils.sh
 # =============================================================================
@@ -98,6 +98,46 @@ check_dependencies() {
 get_missing_deps() {
     [[ ${#PLUGIN_DEPS_MISSING[@]} -eq 0 ]] && return
     printf '%s' "${PLUGIN_DEPS_MISSING[*]}"
+}
+
+# =============================================================================
+# Plugin Display Info Helpers
+# =============================================================================
+
+# Default plugin_get_display_info implementation (DRY - reduces boilerplate)
+# Handles common case: hide if content is empty/N/A, show otherwise
+# Usage: default_plugin_display_info "<content>" [<hide_values>...]
+#
+# Parameters:
+#   content: plugin content to check
+#   hide_values: optional list of values that should hide the plugin (default: "" "N/A")
+#
+# Returns: formatted display info via build_display_info
+#
+# Example usage in plugin:
+#   plugin_get_display_info() {
+#       default_plugin_display_info "${1:-}"
+#   }
+#
+# Example with custom hide values:
+#   plugin_get_display_info() {
+#       default_plugin_display_info "${1:-}" "" "N/A" "0" "0 updates"
+#   }
+default_plugin_display_info() {
+    local content="$1"
+    shift
+
+    # Default hide values if none provided
+    local hide_values=("$@")
+    [[ ${#hide_values[@]} -eq 0 ]] && hide_values=("" "N/A")
+
+    # Check if content matches any hide value
+    for hide_val in "${hide_values[@]}"; do
+        [[ "$content" == "$hide_val" ]] && { build_display_info "0" "" "" ""; return; }
+    done
+
+    # Show plugin with default colors
+    build_display_info "1" "" "" ""
 }
 
 # =============================================================================
@@ -200,6 +240,30 @@ validate_bool() {
 # Plugin Initialization Helpers (DRY)
 # =============================================================================
 
+# Cache for normalized plugin names (performance: avoid repeated string ops)
+declare -gA _PLUGIN_NAME_CACHE
+
+# Normalize plugin name to uppercase with underscores (cached for performance)
+# Usage: normalize_plugin_name <plugin_name>
+# Returns: PLUGIN_NAME (uppercase, dashes->underscores)
+# Example: normalize_plugin_name "my-plugin" -> "MY_PLUGIN"
+normalize_plugin_name() {
+    local plugin_name="$1"
+
+    # Return cached value if exists
+    [[ -n "${_PLUGIN_NAME_CACHE[$plugin_name]:-}" ]] && {
+        printf '%s' "${_PLUGIN_NAME_CACHE[$plugin_name]}"
+        return
+    }
+
+    # Compute and cache
+    local normalized="${plugin_name^^}"
+    normalized="${normalized//-/_}"
+    _PLUGIN_NAME_CACHE[$plugin_name]="$normalized"
+
+    printf '%s' "$normalized"
+}
+
 # Get plugin-specific option from tmux
 # Usage: get_plugin_option <option_name> <default_value>
 # Requires: CACHE_KEY to be set (from plugin_init)
@@ -208,7 +272,7 @@ get_plugin_option() {
     local option_name="$1"
     local default_value="$2"
     local plugin_name="${CACHE_KEY:-unknown}"
-    
+
     get_tmux_option "@powerkit_plugin_${plugin_name}_${option_name}" "$default_value"
 }
 
@@ -218,12 +282,12 @@ get_plugin_option() {
 # Example: plugin_init "cpu" -> CACHE_KEY="cpu", CACHE_TTL from config
 plugin_init() {
     local plugin_name="$1"
-    local plugin_upper="${plugin_name^^}"
-    plugin_upper="${plugin_upper//-/_}"  # replace - with _
-    
+    local plugin_upper
+    plugin_upper=$(normalize_plugin_name "$plugin_name")
+
     # Set cache key
     CACHE_KEY="$plugin_name"
-    
+
     # Get cache TTL from config or defaults
     local ttl_var="POWERKIT_PLUGIN_${plugin_upper}_CACHE_TTL"
     local default_ttl="${!ttl_var:-5}"
@@ -392,108 +456,89 @@ join_with_separator() {
     printf '%s' "$result"
 }
 
-# Format parts with icons for issue/PR counts (DRY - github/gitlab/bitbucket)
-# Usage: format_issue_pr_counts <issues> <prs> <issue_icon> <pr_icon> <separator> <show_issues> <show_prs>
-format_issue_pr_counts() {
-    local issues="$1"
-    local prs="$2"
-    local issue_icon="$3"
-    local pr_icon="$4"
-    local separator="$5"
-    local show_issues="$6"
+# Format repository metrics (issues/PRs/MRs/comments) with icons
+# Generic helper for github/gitlab/bitbucket plugins (DRY)
+# Usage: format_repo_metrics <separator> <format_style> <show_issues> <issues> <issue_icon> <issue_label> \
+#                             <show_prs> <prs> <pr_icon> <pr_label> \
+#                             [<show_comments> <comments> <comment_label>]
+#
+# Parameters:
+#   separator: string to separate parts (e.g., " | ")
+#   format_style: "simple" or "detailed" (adds labels like "i", "p", "c")
+#   show_issues: "on"/"off"
+#   issues: number of issues
+#   issue_icon: icon for issues
+#   issue_label: label suffix for detailed mode (e.g., "i")
+#   show_prs: "on"/"off"
+#   prs: number of PRs/MRs
+#   pr_icon: icon for PRs
+#   pr_label: label suffix for detailed mode (e.g., "p", "mr")
+#   show_comments: "on"/"off" (optional)
+#   comments: number of comments (optional)
+#   comment_label: label suffix for detailed mode (optional, e.g., "c")
+format_repo_metrics() {
+    local separator="$1"
+    local format_style="$2"
+    local show_issues="$3"
+    local issues="$4"
+    local issue_icon="$5"
+    local issue_label="$6"
     local show_prs="$7"
+    local prs="$8"
+    local pr_icon="$9"
+    local pr_label="${10}"
+    local show_comments="${11:-off}"
+    local comments="${12:-0}"
+    local comment_label="${13:-c}"
 
     local parts=()
 
-    [[ "$show_issues" == "on" ]] && parts+=("${issue_icon} ${issues}")
-    [[ "$show_prs" == "on" ]] && parts+=("${pr_icon} ${prs}")
+    # Issues
+    if [[ "$show_issues" == "on" ]]; then
+        if [[ "$format_style" == "detailed" ]]; then
+            parts+=("${issue_icon} $(format_number "$issues")${issue_label}")
+        else
+            parts+=("${issue_icon} $(format_number "$issues")")
+        fi
+    fi
+
+    # PRs/MRs
+    if [[ "$show_prs" == "on" ]]; then
+        if [[ "$format_style" == "detailed" ]]; then
+            parts+=("${pr_icon} $(format_number "$prs")${pr_label}")
+        else
+            parts+=("${pr_icon} $(format_number "$prs")")
+        fi
+    fi
+
+    # Comments (optional)
+    if [[ "$show_comments" == "on" ]]; then
+        if [[ "$format_style" == "detailed" ]]; then
+            parts+=("$(format_number "$comments")${comment_label}")
+        else
+            parts+=("$(format_number "$comments")")
+        fi
+    fi
 
     join_with_separator "$separator" "${parts[@]}"
 }
 
 # =============================================================================
-# Lazy Loading System
+# Deferred Execution (Simplified)
 # =============================================================================
-
-# Check if plugin should be loaded (lazy loading support)
-# Usage: should_load_plugin <plugin_name>
-# Returns: 0 if should load, 1 if should skip
-should_load_plugin() {
-    local plugin_name="$1"
-
-    # Check if plugin is disabled via tmux option
-    local show_opt
-    show_opt=$(get_tmux_option "@powerkit_plugin_${plugin_name}_show" "on")
-    [[ "$show_opt" == "off" ]] && return 1
-
-    # Check if lazy loading is enabled
-    local lazy_enabled
-    lazy_enabled=$(get_tmux_option "@powerkit_lazy_loading" "off")
-    [[ "$lazy_enabled" != "on" ]] && return 0
-
-    # Plugin-specific lazy loading check
-    local plugin_lazy
-    plugin_lazy=$(get_tmux_option "@powerkit_plugin_${plugin_name}_lazy" "on")
-    [[ "$plugin_lazy" == "off" ]] && return 0
-
-    # For lazy mode, check if plugin has recent cache
-    local cache_file="${CACHE_DIR:-$HOME/.cache/tmux-powerkit}/${plugin_name}.cache"
-    [[ -f "$cache_file" ]] && return 0
-
-    # No cache - defer loading (return stale indicator)
-    return 0
-}
-
-# Precheck plugin requirements before full load
-# Usage: precheck_plugin <plugin_name>
-# Returns: 0 if ready, 1 if not ready (missing deps, etc.)
-precheck_plugin() {
-    local plugin_name="$1"
-
-    # Check show option
-    local show_opt
-    show_opt=$(get_tmux_option "@powerkit_plugin_${plugin_name}_show" "on")
-    [[ "$show_opt" == "off" ]] && return 1
-
-    return 0
-}
-
-# Get plugin load priority
-# Usage: get_plugin_priority <plugin_name>
-# Returns: priority number (lower = load first)
-get_plugin_priority() {
-    local plugin_name="$1"
-
-    # Get custom priority from config
-    local priority
-    priority=$(get_tmux_option "@powerkit_plugin_${plugin_name}_priority" "")
-    [[ -n "$priority" ]] && { printf '%s' "$priority"; return; }
-
-    # Default priorities by plugin type
-    case "$plugin_name" in
-        # Critical system info - high priority
-        datetime|hostname|session) printf '10' ;;
-        # Fast local data
-        cpu|memory|disk|loadavg) printf '20' ;;
-        # Network-dependent - lower priority
-        weather|external_ip|git*|cloud) printf '50' ;;
-        # Default
-        *) printf '30' ;;
-    esac
-}
 
 # Deferred plugin execution wrapper
 # Usage: defer_plugin_load <plugin_name> <callback>
-# Executes callback in background if lazy loading is enabled
+# Executes callback normally (simplified - removed complex lazy loading)
 defer_plugin_load() {
     local plugin_name="$1"
     shift
     local callback=("$@")
 
-    local lazy_enabled
-    lazy_enabled=$(get_tmux_option "@powerkit_lazy_loading" "off")
-
-    if [[ "$lazy_enabled" == "on" ]]; then
+    # Note: Complex lazy loading system removed for simplicity (YAGNI)
+    # Cache system (cache_get_or_compute) already provides performance optimization
+    # Just execute the callback directly
+    if [[ false ]]; then  # Disabled lazy mode - kept for backwards compatibility
         # Execute in background and cache result
         (
             local result

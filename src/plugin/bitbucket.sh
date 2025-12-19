@@ -69,27 +69,22 @@ count_prs() {
 # Display Logic
 # =============================================================================
 
+# Format repository status (uses shared helper from plugin_helpers.sh)
 format_status() {
     local issues="$1"
     local prs="$2"
 
-    local parts=()
-
-    if [[ "$BITBUCKET_SHOW_ISSUES" == "on" ]]; then
-        parts+=("${BITBUCKET_ICON_ISSUE} $(format_number "$issues")")
-    fi
-
-    if [[ "$BITBUCKET_SHOW_PRS" == "on" ]]; then
-        parts+=("${BITBUCKET_ICON_PR} $(format_number "$prs")")
-    fi
-
-    local output=""
-    local sep=""
-    for part in "${parts[@]}"; do
-        output+="${sep}${part}"
-        sep="$BITBUCKET_SEPARATOR"
-    done
-    echo "$output"
+    format_repo_metrics \
+        "$BITBUCKET_SEPARATOR" \
+        "simple" \
+        "$BITBUCKET_SHOW_ISSUES" \
+        "$issues" \
+        "$BITBUCKET_ICON_ISSUE" \
+        "i" \
+        "$BITBUCKET_SHOW_PRS" \
+        "$prs" \
+        "$BITBUCKET_ICON_PR" \
+        "p"
 }
 
 get_bitbucket_info() {

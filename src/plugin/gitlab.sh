@@ -95,27 +95,22 @@ count_mrs() {
 # Display Logic
 # =============================================================================
 
+# Format repository status (uses shared helper from plugin_helpers.sh)
 format_status() {
     local issues="$1"
     local mrs="$2"
 
-    local parts=()
-
-    if [[ "$GITLAB_SHOW_ISSUES" == "on" ]]; then
-        parts+=("${GITLAB_ICON_ISSUE} $(format_number "$issues")")
-    fi
-
-    if [[ "$GITLAB_SHOW_MRS" == "on" ]]; then
-        parts+=("${GITLAB_ICON_MR} $(format_number "$mrs")")
-    fi
-
-    local output=""
-    local sep=""
-    for part in "${parts[@]}"; do
-        output+="${sep}${part}"
-        sep="$GITLAB_SEPARATOR"
-    done
-    echo "$output"
+    format_repo_metrics \
+        "$GITLAB_SEPARATOR" \
+        "simple" \
+        "$GITLAB_SHOW_ISSUES" \
+        "$issues" \
+        "$GITLAB_ICON_ISSUE" \
+        "i" \
+        "$GITLAB_SHOW_MRS" \
+        "$mrs" \
+        "$GITLAB_ICON_MR" \
+        "mr"
 }
 
 get_gitlab_info() {

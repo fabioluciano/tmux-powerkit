@@ -18,7 +18,7 @@ declare -a THEME_OPTIONS=(
     "@powerkit_variation|night|night|Color scheme variation"
     "@powerkit_plugins|datetime,weather|(comma-separated)|Enabled plugins"
     "@powerkit_disable_plugins|0|0,1|Disable all plugins"
-    "@powerkit_transparent_status_bar|false|true,false|Transparent status bar"
+    "@powerkit_transparent|false|true,false|Transparent status bar"
     "@powerkit_bar_layout|single|single,double|Status bar layout"
     "@powerkit_status_left_length|100|(integer)|Maximum left status length"
     "@powerkit_status_right_length|250|(integer)|Maximum right status length"

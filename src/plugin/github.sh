@@ -244,51 +244,27 @@ count_issues_and_prs() {
 # Display Functions
 # =============================================================================
 
-# Format repository status
+# Format repository status (uses shared helper from plugin_helpers.sh)
 format_repo_status() {
     local issues="$1"
     local prs="$2"
     local comments="$3"
     local show_comments="$4"
 
-    local parts=()
-
-    # Issues
-    if [[ "$GITHUB_SHOW_ISSUES" == "on" ]]; then
-        if [[ "$GITHUB_FORMAT" == "detailed" ]]; then
-            parts+=("${GITHUB_ICON_ISSUE} $(format_number "$issues")i")
-        else
-            parts+=("${GITHUB_ICON_ISSUE} $(format_number "$issues")")
-        fi
-    fi
-
-    # PRs
-    if [[ "$GITHUB_SHOW_PRS" == "on" ]]; then
-        if [[ "$GITHUB_FORMAT" == "detailed" ]]; then
-            parts+=("${GITHUB_ICON_PR} $(format_number "$prs")p")
-        else
-            parts+=("${GITHUB_ICON_PR} $(format_number "$prs")")
-        fi
-    fi
-
-    # Comments
-    if [[ "$show_comments" == "on" ]]; then
-        if [[ "$GITHUB_FORMAT" == "detailed" ]]; then
-            parts+=("$(format_number "$comments")c")
-        else
-            parts+=("$(format_number "$comments")")
-        fi
-    fi
-
-    # Join parts with configurable separator
-    local output=""
-    local sep=""
-    for part in "${parts[@]}"; do
-        output+="${sep}${part}"
-        sep="$GITHUB_SEPARATOR"
-    done
-
-    echo "$output"
+    format_repo_metrics \
+        "$GITHUB_SEPARATOR" \
+        "$GITHUB_FORMAT" \
+        "$GITHUB_SHOW_ISSUES" \
+        "$issues" \
+        "$GITHUB_ICON_ISSUE" \
+        "i" \
+        "$GITHUB_SHOW_PRS" \
+        "$prs" \
+        "$GITHUB_ICON_PR" \
+        "p" \
+        "$show_comments" \
+        "$comments" \
+        "c"
 }
 
 # Get GitHub info for all configured repos

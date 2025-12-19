@@ -40,12 +40,7 @@ cache_is_valid() {
 
     local file_mtime current_time
     current_time=$(date +%s)
-
-    if is_macos; then
-        file_mtime=$(stat -f "%m" "$cache_file" 2>/dev/null) || return 1
-    else
-        file_mtime=$(stat -c "%Y" "$cache_file" 2>/dev/null) || return 1
-    fi
+    file_mtime=$(get_file_mtime "$cache_file") || return 1
 
     (((current_time - file_mtime) < ttl_seconds))
 }
@@ -145,58 +140,8 @@ cache_age() {
 
     local file_mtime current_time
     current_time=$(date +%s)
-
-    if is_macos; then
-        file_mtime=$(stat -f "%m" "$cache_file" 2>/dev/null) || { printf '-1'; return 1; }
-    else
-        file_mtime=$(stat -c "%Y" "$cache_file" 2>/dev/null) || { printf '-1'; return 1; }
-    fi
+    file_mtime=$(get_file_mtime "$cache_file") || { printf '-1'; return 1; }
 
     printf '%d' "$((current_time - file_mtime))"
 }
 
-# Check if cache exists (regardless of TTL)
-# Usage: cache_exists <key>
-cache_exists() {
-    [[ -f "${CACHE_DIR}/${1}.cache" ]]
-}
-
-# Get cache size in bytes
-# Usage: cache_size <key>
-cache_size() {
-    local cache_file="${CACHE_DIR}/${1}.cache"
-    [[ ! -f "$cache_file" ]] && { printf '0'; return; }
-
-    if is_macos; then
-        stat -f "%z" "$cache_file" 2>/dev/null || printf '0'
-    else
-        stat -c "%s" "$cache_file" 2>/dev/null || printf '0'
-    fi
-}
-
-# List all cache keys
-# Usage: cache_list
-cache_list() {
-    cache_init
-    # shellcheck disable=SC2012
-    find "$CACHE_DIR" -name "*.cache" -print0 2>/dev/null | xargs -0 -I{} basename {} .cache 2>/dev/null || \
-        ls -1 "$CACHE_DIR"/*.cache 2>/dev/null | while read -r f; do basename "$f" .cache; done
-}
-
-# Get total cache directory size
-# Usage: cache_total_size
-cache_total_size() {
-    cache_init
-    du -sh "$CACHE_DIR" 2>/dev/null | cut -f1 || printf '0'
-}
-
-# Invalidate caches matching pattern
-# Usage: cache_invalidate_pattern <pattern>
-cache_invalidate_pattern() {
-    local pattern="$1"
-    cache_init
-    # Note: pattern intentionally unquoted for glob expansion
-    # shellcheck disable=SC2086
-    find "$CACHE_DIR" -name "${pattern}.cache" -delete 2>/dev/null || \
-        rm -f "${CACHE_DIR}"/${pattern}.cache 2>/dev/null
-}

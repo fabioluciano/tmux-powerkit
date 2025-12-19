@@ -10,6 +10,7 @@
 #
 # FUNCTIONS PROVIDED:
 #   - Platform: is_macos(), is_linux(), is_bsd(), get_os(), get_distro()
+#   - File System: get_file_mtime(), get_file_size()
 #   - Options: get_tmux_option()
 #   - Colors: get_powerkit_color(), get_color(), load_powerkit_theme()
 #   - Helpers: extract_numeric(), evaluate_condition(), build_display_info()
@@ -118,6 +119,38 @@ get_os()     { printf '%s' "$_PLATFORM_OS"; }
 get_distro() { printf '%s' "$_PLATFORM_DISTRO"; }
 get_arch()   { printf '%s' "$_PLATFORM_ARCH"; }
 get_os_icon(){ printf ' %s' "$_PLATFORM_ICON"; }
+
+# =============================================================================
+# File System Helpers (platform-agnostic wrappers)
+# =============================================================================
+
+# Get file modification time in seconds since epoch
+# Usage: get_file_mtime <file_path>
+# Returns: modification time or -1 on error
+get_file_mtime() {
+    local file="$1"
+    [[ ! -f "$file" ]] && { printf '-1'; return 1; }
+
+    if is_macos; then
+        stat -f "%m" "$file" 2>/dev/null || { printf '-1'; return 1; }
+    else
+        stat -c "%Y" "$file" 2>/dev/null || { printf '-1'; return 1; }
+    fi
+}
+
+# Get file size in bytes
+# Usage: get_file_size <file_path>
+# Returns: size in bytes or 0 on error
+get_file_size() {
+    local file="$1"
+    [[ ! -f "$file" ]] && { printf '0'; return; }
+
+    if is_macos; then
+        stat -f "%z" "$file" 2>/dev/null || printf '0'
+    else
+        stat -c "%s" "$file" 2>/dev/null || printf '0'
+    fi
+}
 
 # =============================================================================
 # Tmux Option Getter (with optional batch caching for performance)

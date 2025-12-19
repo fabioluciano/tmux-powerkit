@@ -91,12 +91,16 @@ get_plugins_list() {
     if [[ -n "$plugin_configs" ]]; then
         # Build tmux command string that will be executed periodically
         local text_color=$(get_powerkit_color 'text')
+        local transparent=$(get_tmux_option "@powerkit_transparent" "false")
         local status_bg=$(get_powerkit_color 'surface')
-        local transparent=$(get_tmux_option "@powerkit_transparent_status_bar" "false")
+
+        # Use default background when transparent mode is enabled
+        [[ "$transparent" == "true" ]] && status_bg="default"
+
         local palette=$(serialize_powerkit_palette)
         local right_sep=$(get_tmux_option "@powerkit_right_separator" "$POWERKIT_DEFAULT_RIGHT_SEPARATOR")
         local right_sep_inv=$(get_tmux_option "@powerkit_right_separator_inverse" "$POWERKIT_DEFAULT_RIGHT_SEPARATOR_INVERSE")
-        
+
         # Create command that tmux will execute with current pane path context
         printf "#(RENDER_TEXT_COLOR='%s' RENDER_STATUS_BG='%s' RENDER_TRANSPARENT='%s' RENDER_PALETTE='%s' POWERKIT_DEFAULT_RIGHT_SEPARATOR='%s' POWERKIT_DEFAULT_RIGHT_SEPARATOR_INVERSE='%s' %s/render_plugins.sh '%s' 2>/dev/null || true)" \
             "$text_color" "$status_bg" "$transparent" "$palette" "$right_sep" "$right_sep_inv" "$CURRENT_DIR" "$plugin_configs"

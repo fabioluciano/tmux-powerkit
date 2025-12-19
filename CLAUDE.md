@@ -94,11 +94,6 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 - `cache_clear_all()` - Clears all cached data
 - `cache_get_or_compute(key, ttl, cmd...)` - Get cached value or compute and cache
 - `cache_age(key)` - Get cache age in seconds
-- `cache_exists(key)` - Check if cache file exists (ignores TTL)
-- `cache_size(key)` - Get cache file size in bytes
-- `cache_list()` - List all cache keys
-- `cache_total_size()` - Get total cache directory size
-- `cache_invalidate_pattern(pattern)` - Invalidate caches matching glob pattern
 - Cache location: `$XDG_CACHE_HOME/tmux-powerkit/` or `~/.cache/tmux-powerkit/`
 
 **`src/render_plugins.sh`** - Plugin Rendering
@@ -146,11 +141,8 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 - **API & Audio:**
   - `make_api_call(url, auth_type, token)` - Authenticated API call
   - `detect_audio_backend()` - Detect macos/pipewire/pulseaudio/alsa
-- **Lazy Loading:**
-  - `should_load_plugin(name)` - Check if plugin should load
-  - `precheck_plugin(name)` - Precheck plugin requirements
-  - `get_plugin_priority(name)` - Get plugin load priority
-  - `defer_plugin_load(name, callback)` - Deferred execution wrapper
+- **Deferred Execution:**
+  - `defer_plugin_load(name, callback)` - Direct execution wrapper (simplified)
 
 **Logging System** (in `src/utils.sh`)
 
@@ -320,12 +312,7 @@ All options use `@powerkit_*` prefix:
 @powerkit_plugin_<name>_accent_color_icon
 @powerkit_plugin_<name>_cache_ttl
 @powerkit_plugin_<name>_show           # on/off - enable/disable plugin
-@powerkit_plugin_<name>_lazy           # on/off - enable lazy loading for plugin
-@powerkit_plugin_<name>_priority       # load priority (lower = first)
 @powerkit_plugin_<name>_*              # Plugin-specific options
-
-# Lazy Loading (optional)
-@powerkit_lazy_loading       # on/off - enable lazy loading system
 
 # Telemetry (optional performance tracking)
 @powerkit_telemetry          # true/false - enable performance telemetry
@@ -439,7 +426,7 @@ Required semantic colors:
 - **File-based caching**: Plugins cache expensive operations to disk
 - **Single execution**: Plugins sourced once, `load_plugin()` called
 - **Semantic color caching**: Colors resolved once per render
-- **Lazy loading**: Optional deferred plugin loading with priority system
+- **Cache-based optimization**: File-based caching for expensive operations
 - **Timeout protection**: External commands protected via `run_with_timeout()`
 - **Safe curl**: Network requests with proper timeouts via `safe_curl()`
 - **Audio backend caching**: `detect_audio_backend()` cached in `_AUDIO_BACKEND`
@@ -482,6 +469,29 @@ The selected theme persists across `tmux kill-server` via a cache file:
 | **rose-pine** | dawn, main, moon | All natural pine colors |
 | **solarized** | dark, light | Ethan Schoonover's classic |
 | **tokyo-night** | day, night, storm | Neo-Tokyo inspired |
+
+## Code Style Guidelines
+
+### Variable Naming Conventions
+
+- **Plugin names**: Use `plugin_name` for the raw name, `plugin_name_normalized` for uppercase with underscores
+- **Colors**: Use descriptive suffixes for clarity
+  - `accent` or `accent_bg` - background color value
+  - `accent_icon` or `accent_icon_bg` - icon background color value
+  - `accent_strong` - emphasized/bold version of accent color
+  - Avoid ambiguous names like `cfg_accent` without context
+- **Temporary variables**: Use descriptive names over single letters
+  - Good: `result`, `threshold_value`, `file_mtime`
+  - Avoid: `r`, `t`, `x` (except for loop counters `i`, `j`)
+- **Boolean/state variables**: Use clear yes/no names
+  - Good: `is_critical`, `cache_hit`, `has_threshold`
+  - Avoid: `state`, `flag`, `check`
+
+### Function Naming
+
+- **Public functions**: Use verb-noun pattern (`get_file_mtime`, `apply_threshold_colors`)
+- **Private/internal functions**: Prefix with underscore (`_process_external_plugin`, `_string_hash`)
+- **Predicates**: Start with `is_` or `has_` (`is_macos`, `has_threshold`)
 
 ## Known Issues / Gotchas
 

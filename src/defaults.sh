@@ -45,6 +45,15 @@ _DEFAULT_SEPARATOR=" | "
 _DEFAULT_MAX_LENGTH="40"
 _DEFAULT_POPUP_SIZE="50%"
 
+# Common timeouts and TTLs (in seconds)
+_DEFAULT_TIMEOUT_SHORT="5"
+_DEFAULT_TIMEOUT_MEDIUM="10"
+_DEFAULT_TIMEOUT_LONG="30"
+_DEFAULT_CACHE_TTL_SHORT="60"         # 1 minute
+_DEFAULT_CACHE_TTL_MEDIUM="300"       # 5 minutes
+_DEFAULT_CACHE_TTL_LONG="3600"        # 1 hour
+_DEFAULT_CACHE_TTL_DAY="86400"        # 24 hours
+
 # =============================================================================
 # PLUGIN DEFAULTS HELPER (DRY)
 # =============================================================================

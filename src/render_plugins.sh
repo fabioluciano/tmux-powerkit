@@ -58,43 +58,35 @@ SEPARATOR_STYLE=$(get_tmux_option "@powerkit_separator_style" "$POWERKIT_DEFAULT
 # Get plugin defaults from defaults.sh
 get_plugin_defaults() {
     local name="$1"
-    local upper="${name^^}"
-    upper="${upper//-/_}"
-    
+    local upper
+    upper=$(normalize_plugin_name "$name")
+
     local accent_var="POWERKIT_PLUGIN_${upper}_ACCENT_COLOR"
     local accent_icon_var="POWERKIT_PLUGIN_${upper}_ACCENT_COLOR_ICON"
     local icon_var="POWERKIT_PLUGIN_${upper}_ICON"
-    
+
     printf '%s:%s:%s' "${!accent_var:-secondary}" "${!accent_icon_var:-active}" "${!icon_var:-}"
 }
 
-# Apply threshold colors if defined
+# Apply threshold colors if defined (DRY - uses apply_threshold_colors from plugin_helpers)
 # Returns: accent:accent_icon:has_threshold (has_threshold: 1 if triggered, 0 otherwise)
 apply_thresholds() {
     local name="$1" content="$2" accent="$3" accent_icon="$4"
-    local upper="${name^^}"
-    upper="${upper//-/_}"
 
     # Extract first numeric value using bash regex (performance: avoids grep fork)
     local num=""
     [[ "$content" =~ ([0-9]+) ]] && num="${BASH_REMATCH[1]}"
     [[ -z "$num" ]] && { printf '%s:%s:0' "$accent" "$accent_icon"; return; }
 
-    local warn_var="POWERKIT_PLUGIN_${upper}_WARNING_THRESHOLD"
-    local crit_var="POWERKIT_PLUGIN_${upper}_CRITICAL_THRESHOLD"
-    local warn="${!warn_var:-}" crit="${!crit_var:-}"
+    # Use shared apply_threshold_colors from plugin_helpers.sh
+    local result
+    result=$(apply_threshold_colors "$num" "$name" 0)
 
-    [[ -z "$warn" || -z "$crit" ]] && { printf '%s:%s:0' "$accent" "$accent_icon"; return; }
-
-    if [[ "$num" -ge "$crit" ]]; then
-        local ca="POWERKIT_PLUGIN_${upper}_CRITICAL_ACCENT_COLOR"
-        local ci="POWERKIT_PLUGIN_${upper}_CRITICAL_ACCENT_COLOR_ICON"
-        printf '%s:%s:1' "${!ca:-$accent}" "${!ci:-$accent_icon}"
-    elif [[ "$num" -ge "$warn" ]]; then
-        local wa="POWERKIT_PLUGIN_${upper}_WARNING_ACCENT_COLOR"
-        local wi="POWERKIT_PLUGIN_${upper}_WARNING_ACCENT_COLOR_ICON"
-        printf '%s:%s:1' "${!wa:-$accent}" "${!wi:-$accent_icon}"
+    # If threshold triggered, return new colors with flag
+    if [[ -n "$result" ]]; then
+        printf '%s:1' "$result"
     else
+        # No threshold triggered, return original colors
         printf '%s:%s:0' "$accent" "$accent_icon"
     fi
 }
@@ -327,12 +319,16 @@ for ((i=0; i<total; i++)); do
     # Separators (left-facing: fg=new color, bg=previous color)
     if [[ $i -eq 0 ]]; then
         # First plugin separator
+        # Use default background when transparent mode is enabled
+        first_sep_bg="${STATUS_BG}"
+        [[ "$TRANSPARENT" == "true" ]] && first_sep_bg="default"
+
         if [[ "$SEPARATOR_STYLE" == "rounded" ]]; then
             # Rounded/pill effect - fg=plugin_color, bg=status_bg
-            sep_start="#[fg=${accent_icon},bg=${STATUS_BG}]${LEFT_SEPARATOR_ROUNDED}#[none]"
+            sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${LEFT_SEPARATOR_ROUNDED}#[none]"
         else
             # Normal powerline - fg=plugin_color, bg=status_bg
-            sep_start="#[fg=${accent_icon},bg=${STATUS_BG}]${RIGHT_SEPARATOR}#[none]"
+            sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${RIGHT_SEPARATOR}#[none]"
         fi
     else
         sep_start="#[fg=${accent_icon},bg=${prev_accent}]${RIGHT_SEPARATOR}#[none]"
