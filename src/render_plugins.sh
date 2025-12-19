@@ -113,13 +113,21 @@ _string_hash() {
 
 # Execute shell command from content string (DRY - used by external plugins)
 # Supports: #(command), $(command), #{tmux_var}
+# Also expands #{...} inside $(command) and #(command) before execution
 # Returns: executed content or empty string
 _execute_content_command() {
     local content="$1"
+    local cmd
     if [[ "$content" =~ ^\#\(.*\)$ ]]; then
-        eval "${content:2:-1}" 2>/dev/null || printf ''
+        cmd="${content:2:-1}"
+        # Expand #{...} inside command first
+        [[ "$cmd" == *'#{'*'}'* ]] && cmd=$(tmux display-message -p "$cmd" 2>/dev/null)
+        eval "$cmd" 2>/dev/null || printf ''
     elif [[ "$content" =~ ^\$\(.*\)$ ]]; then
-        eval "${content:2:-1}" 2>/dev/null || printf ''
+        cmd="${content:2:-1}"
+        # Expand #{...} inside command first
+        [[ "$cmd" == *'#{'*'}'* ]] && cmd=$(tmux display-message -p "$cmd" 2>/dev/null)
+        eval "$cmd" 2>/dev/null || printf ''
     elif [[ "$content" == *'#{'*'}'* ]]; then
         tmux display-message -p "$content" 2>/dev/null || printf ''
     else
