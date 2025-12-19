@@ -81,13 +81,21 @@ create_window_separator() {
 create_final_separator() {
     local separator_style=$(get_tmux_option "@powerkit_separator_style" "$POWERKIT_DEFAULT_SEPARATOR_STYLE")
     local separator_char
-    local status_bg=$(get_powerkit_color 'surface')
-    
+    local transparent=$(get_tmux_option "@powerkit_transparent" "false")
+    local status_bg
+
+    # Use 'default' for transparent mode, 'surface' otherwise
+    if [[ "$transparent" == "true" ]]; then
+        status_bg="default"
+    else
+        status_bg=$(get_powerkit_color 'surface')
+    fi
+
     # Get window content background colors for last window detection
     local active_content_bg_option=$(get_tmux_option "@powerkit_active_window_content_bg" "$POWERKIT_DEFAULT_ACTIVE_WINDOW_CONTENT_BG")
     local active_content_bg=$(get_powerkit_color "$active_content_bg_option")
     local inactive_content_bg=$(get_powerkit_color 'border')
-    
+
     if [[ "$separator_style" == "rounded" ]]; then
         separator_char=$(get_tmux_option "@powerkit_right_separator_rounded" "$POWERKIT_DEFAULT_RIGHT_SEPARATOR_ROUNDED")
         # Pill effect: fg=window_color, bg=status_bg
