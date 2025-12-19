@@ -112,7 +112,7 @@ plugin_get_display_info() {
 
     # Get thresholds
     local low_t=$(get_cached_option "@powerkit_plugin_battery_low_threshold" "$POWERKIT_PLUGIN_BATTERY_LOW_THRESHOLD")
-    local warn_t=$(get_cached_option "@powerkit_plugin_battery_warning_threshold" "$POWERKIT_PLUGIN_BATTERY_WARNING_THRESHOLD")
+    local mid_t=$(get_cached_option "@powerkit_plugin_battery_mid_threshold" "$POWERKIT_PLUGIN_BATTERY_MID_THRESHOLD")
 
     # Apply threshold colors regardless of charging state
     # (battery level alerts should persist even while charging)
@@ -120,9 +120,9 @@ plugin_get_display_info() {
         accent=$(get_cached_option "@powerkit_plugin_battery_low_accent_color" "$POWERKIT_PLUGIN_BATTERY_LOW_ACCENT_COLOR")
         accent_icon=$(get_cached_option "@powerkit_plugin_battery_low_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_LOW_ACCENT_COLOR_ICON")
         icon=$(get_cached_option "@powerkit_plugin_battery_icon_low" "$POWERKIT_PLUGIN_BATTERY_ICON_LOW")
-    elif [[ -n "$value" && "$value" -le "$warn_t" ]]; then
-        accent=$(get_cached_option "@powerkit_plugin_battery_warning_accent_color" "$POWERKIT_PLUGIN_BATTERY_WARNING_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_battery_warning_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_WARNING_ACCENT_COLOR_ICON")
+    elif [[ -n "$value" && "$value" -le "$mid_t" ]]; then
+        accent=$(get_cached_option "@powerkit_plugin_battery_mid_accent_color" "$POWERKIT_PLUGIN_BATTERY_MID_ACCENT_COLOR")
+        accent_icon=$(get_cached_option "@powerkit_plugin_battery_mid_accent_color_icon" "$POWERKIT_PLUGIN_BATTERY_MID_ACCENT_COLOR_ICON")
     fi
 
     # Set charging icon (but keep threshold colors)

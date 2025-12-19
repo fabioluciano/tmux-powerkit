@@ -367,6 +367,24 @@ This allows:
 - `accent_color_icon`: Semantic color for icon background
 - `icon`: Icon character to display
 
+### Threshold Colors: Custom vs Automatic
+
+Plugins can handle threshold colors in two ways:
+
+**Automatic Thresholds** (managed by `render_plugins.sh`):
+- Plugin returns **empty** colors in `plugin_get_display_info()` (or doesn't implement it)
+- System automatically applies warning/critical colors based on `WARNING_THRESHOLD` and `CRITICAL_THRESHOLD`
+- Uses normal logic: higher values = worse (e.g., CPU, memory, temperature)
+- Example: CPU plugin doesn't implement `plugin_get_display_info()`, system applies red when CPU > 90%
+
+**Custom Threshold Logic** (managed by plugin):
+- Plugin returns **explicit colors** in `plugin_get_display_info()`
+- System respects plugin's colors and skips automatic thresholds
+- Plugin can implement inverted logic (lower = worse) or any custom logic
+- Example: Battery plugin returns red/yellow colors for low battery, system doesn't override them
+
+This generic rule allows plugins to choose their threshold behavior without hardcoded plugin lists.
+
 ### Cache Key Format
 
 Cache files: `~/.cache/tmux-powerkit/<plugin_name>`

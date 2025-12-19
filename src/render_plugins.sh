@@ -238,20 +238,35 @@ _process_internal_plugin() {
 
     # Store original accent to detect if plugin changes it
     local original_accent="$cfg_accent"
+    local plugin_provided_colors="0"
 
     # Check plugin's custom display info
     if declare -f plugin_get_display_info &>/dev/null; then
         local show ov_accent ov_accent_icon ov_icon
         IFS=':' read -r show ov_accent ov_accent_icon ov_icon <<< "$(plugin_get_display_info "${content,,}")"
         [[ "$show" == "0" ]] && return 1
-        [[ -n "$ov_accent" ]] && cfg_accent="$ov_accent"
+
+        # Track if plugin provided explicit colors (even if same as defaults)
+        if [[ -n "$ov_accent" ]]; then
+            cfg_accent="$ov_accent"
+            plugin_provided_colors="1"
+        fi
         [[ -n "$ov_accent_icon" ]] && cfg_accent_icon="$ov_accent_icon"
         [[ -n "$ov_icon" ]] && cfg_icon="$ov_icon"
     fi
 
-    # Apply thresholds
-    local has_threshold="0" threshold_flag
-    IFS=':' read -r cfg_accent cfg_accent_icon threshold_flag <<< "$(apply_thresholds "$name" "$content" "$cfg_accent" "$cfg_accent_icon")"
+    # Apply thresholds (only if plugin didn't provide colors)
+    local has_threshold="0" threshold_flag="0"
+    if [[ "$plugin_provided_colors" == "0" ]]; then
+        # Plugin didn't provide colors, try automatic thresholds
+        local tmp_accent tmp_accent_icon
+        IFS=':' read -r tmp_accent tmp_accent_icon threshold_flag <<< "$(apply_thresholds "$name" "$content" "$cfg_accent" "$cfg_accent_icon")"
+        # Only apply if threshold was triggered
+        if [[ -n "$tmp_accent" ]]; then
+            cfg_accent="$tmp_accent"
+            cfg_accent_icon="$tmp_accent_icon"
+        fi
+    fi
 
     # Detect threshold state
     if [[ "$threshold_flag" == "1" ]] || [[ "$cfg_accent" != "$original_accent" ]]; then
