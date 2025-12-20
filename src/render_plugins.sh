@@ -38,6 +38,7 @@ THEME_FILE="${CURRENT_DIR}/themes/${THEME_NAME}/${THEME_VARIANT}.sh"
 # Configuration
 # =============================================================================
 # Use theme's white color for plugin text (ensures contrast on colored backgrounds)
+RENDER_SIDE="${RENDER_SIDE:-right}"  # "left" or "right"
 TEXT_COLOR="${RENDER_TEXT_COLOR:-$(get_color 'white')}"
 TEXT_COLOR="${TEXT_COLOR:-#ffffff}"  # Fallback if theme doesn't define white
 STATUS_BG="${RENDER_STATUS_BG:-${POWERKIT_FALLBACK_STATUS_BG:-#1a1b26}}"
@@ -334,16 +335,31 @@ for ((i=0; i<total; i++)); do
     # Separators (left-facing: fg=new color, bg=previous color)
     if [[ $i -eq 0 ]]; then
         # First plugin separator
-        # Use default background when transparent mode is enabled
-        first_sep_bg="${STATUS_BG}"
-        [[ "$TRANSPARENT" == "true" ]] && first_sep_bg="default"
+        if [[ "$RENDER_SIDE" == "left" ]]; then
+            # Left side: separator from session to first plugin
+            prefix_color_name=$(get_tmux_option "@powerkit_session_prefix_color" "$POWERKIT_DEFAULT_SESSION_PREFIX_COLOR")
+            copy_color_name=$(get_tmux_option "@powerkit_session_copy_mode_color" "$POWERKIT_DEFAULT_SESSION_COPY_MODE_COLOR")
+            normal_color_name=$(get_tmux_option "@powerkit_session_normal_color" "$POWERKIT_DEFAULT_SESSION_NORMAL_COLOR")
 
-        if [[ "$SEPARATOR_STYLE" == "rounded" ]]; then
-            # Rounded/pill effect - fg=plugin_color, bg=status_bg
-            sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${LEFT_SEPARATOR_ROUNDED}#[none]"
+            session_prefix=$(get_color "$prefix_color_name")
+            session_copy=$(get_color "$copy_color_name")
+            session_normal=$(get_color "$normal_color_name")
+
+            session_bg="#{?client_prefix,$session_prefix,#{?pane_in_mode,$session_copy,$session_normal}}"
+
+            sep_start="#[fg=${accent_icon},bg=${session_bg}]${RIGHT_SEPARATOR}#[none]"
         else
-            # Normal powerline - fg=plugin_color, bg=status_bg
-            sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${RIGHT_SEPARATOR}#[none]"
+            # Right side: existing logic (from status background)
+            first_sep_bg="${STATUS_BG}"
+            [[ "$TRANSPARENT" == "true" ]] && first_sep_bg="default"
+
+            if [[ "$SEPARATOR_STYLE" == "rounded" ]]; then
+                # Rounded/pill effect - fg=plugin_color, bg=status_bg
+                sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${LEFT_SEPARATOR_ROUNDED}#[none]"
+            else
+                # Normal powerline - fg=plugin_color, bg=status_bg
+                sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${RIGHT_SEPARATOR}#[none]"
+            fi
         fi
     else
         sep_start="#[fg=${accent_icon},bg=${prev_accent}]${RIGHT_SEPARATOR}#[none]"
@@ -375,5 +391,16 @@ for ((i=0; i<total; i++)); do
     
     prev_accent="$accent"
 done
+
+# Add separator from left plugins to windows (left side only)
+if [[ "$RENDER_SIDE" == "left" && $total -gt 0 ]]; then
+    separator_char="${RIGHT_SEPARATOR}"
+    active_window_index_bg=$(get_color "$POWERKIT_DEFAULT_ACTIVE_WINDOW_NUMBER_BG")
+    inactive_window_index_bg=$(get_color "$POWERKIT_DEFAULT_INACTIVE_WINDOW_NUMBER_BG")
+
+    # tmux conditional: window 1 == active window?
+    window_bg="#{?#{==:#{active_window_index},1},${active_window_index_bg},${inactive_window_index_bg}}"
+    output+="#[fg=${window_bg},bg=${prev_accent}]${separator_char}#[none]"
+fi
 
 printf '%s' "$output"

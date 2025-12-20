@@ -49,41 +49,46 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 initialize_powerkit() {
     # Configure tmux appearance
     configure_tmux_appearance
-    
+
     # Set up window formats using modular system
     tmux set-window-option -g window-status-format "$(create_inactive_window_format)"
     tmux set-window-option -g window-status-current-format "$(create_active_window_format)"
-    
-    # Set up session segment (left side)
-    tmux set-option -g status-left "$(create_session_segment)"
-    
-    # Initialize plugins and handle status bar layout
-    local status_2=$(initialize_plugins)
+
+    # Initialize plugins for left and right sides
+    local status_left_plugins=$(initialize_plugins_left)
+    local status_right_plugins=$(initialize_plugins_right)
+
+    # Build status-left with session + left plugins
+    local session_segment=$(create_session_segment)
+    local complete_status_left="${session_segment}${status_left_plugins}"
+
+    tmux set-option -g status-left "$complete_status_left"
+
+    # Handle bar layout
     local powerkit_bar_layout=$(get_tmux_option "@powerkit_bar_layout" "$POWERKIT_DEFAULT_BAR_LAYOUT")
-    
+
     if [[ "$powerkit_bar_layout" == "double" ]]; then
         # Double layout: plugins on second line (right-aligned)
-        if [[ -n "$status_2" ]]; then
-            # Format plugins for right alignment on second line
+        if [[ -n "$status_right_plugins" ]]; then
             local resolved_accent_color=$(get_powerkit_color 'surface')
-            local plugins_format="#[nolist align=right range=right #{E:status-right-style}]#[push-default]${status_2}#[pop-default]#[norange bg=${resolved_accent_color}]"
+            local plugins_format="#[nolist align=right range=right #{E:status-right-style}]#[push-default]${status_right_plugins}#[pop-default]#[norange bg=${resolved_accent_color}]"
             tmux set-option -g status-format[1] "$plugins_format"
         fi
         tmux set-option -g status-right ""
     else
-        # Single layout: plugins on right side, with final separator
-        if [[ -n "$status_2" ]]; then
-            tmux set-option -g status-right "$status_2"
+        # Single layout: plugins on right side
+        if [[ -n "$status_right_plugins" ]]; then
+            tmux set-option -g status-right "$status_right_plugins"
         else
             tmux set-option -g status-right ""
         fi
-        
+
         # Apply complete status format with final separator
         local resolved_accent_color=$(get_powerkit_color 'surface')
         local complete_format=$(build_single_layout_status_format "$resolved_accent_color")
         tmux set-option -g status-format[0] "$complete_format"
     fi
-    
+
     # Remove window separator for seamless powerline appearance
     tmux set-window-option -g window-status-separator ""
 }

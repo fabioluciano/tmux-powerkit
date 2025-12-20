@@ -25,6 +25,8 @@ parse_external_plugin() {
 
 # Get plugins list for single layout
 get_plugins_list() {
+    local side="$1"  # "left" or "right"
+    shift
     local plugins=("$@")
     local plugin_configs=""
     
@@ -102,8 +104,8 @@ get_plugins_list() {
         local right_sep_inv=$(get_tmux_option "@powerkit_right_separator_inverse" "$POWERKIT_DEFAULT_RIGHT_SEPARATOR_INVERSE")
 
         # Create command that tmux will execute with current pane path context
-        printf "#(RENDER_TEXT_COLOR='%s' RENDER_STATUS_BG='%s' RENDER_TRANSPARENT='%s' RENDER_PALETTE='%s' POWERKIT_DEFAULT_RIGHT_SEPARATOR='%s' POWERKIT_DEFAULT_RIGHT_SEPARATOR_INVERSE='%s' %s/render_plugins.sh '%s' 2>/dev/null || true)" \
-            "$text_color" "$status_bg" "$transparent" "$palette" "$right_sep" "$right_sep_inv" "$CURRENT_DIR" "$plugin_configs"
+        printf "#(RENDER_SIDE='%s' RENDER_TEXT_COLOR='%s' RENDER_STATUS_BG='%s' RENDER_TRANSPARENT='%s' RENDER_PALETTE='%s' POWERKIT_DEFAULT_RIGHT_SEPARATOR='%s' POWERKIT_DEFAULT_RIGHT_SEPARATOR_INVERSE='%s' %s/render_plugins.sh '%s' 2>/dev/null || true)" \
+            "$side" "$text_color" "$status_bg" "$transparent" "$palette" "$right_sep" "$right_sep_inv" "$CURRENT_DIR" "$plugin_configs"
     fi
 }
 
@@ -135,26 +137,57 @@ serialize_powerkit_palette() {
 # PLUGIN INITIALIZATION
 # =============================================================================
 
-# Initialize plugin system
+# Initialize plugin system (legacy - maintained for backward compatibility)
+# New code should use initialize_plugins_left() and initialize_plugins_right()
 initialize_plugins() {
+    # Delegate to new right-side function (maintains backward compatibility)
+    initialize_plugins_right
+}
+
+# Initialize left plugins (shown after session segment)
+initialize_plugins_left() {
     local powerkit_disable_plugins=$(get_tmux_option "@powerkit_disable_plugins" "$POWERKIT_DEFAULT_DISABLE_PLUGINS")
-    local plugins_string=$(get_tmux_option "@powerkit_plugins" "$POWERKIT_DEFAULT_PLUGINS")
-    local plugins
-    IFS=',' read -r -a plugins <<<"$plugins_string"
-    
-    local status_output=""
-    if [[ -n "$plugins_string" && "$powerkit_disable_plugins" != "true" ]]; then
-        export CURRENT_DIR
-        local powerkit_bar_layout=$(get_tmux_option "@powerkit_bar_layout" "$POWERKIT_DEFAULT_BAR_LAYOUT")
-        
-        if [[ "$powerkit_bar_layout" == "double" ]]; then
-            # Double layout - plugins on second line
-            status_output=$(get_plugins_list "${plugins[@]}")
-        else
-            # Single layout - plugins on right side
-            status_output=$(get_plugins_list "${plugins[@]}")
-        fi
+
+    # Check for explicit left/right configuration
+    local plugins_left_string=$(get_tmux_option "@powerkit_plugins_left" "$POWERKIT_DEFAULT_PLUGINS_LEFT")
+    local plugins_right_string=$(get_tmux_option "@powerkit_plugins_right" "$POWERKIT_DEFAULT_PLUGINS_RIGHT")
+
+    # If neither left nor right is set, left is empty (backward compatibility)
+    if [[ -z "$plugins_left_string" && -z "$plugins_right_string" ]]; then
+        echo ""
+        return
     fi
-    
-    echo "$status_output"
+
+    [[ -z "$plugins_left_string" ]] && { echo ""; return; }
+    [[ "$powerkit_disable_plugins" == "true" ]] && { echo ""; return; }
+
+    local plugins
+    IFS=',' read -r -a plugins <<<"$plugins_left_string"
+
+    export CURRENT_DIR
+    get_plugins_list "left" "${plugins[@]}"
+}
+
+# Initialize right plugins
+initialize_plugins_right() {
+    local powerkit_disable_plugins=$(get_tmux_option "@powerkit_disable_plugins" "$POWERKIT_DEFAULT_DISABLE_PLUGINS")
+
+    # Check for explicit left/right configuration
+    local plugins_left_string=$(get_tmux_option "@powerkit_plugins_left" "$POWERKIT_DEFAULT_PLUGINS_LEFT")
+    local plugins_right_string=$(get_tmux_option "@powerkit_plugins_right" "$POWERKIT_DEFAULT_PLUGINS_RIGHT")
+
+    # If neither left nor right is set, use legacy @powerkit_plugins for right
+    if [[ -z "$plugins_left_string" && -z "$plugins_right_string" ]]; then
+        local legacy_plugins=$(get_tmux_option "@powerkit_plugins" "$POWERKIT_DEFAULT_PLUGINS")
+        plugins_right_string="$legacy_plugins"
+    fi
+
+    [[ -z "$plugins_right_string" ]] && { echo ""; return; }
+    [[ "$powerkit_disable_plugins" == "true" ]] && { echo ""; return; }
+
+    local plugins
+    IFS=',' read -r -a plugins <<<"$plugins_right_string"
+
+    export CURRENT_DIR
+    get_plugins_list "right" "${plugins[@]}"
 }

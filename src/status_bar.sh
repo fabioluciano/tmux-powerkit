@@ -34,25 +34,9 @@ create_session_segment() {
     # Priority: prefix > copy_mode > normal
     local bg_condition="#{?client_prefix,${prefix_bg},#{?pane_in_mode,${copy_bg},${normal_bg}}}"
 
-    # Handle transparency for separator
-    # The separator needs to transition from session to first window's index background
-    local first_window_index_bg_option=$(get_tmux_option "@powerkit_active_window_number_bg" "$POWERKIT_DEFAULT_ACTIVE_WINDOW_NUMBER_BG")
-    local first_window_index_bg=$(get_powerkit_color "$first_window_index_bg_option")
-    local inactive_window_index_bg_option=$(get_tmux_option "@powerkit_inactive_window_number_bg" "$POWERKIT_DEFAULT_INACTIVE_WINDOW_NUMBER_BG")
-    local inactive_window_index_bg=$(get_powerkit_color "$inactive_window_index_bg_option")
-
-    # Use conditional to determine if window 1 is active
-    local next_bg="#{?#{==:#{active_window_index},1},${first_window_index_bg},${inactive_window_index_bg}}"
-
-    local separator_end
-    if [[ "$transparent" == "true" ]]; then
-        separator_end="#[bg=default]#[fg=${bg_condition}]${separator_char}#[none]"
-    else
-        separator_end="#[bg=${next_bg}]#[fg=${bg_condition}]${separator_char}#[none]"
-    fi
-
-    # Final segment with dynamic background (icon stays the same, only color changes)
-    echo "#[fg=${text_color},bold,bg=${bg_condition}]${session_icon} #S "
+    # Final segment with dynamic background
+    # Note: separator to next element is now handled by caller
+    echo "#[fg=${text_color},bold,bg=${bg_condition}]${session_icon} #S #[none]"
 }
 
 # Build status left format
