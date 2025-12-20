@@ -407,7 +407,7 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 ### Features
 
-* Enhance caching and performance optimizations across plugins ([#75](https://github.com/fabioluciano/tmux-tokyo-night/issues/75)) ([2b6f386](https://github.com/fabioluciano/tmux-tokyo-night/commit/2b6f386c10270543484d5b19654b72ac7b2ae10f))
+* Enhance caching and performance optimizations across plugins ([#75](https://github.com/fabioluciano/tmux-powerkit/issues/75)) ([2b6f386](https://github.com/fabioluciano/tmux-powerkit/commit/2b6f386c10270543484d5b19654b72ac7b2ae10f))
 
 # [2.1.0](https://github.com/fabioluciano/tmux-tokyo-night/compare/v2.0.0...v2.1.0) (2025-11-27)
 

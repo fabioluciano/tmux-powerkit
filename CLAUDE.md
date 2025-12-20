@@ -465,6 +465,7 @@ This allows:
 Plugins can handle threshold colors in two ways:
 
 **Automatic Thresholds** (managed by `render_plugins.sh`):
+
 - Plugin type must be `dynamic` AND return **empty** colors in `plugin_get_display_info()`
 - System automatically applies warning/critical colors based on `WARNING_THRESHOLD` and `CRITICAL_THRESHOLD`
 - Uses normal logic: higher values = worse (e.g., CPU, memory, disk)
@@ -472,6 +473,7 @@ Plugins can handle threshold colors in two ways:
 - Example: CPU plugin is type `dynamic` and returns empty colors, system applies red when CPU > 90%
 
 **Custom Threshold Logic** (managed by plugin):
+
 - Plugin returns **explicit colors** in `plugin_get_display_info()`
 - System respects plugin's colors and skips automatic thresholds
 - Plugin can implement inverted logic (lower = worse) or any custom logic
@@ -482,6 +484,7 @@ Plugins can handle threshold colors in two ways:
   - Fan/GPU plugins (type `conditional`): use `apply_threshold_colors()` helper
 
 **No Thresholds** (informational plugins):
+
 - Plugin type is `static` or `conditional` and returns empty colors
 - System does NOT apply automatic thresholds (respects plugin's intent)
 - Examples: network, datetime, hostname, weather, git
