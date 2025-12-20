@@ -1,15 +1,28 @@
 #!/usr/bin/env bash
 # Helper: options_viewer - Display all available theme options with defaults and current values
 
+set -eu
+
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$CURRENT_DIR/.." && pwd)"
+ROOT_DIR="$CURRENT_DIR/.."
 
-. "$ROOT_DIR/defaults.sh"
-. "$ROOT_DIR/utils.sh"
+# Source common dependencies
+# shellcheck source=src/helper_bootstrap.sh
+. "$ROOT_DIR/helper_bootstrap.sh"
 
-BOLD="$POWERKIT_ANSI_BOLD"; DIM="$POWERKIT_ANSI_DIM"; CYAN="$POWERKIT_ANSI_CYAN"
-GREEN="$POWERKIT_ANSI_GREEN"; MAGENTA="$POWERKIT_ANSI_MAGENTA"; YELLOW="$POWERKIT_ANSI_YELLOW"
-BLUE="$POWERKIT_ANSI_BLUE"; RESET="$POWERKIT_ANSI_RESET"
+# =============================================================================
+# Constants
+# =============================================================================
+
+# ANSI colors (from defaults.sh via helper_bootstrap, with fallbacks)
+BOLD="${POWERKIT_ANSI_BOLD:-\033[1m}"
+DIM="${POWERKIT_ANSI_DIM:-\033[2m}"
+CYAN="${POWERKIT_ANSI_CYAN:-\033[36m}"
+GREEN="${POWERKIT_ANSI_GREEN:-\033[32m}"
+YELLOW="${POWERKIT_ANSI_YELLOW:-\033[33m}"
+MAGENTA="${POWERKIT_ANSI_MAGENTA:-\033[35m}"
+BLUE="${POWERKIT_ANSI_BLUE:-\033[34m}"
+RESET="${POWERKIT_ANSI_RESET:-\033[0m}"
 
 TPM_PLUGINS_DIR="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.tmux/plugins}"
 [[ ! -d "$TPM_PLUGINS_DIR" && -d "$HOME/.config/tmux/plugins" ]] && TPM_PLUGINS_DIR="$HOME/.config/tmux/plugins"
@@ -30,6 +43,10 @@ declare -a THEME_OPTIONS=(
     "@powerkit_inactive_window_title|#W |tmux format|Inactive window title format"
 )
 
+# =============================================================================
+# Display Functions
+# =============================================================================
+
 print_header() {
     echo -e "\n${BOLD}${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
     echo -e "${BOLD}${CYAN}  🌃 tmux Options Reference${RESET}"
@@ -37,7 +54,9 @@ print_header() {
     echo -e "${DIM}  Plugins directory: ${TPM_PLUGINS_DIR}${RESET}\n"
 }
 
-print_section() { echo -e "\n${BOLD}${2:-$MAGENTA}▸ ${1}${RESET}\n${DIM}─────────────────────────────────────────────────────────────────────────────${RESET}"; }
+print_section() {
+    echo -e "\n${BOLD}${2:-$MAGENTA}▸ ${1}${RESET}\n${DIM}─────────────────────────────────────────────────────────────────────────────${RESET}"
+}
 
 # Get default value for a plugin option from defaults.sh
 get_plugin_default_value() {
@@ -68,7 +87,8 @@ get_plugin_option_description() {
 
 print_option() {
     local option="$1" default="$2" possible="$3" description="$4"
-    local current; current=$(tmux show-option -gqv "$option" 2>/dev/null || echo "")
+    local current
+    current=$(get_tmux_option "$option" "")
 
     # If no default provided, try to get it from defaults.sh for plugin options
     if [[ -z "$default" && "$option" == @powerkit_plugin_* ]]; then
@@ -93,7 +113,8 @@ print_option() {
 }
 
 print_tpm_option() {
-    local option="$1"; local current; current=$(tmux show-option -gqv "$option" 2>/dev/null || echo "")
+    local option="$1"; local current
+    current=$(get_tmux_option "$option" "")
     printf "${GREEN}%-45s${RESET}" "$option"
     [[ -n "$current" ]] && echo -e " ${YELLOW}= $current${RESET}" || echo -e " ${DIM}(not set)${RESET}"
 }
@@ -101,18 +122,13 @@ print_tpm_option() {
 discover_plugin_options() {
     local -A plugin_options=()
 
-    # Scan plugin files for get_tmux_option and get_cached_option calls
-    while IFS= read -r file; do
-        while IFS= read -r line; do
-            # Match various patterns: get_tmux_option "@opt", get_cached_option "@opt", $(get_tmux_option "@opt"
-            if [[ "$line" =~ get_tmux_option[[:space:]]*[\"\'\(]+[\"\']?(@powerkit_plugin_[a-zA-Z0-9_]+) ]] || \
-               [[ "$line" =~ get_cached_option[[:space:]]*[\"\'\(]+[\"\']?(@powerkit_plugin_[a-zA-Z0-9_]+) ]] || \
-               [[ "$line" =~ get_tmux_option[[:space:]]+\"(@powerkit_plugin_[a-zA-Z0-9_]+) ]] || \
-               [[ "$line" =~ get_cached_option[[:space:]]+\"(@powerkit_plugin_[a-zA-Z0-9_]+) ]]; then
-                plugin_options["${BASH_REMATCH[1]}"]=1
-            fi
-        done < "$file"
-    done < <(find "$ROOT_DIR/plugin" -name "*.sh" -type f 2>/dev/null)
+    # Scan plugin files using grep (much faster than line-by-line reading)
+    while IFS= read -r match; do
+        # Extract just the option name from grep output
+        if [[ "$match" =~ (@powerkit_plugin_[a-zA-Z0-9_]+) ]]; then
+            plugin_options["${BASH_REMATCH[1]}"]=1
+        fi
+    done < <(grep -rho '@powerkit_plugin_[a-zA-Z0-9_]\+' "$ROOT_DIR/plugin" 2>/dev/null | sort -u)
 
     # Also scan defaults.sh to discover all POWERKIT_PLUGIN_* defaults and convert to @powerkit_plugin_* format
     if [[ -f "$ROOT_DIR/defaults.sh" ]]; then
@@ -143,8 +159,16 @@ scan_tpm_plugin_options() {
     fi
 }
 
+# =============================================================================
+# Main
+# =============================================================================
+
 display_options() {
     local filter="${1:-}"
+
+    # Pre-load all tmux options in one call for performance
+    _batch_load_tmux_options 2>/dev/null || true
+
     print_header
 
     echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════════════════════════════╗${RESET}"
@@ -157,37 +181,23 @@ display_options() {
         [[ -z "$filter" || "$option" == *"$filter"* || "$description" == *"$filter"* ]] && print_option "$option" "$default" "$possible" "$description"
     done
 
-    # Get list of known plugin names from plugin directory
-    local -a known_plugins=()
-    while IFS= read -r plugin_file; do
-        local pname
-        pname=$(basename "$plugin_file" .sh)
-        known_plugins+=("$pname")
-    done < <(find "$ROOT_DIR/plugin" -name "*.sh" -type f 2>/dev/null | sort)
+    # Discover and group plugin options
+    local discovered_options
+    discovered_options=$(discover_plugin_options)
 
-    # Discover and group plugin options by matching against known plugin names
+    # Convert to array for faster iteration
+    local -a options_array
+    mapfile -t options_array <<< "$discovered_options"
+
     local -A grouped_options=()
-    while IFS= read -r option; do
+    for option in "${options_array[@]}"; do
         [[ -z "$option" ]] && continue
-        local temp plugin_name matched=false
+
+        local temp plugin_name
         temp="${option#@powerkit_plugin_}"
-
-        # Try to match against known plugin names (longest match first)
-        for pname in "${known_plugins[@]}"; do
-            if [[ "$temp" == "${pname}_"* || "$temp" == "$pname" ]]; then
-                plugin_name="$pname"
-                matched=true
-                break
-            fi
-        done
-
-        # Fallback: use first part before underscore
-        if [[ "$matched" == "false" ]]; then
-            plugin_name="${temp%%_*}"
-        fi
-
+        plugin_name="${temp%%_*}"
         grouped_options["$plugin_name"]+="$option "
-    done < <(discover_plugin_options)
+    done
 
     for plugin_name in $(printf '%s\n' "${!grouped_options[@]}" | sort); do
         local has_visible=false display_name
@@ -197,7 +207,7 @@ display_options() {
         for option in ${grouped_options[$plugin_name]}; do
             [[ -z "$filter" || "$option" == *"$filter"* ]] && {
                 [[ "$has_visible" == "false" ]] && { print_section "Theme Plugin: ${display_name}" "$MAGENTA"; has_visible=true; }
-                print_option "$option" "" "" "Plugin option"
+                print_option "$option" "" "" "Plugin option" || true
             }
         done
     done
@@ -206,17 +216,17 @@ display_options() {
     echo -e "${BOLD}${BLUE}║  📦 Other TPM Plugins Options                                             ║${RESET}"
     echo -e "${BOLD}${BLUE}╚═══════════════════════════════════════════════════════════════════════════╝${RESET}"
 
-    [[ -d "$TPM_PLUGINS_DIR" ]] && for plugin_dir in "$TPM_PLUGINS_DIR"/*/; do [[ -d "$plugin_dir" ]] && scan_tpm_plugin_options "$plugin_dir"; done
+    # Scan TPM plugins with timeout to avoid hanging
+    if [[ -d "$TPM_PLUGINS_DIR" ]]; then
+        for plugin_dir in "$TPM_PLUGINS_DIR"/*/; do
+            [[ -d "$plugin_dir" ]] && scan_tpm_plugin_options "$plugin_dir" 2>/dev/null || true
+        done
+    fi
 
     echo -e "\n${DIM}Press 'q' to exit, '/' to search${RESET}\n"
 }
 
 [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]] && { echo "Usage: $0 [filter]"; exit 0; }
 
-# Display options using less for navigation within display-popup
-output_file=$(mktemp)
-trap "rm -f '$output_file'" EXIT
-display_options "${1:-}" > "$output_file"
-less --help 2>&1 | grep -q -- '--mouse' && \
-  less -R --mouse --no-lessopen "$output_file" || \
-  less -R --no-lessopen "$output_file"
+# Simple invocation: pipe to less like keybindings_viewer.sh
+display_options "${1:-}" | less -R

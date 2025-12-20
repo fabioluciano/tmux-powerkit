@@ -232,6 +232,87 @@ declare -A THEME_COLORS=(
 )
 ```
 
+#### Custom Themes
+
+PowerKit supports loading custom theme files from any location:
+
+**Configuration:**
+
+```bash
+# In ~/.tmux.conf
+set -g @powerkit_theme "custom"
+set -g @powerkit_custom_theme_path "~/path/to/my-custom-theme.sh"
+```
+
+**Creating a Custom Theme:**
+
+1. Create a `.sh` file with your theme colors
+2. Define a `THEME_COLORS` associative array with all semantic colors
+3. Export the array: `export THEME_COLORS`
+
+See `assets/example-custom-theme.sh` for a complete reference implementation.
+
+**Example custom theme file:**
+
+```bash
+#!/usr/bin/env bash
+# My Custom Theme
+
+declare -A THEME_COLORS=(
+    # Core
+    [background]="#1e1e2e"
+    [surface]="#313244"
+    [text]="#cdd6f4"
+    [border]="#585b70"
+
+    # Semantic
+    [primary]="#89b4fa"
+    [secondary]="#45475a"
+    [accent]="#cba6f7"
+
+    # Status
+    [success]="#a6e3a1"
+    [warning]="#f9e2af"
+    [error]="#f38ba8"
+    [info]="#89dceb"
+
+    # Interactive
+    [active]="#6c7086"
+    [disabled]="#313244"
+    [hover]="#7f849c"
+    [focus]="#89b4fa"
+
+    # Subtle variants (for icons)
+    [primary-subtle]="#313244"
+    [success-subtle]="#313244"
+    [warning-subtle]="#313244"
+    [error-subtle]="#313244"
+    [info-subtle]="#313244"
+
+    # Strong variants (emphasized)
+    [border-strong]="#7f849c"
+    [border-subtle]="#45475a"
+)
+
+export THEME_COLORS
+```
+
+**Required Semantic Colors:**
+
+- **Core:** `background`, `surface`, `text`, `border`
+- **Semantic:** `primary`, `secondary`, `accent`
+- **Status:** `success`, `warning`, `error`, `info`
+- **Interactive:** `active`, `disabled`, `hover`, `focus`
+- **Variants:** `*-subtle`, `*-strong`, `border-strong`, `border-subtle`
+
+**Notes:**
+
+- Custom themes persist across `tmux kill-server` (stored in cache)
+- If the custom theme file is not found, PowerKit falls back to tokyo-night/night
+- Use the built-in themes as reference (see `src/themes/*/`)
+- Theme selector (`prefix + C-r`) will show "custom" when active
+- **Path expansion:** The tilde (`~`) in `@powerkit_custom_theme_path` is automatically expanded to the user's home directory. Both `~/path` and absolute paths work correctly. The expansion handles escaped tildes (`\~`) and environment variables.
+
 ### Plugin System
 
 **Plugin Structure (`src/plugin/*.sh`):**
@@ -301,8 +382,9 @@ All options use `@powerkit_*` prefix:
 
 ```bash
 # Core
-@powerkit_theme              # Theme name (ayu, catppuccin, dracula, everforest, github, gruvbox, kanagawa, kiribyte, nord, onedark, rose-pine, solarized, tokyo-night)
+@powerkit_theme              # Theme name (ayu, catppuccin, dracula, everforest, github, gruvbox, kanagawa, kiribyte, nord, onedark, rose-pine, solarized, tokyo-night, custom)
 @powerkit_theme_variant      # Variant (depends on theme - see theme list below)
+@powerkit_custom_theme_path  # Path to custom theme file (required when @powerkit_theme is "custom")
 @powerkit_plugins            # Comma-separated plugin list
 @powerkit_transparent        # true/false
 
@@ -531,6 +613,39 @@ The selected theme persists across `tmux kill-server` via a cache file:
 - **Public functions**: Use verb-noun pattern (`get_file_mtime`, `apply_threshold_colors`)
 - **Private/internal functions**: Prefix with underscore (`_process_external_plugin`, `_string_hash`)
 - **Predicates**: Start with `is_` or `has_` (`is_macos`, `has_threshold`)
+
+### Error Handling Patterns
+
+**Standardized patterns for consistent error handling:**
+
+```bash
+# 1. Silent failure with fallback value (stat, calculations)
+size=$(stat -f%z "$file" 2>/dev/null || echo 0)
+mtime=$(stat -c "%Y" "$file" 2>/dev/null || printf '-1')
+
+# 2. Command that should never fail the script (tmux display, cleanup)
+tmux display-message "Message" 2>/dev/null || true
+rm -f "$temp_file" 2>/dev/null || true
+
+# 3. Silent command existence check (&&, ||)
+command -v apt &>/dev/null && echo "apt available"
+
+# 4. Function with error return (validation, file checks)
+[[ ! -f "$file" ]] && { log_error "source" "File not found"; return 1; }
+
+# 5. Named constants with fallbacks (prefer over hardcoded values)
+timeout="${_DEFAULT_TIMEOUT_SHORT:-5}"
+size_limit="${POWERKIT_BYTE_MB:-1048576}"
+```
+
+**Guidelines:**
+
+- Use `2>/dev/null` to suppress stderr when errors are expected and handled
+- Use `&>/dev/null` only for command existence checks
+- Always provide fallback values for critical operations (`|| echo 0`, `|| printf '-1'`)
+- Use `|| true` for non-critical operations that shouldn't fail the script
+- Log errors with `log_error()` before returning from functions
+- Prefer named constants with `${VAR:-default}` pattern over magic numbers
 
 ## Known Issues / Gotchas
 

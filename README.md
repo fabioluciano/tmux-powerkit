@@ -1,6 +1,6 @@
 # ⚡ PowerKit for tmux
 
-A powerful, modular tmux status bar framework with 37+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with 14 beautiful themes (25+ variants) including Tokyo Night, Catppuccin, Kanagawa, Everforest, Ayu, GitHub, Dracula, Gruvbox, Nord, One Dark, Rosé Pine, and Solarized.
+A powerful, modular tmux status bar framework with 37+ built-in plugins for displaying system information, development tools, security monitoring, and media status. Ships with 15 beautiful themes (27+ variants) including Tokyo Night, Catppuccin, Kanagawa, Everforest, Ayu, GitHub, Dracula, Gruvbox, Nord, One Dark, Pastel, Rosé Pine, and Solarized.
 
 > **📢 Note:** This project was formerly known as `tmux-tokyo-night`. See [Migration Guide](../../wiki/Migration-Guide) for upgrade instructions.
 
@@ -19,7 +19,7 @@ A powerful, modular tmux status bar framework with 37+ built-in plugins for disp
 
 ## ✨ Features
 
-- 🎨 **14 themes (25+ variants)** - Tokyo Night, Catppuccin, Kanagawa, Everforest, Ayu, GitHub, Dracula, Gruvbox, Kiribyte, Nord, One Dark, Rosé Pine, Solarized
+- 🎨 **15 themes (27+ variants)** - Tokyo Night, Catppuccin, Kanagawa, Everforest, Ayu, GitHub, Dracula, Gruvbox, Kiribyte, Nord, One Dark, Pastel, Rosé Pine, Solarized
 - 🔌 **37+ built-in plugins** - System monitoring, development tools, security keys, media players
 - ⚡ **Performance optimized** - Intelligent caching with configurable TTL
 - 🎯 **Fully customizable** - Semantic colors, icons, formats, and separators
@@ -118,6 +118,92 @@ set -g @powerkit_theme_variant 'main'
 # Solarized Light
 set -g @powerkit_theme 'solarized'
 set -g @powerkit_theme_variant 'light'
+```
+
+### Custom Themes
+
+You can load your own theme from any location:
+
+```bash
+# Load custom theme from a file
+set -g @powerkit_theme 'custom'
+set -g @powerkit_custom_theme_path '~/path/to/my-custom-theme.sh'
+```
+
+> [!TIP]
+> **Example Available:** A complete reference implementation is available at [`assets/example-custom-theme.sh`](assets/example-custom-theme.sh).
+> Copy this file as a starting point for your custom theme!
+
+**Note:** The tilde (`~`) in paths is automatically expanded to your home directory. Both `~/path` and absolute paths like `/Users/username/path` work correctly.
+
+Create a theme file with the complete semantic color structure:
+
+```bash
+#!/usr/bin/env bash
+# My Custom Theme
+
+declare -A THEME_COLORS=(
+    # Core system colors
+    [transparent]="NONE"
+    [none]="NONE"
+
+    # Background colors (Required)
+    [background]="#1e1e2e"
+    [background-alt]="#181825"      # Alternative/darker background
+    [surface]="#313244"
+    [overlay]="#3e3f4a"
+
+    # Text colors (Required)
+    [text]="#cdd6f4"
+    [text-muted]="#6c7086"
+    [text-disabled]="#585b70"
+
+    # Border colors (Required)
+    [border]="#585b70"
+    [border-subtle]="#45475a"
+    [border-strong]="#7f849c"
+
+    # Semantic colors (Required)
+    [primary]="#89b4fa"
+    [secondary]="#45475a"
+    [secondary-strong]="#313244"
+    [accent]="#cba6f7"
+
+    # Status colors (Required)
+    [success]="#a6e3a1"
+    [warning]="#f9e2af"
+    [error]="#f38ba8"
+    [info]="#89dceb"
+
+    # Interactive colors (Required)
+    [active]="#6c7086"
+    [disabled]="#313244"
+    [hover]="#7f849c"
+    [focus]="#89b4fa"
+
+    # Subtle variants (Required)
+    [primary-subtle]="#313244"
+    [success-subtle]="#b9e9af"
+    [warning-subtle]="#fbedc0"
+    [error-subtle]="#f6a4b3"
+    [info-subtle]="#a5e5f5"
+    [accent-subtle]="#dfc0f5"
+
+    # Strong variants (Required)
+    [primary-strong]="#b4befe"
+    [success-strong]="#5e8f57"
+    [warning-strong]="#b08654"
+    [error-strong]="#a84f63"
+    [info-strong]="#4b9dba"
+    [accent-strong]="#9366ba"
+
+    # Additional colors (Optional)
+    [white]="#ffffff"
+    [black]="#000000"
+    [muted]="#6c7086"
+)
+
+export THEME_COLORS
 ```
 
 Learn more: **[Theme Variations](../../wiki/Theme-Variations)**

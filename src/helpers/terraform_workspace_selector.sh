@@ -6,16 +6,13 @@ set -euo pipefail
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$CURRENT_DIR/.."
 
-# Source dependencies (defaults first, then utils for toast function)
-. "$ROOT_DIR/defaults.sh" 2>/dev/null || true
-. "$ROOT_DIR/utils.sh" 2>/dev/null || true
+# Source common dependencies
+# shellcheck source=src/helper_bootstrap.sh
+. "$ROOT_DIR/helper_bootstrap.sh"
 
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit"
-
-# Fallback toast if utils.sh didn't load
-if ! command -v toast &>/dev/null; then
-    toast() { tmux display-message "$1" 2>/dev/null || echo "$1"; }
-fi
+# =============================================================================
+# Tool Detection
+# =============================================================================
 
 # Detect terraform or tofu
 detect_tool() {
@@ -24,11 +21,18 @@ detect_tool() {
     return 1
 }
 
+# =============================================================================
+# Cache Management
+# =============================================================================
+
 # Invalidate terraform cache
 invalidate_cache() {
-    local cache_file="${CACHE_DIR}/terraform.cache"
-    [[ -f "$cache_file" ]] && rm -f "$cache_file"
+    cache_clear "terraform" || true
 }
+
+# =============================================================================
+# Pane & Directory Utilities
+# =============================================================================
 
 # Get current pane path
 get_pane_path() {
@@ -46,6 +50,10 @@ is_tf_directory() {
     return 1
 }
 
+# =============================================================================
+# Workspace Selection
+# =============================================================================
+
 select_workspace() {
     local pane_path tool current_ws
     pane_path=$(get_pane_path)
@@ -58,12 +66,12 @@ select_workspace() {
 
     # Detect tool
     tool=$(detect_tool) || { toast "❌ terraform/tofu not found" "simple"; return 0; }
-    
+
     # Get current workspace
     current_ws=$(cd "$pane_path" && "$tool" workspace show 2>/dev/null) || current_ws="default"
-    
+
     # Get list of workspaces
-    local -a workspaces=() menu_items=()
+    local -a workspaces=()
     while IFS= read -r ws; do
         # Remove leading * and spaces
         ws="${ws#\* }"
@@ -72,26 +80,30 @@ select_workspace() {
         [[ -z "$ws" ]] && continue
         workspaces+=("$ws")
     done < <(cd "$pane_path" && "$tool" workspace list 2>/dev/null)
-    
+
     [[ ${#workspaces[@]} -eq 0 ]] && { toast "❌ No workspaces found" "simple"; return 0; }
-    
+
     # Build menu
     local -a menu_args=()
     for ws in "${workspaces[@]}"; do
         local marker=" "
         [[ "$ws" == "$current_ws" ]] && marker="●"
-        menu_args+=("$marker $ws" "" "run-shell \"cd '$pane_path' && $tool workspace select '$ws' >/dev/null 2>&1 && rm -f '${CACHE_DIR}/terraform.cache' && tmux display-message ' Workspace: $ws' && tmux refresh-client -S\"")
+        menu_args+=("$marker $ws" "" "run-shell \"cd '$pane_path' && $tool workspace select '$ws' >/dev/null 2>&1 && bash '$CURRENT_DIR/terraform_workspace_selector.sh' invalidate && tmux display-message ' Workspace: $ws' && tmux refresh-client -S\"")
     done
-    
+
     # Add separator and new workspace option
     menu_args+=("" "" "")
-    menu_args+=("+ New workspace..." "" "command-prompt -p 'New workspace name:' \"run-shell \\\"cd '$pane_path' && $tool workspace new '%1' >/dev/null 2>&1 && rm -f '${CACHE_DIR}/terraform.cache' && tmux display-message ' Created: %1' && tmux refresh-client -S\\\"\"")
-    
+    menu_args+=("+ New workspace..." "" "command-prompt -p 'New workspace name:' \"run-shell \\\"cd '$pane_path' && $tool workspace new '%1' >/dev/null 2>&1 && bash '$CURRENT_DIR/terraform_workspace_selector.sh' invalidate && tmux display-message ' Created: %1' && tmux refresh-client -S\\\"\"")
+
     # Show menu
     local icon=""
     [[ "$tool" == "tofu" ]] && icon=""
     tmux display-menu -T "$icon  Select Workspace" -x C -y C "${menu_args[@]}"
 }
+
+# =============================================================================
+# Main
+# =============================================================================
 
 case "${1:-select}" in
     select|switch) select_workspace ;;

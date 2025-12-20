@@ -6,19 +6,18 @@ set -euo pipefail
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$CURRENT_DIR/.."
 
-# Source dependencies (defaults first, then utils for toast function)
-. "$ROOT_DIR/defaults.sh" 2>/dev/null || true
-. "$ROOT_DIR/utils.sh" 2>/dev/null || true
+# Source common dependencies
+# shellcheck source=src/helper_bootstrap.sh
+. "$ROOT_DIR/helper_bootstrap.sh"
 
-# Fallback toast if utils.sh didn't load
-if ! command -v toast &>/dev/null; then
-    toast() { tmux display-message "$1" 2>/dev/null || echo "$1"; }
-fi
+# =============================================================================
+# Input Device Selection
+# =============================================================================
 
 select_input_device() {
     local audio_system="" current_input=""
     local -a menu_items=() device_names=()
-    
+
     if is_macos; then
         command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 0; }
         audio_system="macos"
@@ -42,22 +41,26 @@ select_input_device() {
     else
         toast "❌ No supported audio system found" "simple"; return 0
     fi
-    
+
     [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No input devices found" "simple"; return 0; }
-    
+
     local -a menu_args=()
     for i in "${!menu_items[@]}"; do
         local item="${menu_items[$i]}" name="${device_names[$i]}" clean_desc="${menu_items[$i]#* }"
-        [[ "$audio_system" == "linux" ]] && menu_args+=("$item" "" "run-shell \"pactl set-default-source '$name' && tmux display-message '  Input: $clean_desc'\"") || \
-            menu_args+=("$item" "" "run-shell \"SwitchAudioSource -s '$name' -t input >/dev/null 2>&1 && tmux display-message '  Input: $clean_desc'\"")
+        [[ "$audio_system" == "linux" ]] && menu_args+=("$item" "" "run-shell \"pactl set-default-source '$name' && tmux display-message '  Input: $clean_desc'\"") || \
+            menu_args+=("$item" "" "run-shell \"SwitchAudioSource -s '$name' -t input >/dev/null 2>&1 && tmux display-message '  Input: $clean_desc'\"")
     done
-    tmux display-menu -T "  Select Input Device" -x C -y C "${menu_args[@]}"
+    tmux display-menu -T "  Select Input Device" -x C -y C "${menu_args[@]}"
 }
+
+# =============================================================================
+# Output Device Selection
+# =============================================================================
 
 select_output_device() {
     local audio_system="" current_output=""
     local -a menu_items=() device_names=()
-    
+
     if is_macos; then
         command -v SwitchAudioSource &>/dev/null || { toast "❌ Install: brew install switchaudio-osx" "simple"; return 0; }
         audio_system="macos"
@@ -80,17 +83,21 @@ select_output_device() {
     else
         toast "❌ No supported audio system found" "simple"; return 0
     fi
-    
+
     [[ ${#menu_items[@]} -eq 0 ]] && { toast "❌ No output devices found" "simple"; return 0; }
-    
+
     local -a menu_args=()
     for i in "${!menu_items[@]}"; do
         local item="${menu_items[$i]}" name="${device_names[$i]}" clean_desc="${menu_items[$i]#* }"
-        [[ "$audio_system" == "linux" ]] && menu_args+=("$item" "" "run-shell \"pactl set-default-sink '$name' && tmux display-message '   Output: $clean_desc'\"") || \
-            menu_args+=("$item" "" "run-shell \"SwitchAudioSource -s '$name' -t output >/dev/null 2>&1 && tmux display-message '   Output: $clean_desc'\"")
+        [[ "$audio_system" == "linux" ]] && menu_args+=("$item" "" "run-shell \"pactl set-default-sink '$name' && tmux display-message '   Output: $clean_desc'\"") || \
+            menu_args+=("$item" "" "run-shell \"SwitchAudioSource -s '$name' -t output >/dev/null 2>&1 && tmux display-message '   Output: $clean_desc'\"")
     done
-    tmux display-menu -T "   Select Output Device" -x C -y C "${menu_args[@]}"
+    tmux display-menu -T "   Select Output Device" -x C -y C "${menu_args[@]}"
 }
+
+# =============================================================================
+# Main
+# =============================================================================
 
 case "${1:-}" in
     input|mic|microphone) select_input_device ;;

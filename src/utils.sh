@@ -15,6 +15,7 @@
 #   - Colors: get_powerkit_color(), get_color(), load_powerkit_theme()
 #   - Helpers: extract_numeric(), evaluate_condition(), build_display_info()
 #   - Toast: show_toast_notification(), toast()
+#   - Clipboard: copy_to_clipboard()
 #   - Debug: is_debug_mode(), execute_plugin_safe()
 #   - Logging: log_debug(), log_info(), log_warn(), log_error()
 #   - Logging: log_plugin_error(), log_missing_dep(), get_log_file()
@@ -124,18 +125,37 @@ get_os_icon(){ printf ' %s' "$_PLATFORM_ICON"; }
 # File System Helpers (platform-agnostic wrappers)
 # =============================================================================
 
+# File mtime cache (improves performance for frequently accessed files)
+declare -gA _FILE_MTIME_CACHE
+
 # Get file modification time in seconds since epoch
-# Usage: get_file_mtime <file_path>
+# Usage: get_file_mtime <file_path> [use_cache]
 # Returns: modification time or -1 on error
+# Set use_cache=1 to enable caching (useful for files checked multiple times per render)
 get_file_mtime() {
     local file="$1"
+    local use_cache="${2:-0}"
+
     [[ ! -f "$file" ]] && { printf '-1'; return 1; }
 
-    if is_macos; then
-        stat -f "%m" "$file" 2>/dev/null || { printf '-1'; return 1; }
-    else
-        stat -c "%Y" "$file" 2>/dev/null || { printf '-1'; return 1; }
+    # Check cache if enabled
+    if [[ "$use_cache" == "1" && -n "${_FILE_MTIME_CACHE[$file]:-}" ]]; then
+        printf '%s' "${_FILE_MTIME_CACHE[$file]}"
+        return 0
     fi
+
+    # Get mtime
+    local mtime
+    if is_macos; then
+        mtime=$(stat -f "%m" "$file" 2>/dev/null) || { printf '-1'; return 1; }
+    else
+        mtime=$(stat -c "%Y" "$file" 2>/dev/null) || { printf '-1'; return 1; }
+    fi
+
+    # Store in cache if enabled
+    [[ "$use_cache" == "1" ]] && _FILE_MTIME_CACHE[$file]="$mtime"
+
+    printf '%s' "$mtime"
 }
 
 # Get file size in bytes
@@ -150,6 +170,29 @@ get_file_size() {
     else
         stat -c "%s" "$file" 2>/dev/null || printf '0'
     fi
+}
+
+# File existence helpers (DRY - reduces repeated validation patterns)
+# Usage: file_exists <path> - Returns 0 if file exists, 1 otherwise
+file_exists() { [[ -f "$1" ]]; }
+
+# Usage: dir_exists <path> - Returns 0 if directory exists, 1 otherwise
+dir_exists() { [[ -d "$1" ]]; }
+
+# Usage: require_file <path> [error_message] - Exits with error if file doesn't exist
+require_file() {
+    local file="$1"
+    local msg="${2:-Required file not found: $file}"
+    [[ ! -f "$file" ]] && { log_error "require_file" "$msg"; return 1; }
+    return 0
+}
+
+# Usage: require_dir <path> [error_message] - Exits with error if directory doesn't exist
+require_dir() {
+    local dir="$1"
+    local msg="${2:-Required directory not found: $dir}"
+    [[ ! -d "$dir" ]] && { log_error "require_dir" "$msg"; return 1; }
+    return 0
 }
 
 # =============================================================================
@@ -252,8 +295,39 @@ load_powerkit_theme() {
     # Final fallback for variant
     [[ -z "$theme_variant" ]] && theme_variant="night"
 
+    # Check if theme is "custom" - load from custom path
+    if [[ "$theme" == "custom" ]]; then
+        local custom_theme_path
+        custom_theme_path=$(get_tmux_option "@powerkit_custom_theme_path" "$POWERKIT_CUSTOM_THEME_PATH")
+
+        if [[ -z "$custom_theme_path" ]]; then
+            log_error "theme" "Custom theme selected but @powerkit_custom_theme_path is not set"
+            theme="tokyo-night"
+            theme_variant="night"
+            theme_file="$CURRENT_DIR/themes/tokyo-night/night.sh"
+        else
+            # Expand tilde (~) and environment variables in the path
+            # Remove backslash escaping if present
+            custom_theme_path="${custom_theme_path//\\~/~}"
+            # Expand tilde using eval (safe because we control the pattern)
+            custom_theme_path=$(eval echo "$custom_theme_path")
+
+            if [[ ! -f "$custom_theme_path" ]]; then
+                log_error "theme" "Custom theme file not found: $custom_theme_path, loading default"
+                theme="tokyo-night"
+                theme_variant="night"
+                theme_file="$CURRENT_DIR/themes/tokyo-night/night.sh"
+            else
+                theme_file="$custom_theme_path"
+                log_info "theme" "Loading custom theme from: $custom_theme_path"
+            fi
+        fi
+    else
+        # Standard theme path
+        theme_file="$CURRENT_DIR/themes/${theme}/${theme_variant}.sh"
+    fi
+
     # Load theme file
-    theme_file="$CURRENT_DIR/themes/${theme}/${theme_variant}.sh"
     if [[ -f "$theme_file" ]]; then
         . "$theme_file"
         # Copy THEME_COLORS to POWERKIT_THEME_COLORS
@@ -329,7 +403,7 @@ evaluate_condition() {
     esac
 }
 
-# Format large numbers with K/M/B suffixes
+# Format large numbers with K/M/B suffixes (KISS - simplified logic)
 # Usage: format_number <number> [precision]
 # Examples: 1234 -> 1.2K, 47000 -> 47K, 1234567 -> 1.2M
 format_number() {
@@ -337,38 +411,29 @@ format_number() {
     local precision="${2:-1}"
 
     # Handle non-numeric or empty input
-    [[ ! "$num" =~ ^[0-9]+$ ]] && { echo "$num"; return; }
+    [[ ! "$num" =~ ^[0-9]+$ ]] && { printf '%s' "$num"; return; }
 
-    if (( num >= 1000000000 )); then
-        # Billions
-        local div=$((num / 1000000000))
-        local rem=$(( (num % 1000000000) / 100000000 ))
-        if (( rem > 0 && precision > 0 )); then
-            printf '%d.%dB' "$div" "$rem"
-        else
-            printf '%dB' "$div"
+    # Define thresholds and suffixes
+    local -a thresholds=(1000000000 1000000 1000)
+    local -a suffixes=("B" "M" "K")
+
+    # Find appropriate suffix
+    local i
+    for i in 0 1 2; do
+        if (( num >= thresholds[i] )); then
+            local div=$((num / thresholds[i]))
+            if [[ "$precision" == "0" ]]; then
+                printf '%d%s' "$div" "${suffixes[i]}"
+            else
+                local rem=$(( (num % thresholds[i]) * 10 / thresholds[i] ))
+                [[ $rem -gt 0 ]] && printf '%d.%d%s' "$div" "$rem" "${suffixes[i]}" || printf '%d%s' "$div" "${suffixes[i]}"
+            fi
+            return
         fi
-    elif (( num >= 1000000 )); then
-        # Millions
-        local div=$((num / 1000000))
-        local rem=$(( (num % 1000000) / 100000 ))
-        if (( rem > 0 && precision > 0 )); then
-            printf '%d.%dM' "$div" "$rem"
-        else
-            printf '%dM' "$div"
-        fi
-    elif (( num >= 1000 )); then
-        # Thousands
-        local div=$((num / 1000))
-        local rem=$(( (num % 1000) / 100 ))
-        if (( rem > 0 && precision > 0 )); then
-            printf '%d.%dK' "$div" "$rem"
-        else
-            printf '%dK' "$div"
-        fi
-    else
-        printf '%d' "$num"
-    fi
+    done
+
+    # No suffix needed (< 1000)
+    printf '%d' "$num"
 }
 
 # Build display info string for plugins
@@ -417,7 +482,7 @@ show_toast_notification() {
     if [[ "$content_type" == "file" ]]; then
         content_file="$content"
         [[ ! -f "$content_file" ]] && {
-            tmux display-message -d 3000 "Toast error: content file not found" 2>/dev/null || true
+            tmux display-message -d "${_DEFAULT_TOAST_SHORT:-3000}" "Toast error: content file not found" 2>/dev/null || true
             return 1
         }
     else
@@ -474,7 +539,7 @@ TOAST_EOF
             # Fallback
             local first_line
             first_line=$(head -n1 "$content_file" 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g')
-            tmux display-message -d 10000 "$title - $first_line" 2>/dev/null || true
+            tmux display-message -d "${_DEFAULT_TOAST_LONG:-10000}" "$title - $first_line" 2>/dev/null || true
         }
     else
         # Fallback for older tmux
@@ -492,7 +557,7 @@ TOAST_EOF
 toast() {
     local message="$1"
     local type="${2:-info}"
-    local duration="${3:-3000}"
+    local duration="${3:-${_DEFAULT_TOAST_SHORT}}"
     
     # For simple messages, use display-message (faster, non-blocking)
     if [[ "$type" == "simple" ]]; then
@@ -511,6 +576,39 @@ toast() {
     esac
     
     show_toast_notification "$title" "$message" 50 10 "$type"
+}
+
+# =============================================================================
+# Clipboard Utilities
+# =============================================================================
+
+# Copy content to system clipboard (cross-platform)
+# Usage: echo "content" | copy_to_clipboard
+# Returns: 0 on success, 1 if no clipboard tool available
+copy_to_clipboard() {
+    _detect_platform
+
+    case "$_PLATFORM_OS" in
+        Darwin)
+            pbcopy
+            ;;
+        Linux|*BSD)
+            if command -v wl-copy &>/dev/null; then
+                wl-copy
+            elif command -v xclip &>/dev/null; then
+                xclip -selection clipboard
+            elif command -v xsel &>/dev/null; then
+                xsel --clipboard --input
+            else
+                log_error "clipboard" "No clipboard tool available (install wl-copy, xclip, or xsel)"
+                return 1
+            fi
+            ;;
+        *)
+            log_error "clipboard" "Unsupported platform for clipboard operations"
+            return 1
+            ;;
+    esac
 }
 
 # =============================================================================
@@ -667,7 +765,7 @@ _log() {
     local log_file
     log_file=$(_get_log_file)
 
-    # Rotate log if > 1MB
+    # Rotate log if > 1MB (using named constant from defaults.sh)
     if [[ -f "$log_file" ]]; then
         local size
         if is_macos; then
@@ -675,7 +773,7 @@ _log() {
         else
             size=$(stat -c%s "$log_file" 2>/dev/null || echo 0)
         fi
-        [[ "$size" -gt 1048576 ]] && mv "$log_file" "${log_file}.old" 2>/dev/null
+        [[ "$size" -gt "${POWERKIT_BYTE_MB:-1048576}" ]] && mv "$log_file" "${log_file}.old" 2>/dev/null
     fi
 
     printf '[%s] [%-5s] [%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$level" "$source" "$message" >> "$log_file"
@@ -723,12 +821,16 @@ log_missing_dep() {
 get_log_file() { _get_log_file; }
 
 # =============================================================================
-# Performance Telemetry System (Optional)
+# Performance Telemetry System (Optional - Lazy Loaded)
+# =============================================================================
+# Telemetry functions are only fully defined if telemetry is enabled.
+# This saves ~160 lines of parsing and memory when disabled (default state).
 # =============================================================================
 
 # Telemetry state
 _POWERKIT_TELEMETRY_FILE=""
 _POWERKIT_TELEMETRY_ENABLED=""
+_POWERKIT_TELEMETRY_LOADED=""
 
 # Check if telemetry is enabled
 is_telemetry_enabled() {
@@ -737,6 +839,32 @@ is_telemetry_enabled() {
     }
     [[ "$_POWERKIT_TELEMETRY_ENABLED" == "true" || "$_POWERKIT_TELEMETRY_ENABLED" == "1" ]]
 }
+
+# Lazy-load telemetry functions (called on first use)
+_load_telemetry_functions() {
+    [[ -n "$_POWERKIT_TELEMETRY_LOADED" ]] && return
+    _POWERKIT_TELEMETRY_LOADED=1
+
+    # Only define full implementations if enabled
+    if ! is_telemetry_enabled; then
+        # Define no-op stubs (minimal overhead)
+        telemetry_record() { :; }
+        telemetry_plugin_start() { :; }
+        telemetry_plugin_end() { :; }
+        telemetry_cache() { :; }
+        telemetry_summary() { printf 'Telemetry disabled\n'; }
+        telemetry_clear() { :; }
+        _get_telemetry_file() { :; }
+        _get_timestamp_ms() { :; }
+        return
+    fi
+
+    # Full implementations below (only parsed when telemetry is enabled)
+    _define_telemetry_impl
+}
+
+# Define full telemetry implementation (only called when enabled)
+_define_telemetry_impl() {
 
 # Get telemetry log file
 _get_telemetry_file() {
@@ -890,3 +1018,14 @@ telemetry_clear() {
     rm -f "$telemetry_file" "${telemetry_file}.old" 2>/dev/null
     log_info "telemetry" "Telemetry data cleared"
 }
+
+} # End of _define_telemetry_impl
+
+# Initialize telemetry on first call (auto-lazy-load)
+# These wrapper functions trigger lazy loading
+telemetry_record() { _load_telemetry_functions; telemetry_record "$@"; }
+telemetry_plugin_start() { _load_telemetry_functions; telemetry_plugin_start "$@"; }
+telemetry_plugin_end() { _load_telemetry_functions; telemetry_plugin_end "$@"; }
+telemetry_cache() { _load_telemetry_functions; telemetry_cache "$@"; }
+telemetry_summary() { _load_telemetry_functions; telemetry_summary "$@"; }
+telemetry_clear() { _load_telemetry_functions; telemetry_clear "$@"; }

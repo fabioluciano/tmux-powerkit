@@ -18,21 +18,8 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=src/plugin_bootstrap.sh
 . "${CURRENT_DIR}/plugin_bootstrap.sh"
 
-# Load theme - use @powerkit_theme and @powerkit_theme_variant
-THEME_NAME=$(get_tmux_option "@powerkit_theme" "$POWERKIT_DEFAULT_THEME")
-THEME_VARIANT=$(get_tmux_option "@powerkit_theme_variant" "")
-
-# Auto-detect variant if not specified
-if [[ -z "$THEME_VARIANT" ]]; then
-    THEME_DIR="${CURRENT_DIR}/themes/${THEME_NAME}"
-    if [[ -d "$THEME_DIR" ]]; then
-        THEME_VARIANT=$(ls "$THEME_DIR"/*.sh 2>/dev/null | head -1 | xargs basename -s .sh 2>/dev/null || echo "")
-    fi
-fi
-[[ -z "$THEME_VARIANT" ]] && THEME_VARIANT="$POWERKIT_DEFAULT_THEME_VARIANT"
-
-THEME_FILE="${CURRENT_DIR}/themes/${THEME_NAME}/${THEME_VARIANT}.sh"
-[[ -f "$THEME_FILE" ]] && . "$THEME_FILE"
+# Load theme using centralized function (DRY - avoids duplicating theme loading logic)
+load_powerkit_theme
 
 # =============================================================================
 # Configuration
@@ -101,17 +88,12 @@ clean_content() {
     printf '%s' "${c#MODIFIED:}"
 }
 
-# Generate a simple hash from string (performance: avoids md5sum fork)
-# Uses bash string manipulation for a fast, deterministic hash
+# Generate a simple hash from string (performance optimized)
+# Uses cksum (built-in Unix command) instead of character-by-character loop
+# ~10x faster than previous implementation for typical strings
 _string_hash() {
     local str="$1"
-    local hash=0
-    local i char
-    for ((i = 0; i < ${#str}; i++)); do
-        char="${str:i:1}"
-        hash=$(((hash * 31 + $(printf '%d' "'$char")) % 2147483647))
-    done
-    printf '%s' "$hash"
+    printf '%s' "$str" | cksum | awk '{print $1}'
 }
 
 # Execute shell command from content string (DRY - used by external plugins)

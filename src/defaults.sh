@@ -54,6 +54,11 @@ _DEFAULT_CACHE_TTL_MEDIUM="300"       # 5 minutes
 _DEFAULT_CACHE_TTL_LONG="3600"        # 1 hour
 _DEFAULT_CACHE_TTL_DAY="86400"        # 24 hours
 
+# Toast/Display timeouts (in milliseconds)
+_DEFAULT_TOAST_SHORT="3000"           # 3 seconds
+_DEFAULT_TOAST_MEDIUM="5000"          # 5 seconds
+_DEFAULT_TOAST_LONG="10000"           # 10 seconds
+
 # =============================================================================
 # PLUGIN DEFAULTS HELPER (DRY)
 # =============================================================================
@@ -105,6 +110,7 @@ get_plugin_default() { get_powerkit_plugin_default "$@"; }
 
 POWERKIT_DEFAULT_THEME="tokyo-night"
 POWERKIT_DEFAULT_THEME_VARIANT="night"
+POWERKIT_CUSTOM_THEME_PATH=""
 POWERKIT_DEFAULT_DISABLE_PLUGINS=0
 POWERKIT_DEFAULT_BAR_LAYOUT="single"
 POWERKIT_DEFAULT_TRANSPARENT="false"
@@ -612,7 +618,9 @@ POWERKIT_FALLBACK_STATUS_BG="#292e42"
 POWERKIT_ANSI_BOLD='\033[1m'
 POWERKIT_ANSI_DIM='\033[2m'
 POWERKIT_ANSI_RESET='\033[0m'
+POWERKIT_ANSI_RED='\033[31m'
 POWERKIT_ANSI_GREEN='\033[32m'
 POWERKIT_ANSI_YELLOW='\033[33m'
 POWERKIT_ANSI_BLUE='\033[34m'
+POWERKIT_ANSI_MAGENTA='\033[35m'
 POWERKIT_ANSI_CYAN='\033[36m'

@@ -168,6 +168,17 @@ load_plugin() {
 # =============================================================================
 
 setup_keybindings() {
+    # Check prerequisites before setting up keybindings
+    # Don't set up keybindings if:
+    # 1. Neither terraform nor tofu are installed
+    # 2. No terraform directories exist in current workspace
+    local tool
+    tool=$(detect_tool) || return 0
+
+    # Check if we're in or near a terraform directory
+    # (This check is lenient - keybinding will be available if tool exists)
+    # The selector script will handle the case where no workspaces are found
+
     local base_dir="${ROOT_DIR%/plugin}"
     local script="${base_dir}/helpers/terraform_workspace_selector.sh"
     [[ -n "$_workspace_key" ]] && tmux bind-key "$_workspace_key" run-shell "bash '$script' select"

@@ -7,33 +7,33 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$CURRENT_DIR/.."
 THEMES_DIR="$ROOT_DIR/themes"
 POWERKIT_ENTRY="$ROOT_DIR/../tmux-powerkit.tmux"
-CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit"
 SCRIPT_PATH="$CURRENT_DIR/theme_selector.sh"
-THEME_CACHE_FILE="$CACHE_DIR/current_theme"
 
-# Source dependencies (defaults first, then utils for toast function)
-. "$ROOT_DIR/defaults.sh" 2>/dev/null || true
-. "$ROOT_DIR/utils.sh" 2>/dev/null || true
+# Source common dependencies
+# shellcheck source=src/helper_bootstrap.sh
+. "$ROOT_DIR/helper_bootstrap.sh"
 
-# Fallback toast if utils.sh didn't load
-if ! command -v toast &>/dev/null; then
-    toast() { tmux display-message "$1" 2>/dev/null || echo "$1"; }
-fi
+THEME_CACHE_KEY="current_theme"
+
+# =============================================================================
+# Theme Management
+# =============================================================================
 
 # Get current theme (from cache file if exists, otherwise from tmux options)
 get_current_theme() {
-    local theme variant
+    local theme variant cached
 
     # First try to read from persistent cache
-    if [[ -f "$THEME_CACHE_FILE" ]]; then
-        cat "$THEME_CACHE_FILE"
+    cached=$(cache_get "$THEME_CACHE_KEY" 0) || true
+    if [[ -n "$cached" ]]; then
+        echo "$cached"
         return
     fi
 
     # Fallback to tmux options
-    theme=$(tmux show-option -gqv "@powerkit_theme" 2>/dev/null)
-    variant=$(tmux show-option -gqv "@powerkit_theme_variant" 2>/dev/null)
-    echo "${theme:-tokyo-night}/${variant:-night}"
+    theme=$(get_tmux_option "@powerkit_theme" "tokyo-night")
+    variant=$(get_tmux_option "@powerkit_theme_variant" "night")
+    echo "${theme}/${variant}"
 }
 
 # Apply theme (called directly, not via run-shell)
@@ -41,26 +41,116 @@ apply_theme() {
     local theme="$1"
     local variant="$2"
 
+    # Show immediate feedback FIRST (before any heavy processing)
+    if [[ "$theme" == "custom" ]]; then
+        toast "󰏘 Applying theme: custom..." "simple"
+    else
+        toast "󰏘 Applying theme: $theme/$variant..." "simple"
+    fi
+
     # Update tmux options
     tmux set-option -g "@powerkit_theme" "$theme"
-    tmux set-option -g "@powerkit_theme_variant" "$variant"
 
-    # Ensure cache directory exists
-    [[ ! -d "$CACHE_DIR" ]] && mkdir -p "$CACHE_DIR"
+    # For custom theme, variant is just a placeholder
+    if [[ "$theme" == "custom" ]]; then
+        # Verify custom theme path is set
+        local custom_path
+        custom_path=$(get_tmux_option "@powerkit_custom_theme_path" "")
+        if [[ -z "$custom_path" ]]; then
+            toast "❌ Custom theme path not set (@powerkit_custom_theme_path)" "error"
+            return 1
+        fi
+        # Don't set variant for custom theme (it's ignored anyway)
+    else
+        tmux set-option -g "@powerkit_theme_variant" "$variant"
+    fi
 
     # Save current theme to persistent cache (survives kill-server)
-    echo "$theme/$variant" > "$THEME_CACHE_FILE"
+    # Note: Write directly to cache file (without .cache extension) to match load_powerkit_theme()
+    cache_init
+    printf '%s' "$theme/$variant" > "${CACHE_DIR}/${THEME_CACHE_KEY}"
 
     # Clear plugin caches (but not theme cache)
-    find "$CACHE_DIR" -maxdepth 1 -type f -name "*.cache" -delete 2>/dev/null || true
+    find "$POWERKIT_CACHE_DIR" -maxdepth 1 -type f -name "*.cache" ! -name "${THEME_CACHE_KEY}*" -delete 2>/dev/null || true
 
-    # Re-run PowerKit initialization
-    [[ -x "$POWERKIT_ENTRY" ]] && bash "$POWERKIT_ENTRY" 2>/dev/null
-
-    # Refresh
+    # Immediate refresh to clear old content
     tmux refresh-client -S
-    toast "󰏘 Theme: $theme/$variant" "simple"
+
+    # Re-run PowerKit initialization in background (non-blocking)
+    if [[ -x "$POWERKIT_ENTRY" ]]; then
+        (bash "$POWERKIT_ENTRY" 2>/dev/null && tmux refresh-client -S) &
+    fi
 }
+
+# =============================================================================
+# Theme Structure Cache
+# =============================================================================
+
+# Get themes structure from cache or filesystem
+# Returns: Multi-line string with format "theme:variant1,variant2,..."
+get_themes_structure() {
+    local cache_key="themes_structure"
+    local ttl=86400  # 24 horas (86400 segundos)
+    local cached
+
+    # Try to get from cache
+    if cached=$(cache_get "$cache_key" "$ttl"); then
+        printf '%s' "$cached"
+        return 0
+    fi
+
+    # Scan filesystem
+    local structure=""
+    for theme_dir in "$THEMES_DIR"/*/; do
+        [[ ! -d "$theme_dir" ]] && continue
+        local theme_name
+        theme_name=$(basename "$theme_dir")
+
+        # Collect variants
+        local variants=()
+        for variant_file in "$theme_dir"/*.sh; do
+            [[ ! -f "$variant_file" ]] && continue
+            variants+=("$(basename "$variant_file" .sh)")
+        done
+
+        # Add to structure (format: theme:var1,var2,var3)
+        if [[ ${#variants[@]} -gt 0 ]]; then
+            # Convert array to comma-separated string
+            local variants_str
+            variants_str=$(IFS=','; echo "${variants[*]}")
+            structure+="${theme_name}:${variants_str}"$'\n'
+        fi
+    done
+
+    # Remove trailing newline
+    structure=${structure%$'\n'}
+
+    # Save to cache
+    cache_set "$cache_key" "$structure"
+
+    printf '%s' "$structure"
+}
+
+# Get variants for a specific theme from cache
+# Usage: parse_theme_variants "catppuccin" "$structure"
+# Returns: Comma-separated variants (e.g., "frappe,latte,macchiato,mocha")
+parse_theme_variants() {
+    local target_theme="$1"
+    local structure="$2"
+
+    while IFS=: read -r theme variants; do
+        if [[ "$theme" == "$target_theme" ]]; then
+            printf '%s' "$variants"
+            return 0
+        fi
+    done <<< "$structure"
+
+    return 1
+}
+
+# =============================================================================
+# Theme Selection UI
+# =============================================================================
 
 # Select theme (shows themes menu)
 select_theme() {
@@ -69,32 +159,43 @@ select_theme() {
 
     local -a menu_args=()
 
-    # Iterate through theme directories
-    for theme_dir in "$THEMES_DIR"/*/; do
-        [[ ! -d "$theme_dir" ]] && continue
-        local theme_name
-        theme_name=$(basename "$theme_dir")
+    # Check if custom theme is configured
+    local custom_theme_path
+    custom_theme_path=$(get_tmux_option "@powerkit_custom_theme_path" "")
 
-        # Count variants
-        local variant_count=0
-        for _ in "$theme_dir"/*.sh; do
-            ((variant_count++)) || true
-        done
+    # Add custom theme option if path is configured
+    if [[ -n "$custom_theme_path" ]]; then
+        local marker=" "
+        [[ "$current_theme" == "custom/"* ]] && marker="●"
+        menu_args+=("$marker custom (user-defined)" "" "run-shell \"bash '$SCRIPT_PATH' apply 'custom' 'custom'\"")
+        # Add separator
+        menu_args+=("" "" "")
+    fi
+
+    # Get cached themes structure
+    local themes_structure
+    themes_structure=$(get_themes_structure)
+
+    # Parse cache and build menu
+    while IFS=: read -r theme variants_str; do
+        [[ -z "$theme" ]] && continue
+
+        # Parse variants into array
+        IFS=',' read -ra variants <<< "$variants_str"
+        local variant_count=${#variants[@]}
 
         # If single variant, add direct entry; otherwise, submenu
         if [[ $variant_count -eq 1 ]]; then
-            local variant_file variant marker=" "
-            variant_file=$(ls "$theme_dir"/*.sh | head -1)
-            variant=$(basename "$variant_file" .sh)
-            [[ "$theme_name/$variant" == "$current_theme" ]] && marker="●"
-            menu_args+=("$marker $theme_name" "" "run-shell \"bash '$SCRIPT_PATH' apply '$theme_name' '$variant'\"")
+            local marker=" "
+            [[ "$theme/${variants[0]}" == "$current_theme" ]] && marker="●"
+            menu_args+=("$marker $theme" "" "run-shell \"bash '$SCRIPT_PATH' apply '$theme' '${variants[0]}'\"")
         else
             # Has multiple variants - show with arrow
             local marker=" "
-            [[ "$current_theme" == "$theme_name/"* ]] && marker="●"
-            menu_args+=("$marker $theme_name  →" "" "run-shell \"bash '$SCRIPT_PATH' variants '$theme_name'\"")
+            [[ "$current_theme" == "$theme/"* ]] && marker="●"
+            menu_args+=("$marker $theme  →" "" "run-shell \"bash '$SCRIPT_PATH' variants '$theme'\"")
         fi
-    done
+    done <<< "$themes_structure"
 
     tmux display-menu -T "󰏘  Select Theme" -x C -y C "${menu_args[@]}"
 }
@@ -102,11 +203,8 @@ select_theme() {
 # Select variant for a specific theme
 select_variant() {
     local theme="$1"
-    local theme_dir="$THEMES_DIR/$theme"
     local current_theme
     current_theme=$(get_current_theme)
-
-    [[ ! -d "$theme_dir" ]] && { toast "❌ Theme not found: $theme" "simple"; return 1; }
 
     local -a menu_args=()
 
@@ -114,11 +212,21 @@ select_variant() {
     menu_args+=("← Back" "" "run-shell \"bash '$SCRIPT_PATH' select\"")
     menu_args+=("" "" "")
 
-    # List variants
-    for variant_file in "$theme_dir"/*.sh; do
-        [[ ! -f "$variant_file" ]] && continue
-        local variant marker=" "
-        variant=$(basename "$variant_file" .sh)
+    # Get variants from cache
+    local themes_structure variants_str
+    themes_structure=$(get_themes_structure)
+    variants_str=$(parse_theme_variants "$theme" "$themes_structure")
+
+    if [[ -z "$variants_str" ]]; then
+        toast "❌ Theme not found: $theme" "simple"
+        return 1
+    fi
+
+    # Parse and build menu
+    IFS=',' read -ra variants <<< "$variants_str"
+    for variant in "${variants[@]}"; do
+        [[ -z "$variant" ]] && continue
+        local marker=" "
         [[ "$theme/$variant" == "$current_theme" ]] && marker="●"
         menu_args+=("$marker $variant" "" "run-shell \"bash '$SCRIPT_PATH' apply '$theme' '$variant'\"")
     done
@@ -126,7 +234,10 @@ select_variant() {
     tmux display-menu -T "󰏘  $theme" -x C -y C "${menu_args[@]}"
 }
 
+# =============================================================================
 # Main
+# =============================================================================
+
 case "${1:-select}" in
     select)
         select_theme
