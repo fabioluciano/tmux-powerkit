@@ -8,6 +8,41 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    if is_linux; then
+        require_cmd "playerctl" || return 1
+    fi
+    # macOS: no external dependencies
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "format" "string" "%artist% - %track%" "Display format (%artist%, %track%, %album%)"
+    declare_option "max_length" "number" "40" "Maximum text length (0 = unlimited)"
+    declare_option "not_playing" "string" "" "Text when not playing (empty = hide)"
+    declare_option "backend" "string" "auto" "Backend: auto, spotify, music"
+    declare_option "ignore_players" "string" "IGNORE" "Comma-separated list of players to ignore (Linux)"
+
+    # Icons
+    declare_option "icon" "icon" "󰝚" "Plugin icon"
+
+    # Colors
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+
 plugin_init "nowplaying"
 
 # =============================================================================
@@ -26,8 +61,8 @@ format_output() {
     local artist="$1" track="$2" album="$3"
     local format max_len
 
-    format=$(get_cached_option "@powerkit_plugin_nowplaying_format" "$POWERKIT_PLUGIN_NOWPLAYING_FORMAT")
-    max_len=$(get_cached_option "@powerkit_plugin_nowplaying_max_length" "$POWERKIT_PLUGIN_NOWPLAYING_MAX_LENGTH")
+    format=$(get_option "format")
+    max_len=$(get_option "max_length")
 
     # Escape special chars
     local safe_artist safe_track safe_album
@@ -78,11 +113,11 @@ get_macos() {
 
 # Linux: MPRIS via playerctl
 get_linux() {
-    require_cmd playerctl 1 || return 1
+    has_cmd playerctl || return 1
 
     local ignore_opt=""
     local ignore_players
-    ignore_players=$(get_cached_option "@powerkit_plugin_nowplaying_ignore_players" "$POWERKIT_PLUGIN_NOWPLAYING_IGNORE_PLAYERS")
+    ignore_players=$(get_option "ignore_players")
 
     if [[ -n "$ignore_players" && "$ignore_players" != "IGNORE" ]]; then
         IFS=',' read -ra players <<< "$ignore_players"
@@ -112,7 +147,7 @@ plugin_get_type() { printf 'conditional'; }
 plugin_get_display_info() {
     local content="$1"
     local not_playing
-    not_playing=$(get_cached_option "@powerkit_plugin_nowplaying_not_playing" "$POWERKIT_PLUGIN_NOWPLAYING_NOT_PLAYING")
+    not_playing=$(get_option "not_playing")
     [[ -z "$content" || "$content" == "$not_playing" ]] && printf '0:::' || printf '1:::'
 }
 
@@ -137,7 +172,7 @@ load_plugin() {
 
     if [[ -z "$result" ]]; then
         local not_playing
-        not_playing=$(get_cached_option "@powerkit_plugin_nowplaying_not_playing" "$POWERKIT_PLUGIN_NOWPLAYING_NOT_PLAYING")
+        not_playing=$(get_option "not_playing")
         result="$not_playing"
     fi
 

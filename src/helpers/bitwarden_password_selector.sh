@@ -198,14 +198,49 @@ clear_cache() {
 }
 
 # =============================================================================
+# Check and Select (vault status check before popup)
+# =============================================================================
+
+# Check vault status and open popup only if unlocked
+# Usage: check_and_select <popup_width> <popup_height>
+check_and_select() {
+    local popup_width="${1:-60%}"
+    local popup_height="${2:-60%}"
+
+    command -v fzf &>/dev/null || { toast "󰍉 fzf required" "simple"; return 0; }
+
+    local client
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
+
+    # Check vault status BEFORE opening popup
+    local is_unlocked=false
+    case "$client" in
+        bw)  is_bitwarden_unlocked_bw && is_unlocked=true ;;
+        rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
+    esac
+
+    if [[ "$is_unlocked" != "true" ]]; then
+        # Vault is locked - show toast and exit (no popup opened)
+        toast " Vault locked" "simple"
+        return 0
+    fi
+
+    # Vault is unlocked - open the popup with the selector
+    local script_path="${BASH_SOURCE[0]}"
+    tmux display-popup -E -w "$popup_width" -h "$popup_height" \
+        "bash '$script_path' select"
+}
+
+# =============================================================================
 # Main
 # =============================================================================
 
 case "${1:-select}" in
-    select)   select_password ;;
-    refresh)  refresh_cache ;;
-    clear)    clear_cache ;;
-    unlock)   unlock_bitwarden_vault ;;
-    lock)     lock_bitwarden_vault ;;
-    *)        echo "Usage: $0 {select|refresh|clear|unlock|lock}"; exit 1 ;;
+    select)           select_password ;;
+    check-and-select) check_and_select "${2:-}" "${3:-}" ;;
+    refresh)          refresh_cache ;;
+    clear)            clear_cache ;;
+    unlock)           unlock_bitwarden_vault ;;
+    lock)             lock_bitwarden_vault ;;
+    *)                echo "Usage: $0 {select|check-and-select|refresh|clear|unlock|lock}"; exit 1 ;;
 esac

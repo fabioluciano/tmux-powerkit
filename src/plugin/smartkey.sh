@@ -11,7 +11,56 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    require_cmd "gpg-connect-agent" || return 1
+    require_cmd "pcsc_scan" 1  # Optional
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "show_when_inactive" "bool" "false" "Show plugin when not waiting"
+
+    # Icons
+    declare_option "icon" "icon" $'\U000F0084' "Plugin icon"
+    declare_option "waiting_icon" "icon" "" "Icon when waiting for touch"
+
+    # Colors - Waiting state
+    declare_option "waiting_accent_color" "color" "error" "Background color when waiting"
+    declare_option "waiting_accent_color_icon" "color" "error" "Icon background when waiting"
+
+    # Cache
+    declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
+}
+
 plugin_init "smartkey"
+
+# =============================================================================
+# Plugin Contract Implementation
+# =============================================================================
+
+plugin_get_type() { printf 'conditional'; }
+
+plugin_get_display_info() {
+    local content="$1"
+    if [[ -n "$content" ]]; then
+        local icon accent accent_icon
+        icon=$(get_option "waiting_icon")
+        accent=$(get_option "waiting_accent_color")
+        accent_icon=$(get_option "waiting_accent_color_icon")
+        build_display_info "1" "$accent" "$accent_icon" "$icon"
+    else
+        build_display_info "0" "" "" ""
+    fi
+}
 
 # =============================================================================
 # YubiKey Touch Detection
@@ -19,7 +68,7 @@ plugin_init "smartkey"
 
 # Method 1: Check for yubikey-touch-detector (most reliable if installed)
 # https://github.com/maximbaz/yubikey-touch-detector
-check_yubikey_touch_detector() {
+_check_yubikey_touch_detector() {
     # Check if the socket exists and has pending notification
     local socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/yubikey-touch-detector.socket"
     [[ -S "$socket" ]] || return 1
@@ -37,7 +86,7 @@ check_yubikey_touch_detector() {
 
 # Method 2: Check for gpg-agent waiting for card (specific pinentry prompt)
 # Only triggers when pinentry is specifically waiting for smartcard PIN/touch
-check_gpg_card_prompt() {
+_check_gpg_card_prompt() {
     # Look for pinentry processes with smartcard-related prompts
     # pinentry shows specific window titles when waiting for card
     if is_macos; then
@@ -62,7 +111,7 @@ check_gpg_card_prompt() {
 
 # Method 3: Check for SSH FIDO2 authentication waiting
 # ssh-agent prompts for FIDO2 key touch with specific behavior
-check_ssh_fido_waiting() {
+_check_ssh_fido_waiting() {
     # Look for ssh-sk-helper process (FIDO2/U2F authenticator helper)
     pgrep -f "ssh-sk-helper" &>/dev/null && return 0
 
@@ -73,15 +122,15 @@ check_ssh_fido_waiting() {
 }
 
 # Method 4: Check YubiKey Manager notification (ykman)
-check_ykman_waiting() {
+_check_ykman_waiting() {
     # ykman sometimes spawns helper processes when waiting
     pgrep -f "ykman.*--wait" &>/dev/null
 }
 
 # Method 5: Check for active CCID transaction (low-level)
 # PC/SC daemon shows specific state when card is being accessed
-check_pcscd_waiting() {
-    require_cmd pcsc_scan 1 || return 1
+_check_pcscd_waiting() {
+    has_cmd pcsc_scan || return 1
 
     # Check if pcscd is running
     pgrep -f "pcscd" &>/dev/null || return 1
@@ -98,8 +147,8 @@ check_pcscd_waiting() {
 
 # Method 6: Check gpg-agent scdaemon for PKSIGN/PKAUTH waiting
 # This is more specific than just checking if scdaemon is busy
-check_scdaemon_signing() {
-    require_cmd gpg-connect-agent 1 || return 1
+_check_scdaemon_signing() {
+    has_cmd gpg-connect-agent || return 1
 
     # Quick check: is scdaemon even running?
     pgrep -f "scdaemon" &>/dev/null || return 1
@@ -109,11 +158,11 @@ check_scdaemon_signing() {
     local start end elapsed
     start=$(date +%s%N)
     timeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
-    local ret=$?
+    local result_code=$?
     end=$(date +%s%N)
 
     # If command timed out or took > 200ms, likely waiting for user
-    if [[ $ret -eq 124 ]]; then
+    if [[ $result_code -eq 124 ]]; then
         return 0  # Timeout = blocked waiting
     fi
 
@@ -124,10 +173,10 @@ check_scdaemon_signing() {
 }
 
 # =============================================================================
-# Main Detection
+# Main Logic
 # =============================================================================
 
-is_waiting_for_touch() {
+_is_waiting_for_touch() {
     # Priority order (most reliable first):
     # 1. yubikey-touch-detector (explicit touch detection daemon)
     # 2. ssh-sk-helper (FIDO2 SSH authentication)
@@ -135,37 +184,14 @@ is_waiting_for_touch() {
     # 4. scdaemon signing (GPG smartcard operation)
     # 5. ykman waiting
 
-    check_yubikey_touch_detector && return 0
-    check_ssh_fido_waiting && return 0
-    check_gpg_card_prompt && return 0
-    check_scdaemon_signing && return 0
-    check_ykman_waiting && return 0
+    _check_yubikey_touch_detector && return 0
+    _check_ssh_fido_waiting && return 0
+    _check_gpg_card_prompt && return 0
+    _check_scdaemon_signing && return 0
+    _check_ykman_waiting && return 0
 
     return 1
 }
-
-# =============================================================================
-# Plugin Interface
-# =============================================================================
-
-plugin_get_type() { printf 'conditional'; }
-
-plugin_get_display_info() {
-    local content="$1"
-    if [[ -n "$content" ]]; then
-        local icon accent accent_icon
-        icon=$(get_cached_option "@powerkit_plugin_smartkey_waiting_icon" "$POWERKIT_PLUGIN_SMARTKEY_WAITING_ICON")
-        accent=$(get_cached_option "@powerkit_plugin_smartkey_waiting_accent_color" "$POWERKIT_PLUGIN_SMARTKEY_WAITING_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_smartkey_waiting_accent_color_icon" "$POWERKIT_PLUGIN_SMARTKEY_WAITING_ACCENT_COLOR_ICON")
-        build_display_info "1" "$accent" "$accent_icon" "$icon"
-    else
-        build_display_info "0" "" "" ""
-    fi
-}
-
-# =============================================================================
-# Main
-# =============================================================================
 
 load_plugin() {
     # Very short cache TTL since touch state changes quickly
@@ -173,7 +199,7 @@ load_plugin() {
     cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL") && { printf '%s' "$cached"; return 0; }
 
     local result=""
-    is_waiting_for_touch && result="TOUCH"
+    _is_waiting_for_touch && result="TOUCH"
 
     cache_set "$CACHE_KEY" "$result"
     printf '%s' "$result"

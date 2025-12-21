@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#7287fd"              # Lavender - Primary (lighter blue for dark text contrast)
     [secondary]="#6c6f85"            # Subtext0 - Secondary (dark for white text)
     [secondary-strong]="#4c4f69"     # Text - Strong secondary (darker)
+    [secondary-subtle]="#84879b"     # Subtle secondary (18.9% lighter)
 
     # Status Colors (PowerKit Standard)
     [success]="#40a02b"              # Green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#7c7f93"               # Overlay0 - Active state (icon bg)
     [focus]="#7287fd"                # Lavender - Focus state
     [disabled]="#9ca0b0"             # Overlay1 - Disabled state
+    [disabled-subtle]="#b0b3c0"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#575962"      # Strong disabled (44.2% darker)
 
     # Additional Variants
     [success-subtle]="#64b153"       # Subtle success (18.9% lighter)

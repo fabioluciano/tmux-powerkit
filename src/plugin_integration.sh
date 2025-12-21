@@ -58,28 +58,22 @@ get_plugins_list() {
             # Simple plugin name - get type and defaults
             local plugin_script="${CURRENT_DIR}/plugin/${plugin}.sh"
             local plugin_type="static"
-            
+            local accent_color="" accent_icon_color="" icon=""
+
             if [[ -f "$plugin_script" ]]; then
-                # Source plugin once for keybindings and type
+                # Source plugin once for keybindings, type, and defaults (via get_option)
                 # shellcheck source=/dev/null
                 if . "$plugin_script" 2>/dev/null; then
                     declare -f setup_keybindings &>/dev/null && { setup_keybindings; unset -f setup_keybindings; }
                     declare -f plugin_get_type &>/dev/null && { plugin_type=$(plugin_get_type); unset -f plugin_get_type; }
+
+                    # Get plugin defaults via get_option (reads from plugin_declare_options)
+                    accent_color=$(get_option "accent_color" 2>/dev/null) || accent_color="secondary"
+                    accent_icon_color=$(get_option "accent_color_icon" 2>/dev/null) || accent_icon_color="active"
+                    icon=$(get_option "icon" 2>/dev/null) || icon=""
                 fi
             fi
-            
-            # Get plugin colors from defaults
-            local plugin_upper="${plugin^^}"
-            plugin_upper="${plugin_upper//-/_}"
-            
-            local accent_var="POWERKIT_PLUGIN_${plugin_upper}_ACCENT_COLOR"
-            local accent_icon_var="POWERKIT_PLUGIN_${plugin_upper}_ACCENT_COLOR_ICON"
-            local icon_var="POWERKIT_PLUGIN_${plugin_upper}_ICON"
-            
-            local accent_color="${!accent_var:-accent}"
-            local accent_icon_color="${!accent_icon_var:-accent}"
-            local icon="${!icon_var:-}"
-            
+
             # Use format: name:accent:accent_icon:icon:type
             plugin_configs+="$plugin:$accent_color:$accent_icon_color:$icon:$plugin_type;"
         fi
@@ -111,24 +105,39 @@ get_plugins_list() {
 # PALETTE SERIALIZATION
 # =============================================================================
 
-# Serialize PowerKit palette for render_plugins.sh
+# Cache for serialized palette (performance optimization)
+_SERIALIZED_PALETTE_CACHE=""
+_PALETTE_CACHE_THEME=""
+
+# Serialize PowerKit palette for render_plugins.sh (with caching)
 serialize_powerkit_palette() {
-    local palette=""
-    
     # Ensure theme is loaded
     if [[ -z "${POWERKIT_THEME_COLORS+x}" ]] || [[ "${#POWERKIT_THEME_COLORS[@]}" -eq 0 ]]; then
         load_powerkit_theme
     fi
-    
-    # Iterate over all theme colors and serialize them
-    # Sort keys to ensure consistent ordering (important for parsing)
+
+    # Get current theme identifier
+    local current_theme="${POWERKIT_CURRENT_THEME:-unknown}/${POWERKIT_CURRENT_VARIANT:-unknown}"
+
+    # Return cached value if theme hasn't changed
+    if [[ -n "$_SERIALIZED_PALETTE_CACHE" && "$_PALETTE_CACHE_THEME" == "$current_theme" ]]; then
+        printf '%s' "$_SERIALIZED_PALETTE_CACHE"
+        return
+    fi
+
+    # Build serialized palette
+    local palette=""
     for color in $(printf '%s\n' "${!POWERKIT_THEME_COLORS[@]}" | sort); do
         local color_value="${POWERKIT_THEME_COLORS[$color]}"
-        # Skip empty values
         [[ -n "$color_value" ]] && palette+="$color=$color_value;"
     done
-    
-    echo "${palette%%;}"
+    palette="${palette%%;}"
+
+    # Cache the result
+    _SERIALIZED_PALETTE_CACHE="$palette"
+    _PALETTE_CACHE_THEME="$current_theme"
+
+    printf '%s' "$palette"
 }
 
 # =============================================================================

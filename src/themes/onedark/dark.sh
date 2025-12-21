@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#c678dd"              # Magenta - Primary
     [secondary]="#2c323c"            # Darker gray - Secondary (plugin content bg)
     [secondary-strong]="#21252b"     # Darkest - Strong secondary
+    [secondary-subtle]="#3e4551"     # Subtle secondary (18.9% lighter)
 
     # Status Colors (PowerKit Standard)
     [success]="#98c379"              # Green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#3e4451"               # Active state (icon bg, lighter than secondary)
     [focus]="#61afef"                # Focus state
     [disabled]="#5c6370"             # Disabled state
+    [disabled-subtle]="#747989"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#33373e"      # Strong disabled (44.2% darker)
 
     # Additional Variants
     [success-subtle]="#abce92"       # Subtle success (18.9% lighter)

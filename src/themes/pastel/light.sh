@@ -28,6 +28,7 @@ declare -A THEME_COLORS=(
     [primary]="#f4a799"
     [secondary]="#e0e0e0"
     [secondary-strong]="#d0d0d0"
+    [secondary-subtle]="#e8e8e8"     # Subtle secondary (18.9% lighter)
 
     # Status Colors
     [success]="#c5e89f"
@@ -40,6 +41,8 @@ declare -A THEME_COLORS=(
     [active]="#d8d8d8"
     [focus]="#e88fb5"
     [disabled]="#c0c0c0"
+    [disabled-subtle]="#cfcfcf"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#6b6b6b"      # Strong disabled (44.2% darker)
 
     # Subtle Variants
     [primary-subtle]="#fce8f2"

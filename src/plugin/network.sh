@@ -1,15 +1,55 @@
 #!/usr/bin/env bash
-# Plugin: network - Display network upload/download speeds (delta-based, no sleep)
+# =============================================================================
+# Plugin: network
+# Description: Display network upload/download speeds (delta-based, no sleep)
+# Type: conditional (hides when no activity)
+# Dependencies: None (uses /sys/class/net, netstat)
+# =============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "interface" "string" "" "Network interface to monitor (auto-detect if empty)"
+    declare_option "threshold" "number" "0" "Minimum speed to display (bytes/s)"
+
+    # Icons
+    declare_option "icon" "icon" "󰛳" "Plugin icon"
+
+    # Colors
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+
 plugin_init "network"
 CACHE_KEY_PREV="network_prev"
 
+# =============================================================================
+# Plugin Contract Implementation
+# =============================================================================
+
 plugin_get_type() { printf 'conditional'; }
 
-bytes_to_speed() {
+plugin_get_display_info() {
+    local content="${1:-}"
+    local show="1"
+    [[ -z "$content" || "$content" == "n/a" ]] && show="0"
+    build_display_info "$show" "" "" ""
+}
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+_bytes_to_speed() {
     local bytes=$1
     [[ $bytes -le 0 ]] && { printf '0B'; return; }
 
@@ -25,36 +65,36 @@ bytes_to_speed() {
     fi
 }
 
-get_default_interface() {
+_get_default_interface() {
     local cache_key="network_interface"
     local cached_interface
-    
+
     if cached_interface=$(cache_get "$cache_key" "$POWERKIT_TIMING_CACHE_INTERFACE"); then
         printf '%s' "$cached_interface"
         return
     fi
-    
+
     local interface=""
     is_linux && interface=$(ip route 2>/dev/null | awk '/default/ {print $5; exit}')
     is_macos && interface=$(route -n get default 2>/dev/null | awk '/interface:/ {print $2; exit}')
-    
+
     [[ -n "$interface" ]] && cache_set "$cache_key" "$interface"
     printf '%s' "$interface"
 }
 
-get_bytes_linux() {
+_get_bytes_linux() {
     local interface="$1"
     local rx_file="/sys/class/net/${interface}/statistics/rx_bytes"
     local tx_file="/sys/class/net/${interface}/statistics/tx_bytes"
     [[ -f "$rx_file" && -f "$tx_file" ]] && printf '%s %s' "$(< "$rx_file")" "$(< "$tx_file")"
 }
 
-get_bytes_macos() {
+_get_bytes_macos() {
     local interface="$1"
     netstat -I "$interface" -b 2>/dev/null | awk 'NR==2 {print $7, $10}'
 }
 
-get_timestamp() {
+_get_timestamp() {
     if is_macos; then
         python3 -c 'import time; print(int(time.time() * 1000))' 2>/dev/null || printf '%s000' "$(date +%s)"
     else
@@ -62,12 +102,9 @@ get_timestamp() {
     fi
 }
 
-plugin_get_display_info() {
-    local content="${1:-}"
-    local show="1"
-    [[ -z "$content" || "$content" == "n/a" ]] && show="0"
-    build_display_info "$show" "" "" ""
-}
+# =============================================================================
+# Main Logic
+# =============================================================================
 
 load_plugin() {
     local cached_value
@@ -77,16 +114,16 @@ load_plugin() {
     fi
 
     local interface
-    interface=$(get_cached_option "@powerkit_plugin_network_interface" "$POWERKIT_PLUGIN_NETWORK_INTERFACE")
-    [[ -z "$interface" ]] && interface=$(get_default_interface)
+    interface=$(get_option "interface")
+    [[ -z "$interface" ]] && interface=$(_get_default_interface)
     [[ -z "$interface" ]] && { printf 'N/A'; return; }
-    
+
     local current_bytes current_time
-    is_linux && current_bytes=$(get_bytes_linux "$interface")
-    is_macos && current_bytes=$(get_bytes_macos "$interface")
+    is_linux && current_bytes=$(_get_bytes_linux "$interface")
+    is_macos && current_bytes=$(_get_bytes_macos "$interface")
     [[ -z "$current_bytes" ]] && { printf 'N/A'; return; }
-    
-    current_time=$(get_timestamp)
+
+    current_time=$(_get_timestamp)
     
     local current_rx current_tx
     read -r current_rx current_tx <<< "$current_bytes"
@@ -113,10 +150,10 @@ load_plugin() {
     
     [[ $rx_speed -lt 0 ]] && rx_speed=0
     [[ $tx_speed -lt 0 ]] && tx_speed=0
-    
+
     local threshold
-    threshold=$(get_cached_option "@powerkit_plugin_network_threshold" "$POWERKIT_PLUGIN_NETWORK_THRESHOLD")
-    
+    threshold=$(get_option "threshold")
+
     local total_speed
     total_speed=$(awk "BEGIN {printf \"%.0f\", $rx_speed + $tx_speed}")
     
@@ -126,8 +163,8 @@ load_plugin() {
     fi
     
     local down up result
-    down=$(bytes_to_speed "$rx_speed")
-    up=$(bytes_to_speed "$tx_speed")
+    down=$(_bytes_to_speed "$rx_speed")
+    up=$(_bytes_to_speed "$tx_speed")
     # Fixed width: 4 chars right-aligned + arrow
     printf -v result '%4s↓ %4s↑' "$down" "$up"
     cache_set "$CACHE_KEY" "$result"

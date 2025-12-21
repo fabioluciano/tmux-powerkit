@@ -4,7 +4,7 @@ This file providdes guidance to Claude Code (claude.ai/code) when working with c
 
 ## Project Overview
 
-PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 37+ plugins for displaying system information with a semantic color system that works across 14 themes (with 25+ variants). Distributed through TPM (Tmux Plugin Manager).
+PowerKit is a modular tmux status bar framework (formerly tmux-tokyo-night). It provides 42+ plugins for displaying system information with a semantic color system that works across 14 themes (with 25+ variants). Distributed through TPM (Tmux Plugin Manager).
 
 ## Development Commands
 
@@ -28,13 +28,31 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 # Test specific plugin
 ./tests/test_plugins.sh cpu
 
-# Available test types:
+# Test multiple plugins
+./tests/test_plugins.sh cpu memory disk
+
+# Available test categories:
+
+# Structure Tests (Contract Compliance):
 # - syntax: bash -n validation
-# - source: file can be sourced
-# - functions: required functions exist (plugin_get_type, plugin_get_display_info, load_plugin)
-# - display_info: output format validation
-# - caching: cache functions work correctly
+# - source: file readable
+# - required_functions: plugin_get_type, load_plugin exist
+# - plugin_declare_options: options declaration exists
+# - display_info: plugin_get_display_info uses build_display_info
+# - plugin_init: uses plugin_init for setup
+# - standard_header: has standard header with Type declaration
+# - function_naming: no double underscore function definitions
+# - function_consistency: all called functions are defined
+# - caching: uses cache_get/cache_set
 # - shellcheck: static analysis
+
+# Behavior Tests:
+# - execution: plugin runs without errors/timeout
+# - plugin_type: returns valid type (static/conditional, dynamic is deprecated)
+# - cache_ttl_default: has cache TTL in defaults.sh
+# - dry_pattern: uses default_plugin_display_info or build_display_info
+# - anti_patterns: no echo|grep, cat|pipe patterns
+# - output_format: validates output format for specific plugins
 ```
 
 **Manual testing:**
@@ -113,8 +131,31 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 
 - Central initialization for loading all core modules
 - Defines dependency loading order (critical for correct operation)
-- Sources: `source_guard.sh` → `defaults.sh` → `utils.sh` → `cache.sh`
+- Sources: `source_guard.sh` → `defaults.sh` → `utils.sh` → `cache.sh` → `keybindings.sh` → `tmux_ui.sh` → `plugin_integration.sh`
 - Uses `set -eu` (note: `pipefail` removed due to issues with `grep -q` in pipes)
+
+**`src/tmux_ui.sh`** - Tmux UI (Consolidated)
+
+- Consolidated UI module combining: separators, window formatting, status bar, tmux config
+- **Separator System:**
+  - `get_separator_char()` - Get separator character
+  - `get_previous_window_background()` - Calculate previous window background
+  - `create_index_content_separator()` - Separator between window number and content
+  - `create_window_separator()` - Separator between windows
+  - `create_spacing_segment()` - Spacing between elements
+  - `create_final_separator()` - End of window list separator
+- **Window System:**
+  - `get_window_index_colors()` / `create_window_index_segment()` - Window index styling
+  - `get_window_content_colors()` / `create_window_content_segment()` - Window content styling
+  - `get_window_icon()` / `get_window_title()` - Window icons and titles
+  - `create_active_window_format()` / `create_inactive_window_format()` - Complete window formats
+- **Status Bar:**
+  - `create_session_segment()` - Left side session segment
+  - `build_status_left_format()` / `build_status_right_format()` - Status format builders
+  - `build_window_list_format()` / `build_tmux_window_format()` - Window list formatting
+  - `build_single_layout_status_format()` / `build_double_layout_windows_format()` - Layout builders
+- **Tmux Config:**
+  - `configure_tmux_appearance()` - Apply all tmux appearance settings
 
 **`src/plugin_bootstrap.sh`** - Plugin Bootstrap
 
@@ -124,11 +165,22 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
 
 **`src/plugin_helpers.sh`** - Plugin Helper Functions
 
-- **Dependency Checking:**
-  - `require_cmd(cmd, optional)` - Check if command exists (logs if missing)
-  - `require_any_cmd(cmd1, cmd2, ...)` - Check if ANY command exists
-  - `check_dependencies(cmd1, cmd2, ...)` - Check multiple dependencies
-  - `get_missing_deps()` - Get list of missing dependencies as string
+- **Options Declaration Contract** (use in `plugin_declare_options()`):
+  - `declare_option(name, type, default, description)` - Declare a plugin option
+  - `get_option(name)` - Get option value with lazy loading and caching
+  - `clear_options_cache()` - Clear cached option values (for testing)
+  - `get_plugin_declared_options(plugin)` - Get all declared options for a plugin
+  - `has_declared_options(plugin)` - Check if plugin has declared options
+- **Dependency Checking Contract** (use ONLY in `plugin_check_dependencies()`):
+  - `require_cmd(cmd, optional)` - Declare dependency (optional=1 for non-required)
+  - `require_any_cmd(cmd1, cmd2, ...)` - Declare alternative dependencies (need at least one)
+  - `check_dependencies(cmd1, cmd2, ...)` - Check multiple dependencies at once
+  - `get_missing_deps()` - Get list of missing required dependencies
+  - `get_missing_optional_deps()` - Get list of missing optional dependencies
+  - `reset_dependency_check()` - Reset dependency arrays before checking
+  - `run_plugin_dependency_check()` - Execute plugin's dependency check if defined
+- **Runtime Command Check** (use in plugin logic):
+  - `has_cmd(cmd)` - Check if command exists (no side effects, for runtime logic)
 - **Timeout & Safe Execution:**
   - `run_with_timeout(seconds, cmd...)` - Run command with timeout
   - `safe_curl(url, timeout, args...)` - Safe curl with error handling
@@ -137,12 +189,11 @@ Note: The project uses GitHub Actions to run shellcheck automatically on push/PR
   - `validate_option(value, default, opt1, opt2, ...)` - Validate against options
   - `validate_bool(value, default)` - Validate boolean value
 - **Threshold Colors:**
-  - `apply_threshold_colors(value, plugin, invert)` - Apply warning/critical colors
+  - `apply_threshold_colors(value, plugin, invert)` - Apply warning/critical colors (returns `accent:accent_icon`)
+  - `threshold_plugin_display_info(content, value)` - Unified threshold display (handles visibility, colors, icons)
 - **API & Audio:**
   - `make_api_call(url, auth_type, token)` - Authenticated API call
   - `detect_audio_backend()` - Detect macos/pipewire/pulseaudio/alsa
-- **Deferred Execution:**
-  - `defer_plugin_load(name, callback)` - Direct execution wrapper (simplified)
 
 **Logging System** (in `src/utils.sh`)
 
@@ -315,65 +366,435 @@ export THEME_COLORS
 
 ### Plugin System
 
+**Plugin Contract Overview:**
+
+Every plugin follows a standard contract that enables:
+- Self-documenting options (displayed in options viewer)
+- Lazy loading and caching of configuration values
+- Type validation for option values
+- Dependency checking before plugin execution
+- Consistent error handling and logging
+
 **Plugin Structure (`src/plugin/*.sh`):**
 
 1. Source `plugin_bootstrap.sh`
-2. Call `plugin_init "name"` to set up cache key and TTL
-3. Define `plugin_get_type()` - returns `static`, `dynamic`, or `conditional`
-4. Define `plugin_get_display_info()` - returns `visible:accent:accent_icon:icon`
-5. Define `load_plugin()` - outputs the display content
-6. Optional: `setup_keybindings()` for interactive features
+2. Define `plugin_check_dependencies()` - declares required/optional dependencies
+3. Define `plugin_declare_options()` - declares configurable options with types and defaults
+4. Call `plugin_init "name"` - sets up cache, TTL, and auto-calls contract functions
+5. Define `plugin_get_type()` - returns `static`, `dynamic`, or `conditional`
+6. Define `plugin_get_display_info()` - returns `visible:accent:accent_icon:icon`
+7. Define `load_plugin()` - outputs the display content
+8. Optional: `setup_keybindings()` for interactive features
+
+**Important:** Define `plugin_check_dependencies()` and `plugin_declare_options()` **before** calling `plugin_init()`, as it auto-invokes them if defined.
+
+**Options Declaration Contract (`plugin_declare_options`):**
+
+Plugins SHOULD implement this function to declare their configurable options.
+This enables self-documenting plugins, lazy loading, type validation, and potential auto-generation of wiki documentation.
+
+**Syntax:**
+
+```bash
+declare_option "<name>" "<type>" "<default>" "<description>"
+```
+
+**Option Types:**
+
+| Type | Description | Validation | Examples |
+|------|-------------|------------|----------|
+| `string` | Any string value | None | `"both"`, `" \| "` |
+| `number` | Integer value | Must be numeric | `"0"`, `"300"`, `"5"` |
+| `bool` | Boolean value | `true/false/on/off/yes/no/1/0` | `"true"`, `"false"` |
+| `color` | Semantic color name | None (resolved at render) | `"secondary"`, `"warning"` |
+| `icon` | Nerd Font icon | None | `$'\uf025'`, `$'\uf130'` |
+| `key` | Keybinding | None | `"C-i"`, `"M-x"`, `"C-S-j"` |
+| `path` | File system path | None | `"/etc/config"`, `"~/.cache"` |
+| `enum` | Predefined values | Document in description | `"simple"` (see description) |
+
+**Example - Complete Options Declaration:**
+
+```bash
+plugin_declare_options() {
+    # Behavior options
+    declare_option "show" "string" "both" "Show devices (off|input|output|both)"
+    declare_option "max_length" "number" "0" "Maximum name length (0=unlimited)"
+    declare_option "separator" "string" " | " "Separator between items"
+    declare_option "show_device_icons" "bool" "false" "Show icons next to names"
+
+    # Keybindings
+    declare_option "input_key" "key" "C-i" "Key for input selector"
+    declare_option "output_key" "key" "C-o" "Key for output selector"
+
+    # Icons (use $'...' for literal Unicode)
+    declare_option "icon" "icon" $'\uf025' "Plugin icon"
+    declare_option "input_icon" "icon" $'\uf130' "Input device icon"
+    declare_option "output_icon" "icon" $'\uf026' "Output device icon"
+
+    # Colors (semantic names resolved via theme)
+    declare_option "accent_color" "color" "secondary" "Content background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+```
+
+**Getting Option Values - `get_option()`:**
+
+Use `get_option "name"` instead of `get_tmux_option` for declared options:
+
+```bash
+# Old pattern (still works but deprecated for declared options):
+local show=$(get_tmux_option "@powerkit_plugin_example_show" "$POWERKIT_PLUGIN_EXAMPLE_SHOW")
+
+# New pattern (recommended):
+local show=$(get_option "show")
+```
+
+**How `get_option()` Works:**
+
+1. Checks in-memory cache for previously resolved value
+2. Searches declared options for default and type info
+3. Falls back to `POWERKIT_PLUGIN_<NAME>_<OPTION>` variable
+4. Gets value from tmux option `@powerkit_plugin_<plugin>_<option>`
+5. Applies type validation (number, bool)
+6. Caches and returns the resolved value
+
+**Benefits of `get_option()`:**
+
+- **Lazy loading**: Values fetched only when needed
+- **Caching**: Subsequent calls return cached value (no tmux call)
+- **Type validation**: Numbers validated, bools normalized to `true`/`false`
+- **Automatic lookup**: Builds tmux option name from plugin context
+- **Fallback chain**: Tmux option → declared default → defaults.sh variable
+
+**Internal Implementation Details:**
+
+The options system uses the following internal structures (in `plugin_helpers.sh`):
+
+- `_PLUGIN_OPTIONS[plugin]` - Stores declared options as semicolon-separated entries
+- `_PLUGIN_OPTIONS_CACHE[plugin_option]` - Caches resolved values
+- `_CURRENT_PLUGIN_NAME` - Set by `plugin_init()` for option context
+- `_OPT_DELIM` (`\x1F`) - ASCII Unit Separator used as field delimiter
+
+Each option entry format: `name<0x1F>type<0x1F>default<0x1F>description`
+
+**Utility Functions for Options:**
+
+```bash
+# Clear cached options (useful for testing)
+clear_options_cache [plugin_name]
+
+# Get all declared options for a plugin (for options viewer)
+get_plugin_declared_options <plugin_name>
+
+# Check if plugin has declared options
+has_declared_options <plugin_name>
+```
+
+**Dependency Check Contract (`plugin_check_dependencies`):**
+
+Every plugin SHOULD implement this function to declare its external dependencies.
+This allows the system to check dependencies before loading and provide helpful error messages.
+
+```bash
+plugin_check_dependencies() {
+    # Required dependencies (plugin won't work without these)
+    require_cmd "curl" || return 1
+    require_cmd "jq" || return 1
+
+    # Optional dependencies (plugin works but with reduced features)
+    require_cmd "fzf" 1  # 1 = optional, won't fail if missing
+
+    # Alternative dependencies (need at least one)
+    require_any_cmd "nvidia-smi" "rocm-smi" || return 1
+
+    # Platform-specific dependencies
+    if is_linux; then
+        require_cmd "sensors" || return 1
+    fi
+
+    return 0
+}
+```
+
+**Dependency Check Functions** (use ONLY in `plugin_check_dependencies()`):
+- `require_cmd "cmd"` - Returns 1 if command missing (fails check)
+- `require_cmd "cmd" 1` - Logs warning but returns 0 (optional)
+- `require_any_cmd "cmd1" "cmd2" ...` - Returns 0 if ANY command exists
+
+**Runtime Command Check** (use in plugin logic):
+- `has_cmd "cmd"` - Returns 0 if exists, 1 if not (no side effects)
+
+**IMPORTANT:** Never use `require_cmd` in plugin logic (e.g., `detect_backend()`, `load_plugin()`).
+Use `has_cmd` instead, as `require_cmd` modifies global dependency arrays and is only for the contract.
 
 **Plugin Types:**
 
-- `static` - Always visible, no automatic threshold colors
-  - Examples: datetime, hostname, uptime, packages, audiodevices, volume
-  - Use when: Plugin shows static/informational data that doesn't need color changes
+- `static` - Always visible, no threshold colors
+  - Examples: datetime, hostname, uptime, volume
+  - Use when: Plugin shows static/informational data that doesn't need color changes or visibility control
 
-- `dynamic` - Always visible, automatic threshold colors applied when colors are empty
-  - Examples: cpu, memory, disk
-  - Use when: Plugin shows numeric values where higher = worse, and should automatically turn red/yellow
-  - System applies thresholds if `plugin_get_display_info()` returns empty colors
+- `conditional` - Can be hidden and/or have threshold colors
+  - Examples: cpu, memory, disk, battery, network, git, packages
+  - Use when: Plugin may need to hide itself OR change colors based on values
+  - Supports `threshold_mode` option for automatic threshold colors
+  - Use `threshold_plugin_display_info()` helper for standard threshold behavior
 
-- `conditional` - Can be hidden based on conditions, no automatic thresholds
-  - Examples: network (hidden when no activity), battery (hidden when full), git (hidden when not in repo)
-  - Use when: Plugin may not always be relevant and should hide itself
-  - Can implement custom threshold logic if needed (battery, temperature, fan, gpu, loadavg)
+**Threshold Options (for `conditional` plugins):**
 
-**Example Plugin:**
+Plugins that display numeric values can declare threshold options:
+
+```bash
+plugin_declare_options() {
+    # ... other options ...
+
+    # Thresholds
+    declare_option "threshold_mode" "string" "normal" "Threshold mode (none|normal|inverted)"
+    declare_option "warning_threshold" "number" "70" "Warning threshold percentage"
+    declare_option "critical_threshold" "number" "90" "Critical threshold percentage"
+    declare_option "show_only_warning" "bool" "false" "Only show when threshold exceeded"
+}
+```
+
+**Threshold Modes:**
+- `none` - No automatic threshold colors (plugin handles manually or not at all)
+- `normal` - Higher value = worse (CPU, memory, disk usage)
+- `inverted` - Lower value = worse (battery level)
+
+**Framework Standard Visibility Options (`display_condition` / `display_threshold`):**
+
+These options are **automatically available to ALL plugins** without needing to be declared.
+They control plugin visibility based on severity state (info/warning/error), not numeric values.
+Works automatically for any plugin using `threshold_plugin_display_info()`.
+
+| Severity | Numeric | Description |
+|----------|---------|-------------|
+| `info` | 0 | Normal state (no threshold triggered) |
+| `warning` | 1 | Warning threshold exceeded |
+| `error` | 2 | Critical threshold exceeded |
+
+| Condition | Description |
+|-----------|-------------|
+| `always` | Always show (default) |
+| `eq` | Show only when severity equals threshold |
+| `lt` | Show when severity is less than threshold |
+| `lte` | Show when severity is less than or equal |
+| `gt` | Show when severity is greater than threshold |
+| `gte` | Show when severity is greater than or equal |
+
+**Examples:**
+
+```bash
+# Always show (default behavior)
+display_condition="always"  # or display_threshold=""
+
+# Show only when critical
+set -g @powerkit_plugin_cpu_display_condition "eq"
+set -g @powerkit_plugin_cpu_display_threshold "error"
+
+# Show when warning OR error (severity > info)
+set -g @powerkit_plugin_memory_display_condition "gt"
+set -g @powerkit_plugin_memory_display_threshold "info"
+
+# Show when NOT critical (severity < error)
+set -g @powerkit_plugin_disk_display_condition "lt"
+set -g @powerkit_plugin_disk_display_threshold "error"
+```
+
+**Using `threshold_plugin_display_info()`:**
+
+```bash
+# Store numeric value during computation
+_MY_PLUGIN_LAST_VALUE=""
+
+plugin_get_display_info() {
+    threshold_plugin_display_info "${1:-}" "$_MY_PLUGIN_LAST_VALUE"
+}
+
+_compute_my_plugin() {
+    local value=75  # computed value
+    _MY_PLUGIN_LAST_VALUE="$value"  # store for threshold check
+    printf '%d%%' "$value"
+}
+```
+
+The helper automatically:
+1. Hides plugin if content is empty/N/A
+2. Calculates current severity based on value and thresholds
+3. Applies `display_condition`/`display_threshold` visibility rules
+4. Hides plugin if `show_only_warning=true` and value below threshold (legacy)
+5. Applies warning/critical colors based on severity
+6. Returns proper `build_display_info` output
+
+**Note:** The `dynamic` type is deprecated. Use `conditional` with `threshold_mode="normal"` instead.
+
+**Complete Example Plugin (audiodevices pattern):**
 
 ```bash
 #!/usr/bin/env bash
+# Plugin: example - Brief description of what this plugin does
+# =============================================================================
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Plugin Contract: Dependencies
+# =============================================================================
+
+plugin_get_type() { printf 'conditional'; }
+
+plugin_check_dependencies() {
+    # Required dependencies (plugin won't work without)
+    require_cmd "curl" || return 1
+
+    # Optional dependencies (reduced features without)
+    require_cmd "jq" 1  # 1 = optional
+
+    return 0
+}
+
+# =============================================================================
+# Plugin Contract: Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Behavior
+    declare_option "show" "string" "both" "Display mode (off|simple|detailed|both)"
+    declare_option "max_length" "number" "0" "Max text length (0=unlimited)"
+    declare_option "separator" "string" " | " "Separator between items"
+    declare_option "show_icons" "bool" "false" "Show icons next to items"
+
+    # Keybindings
+    declare_option "selector_key" "key" "C-e" "Key for selector popup"
+
+    # Icons
+    declare_option "icon" "icon" $'\uf0e8' "Plugin icon"
+    declare_option "item_icon" "icon" $'\uf111' "Icon for items"
+
+    # Colors
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Cache
+    declare_option "cache_ttl" "number" "30" "Cache duration in seconds"
+}
+
+# =============================================================================
+# Initialize Plugin (auto-calls dependencies and options contracts)
+# =============================================================================
+
 plugin_init "example"
 
-plugin_get_type() { printf 'static'; }
+# =============================================================================
+# Plugin Logic
+# =============================================================================
+
+get_data() {
+    # Use has_cmd for runtime checks (NOT require_cmd!)
+    if has_cmd jq; then
+        safe_curl "https://api.example.com/data" 5 | jq -r '.value'
+    else
+        safe_curl "https://api.example.com/data" 5
+    fi
+}
+
+get_cached_data() {
+    local val
+    if val=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
+        echo "$val"
+    else
+        local result
+        result=$(get_data)
+        cache_set "$CACHE_KEY" "$result"
+        echo "$result"
+    fi
+}
+
+# =============================================================================
+# Plugin Contract: Display Info
+# =============================================================================
 
 plugin_get_display_info() {
-    echo "1:secondary:active:󰋼"
+    local show
+    show=$(get_option "show")
+
+    if [[ "$show" == "off" ]]; then
+        echo "0:::"
+        return
+    fi
+
+    local icon
+    icon=$(get_option "icon")
+
+    echo "1:::${icon}"
 }
 
-load_plugin() {
-    echo "Hello World"
+# =============================================================================
+# Plugin Contract: Keybindings (optional)
+# =============================================================================
+
+setup_keybindings() {
+    local selector_key
+    selector_key=$(get_option "selector_key")
+
+    local script="${ROOT_DIR%/plugin}/helpers/example_selector.sh"
+    [[ -n "$selector_key" ]] && tmux bind-key "$selector_key" run-shell "bash '$script'"
 }
+
+# =============================================================================
+# Plugin Contract: Load Plugin (main output)
+# =============================================================================
+
+load_plugin() {
+    local show max_len show_icons
+    show=$(get_option "show")
+    max_len=$(get_option "max_length")
+    show_icons=$(get_option "show_icons")
+
+    [[ "$show" == "off" ]] && return
+
+    local data item_icon parts=()
+    data=$(get_cached_data)
+
+    if [[ "$show_icons" == "true" ]]; then
+        item_icon=$(get_option "item_icon")
+        data="${item_icon} ${data}"
+    fi
+
+    data=$(truncate_text "$data" "$max_len")
+    parts+=("$data")
+
+    if [[ ${#parts[@]} -gt 0 ]]; then
+        local sep
+        sep=$(get_option "separator")
+        join_with_separator "$sep" "${parts[@]}"
+    fi
+}
+
+# =============================================================================
+# Entry Point
+# =============================================================================
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true
 ```
 
-**Available Plugins (37+):**
+**Available Plugins (42+):**
 
 | Category | Plugins |
 |----------|---------|
 | Time | datetime, timezones |
-| System | cpu, gpu, memory, disk, loadavg, temperature, fan, uptime, brightness |
+| System | cpu, gpu, memory, disk, loadavg, temperature, fan, uptime, brightness, iops |
 | Network | network, wifi, vpn, external_ip, ping, ssh, bluetooth, weather |
-| Development | git, github, gitlab, bitbucket, kubernetes, cloud, cloudstatus, terraform |
+| Development | git, github, gitlab, bitbucket, kubernetes, cloud, cloudstatus, terraform, jira |
 | Security | smartkey, bitwarden |
 | Media | audiodevices, microphone, nowplaying, volume, camera |
 | Packages | packages |
 | Info | battery, hostname |
+| Productivity | pomodoro |
+| Finance | crypto, stocks |
 | External | `external()` - integrate external tmux plugins |
 
 ### Configuration Options
@@ -460,36 +881,32 @@ This allows:
 - `accent_color_icon`: Semantic color for icon background
 - `icon`: Icon character to display
 
-### Threshold Colors: Custom vs Automatic
+### Threshold Colors
 
-Plugins can handle threshold colors in two ways:
+All threshold handling is now managed by plugins themselves using the unified threshold system.
 
-**Automatic Thresholds** (managed by `render_plugins.sh`):
+**Using `threshold_plugin_display_info()` (Recommended):**
 
-- Plugin type must be `dynamic` AND return **empty** colors in `plugin_get_display_info()`
-- System automatically applies warning/critical colors based on `WARNING_THRESHOLD` and `CRITICAL_THRESHOLD`
-- Uses normal logic: higher values = worse (e.g., CPU, memory, disk)
-- Only plugins: cpu, memory, disk (as of now)
-- Example: CPU plugin is type `dynamic` and returns empty colors, system applies red when CPU > 90%
+- Declare threshold options in `plugin_declare_options()`
+- Use `threshold_plugin_display_info()` in `plugin_get_display_info()`
+- Supports `normal` (higher=worse) and `inverted` (lower=worse) modes
+- Supports `show_only_warning` option to hide plugin when below threshold
+- Examples: cpu, memory, disk (normal mode), battery (inverted mode)
 
-**Custom Threshold Logic** (managed by plugin):
+**Custom Threshold Logic:**
 
-- Plugin returns **explicit colors** in `plugin_get_display_info()`
-- System respects plugin's colors and skips automatic thresholds
-- Plugin can implement inverted logic (lower = worse) or any custom logic
+- Plugin implements its own logic in `plugin_get_display_info()`
+- Use `apply_threshold_colors()` helper for standard threshold color calculation
+- Plugin returns explicit colors via `build_display_info()`
 - Examples:
-  - Battery plugin (type `conditional`): returns red/yellow colors for low battery
-  - Temperature plugin (type `conditional`): implements Celsius/Fahrenheit-aware thresholds
-  - Loadavg plugin (type `static`): implements CPU core-aware threshold logic
-  - Fan/GPU plugins (type `conditional`): use `apply_threshold_colors()` helper
+  - Temperature plugin: implements Celsius/Fahrenheit-aware thresholds
+  - Loadavg plugin: implements CPU core-aware threshold logic
+  - cloudstatus plugin: uses severity markers (E:/W:) in cached content
 
-**No Thresholds** (informational plugins):
+**No Thresholds (informational plugins):**
 
-- Plugin type is `static` or `conditional` and returns empty colors
-- System does NOT apply automatic thresholds (respects plugin's intent)
-- Examples: network, datetime, hostname, weather, git
-
-This type-based rule ensures plugins don't need to defensively provide colors to avoid unwanted threshold behavior.
+- Plugin returns empty colors via `default_plugin_display_info()` or `build_display_info "1" "" "" ""`
+- Examples: datetime, hostname, weather, git
 
 ### Cache Key Format
 
@@ -510,11 +927,22 @@ When `@powerkit_transparent` is `true`:
 1. Create `src/plugin/<name>.sh`
 2. Source `plugin_bootstrap.sh`
 3. Call `plugin_init "<name>"`
-4. Define required functions:
-   - `plugin_get_type()` - `static` or `dynamic`
+4. Define `plugin_check_dependencies()` to declare external dependencies:
+
+   ```bash
+   plugin_check_dependencies() {
+       require_cmd "curl" || return 1       # Required
+       require_cmd "jq" 1                   # Optional
+       require_any_cmd "cmd1" "cmd2" || return 1  # Need one of
+       return 0
+   }
+   ```
+
+5. Define required functions:
+   - `plugin_get_type()` - `static`, `dynamic`, or `conditional`
    - `plugin_get_display_info()` - visibility and colors
-   - `load_plugin()` - content output
-5. Add defaults to `src/defaults.sh`:
+   - `load_plugin()` - content output (use `has_cmd` for runtime checks, NOT `require_cmd`)
+6. Add defaults to `src/defaults.sh`:
 
    ```bash
    POWERKIT_PLUGIN_<NAME>_ICON="..."
@@ -523,8 +951,8 @@ When `@powerkit_transparent` is `true`:
    POWERKIT_PLUGIN_<NAME>_CACHE_TTL="..."
    ```
 
-6. Use semantic colors from `_DEFAULT_*` variables
-7. Document in `wiki/<Name>.md`
+7. Use semantic colors from `_DEFAULT_*` variables
+8. Document in `wiki/<Name>.md`
 
 ## Adding New Themes
 
@@ -614,8 +1042,83 @@ The selected theme persists across `tmux kill-server` via a cache file:
 ### Function Naming
 
 - **Public functions**: Use verb-noun pattern (`get_file_mtime`, `apply_threshold_colors`)
-- **Private/internal functions**: Prefix with underscore (`_process_external_plugin`, `_string_hash`)
+- **Private/internal functions**: Prefix with **single** underscore (`_process_external_plugin`, `_string_hash`)
 - **Predicates**: Start with `is_` or `has_` (`is_macos`, `has_threshold`)
+
+**IMPORTANT: Never use double underscores (`__`) for function names.** This is a common source of bugs where `__function_name()` is defined but `_function_name()` is called, causing "command not found" errors.
+
+```bash
+# ✓ CORRECT: Single underscore for internal functions
+_get_data() { ... }
+_compute_result() { ... }
+
+# ✗ WRONG: Double underscore (causes bugs!)
+__get_data() { ... }  # Will break if called as _get_data
+```
+
+### Plugin Standard Header Format
+
+Every plugin MUST include a standardized header comment:
+
+```bash
+#!/usr/bin/env bash
+# =============================================================================
+# Plugin: plugin_name
+# Description: Brief description of what this plugin does
+# Type: static|dynamic|conditional (with explanation in parentheses)
+# Dependencies: list dependencies or "None"
+# =============================================================================
+```
+
+**Example:**
+
+```bash
+#!/usr/bin/env bash
+# =============================================================================
+# Plugin: cpu
+# Description: Display CPU usage percentage
+# Type: dynamic (supports automatic threshold colors)
+# Dependencies: None (uses /proc/stat on Linux, iostat/ps on macOS)
+# =============================================================================
+```
+
+**Section Organization:**
+
+Plugins should organize their code into clearly marked sections:
+
+```bash
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() { ... }
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() { ... }
+
+# =============================================================================
+# Plugin Contract Implementation
+# =============================================================================
+
+plugin_get_type() { ... }
+plugin_get_display_info() { ... }
+
+# =============================================================================
+# Helper Functions (optional)
+# =============================================================================
+
+_internal_helper() { ... }
+
+# =============================================================================
+# Main Logic
+# =============================================================================
+
+_compute_data() { ... }
+load_plugin() { ... }
+```
 
 ### Error Handling Patterns
 

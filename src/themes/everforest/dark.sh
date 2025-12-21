@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
   [primary]="#7fbbb3"              # blue/aqua - primary
   [secondary]="#475258"            # bg3 - secondary
   [secondary-strong]="#3d484d"     # bg2 - strong secondary
+  [secondary-subtle]="#5b666e"     # Subtle secondary (18.9% lighter)
 
   # Status Colors
   [success]="#a7c080"              # green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
   [active]="#4f585e"               # bg4 - active (lighter than secondary)
   [focus]="#7fbbb3"                # blue
   [disabled]="#7a8478"             # grey0
+  [disabled-subtle]="#929b8f"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#444b43"      # Strong disabled (44.2% darker)
 
   # Additional Variants
   [success-subtle]="#b5cfa0"       # lighter green

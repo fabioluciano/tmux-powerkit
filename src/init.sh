@@ -35,11 +35,8 @@ CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Feature modules (depend on core)
 . "$CURRENT_DIR/keybindings.sh"       # Keybinding management
-. "$CURRENT_DIR/separators.sh"        # Powerline separators
-. "$CURRENT_DIR/window_format.sh"     # Window formatting
-. "$CURRENT_DIR/status_bar.sh"        # Status bar generation
+. "$CURRENT_DIR/tmux_ui.sh"           # UI: separators, windows, status bar, tmux config
 . "$CURRENT_DIR/plugin_integration.sh" # Plugin system
-. "$CURRENT_DIR/tmux_config.sh"       # Tmux appearance configuration
 
 # =============================================================================
 # MAIN INITIALIZATION
@@ -72,16 +69,15 @@ initialize_powerkit() {
         tmux set-option -g status-right ""
     else
         # Single layout: plugins on right side, with final separator
+        local resolved_accent_color=$(get_powerkit_color 'surface')
+        local complete_format=$(build_single_layout_status_format "$resolved_accent_color")
+        tmux set-option -g status-format[0] "$complete_format"
+
         if [[ -n "$status_2" ]]; then
             tmux set-option -g status-right "$status_2"
         else
             tmux set-option -g status-right ""
         fi
-        
-        # Apply complete status format with final separator
-        local resolved_accent_color=$(get_powerkit_color 'surface')
-        local complete_format=$(build_single_layout_status_format "$resolved_accent_color")
-        tmux set-option -g status-format[0] "$complete_format"
     fi
     
     # Remove window separator for seamless powerline appearance

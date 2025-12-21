@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
   [primary]="#4d699b"              # lotusBlue - primary
   [secondary]="#716e61"            # lotusGray - secondary (dark for white text)
   [secondary-strong]="#545464"     # lotusInk1 - strong secondary
+  [secondary-subtle]="#898679"     # Subtle secondary (18.9% lighter)
 
   # Status Colors
   [success]="#6f894e"              # lotusGreen
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
   [active]="#8a8980"               # lotusGray2 - active (lighter for icon bg)
   [focus]="#4d699b"                # lotusBlue
   [disabled]="#8a8980"             # lotusGray2
+  [disabled-subtle]="#a2a098"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#4d4c48"      # Strong disabled (44.2% darker)
 
   # Additional Variants
   [success-subtle]="#6e915f"       # lotusGreen2

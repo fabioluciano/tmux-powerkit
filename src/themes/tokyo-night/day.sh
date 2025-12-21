@@ -31,6 +31,7 @@ declare -A THEME_COLORS=(
   [primary]="#2e7de9"              # Primary brand (blue - color4)
   [secondary]="#6172b0"            # Secondary (muted blue for text contrast)
   [secondary-strong]="#3760bf"     # Strong secondary (fg color)
+  [secondary-subtle]="#7a8bc2"     # Subtle secondary (18.9% lighter)
 
   # Status Colors (PowerKit Standard) - Vibrant official colors
   [success]="#587539"              # Success (green - color2)
@@ -43,6 +44,8 @@ declare -A THEME_COLORS=(
   [active]="#8690b8"               # Active state (icon bg - mid contrast)
   [focus]="#2e7de9"                # Focus state (blue)
   [disabled]="#a1a6c5"             # Disabled state
+  [disabled-subtle]="#b3b7d1"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#5a5e6e"      # Strong disabled (44.2% darker)
 
   # Additional Variants - Brighter versions for visibility
   [success-subtle]="#5c8524"       # Subtle success (bright green - color10)

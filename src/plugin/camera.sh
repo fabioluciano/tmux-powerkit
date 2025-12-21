@@ -1,75 +1,124 @@
 #!/usr/bin/env bash
-# Plugin: camera - Display camera status (macOS/Linux)
+# =============================================================================
+# Plugin: camera
+# Description: Display camera status (active/inactive)
+# Type: conditional (hidden when camera is inactive)
+# Dependencies: Linux: lsof (optional)
+# =============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    if is_linux; then
+        require_cmd "lsof" 1  # Optional
+    fi
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Icons
+    declare_option "icon" "icon" $'\U000F0100' "Plugin icon (webcam)"
+
+    # Colors - Default
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Colors - Active state
+    declare_option "active_accent_color" "color" "error" "Background color when camera is active"
+    declare_option "active_accent_color_icon" "color" "error-strong" "Icon background color when camera is active"
+
+    # Cache
+    declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
+}
+
 plugin_init "camera"
 
-# Configuration
-_icon=$(get_tmux_option "@powerkit_plugin_camera_icon" "$POWERKIT_PLUGIN_CAMERA_ICON")
-_active_accent=$(get_tmux_option "@powerkit_plugin_camera_active_accent_color" "$POWERKIT_PLUGIN_CAMERA_ACTIVE_ACCENT_COLOR")
-_active_accent_icon=$(get_tmux_option "@powerkit_plugin_camera_active_accent_color_icon" "$POWERKIT_PLUGIN_CAMERA_ACTIVE_ACCENT_COLOR_ICON")
+# =============================================================================
+# Plugin Contract Implementation
+# =============================================================================
 
-# Check CPU usage of process
-check_cpu() {
+plugin_get_type() { printf 'conditional'; }
+
+plugin_get_display_info() {
+    local status=$(_get_status)
+    if [[ "$status" == "active" ]]; then
+        local icon active_accent active_accent_icon
+        icon=$(get_option "icon")
+        active_accent=$(get_option "active_accent_color")
+        active_accent_icon=$(get_option "active_accent_color_icon")
+        build_display_info "1" "$active_accent" "$active_accent_icon" "$icon"
+    else
+        build_display_info "0" "" "" ""
+    fi
+}
+
+# =============================================================================
+# Main Logic
+# =============================================================================
+
+_check_cpu() {
     local pid="$1" min="${2:-1}"
     local cpu=$(ps -p "$pid" -o %cpu= 2>/dev/null | tr -d ' ' | cut -d. -f1)
     [[ -n "$cpu" && "$cpu" -ge "$min" ]]
 }
 
-# macOS detection
-detect_macos() {
-    local procs=("VDCAssistant" "appleh16camerad" "cameracaptured")
+_detect_macos() {
+    # Camera daemons on macOS:
+    # - VDCAssistant: FaceTime HD camera (older Macs)
+    # - appleh16camerad: Apple Silicon built-in camera
+    # - cameracaptured: Camera capture daemon
+    # - UVCAssistant: USB Video Class cameras (external webcams like Logitech, etc.)
+    local procs=("VDCAssistant" "appleh16camerad" "cameracaptured" "UVCAssistant")
     for p in "${procs[@]}"; do
         local pid=$(pgrep -f "$p" 2>/dev/null)
-        [[ -n "$pid" ]] && check_cpu "$pid" 1 && { echo "active"; return; }
+        [[ -n "$pid" ]] && _check_cpu "$pid" 1 && { echo "active"; return; }
     done
     echo "inactive"
 }
 
-# Linux detection
-detect_linux() {
+_detect_linux() {
     # Method 1: lsof (most reliable)
-    require_cmd lsof 1 && lsof /dev/video* 2>/dev/null | grep -q "/dev/video" && { printf 'active'; return; }
+    has_cmd lsof && lsof /dev/video* 2>/dev/null | grep -q "/dev/video" && { printf 'active'; return; }
 
     # Method 2: fuser (faster than lsof)
-    require_cmd fuser 1 && fuser /dev/video* 2>/dev/null | grep -q "[0-9]" && { printf 'active'; return; }
+    has_cmd fuser && fuser /dev/video* 2>/dev/null | grep -q "[0-9]" && { printf 'active'; return; }
 
     # Method 3: Check common camera apps with CPU usage
     local apps="gstreamer|ffmpeg|vlc|cheese|obs|zoom|teams|skype"
     local pid
     for pid in $(pgrep -f "$apps" 2>/dev/null); do
-        check_cpu "$pid" 2 && { printf 'active'; return; }
+        _check_cpu "$pid" 2 && { printf 'active'; return; }
     done
 
     printf 'inactive'
 }
 
-detect_camera() {
-    is_macos && detect_macos || detect_linux
+_detect_camera() {
+    is_macos && _detect_macos || _detect_linux
 }
 
-get_status() {
+_get_status() {
     local cached
     if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
         echo "$cached"
     else
-        local r=$(detect_camera)
-        cache_set "$CACHE_KEY" "$r"
-        echo "$r"
+        local result=$(_detect_camera)
+        cache_set "$CACHE_KEY" "$result"
+        echo "$result"
     fi
 }
 
-plugin_get_type() { printf 'conditional'; }
-
-plugin_get_display_info() {
-    local status=$(get_status)
-    [[ "$status" == "active" ]] && echo "1:$_active_accent:$_active_accent_icon:$_icon" || echo "0:::"
-}
-
 load_plugin() {
-    local status=$(get_status)
+    local status=$(_get_status)
     [[ "$status" == "active" ]] && printf 'ON'
 }
 

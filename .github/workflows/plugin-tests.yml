@@ -5,20 +5,13 @@ on:
     branches:
       - main
     paths:
-      - 'src/plugin/**'
-      - 'src/render_plugins.sh'
-      - 'src/utils.sh'
-      - 'src/cache.sh'
-      - 'src/themes/**'
-      - 'src/defaults.sh'
-      - 'src/theme.sh'
+      - 'src/**'
+      - 'tests/**'
       - '.github/workflows/plugin-tests.yml'
   pull_request:
     paths:
-      - 'src/plugin/**'
-      - 'src/render_plugins.sh'
-      - 'src/utils.sh'
-      - 'src/cache.sh'
+      - 'src/**'
+      - 'tests/**'
   workflow_dispatch:
 
 jobs:
@@ -32,106 +25,39 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: false
+        uses: actions/checkout@v4
 
-      - name: Install tmux
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
         run: |
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            sudo apt-get update
-            sudo apt-get install -y tmux
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install tmux bash
-          fi
+          sudo apt-get update
+          sudo apt-get install -y tmux shellcheck
 
-      - name: Set bash as default shell
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install tmux bash shellcheck
+
+      - name: Run plugin test suite
         shell: bash
         run: |
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            echo "$(brew --prefix)/bin/bash" >> $GITHUB_PATH
-          fi
+          chmod +x tests/test_plugins.sh
+          ./tests/test_plugins.sh
 
-      - name: Verify plugin scripts syntax
+      - name: Verify theme syntax
         shell: bash
         run: |
           set -e
-          for plugin in src/plugin/*.sh; do
-            echo "Testing syntax: $plugin"
-            bash -n "$plugin"
-          done
           for theme in src/themes/**/*.sh; do
             echo "Testing theme syntax: $theme"
             bash -n "$theme"
           done
-          for util in src/*.sh; do
-            echo "Testing util syntax: $util"
-            bash -n "$util"
-          done
 
-      - name: Test plugin rendering (dry run)
+      - name: Verify helper scripts syntax
         shell: bash
         run: |
           set -e
-          export TMUX_TOKYO_NIGHT_STYLE="night"
-          
-          # Source utilities
-          source src/utils.sh
-          source src/cache.sh
-          
-          # Test each plugin can be sourced and loaded
-          for plugin in src/plugin/*.sh; do
-            echo "Testing plugin: $plugin"
-            source "$plugin" || {
-              echo "Failed to source $plugin"
-              exit 1
-            }
+          for helper in src/helpers/*.sh; do
+            echo "Testing helper syntax: $helper"
+            bash -n "$helper"
           done
-
-      - name: Test OS detection
-        shell: bash
-        run: |
-          set -e
-          source src/utils.sh
-          
-          # Test get_os_icon function
-          os_icon=$(get_os_icon)
-          echo "Detected OS icon: $os_icon"
-          
-          if [[ -z "$os_icon" ]]; then
-            echo "OS icon detection failed"
-            exit 1
-          fi
-          
-          echo "OS detection test passed"
-
-      - name: Test available plugins on ${{ matrix.os }}
-        shell: bash
-        run: |
-          set -e
-          source src/utils.sh
-          
-          # Test conditional plugins based on OS
-          echo "Testing conditional plugin availability..."
-          
-          # These should work on all platforms
-          for plugin in datetime hostname uptime cpu memory disk; do
-            plugin_file="src/plugin/${plugin}.sh"
-            if [[ -f "$plugin_file" ]]; then
-              echo "✓ Plugin available: $plugin"
-            else
-              echo "✗ Plugin missing: $plugin"
-              exit 1
-            fi
-          done
-          
-          # OS-specific plugins
-          if [[ "$RUNNER_OS" == "macOS" ]]; then
-            echo "Testing macOS-specific plugins..."
-            # Test that temperature is properly disabled
-            if grep -q "darwin" src/plugin/temperature.sh 2>/dev/null; then
-              echo "✓ Temperature plugin has macOS handling"
-            fi
-          fi
-          
-          echo "Plugin availability test passed"

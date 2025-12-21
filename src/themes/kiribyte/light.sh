@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
   [primary]="#7e6db8"              # Darker purple pastel - primary
   [secondary]="#6d7187"            # Blue-gray - secondary (dark for white text)
   [secondary-strong]="#3b3d4a"     # Strong secondary
+  [secondary-subtle]="#858999"     # Subtle secondary (18.9% lighter)
 
   # Status Colors (Darker pastels for light theme visibility)
   [success]="#6a8c4f"              # Darker mint green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
   [active]="#9a9cb0"               # Active state (lighter for icon bg)
   [focus]="#6a9dc9"                # Darker sky blue
   [disabled]="#8a8fb5"             # Disabled state
+  [disabled-subtle]="#a1a5c7"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#4d5066"      # Strong disabled (44.2% darker)
 
   # Additional Variants (Darker for light theme)
   [success-subtle]="#80a865"       # Lighter success

@@ -8,15 +8,59 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    require_cmd "kubectl" || return 1
+    require_cmd "fzf" 1  # Optional (for selectors)
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "display_mode" "string" "connected" "Display mode (connected|always)"
+    declare_option "show_namespace" "bool" "false" "Show namespace in display"
+
+    # Connectivity
+    declare_option "connectivity_timeout" "number" "2" "Cluster connectivity timeout in seconds"
+    declare_option "connectivity_cache_ttl" "number" "120" "Connectivity check cache duration"
+
+    # Icons
+    declare_option "icon" "icon" $'\ue81d' "Plugin icon"
+
+    # Colors - Default
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Keybindings - Context selector
+    declare_option "context_selector_key" "key" "C-g" "Keybinding for context selector"
+    declare_option "context_selector_width" "string" "50%" "Context selector popup width"
+    declare_option "context_selector_height" "string" "50%" "Context selector popup height"
+
+    # Keybindings - Namespace selector
+    declare_option "namespace_selector_key" "key" "C-s" "Keybinding for namespace selector"
+    declare_option "namespace_selector_width" "string" "50%" "Namespace selector popup width"
+    declare_option "namespace_selector_height" "string" "50%" "Namespace selector popup height"
+
+    # Cache
+    declare_option "cache_ttl" "number" "60" "Cache duration in seconds"
+}
+
 plugin_init "kubernetes"
 
 # =============================================================================
-# Kubernetes Functions
+# Main Logic
 # =============================================================================
 
 # Check if kubeconfig changed since last cache and invalidate if needed
 # This ensures namespace/context changes outside PowerKit are detected
-check_kubeconfig_changed() {
+_check_kubeconfig_changed() {
     local kubeconfig="${KUBECONFIG:-$HOME/.kube/config}"
     local mtime_cache="${CACHE_DIR}/kubernetes_mtime.cache"
     
@@ -40,13 +84,13 @@ check_kubeconfig_changed() {
     fi
 }
 
-get_current_context() {
+_get_current_context() {
     local kubeconfig="${KUBECONFIG:-$HOME/.kube/config}"
     [[ ! -f "$kubeconfig" ]] && return 1
     awk '/^current-context:/ {print $2; exit}' "$kubeconfig" 2>/dev/null
 }
 
-get_namespace_for_context() {
+_get_namespace_for_context() {
     local context="$1"
     local kubeconfig="${KUBECONFIG:-$HOME/.kube/config}"
     
@@ -67,12 +111,12 @@ get_namespace_for_context() {
 }
 
 # Check if kubernetes cluster is reachable
-check_k8s_connectivity() {
+_check_k8s_connectivity() {
     local timeout
-    timeout=$(get_tmux_option "@powerkit_plugin_kubernetes_connectivity_timeout" "$POWERKIT_PLUGIN_KUBERNETES_CONNECTIVITY_TIMEOUT")
-    
+    timeout=$(get_option "connectivity_timeout")
+
     # Try to connect to the cluster with timeout
-    if require_cmd kubectl 1; then
+    if has_cmd kubectl; then
         kubectl cluster-info --request-timeout="${timeout}s" &>/dev/null
         return $?
     fi
@@ -80,17 +124,17 @@ check_k8s_connectivity() {
 }
 
 # Get cached connectivity status
-get_cached_connectivity() {
+_get_cached_connectivity() {
     local conn_cache_key="${CACHE_KEY}_connectivity"
     local conn_ttl
-    conn_ttl=$(get_tmux_option "@powerkit_plugin_kubernetes_connectivity_cache_ttl" "$POWERKIT_PLUGIN_KUBERNETES_CONNECTIVITY_CACHE_TTL")
-    
+    conn_ttl=$(get_option "connectivity_cache_ttl")
+
     local cached
     if cached=$(cache_get "$conn_cache_key" "$conn_ttl"); then
         [[ "$cached" == "1" ]] && return 0 || return 1
     fi
-    
-    if check_k8s_connectivity; then
+
+    if _check_k8s_connectivity; then
         cache_set "$conn_cache_key" "1"
         return 0
     else
@@ -99,34 +143,34 @@ get_cached_connectivity() {
     fi
 }
 
-get_k8s_info() {
+_get_k8s_info() {
     local context
-    context=$(get_current_context) || return 1
+    context=$(_get_current_context) || return 1
     [[ -z "$context" ]] && return 1
-    
+
     # Check display mode
     local display_mode
-    display_mode=$(get_tmux_option "@powerkit_plugin_kubernetes_display_mode" "$POWERKIT_PLUGIN_KUBERNETES_DISPLAY_MODE")
-    
+    display_mode=$(get_option "display_mode")
+
     # If display_mode is "connected", check connectivity
     if [[ "$display_mode" == "connected" ]]; then
-        get_cached_connectivity || return 1
+        _get_cached_connectivity || return 1
     fi
-    
+
     # Shorten context name (remove user@ and cluster: prefixes)
     local display="${context##*@}"
     display="${display##*:}"
-    
+
     # Add namespace if configured
     local show_ns
-    show_ns=$(get_tmux_option "@powerkit_plugin_kubernetes_show_namespace" "$POWERKIT_PLUGIN_KUBERNETES_SHOW_NAMESPACE")
-    
+    show_ns=$(get_option "show_namespace")
+
     if [[ "$show_ns" == "true" ]]; then
         local ns
-        ns=$(get_namespace_for_context "$context")
+        ns=$(_get_namespace_for_context "$context")
         display+="/${ns:-default}"
     fi
-    
+
     echo "$display"
 }
 
@@ -142,7 +186,7 @@ setup_keybindings() {
     # 1. kubectl is not installed
     # 2. kubeconfig file doesn't exist
     # 3. No contexts are available
-    require_cmd kubectl 1 || return 0
+    has_cmd kubectl || return 0
     [[ ! -f "$kubeconfig" ]] && return 0
 
     # Check if there are any contexts configured
@@ -152,15 +196,15 @@ setup_keybindings() {
 
     local ctx_key ns_key ctx_w ctx_h ns_w ns_h cache_dir conn_timeout
 
-    ctx_key=$(get_tmux_option "@powerkit_plugin_kubernetes_context_selector_key" "$POWERKIT_PLUGIN_KUBERNETES_CONTEXT_SELECTOR_KEY")
-    ctx_w=$(get_tmux_option "@powerkit_plugin_kubernetes_context_selector_width" "$POWERKIT_PLUGIN_KUBERNETES_CONTEXT_SELECTOR_WIDTH")
-    ctx_h=$(get_tmux_option "@powerkit_plugin_kubernetes_context_selector_height" "$POWERKIT_PLUGIN_KUBERNETES_CONTEXT_SELECTOR_HEIGHT")
+    ctx_key=$(get_option "context_selector_key")
+    ctx_w=$(get_option "context_selector_width")
+    ctx_h=$(get_option "context_selector_height")
 
-    ns_key=$(get_tmux_option "@powerkit_plugin_kubernetes_namespace_selector_key" "$POWERKIT_PLUGIN_KUBERNETES_NAMESPACE_SELECTOR_KEY")
-    ns_w=$(get_tmux_option "@powerkit_plugin_kubernetes_namespace_selector_width" "$POWERKIT_PLUGIN_KUBERNETES_NAMESPACE_SELECTOR_WIDTH")
-    ns_h=$(get_tmux_option "@powerkit_plugin_kubernetes_namespace_selector_height" "$POWERKIT_PLUGIN_KUBERNETES_NAMESPACE_SELECTOR_HEIGHT")
+    ns_key=$(get_option "namespace_selector_key")
+    ns_w=$(get_option "namespace_selector_width")
+    ns_h=$(get_option "namespace_selector_height")
 
-    conn_timeout=$(get_tmux_option "@powerkit_plugin_kubernetes_connectivity_timeout" "$POWERKIT_PLUGIN_KUBERNETES_CONNECTIVITY_TIMEOUT")
+    conn_timeout=$(get_option "connectivity_timeout")
 
     cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit"
 
@@ -174,7 +218,7 @@ setup_keybindings() {
 }
 
 # =============================================================================
-# Plugin Interface
+# Plugin Contract Implementation
 # =============================================================================
 
 plugin_get_type() { printf 'conditional'; }
@@ -184,19 +228,15 @@ plugin_get_display_info() {
     [[ -n "$content" ]] && echo "1:::" || echo "0:::"
 }
 
-# =============================================================================
-# Main
-# =============================================================================
-
 load_plugin() {
     # Check if kubeconfig changed (invalidates cache if needed)
-    check_kubeconfig_changed
-    
+    _check_kubeconfig_changed
+
     local cached
     cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL") && { printf '%s' "$cached"; return 0; }
-    
+
     local result
-    result=$(get_k8s_info) || return 0
+    result=$(_get_k8s_info) || return 0
     
     cache_set "$CACHE_KEY" "$result"
     printf '%s' "$result"

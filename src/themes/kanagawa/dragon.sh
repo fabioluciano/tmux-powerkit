@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
   [primary]="#8ba4b0"              # dragonBlue2 - primary
   [secondary]="#223249"            # waveBlue1 - secondary
   [secondary-strong]="#2D4F67"     # waveBlue2 - strong secondary
+  [secondary-subtle]="#2f4560"     # Subtle secondary (18.9% lighter)
 
   # Status Colors
   [success]="#87a987"              # dragonGreen2
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
   [active]="#2D4F67"               # waveBlue2 - active
   [focus]="#8ba4b0"                # dragonBlue2
   [disabled]="#625e5a"             # dragonGray
+  [disabled-subtle]="#7a7572"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#373433"      # Strong disabled (44.2% darker)
 
   # Additional Variants
   [success-subtle]="#8a9a7b"       # dragonGreen

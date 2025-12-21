@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#ff79c6"              # Pink - Primary
     [secondary]="#44475a"            # Current Line - Secondary (content bg)
     [secondary-strong]="#282a36"     # Background - Strong secondary
+    [secondary-subtle]="#585b70"     # Subtle secondary (18.9% lighter)
 
     # Status Colors (PowerKit Standard)
     [success]="#50fa7b"              # Green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#6272a4"               # Comment - Active (icon bg, lighter than secondary)
     [focus]="#bd93f9"                # Purple
     [disabled]="#6272a4"             # Comment
+    [disabled-subtle]="#7a8ab6"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#37405c"      # Strong disabled (44.2% darker)
 
     # Additional Variants
     [success-subtle]="#71fa93"       # Subtle success (18.9% lighter)

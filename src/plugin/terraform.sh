@@ -8,10 +8,50 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
-plugin_init "terraform"
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
 
-# Configuration
-_workspace_key=$(get_tmux_option "@powerkit_plugin_terraform_workspace_key" "$POWERKIT_PLUGIN_TERRAFORM_WORKSPACE_KEY")
+plugin_check_dependencies() {
+    require_any_cmd "terraform" "tofu" || return 1
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "tool" "string" "terraform" "Preferred tool (terraform or tofu)"
+    declare_option "show_only_in_dir" "bool" "false" "Only show in Terraform directories"
+    declare_option "show_pending" "bool" "true" "Show indicator for pending changes"
+    declare_option "warn_on_prod" "bool" "true" "Warn when in production workspace"
+    declare_option "prod_keywords" "string" "prod,production,prd" "Comma-separated production keywords"
+
+    # Icons
+    declare_option "icon" "icon" $'\ue69a' "Plugin icon"
+
+    # Colors - Default
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Colors - Production workspace
+    declare_option "prod_accent_color" "color" "error" "Background color for production workspace"
+    declare_option "prod_accent_color_icon" "color" "error-strong" "Icon background color for production workspace"
+
+    # Colors - Pending changes
+    declare_option "pending_accent_color" "color" "warning" "Background color for pending changes"
+    declare_option "pending_accent_color_icon" "color" "warning-strong" "Icon background color for pending changes"
+
+    # Keybindings
+    declare_option "workspace_key" "key" "" "Key binding for workspace selector"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+
+plugin_init "terraform"
 
 # =============================================================================
 # Terraform/OpenTofu Functions
@@ -57,16 +97,16 @@ get_workspace() {
 # Detect terraform or tofu
 detect_tool() {
     local preferred
-    preferred=$(get_cached_option "@powerkit_plugin_terraform_tool" "$POWERKIT_PLUGIN_TERRAFORM_TOOL")
+    preferred=$(get_option "tool")
 
     case "$preferred" in
         tofu|opentofu)
-            require_cmd tofu 1 && { echo "tofu"; return 0; }
-            require_cmd terraform 1 && { echo "terraform"; return 0; }
+            has_cmd tofu && { echo "tofu"; return 0; }
+            has_cmd terraform && { echo "terraform"; return 0; }
             ;;
         terraform|*)
-            require_cmd terraform 1 && { echo "terraform"; return 0; }
-            require_cmd tofu 1 && { echo "tofu"; return 0; }
+            has_cmd terraform && { echo "terraform"; return 0; }
+            has_cmd tofu && { echo "tofu"; return 0; }
             ;;
     esac
     return 1
@@ -76,8 +116,8 @@ detect_tool() {
 is_prod_workspace() {
     local ws="$1"
     local prod_keywords
-    prod_keywords=$(get_cached_option "@powerkit_plugin_terraform_prod_keywords" "$POWERKIT_PLUGIN_TERRAFORM_PROD_KEYWORDS")
-    
+    prod_keywords=$(get_option "prod_keywords")
+
     IFS=',' read -ra keywords <<< "$prod_keywords"
     for kw in "${keywords[@]}"; do
         kw="${kw#"${kw%%[![:space:]]*}"}"
@@ -108,24 +148,24 @@ plugin_get_type() { printf 'conditional'; }
 plugin_get_display_info() {
     local content="$1"
     local show="1" accent="" accent_icon=""
-    
+
     [[ -z "$content" ]] && { build_display_info "0" "" "" ""; return; }
-    
+
     local ws="${content%\*}"
     local has_changes=0
     [[ "$content" == *"*" ]] && has_changes=1
-    
+
     local warn_prod
-    warn_prod=$(get_cached_option "@powerkit_plugin_terraform_warn_on_prod" "$POWERKIT_PLUGIN_TERRAFORM_WARN_ON_PROD")
-    
+    warn_prod=$(get_option "warn_on_prod")
+
     if [[ "$warn_prod" == "true" ]] && is_prod_workspace "$ws"; then
-        accent=$(get_cached_option "@powerkit_plugin_terraform_prod_accent_color" "$POWERKIT_PLUGIN_TERRAFORM_PROD_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_terraform_prod_accent_color_icon" "$POWERKIT_PLUGIN_TERRAFORM_PROD_ACCENT_COLOR_ICON")
+        accent=$(get_option "prod_accent_color")
+        accent_icon=$(get_option "prod_accent_color_icon")
     elif [[ "$has_changes" -eq 1 ]]; then
-        accent=$(get_cached_option "@powerkit_plugin_terraform_pending_accent_color" "$POWERKIT_PLUGIN_TERRAFORM_PENDING_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_terraform_pending_accent_color_icon" "$POWERKIT_PLUGIN_TERRAFORM_PENDING_ACCENT_COLOR_ICON")
+        accent=$(get_option "pending_accent_color")
+        accent_icon=$(get_option "pending_accent_color_icon")
     fi
-    
+
     build_display_info "$show" "$accent" "$accent_icon" ""
 }
 
@@ -135,30 +175,30 @@ plugin_get_display_info() {
 
 load_plugin() {
     local show_only_in_tf_dir
-    show_only_in_tf_dir=$(get_cached_option "@powerkit_plugin_terraform_show_only_in_dir" "$POWERKIT_PLUGIN_TERRAFORM_SHOW_ONLY_IN_DIR")
-    
+    show_only_in_tf_dir=$(get_option "show_only_in_dir")
+
     if [[ "$show_only_in_tf_dir" == "true" ]]; then
         is_tf_directory || return 0
     fi
-    
+
     local cached
     if cached=$(cache_get "$CACHE_KEY" "$CACHE_TTL"); then
         printf '%s' "$cached"
         return 0
     fi
-    
+
     is_tf_directory || return 0
-    
+
     local workspace
     workspace=$(get_workspace) || return 0
     [[ -z "$workspace" ]] && return 0
-    
+
     local result="$workspace"
-    
+
     local show_pending
-    show_pending=$(get_cached_option "@powerkit_plugin_terraform_show_pending" "$POWERKIT_PLUGIN_TERRAFORM_SHOW_PENDING")
+    show_pending=$(get_option "show_pending")
     [[ "$show_pending" == "true" ]] && has_pending_changes && result+="*"
-    
+
     cache_set "$CACHE_KEY" "$result"
     printf '%s' "$result"
 }
@@ -179,9 +219,12 @@ setup_keybindings() {
     # (This check is lenient - keybinding will be available if tool exists)
     # The selector script will handle the case where no workspaces are found
 
+    local workspace_key
+    workspace_key=$(get_option "workspace_key")
+
     local base_dir="${ROOT_DIR%/plugin}"
     local script="${base_dir}/helpers/terraform_workspace_selector.sh"
-    [[ -n "$_workspace_key" ]] && tmux bind-key "$_workspace_key" run-shell "bash '$script' select"
+    [[ -n "$workspace_key" ]] && tmux bind-key "$workspace_key" run-shell "bash '$script' select"
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

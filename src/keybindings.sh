@@ -54,12 +54,12 @@ check_keybinding_conflicts() {
         fi
     }
     
-    # Core keybindings
+    # Core keybindings (defaults defined in defaults.sh)
     local options_key keybindings_key cache_clear_key theme_selector_key
-    options_key=$(get_tmux_option "@powerkit_options_key" "$POWERKIT_DEFAULT_OPTIONS_KEY")
-    keybindings_key=$(get_tmux_option "@powerkit_keybindings_key" "$POWERKIT_DEFAULT_KEYBINDINGS_KEY")
-    cache_clear_key=$(get_tmux_option "@powerkit_plugin_cache_clear_key" "$POWERKIT_PLUGIN_CACHE_CLEAR_KEY")
-    theme_selector_key=$(get_tmux_option "@powerkit_theme_selector_key" "$POWERKIT_DEFAULT_THEME_SELECTOR_KEY")
+    options_key=$(get_tmux_option "@powerkit_options_key" "${POWERKIT_DEFAULT_OPTIONS_KEY:-C-e}")
+    keybindings_key=$(get_tmux_option "@powerkit_keybindings_key" "${POWERKIT_DEFAULT_KEYBINDINGS_KEY:-C-y}")
+    cache_clear_key=$(get_tmux_option "@powerkit_plugin_cache_clear_key" "${POWERKIT_PLUGIN_CACHE_CLEAR_KEY:-C-d}")
+    theme_selector_key=$(get_tmux_option "@powerkit_theme_selector_key" "${POWERKIT_DEFAULT_THEME_SELECTOR_KEY:-C-r}")
 
     _check_key "$options_key" "core:options_viewer"
     _check_key "$keybindings_key" "core:keybindings_viewer"
@@ -75,34 +75,53 @@ check_keybinding_conflicts() {
         plugin="${plugin%%:*}"
         [[ -z "$plugin" ]] && continue
         
+        # Plugin keybindings with inline defaults (same as plugin_declare_options)
         case "$plugin" in
             audiodevices)
                 local input_key output_key
-                input_key=$(get_tmux_option "@powerkit_plugin_audiodevices_input_key" "$POWERKIT_PLUGIN_AUDIODEVICES_INPUT_KEY")
-                output_key=$(get_tmux_option "@powerkit_plugin_audiodevices_output_key" "$POWERKIT_PLUGIN_AUDIODEVICES_OUTPUT_KEY")
+                input_key=$(get_tmux_option "@powerkit_plugin_audiodevices_input_key" "C-i")
+                output_key=$(get_tmux_option "@powerkit_plugin_audiodevices_output_key" "C-o")
                 _check_key "$input_key" "audiodevices:input_selector"
                 _check_key "$output_key" "audiodevices:output_selector"
                 ;;
             kubernetes)
                 local ctx_key ns_key
-                ctx_key=$(get_tmux_option "@powerkit_plugin_kubernetes_context_selector_key" "$POWERKIT_PLUGIN_KUBERNETES_CONTEXT_SELECTOR_KEY")
-                ns_key=$(get_tmux_option "@powerkit_plugin_kubernetes_namespace_selector_key" "$POWERKIT_PLUGIN_KUBERNETES_NAMESPACE_SELECTOR_KEY")
+                ctx_key=$(get_tmux_option "@powerkit_plugin_kubernetes_context_selector_key" "C-g")
+                ns_key=$(get_tmux_option "@powerkit_plugin_kubernetes_namespace_selector_key" "C-s")
                 _check_key "$ctx_key" "kubernetes:context_selector"
                 _check_key "$ns_key" "kubernetes:namespace_selector"
                 ;;
             terraform)
                 local ws_key
-                ws_key=$(get_tmux_option "@powerkit_plugin_terraform_workspace_key" "$POWERKIT_PLUGIN_TERRAFORM_WORKSPACE_KEY")
+                ws_key=$(get_tmux_option "@powerkit_plugin_terraform_workspace_key" "")
                 _check_key "$ws_key" "terraform:workspace_selector"
                 ;;
             bitwarden)
-                local bw_key bw_unlock_key bw_lock_key
-                bw_key=$(get_tmux_option "@powerkit_plugin_bitwarden_password_selector_key" "$POWERKIT_PLUGIN_BITWARDEN_PASSWORD_SELECTOR_KEY")
-                bw_unlock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_unlock_key" "$POWERKIT_PLUGIN_BITWARDEN_UNLOCK_KEY")
-                bw_lock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_lock_key" "$POWERKIT_PLUGIN_BITWARDEN_LOCK_KEY")
+                local bw_key bw_unlock_key bw_lock_key bw_totp_key
+                bw_key=$(get_tmux_option "@powerkit_plugin_bitwarden_password_selector_key" "C-v")
+                bw_unlock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_unlock_key" "C-w")
+                bw_lock_key=$(get_tmux_option "@powerkit_plugin_bitwarden_lock_key" "")
+                bw_totp_key=$(get_tmux_option "@powerkit_plugin_bitwarden_totp_selector_key" "C-t")
                 _check_key "$bw_key" "bitwarden:password_selector"
                 _check_key "$bw_unlock_key" "bitwarden:unlock_vault"
                 _check_key "$bw_lock_key" "bitwarden:lock_vault"
+                _check_key "$bw_totp_key" "bitwarden:totp_selector"
+                ;;
+            jira)
+                local jira_key
+                jira_key=$(get_tmux_option "@powerkit_plugin_jira_selector_key" "C-e")
+                _check_key "$jira_key" "jira:issue_selector"
+                ;;
+            pomodoro)
+                local pomo_toggle pomo_start pomo_stop pomo_skip
+                pomo_toggle=$(get_tmux_option "@powerkit_plugin_pomodoro_toggle_key" "C-p")
+                pomo_start=$(get_tmux_option "@powerkit_plugin_pomodoro_start_key" "")
+                pomo_stop=$(get_tmux_option "@powerkit_plugin_pomodoro_stop_key" "")
+                pomo_skip=$(get_tmux_option "@powerkit_plugin_pomodoro_skip_key" "")
+                _check_key "$pomo_toggle" "pomodoro:toggle"
+                _check_key "$pomo_start" "pomodoro:start"
+                _check_key "$pomo_stop" "pomodoro:stop"
+                _check_key "$pomo_skip" "pomodoro:skip"
                 ;;
         esac
     done
@@ -124,17 +143,11 @@ check_keybinding_conflicts() {
             echo "Fix by changing keys in tmux.conf using @powerkit_* options."
         } > "$log_file"
         
-        # Create formatted content file for toast
-        local toast_content="${CACHE_DIR}/conflict_toast_display.txt"
-        _format_conflict_toast "$conflict_count" "$log_file" > "$toast_content"
-        
-        # Calculate popup size based on conflicts
-        local popup_height=$((conflict_count + 18))
-        [[ $popup_height -lt 15 ]] && popup_height=15
-        [[ $popup_height -gt 30 ]] && popup_height=30
-        
-        # Show toast notification (uses generic utility from utils.sh)
-        show_toast_notification "⚠️  PowerKit Conflicts" "$toast_content" 70 "$popup_height"
+        # Show toast popup after tmux initialization completes
+        # Using run-shell -b (background) with sleep to defer the popup display
+        # This ensures the popup appears after tmux finishes processing init scripts
+        local helpers_dir="${CURRENT_DIR}/helpers"
+        tmux run-shell -b "sleep 1 && tmux display-popup -E -w 75 -h 20 'bash \"${helpers_dir}/keybinding_conflict_toast.sh\"'" 2>/dev/null || true
     else
         # Remove old conflict log if no conflicts
         [[ -f "$log_file" ]] && rm -f "$log_file" || true

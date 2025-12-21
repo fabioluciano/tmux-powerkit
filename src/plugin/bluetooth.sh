@@ -1,21 +1,97 @@
 #!/usr/bin/env bash
-# Plugin: bluetooth - Display Bluetooth status and connected devices
+# =============================================================================
+# Plugin: bluetooth
+# Description: Display Bluetooth status and connected devices
+# Type: conditional (always visible, shows different states)
+# Dependencies: macOS: blueutil/system_profiler, Linux: bluetoothctl/hcitool
+# =============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    if is_macos; then
+        require_cmd "blueutil" 1  # Optional on macOS
+    else
+        require_any_cmd "bluetoothctl" "hcitool" || return 1
+    fi
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "show_when_off" "bool" "false" "Show plugin when Bluetooth is off"
+    declare_option "show_device" "bool" "true" "Show connected device name"
+    declare_option "show_battery" "bool" "false" "Show device battery level"
+    declare_option "battery_type" "string" "min" "Battery display type (min|left|right|case|all)"
+    declare_option "format" "string" "first" "Device display format (first|count|all)"
+    declare_option "max_length" "number" "25" "Maximum device name length"
+
+    # Icons
+    declare_option "icon" "icon" $'\U000F00AF' "Plugin icon (default/on state)"
+    declare_option "icon_off" "icon" $'\U000F00B2' "Icon when Bluetooth is off"
+    declare_option "icon_connected" "icon" $'\U000F00B1' "Icon when device is connected"
+
+    # Colors - Default (on state)
+    declare_option "accent_color" "color" "secondary" "Background color (on state)"
+    declare_option "accent_color_icon" "color" "active" "Icon background color (on state)"
+
+    # Colors - Off state
+    declare_option "off_accent_color" "color" "secondary" "Background color when off"
+    declare_option "off_accent_color_icon" "color" "active" "Icon background color when off"
+
+    # Colors - Connected state
+    declare_option "connected_accent_color" "color" "success" "Background color when connected"
+    declare_option "connected_accent_color_icon" "color" "success-strong" "Icon background color when connected"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+
 plugin_init "bluetooth"
 
-# Configuration
-_show_device=$(get_tmux_option "@powerkit_plugin_bluetooth_show_device" "$POWERKIT_PLUGIN_BLUETOOTH_SHOW_DEVICE")
-_show_battery=$(get_tmux_option "@powerkit_plugin_bluetooth_show_battery" "$POWERKIT_PLUGIN_BLUETOOTH_SHOW_BATTERY")
-_battery_type=$(get_tmux_option "@powerkit_plugin_bluetooth_battery_type" "${POWERKIT_PLUGIN_BLUETOOTH_BATTERY_TYPE:-min}")
-_format=$(get_tmux_option "@powerkit_plugin_bluetooth_format" "$POWERKIT_PLUGIN_BLUETOOTH_FORMAT")
-_max_len=$(get_tmux_option "@powerkit_plugin_bluetooth_max_length" "$POWERKIT_PLUGIN_BLUETOOTH_MAX_LENGTH")
+# =============================================================================
+# Plugin Contract Implementation
+# =============================================================================
 
-# macOS: blueutil or system_profiler
-get_bt_macos() {
-    if require_cmd blueutil 1; then
+plugin_get_type() { printf 'conditional'; }
+
+plugin_get_display_info() {
+    local status="${1%%:*}"
+    local accent="" accent_icon="" icon=""
+    case "$status" in
+        off)
+            icon=$(get_option "icon_off")
+            accent=$(get_option "off_accent_color")
+            accent_icon=$(get_option "off_accent_color_icon")
+            ;;
+        connected)
+            icon=$(get_option "icon_connected")
+            accent=$(get_option "connected_accent_color")
+            accent_icon=$(get_option "connected_accent_color_icon")
+            ;;
+        on)
+            accent=$(get_option "accent_color")
+            accent_icon=$(get_option "accent_color_icon")
+            ;;
+    esac
+    build_display_info "1" "$accent" "$accent_icon" "$icon"
+}
+
+# =============================================================================
+# Main Logic
+# =============================================================================
+
+_get_bt_macos() {
+    if has_cmd blueutil; then
         [[ "$(blueutil -p)" == "0" ]] && { echo "off:"; return; }
         local devs="" line name mac bat sp_bat
         
@@ -71,7 +147,7 @@ get_bt_macos() {
         return
     fi
 
-    require_cmd system_profiler 1 || return 1
+    has_cmd system_profiler || return 1
     local info=$(system_profiler SPBluetoothDataType 2>/dev/null)
     [[ -z "$info" ]] && return 1
     echo "$info" | grep -q "State: On" || { echo "off:"; return; }
@@ -103,9 +179,8 @@ get_bt_macos() {
     [[ -n "$devs" ]] && echo "connected:$devs" || echo "on:"
 }
 
-# Linux: bluetoothctl or hcitool
-get_bt_linux() {
-    if require_cmd bluetoothctl 1; then
+_get_bt_linux() {
+    if has_cmd bluetoothctl; then
         local pwr
         pwr=$(timeout 2 bluetoothctl show 2>/dev/null | awk '/Powered:/ {print $2}') || return 1
         [[ -z "$pwr" ]] && return 1
@@ -125,7 +200,7 @@ get_bt_linux() {
         return
     fi
 
-    require_cmd hcitool 1 || return 1
+    has_cmd hcitool || return 1
     hcitool dev 2>/dev/null | grep -q "hci" || { echo "off:"; return; }
     local mac=$(hcitool con 2>/dev/null | grep -v "Connections:" | head -1 | awk '{print $3}')
     if [[ -n "$mac" ]]; then
@@ -136,42 +211,22 @@ get_bt_linux() {
     fi
 }
 
-get_bt_info() { is_macos && get_bt_macos || get_bt_linux; }
+_get_bt_info() { is_macos && _get_bt_macos || _get_bt_linux; }
 
-plugin_get_type() { printf 'conditional'; }
-
-plugin_get_display_info() {
-    local status="${1%%:*}"
-    local accent="" accent_icon="" icon=""
-    case "$status" in
-        off)
-            icon=$(get_cached_option "@powerkit_plugin_bluetooth_icon_off" "$POWERKIT_PLUGIN_BLUETOOTH_ICON_OFF")
-            accent=$(get_cached_option "@powerkit_plugin_bluetooth_off_accent_color" "$POWERKIT_PLUGIN_BLUETOOTH_OFF_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_bluetooth_off_accent_color_icon" "$POWERKIT_PLUGIN_BLUETOOTH_OFF_ACCENT_COLOR_ICON")
-            ;;
-        connected)
-            icon=$(get_cached_option "@powerkit_plugin_bluetooth_icon_connected" "$POWERKIT_PLUGIN_BLUETOOTH_ICON_CONNECTED")
-            accent=$(get_cached_option "@powerkit_plugin_bluetooth_connected_accent_color" "$POWERKIT_PLUGIN_BLUETOOTH_CONNECTED_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_bluetooth_connected_accent_color_icon" "$POWERKIT_PLUGIN_BLUETOOTH_CONNECTED_ACCENT_COLOR_ICON")
-            ;;
-        on)
-            accent=$(get_cached_option "@powerkit_plugin_bluetooth_accent_color" "$POWERKIT_PLUGIN_BLUETOOTH_ACCENT_COLOR")
-            accent_icon=$(get_cached_option "@powerkit_plugin_bluetooth_accent_color_icon" "$POWERKIT_PLUGIN_BLUETOOTH_ACCENT_COLOR_ICON")
-            ;;
-    esac
-    build_display_info "1" "$accent" "$accent_icon" "$icon"
-}
-
-fmt_device() {
+_fmt_device() {
     local e="$1"
     local name="${e%%@*}"
     local battery_str="${e#*@}"
-    
-    if [[ "$_show_battery" != "true" || -z "$battery_str" ]]; then
+
+    local show_battery battery_type
+    show_battery=$(get_option "show_battery")
+    battery_type=$(get_option "battery_type")
+
+    if [[ "$show_battery" != "true" || -z "$battery_str" ]]; then
         echo "$name"
         return
     fi
-    
+
     # Parse battery info: B=75 or L=68:R=67:C=60
     declare -A bats
     local IFS=':'
@@ -180,11 +235,11 @@ fmt_device() {
         local val="${bat_entry#*=}"
         [[ -n "$type" && -n "$val" ]] && bats[$type]="$val"
     done
-    
+
     # Determine what to display based on battery_type
     # Note: Use ${bats[X]:-} syntax to avoid "unbound variable" error with set -eu
     local bat_display=""
-    case "$_battery_type" in
+    case "$battery_type" in
         left)
             [[ -n "${bats[L]:-}" ]] && bat_display="L:${bats[L]}%"
             ;;
@@ -220,7 +275,7 @@ fmt_device() {
             fi
             ;;
     esac
-    
+
     [[ -n "$bat_display" ]] && echo "$name ($bat_display)" || echo "$name"
 }
 
@@ -231,28 +286,42 @@ load_plugin() {
         return 0
     fi
 
-    local info=$(get_bt_info)
+    local show_device format max_len
+    show_device=$(get_option "show_device")
+    format=$(get_option "format")
+    max_len=$(get_option "max_length")
+
+    local info=$(_get_bt_info)
     [[ -z "$info" ]] && return 0
 
     local status="${info%%:*}" devs="${info#*:}" result=""
+    local show_when_off
+    show_when_off=$(get_option "show_when_off")
+
     case "$status" in
-        off) return 0 ;;
+        off)
+            if [[ "$show_when_off" == "true" ]]; then
+                result="off:OFF"
+            else
+                return 0
+            fi
+            ;;
         on) result="on:ON" ;;
         connected)
-            if [[ "$_show_device" == "true" && -n "$devs" ]]; then
+            if [[ "$show_device" == "true" && -n "$devs" ]]; then
                 local txt="" cnt=$(echo "$devs" | tr '|' '\n' | wc -l | tr -d ' ')
-                case "$_format" in
+                case "$format" in
                     count) [[ $cnt -eq 1 ]] && txt="1 device" || txt="$cnt devices" ;;
                     all)
                         local IFS='|'
                         for e in $devs; do
                             [[ -n "$txt" ]] && txt+=", "
-                            txt+=$(fmt_device "$e")
+                            txt+=$(_fmt_device "$e")
                         done
                         ;;
-                    first|*) txt=$(fmt_device "${devs%%|*}") ;;
+                    first|*) txt=$(_fmt_device "${devs%%|*}") ;;
                 esac
-                [[ ${#txt} -gt $_max_len ]] && txt="${txt:0:$((_max_len-1))}…"
+                [[ ${#txt} -gt $max_len ]] && txt="${txt:0:$((max_len-1))}…"
                 result="connected:$txt"
             else
                 result="connected:Connected"

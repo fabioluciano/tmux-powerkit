@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#b8a3e8"              # Primary brand color (purple pastel)
     [secondary]="#687aa3"            # Secondary color (blue-gray pastel)
     [secondary-strong]="#3e4962"     # Strong secondary (40% darker)
+    [secondary-subtle]="#7f92b5"     # Subtle secondary (18.9% lighter)
     
     # Status Colors (PowerKit Standard)
     [success]="#a9c98c"              # Success state (mint green pastel, 5% mais escuro)
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#7d96c2"               # Active state (10% mais clara que secondary)
     [focus]="#a4c5ff"                # Focus state (sky blue pastel)
     [disabled]="#8a8fb5"             # Disabled state (muted)
+    [disabled-subtle]="#a1a5c7"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#4d5066"      # Strong disabled (44.2% darker)
     
     # Additional Variants
     [success-subtle]="#bad0b1"       # Subtle success (18.9% lighter)

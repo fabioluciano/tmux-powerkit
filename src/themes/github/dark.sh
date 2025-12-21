@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
   [primary]="#58a6ff"              # blue - primary
   [secondary]="#30363d"            # secondary
   [secondary-strong]="#21262d"     # strong secondary
+  [secondary-subtle]="#444c54"     # Subtle secondary (18.9% lighter)
 
   # Status Colors (GitHub's semantic colors)
   [success]="#3fb950"              # success.fg
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
   [active]="#484f58"               # active (lighter than secondary)
   [focus]="#58a6ff"                # accent
   [disabled]="#6e7681"             # fg.subtle
+  [disabled-subtle]="#868e97"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#3d4248"      # Strong disabled (44.2% darker)
 
   # Additional Variants
   [success-subtle]="#56d364"       # success.emphasis

@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
   [primary]="#3a94c5"              # blue - primary
   [secondary]="#829181"            # grey2 - secondary (dark for white text)
   [secondary-strong]="#5c6a72"     # fg - strong secondary
+  [secondary-subtle]="#9aa697"     # Subtle secondary (18.9% lighter)
 
   # Status Colors (Vibrant for light theme)
   [success]="#8da101"              # green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
   [active]="#a6b0a0"               # grey0 - active (lighter for icon bg)
   [focus]="#3a94c5"                # blue
   [disabled]="#939f91"             # grey1
+  [disabled-subtle]="#a8b3a6"      # Subtle disabled (18.9% lighter)
+  [disabled-strong]="#525951"      # Strong disabled (44.2% darker)
 
   # Additional Variants
   [success-subtle]="#a4b800"       # brighter green

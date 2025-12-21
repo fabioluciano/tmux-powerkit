@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#5e81ac"              # nord10 - Primary (deep blue)
     [secondary]="#3b4252"            # nord1 - Secondary (plugin content bg)
     [secondary-strong]="#2e3440"     # nord0 - Strong secondary (darker)
+    [secondary-subtle]="#4f5668"     # Subtle secondary (18.9% lighter)
 
     # Status Colors (PowerKit Standard)
     [success]="#a3be8c"              # nord14 - Success (aurora green)
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#4c566a"               # nord3 - Active state (icon bg, lighter than secondary)
     [focus]="#88c0d0"                # nord8 - Focus state
     [disabled]="#4c566a"             # nord3 - Disabled state
+    [disabled-subtle]="#606b7e"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#2a303b"      # Strong disabled (44.2% darker)
 
     # Additional Variants
     [success-subtle]="#b4caa1"       # Subtle success (18.9% lighter)

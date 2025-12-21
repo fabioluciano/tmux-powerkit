@@ -1,33 +1,94 @@
 #!/usr/bin/env bash
-# Plugin: audiodevices - Display current audio input/output devices
+# =============================================================================
+# Plugin: audiodevices
+# Description: Display current audio input/output devices
+# Type: conditional (hidden when audio system is not available)
+# Dependencies: macOS: SwitchAudioSource (optional), Linux: pactl (optional)
+# =============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    if is_macos; then
+        require_cmd "SwitchAudioSource" 1  # Optional
+    else
+        require_cmd "pactl" 1  # Optional
+    fi
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "show" "string" "both" "Show input/output devices (off|input|output|both)"
+    declare_option "max_length" "number" "0" "Maximum device name length"
+    declare_option "separator" "string" " | " "Separator between input/output devices"
+    declare_option "show_device_icons" "bool" "true" "Show icons next to device names"
+
+    # Icons
+    declare_option "icon" "icon" $'\U000F0025' "Plugin icon"
+    declare_option "input_icon" "icon" $'\U000F036C' "Icon for input device"
+    declare_option "output_icon" "icon" $'\U000F1120' "Icon for output device"
+
+    # Colors
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Keybindings
+    declare_option "input_key" "key" "C-i" "Key binding for input device selector"
+    declare_option "output_key" "key" "C-o" "Key binding for output device selector"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+
 plugin_init "audiodevices"
 
-# Configuration
-_show=$(get_tmux_option "@powerkit_plugin_audiodevices_show" "$POWERKIT_PLUGIN_AUDIODEVICES_SHOW")
-_max_len=$(get_tmux_option "@powerkit_plugin_audiodevices_max_length" "$POWERKIT_PLUGIN_AUDIODEVICES_MAX_LENGTH")
-_separator=$(get_tmux_option "@powerkit_plugin_audiodevices_separator" "$POWERKIT_PLUGIN_AUDIODEVICES_SEPARATOR")
-_input_key=$(get_tmux_option "@powerkit_plugin_audiodevices_input_key" "$POWERKIT_PLUGIN_AUDIODEVICES_INPUT_KEY")
-_output_key=$(get_tmux_option "@powerkit_plugin_audiodevices_output_key" "$POWERKIT_PLUGIN_AUDIODEVICES_OUTPUT_KEY")
+# =============================================================================
+# Plugin Contract Implementation
+# =============================================================================
 
-plugin_get_type() { printf 'static'; }
+plugin_get_type() { printf 'conditional'; }
+
+plugin_get_display_info() {
+    if [[ "$(get_option "show")" == "off" ]]; then
+        echo "0:::"
+        return
+    fi
+
+    # Return icon only - let render_plugins.sh use config colors
+    # This avoids triggering threshold detection when colors match defaults
+    local icon
+    icon=$(get_option "icon")
+
+    echo "1:::${icon}"
+}
+
+# =============================================================================
+# Main Logic
+# =============================================================================
 
 # Detect audio system
-get_audio_system() {
-    if is_macos && require_cmd SwitchAudioSource 1; then
+_get_audio_system() {
+    if is_macos && has_cmd SwitchAudioSource; then
         echo "macos"
-    elif require_cmd pactl 1; then
+    elif has_cmd pactl; then
         echo "linux"
     else
         echo "none"
     fi
 }
 
-get_input() {
-    case "$(get_audio_system)" in
+_get_input() {
+    case "$(_get_audio_system)" in
         linux)
             local src=$(pactl get-default-source 2>/dev/null)
             [[ -n "$src" ]] && pactl list sources 2>/dev/null | grep -A 20 "Name: $src" | grep "Description:" | cut -d: -f2- | sed 's/^ *//' || echo "No Input"
@@ -39,8 +100,8 @@ get_input() {
     esac
 }
 
-get_output() {
-    case "$(get_audio_system)" in
+_get_output() {
+    case "$(_get_audio_system)" in
         linux)
             local sink=$(pactl get-default-sink 2>/dev/null)
             [[ -n "$sink" ]] && pactl list sinks 2>/dev/null | grep -A 20 "Name: $sink" | grep "Description:" | cut -d: -f2- | sed 's/^ *//' || echo "No Output"
@@ -52,27 +113,18 @@ get_output() {
     esac
 }
 
-truncate() {
-    local name="$1" max="$2"
-    [[ ${#name} -gt $max ]] && echo "${name:0:$((max-3))}..." || echo "$name"
-}
-
-get_cached_device() {
+_get_cached_device() {
     local type="${1:-}"
     [[ -z "$type" ]] && return
-    local key="${CACHE_KEY}_${type}" val
-    if val=$(cache_get "$key" "$CACHE_TTL"); then
-        echo "$val"
+    local key="${CACHE_KEY}_${type}" result
+    if result=$(cache_get "$key" "$CACHE_TTL"); then
+        echo "$result"
     else
-        local r
-        [[ "$type" == "input" ]] && r=$(get_input) || r=$(get_output)
-        cache_set "$key" "$r"
-        echo "$r"
+        local device_name
+        [[ "$type" == "input" ]] && device_name=$(_get_input) || device_name=$(_get_output)
+        cache_set "$key" "$device_name"
+        echo "$device_name"
     fi
-}
-
-plugin_get_display_info() {
-    [[ "$_show" == "off" ]] && echo "0:::" || echo "1:::"
 }
 
 setup_keybindings() {
@@ -80,28 +132,44 @@ setup_keybindings() {
     # This allows users to use the device selector without displaying in status bar
     local base_dir="${ROOT_DIR%/plugin}"
     local script="${base_dir}/helpers/audio_device_selector.sh"
-    [[ -n "$_input_key" ]] && tmux bind-key "$_input_key" run-shell "bash '$script' input"
-    [[ -n "$_output_key" ]] && tmux bind-key "$_output_key" run-shell "bash '$script' output"
+    local input_key output_key
+    input_key=$(get_option "input_key")
+    output_key=$(get_option "output_key")
+    [[ -n "$input_key" ]] && tmux bind-key "$input_key" run-shell "bash '$script' input"
+    [[ -n "$output_key" ]] && tmux bind-key "$output_key" run-shell "bash '$script' output"
 }
 
 load_plugin() {
-    [[ "$_show" == "off" ]] && return
-    [[ "$(get_audio_system)" == "none" ]] && return
+    local show max_len show_icons
+    show=$(get_option "show")
+    max_len=$(get_option "max_length")
+    show_icons=$(get_option "show_device_icons")
+
+    [[ "$show" == "off" ]] && return
+    [[ "$(_get_audio_system)" == "none" ]] && return
 
     local input output parts=()
-    case "$_show" in
+    local input_icon_char output_icon_char
+    if [[ "$show_icons" == "true" ]]; then
+        input_icon_char=$(get_option "input_icon")
+        output_icon_char=$(get_option "output_icon")
+    fi
+
+    case "$show" in
         input|both)
-            input=$(get_cached_device input)
-            input=$(truncate "$input" "$_max_len")
+            input=$(_get_cached_device input)
+            input=$(truncate_text "$input" "$max_len")
+            [[ "$show_icons" == "true" && -n "$input" ]] && input="${input_icon_char} ${input}"
             ;;
     esac
-    case "$_show" in
+    case "$show" in
         output|both)
-            output=$(get_cached_device output)
-            output=$(truncate "$output" "$_max_len")
+            output=$(_get_cached_device output)
+            output=$(truncate_text "$output" "$max_len")
+            [[ "$show_icons" == "true" && -n "$output" ]] && output="${output_icon_char} ${output}"
             ;;
     esac
-    case "$_show" in
+    case "$show" in
         input) [[ -n "$input" ]] && parts+=("$input") ;;
         output) [[ -n "$output" ]] && parts+=("$output") ;;
         both)
@@ -110,8 +178,9 @@ load_plugin() {
             ;;
     esac
     if [[ ${#parts[@]} -gt 0 ]]; then
-        local IFS="$_separator"
-        echo "${parts[*]}"
+        local sep
+        sep=$(get_option "separator")
+        join_with_separator "$sep" "${parts[@]}"
     fi
 }
 

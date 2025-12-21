@@ -2,52 +2,88 @@
 # =============================================================================
 # Plugin: github - Monitor GitHub repositories for issues, PRs and comments
 # Description: Display open issues and PRs from repositories with optional user filtering
-# Dependencies: curl, jq (for JSON parsing)
+# Dependencies: curl, jq (optional, for JSON parsing)
 # =============================================================================
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    require_cmd "curl" || return 1
+    require_cmd "jq" 1  # Optional
+    return 0
+}
+
+# =============================================================================
+# Options Declaration (Plugin Contract)
+# =============================================================================
+
+plugin_declare_options() {
+    # Repository configuration
+    declare_option "repos" "string" "" "Comma-separated list of owner/repo"
+    declare_option "token" "string" "" "GitHub personal access token"
+    declare_option "filter_user" "string" "" "Filter issues/PRs by username"
+
+    # Display options
+    declare_option "show_issues" "bool" "on" "Show open issues count"
+    declare_option "show_prs" "bool" "on" "Show open PRs count"
+    declare_option "show_comments" "bool" "off" "Show PR comments count"
+    declare_option "format" "string" "simple" "Format style: simple or detailed"
+    declare_option "separator" "string" " | " "Separator between metrics"
+
+    # Icons
+    declare_option "icon" "icon" $'\U000F02A4' "Plugin icon"
+    declare_option "icon_issue" "icon" $'\U0000F41B' "Icon for issues"
+    declare_option "icon_pr" "icon" $'\U0000F407' "Icon for pull requests"
+
+    # Colors
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+    declare_option "warning_accent_color" "color" "warning" "Warning background color"
+    declare_option "warning_accent_color_icon" "color" "warning-subtle" "Warning icon background"
+
+    # Thresholds
+    declare_option "warning_threshold" "number" "10" "Warning when total exceeds threshold"
+
+    # Cache
+    declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
+}
+
+# Initialize plugin (auto-calls plugin_declare_options if defined)
 plugin_init "github"
+
+
+# =============================================================================
+# Constants
+# =============================================================================
 
 GITHUB_API="https://api.github.com"
 
 # =============================================================================
-# Configuration
-# =============================================================================
-
-# Repository format: "owner/repo,owner2/repo2"
-GITHUB_REPOS=$(get_tmux_option "@powerkit_plugin_github_repos" "$POWERKIT_PLUGIN_GITHUB_REPOS")
-GITHUB_FILTER_USER=$(get_tmux_option "@powerkit_plugin_github_filter_user" "$POWERKIT_PLUGIN_GITHUB_FILTER_USER")
-GITHUB_SHOW_ISSUES=$(get_tmux_option "@powerkit_plugin_github_show_issues" "$POWERKIT_PLUGIN_GITHUB_SHOW_ISSUES")
-GITHUB_SHOW_PRS=$(get_tmux_option "@powerkit_plugin_github_show_prs" "$POWERKIT_PLUGIN_GITHUB_SHOW_PRS")
-GITHUB_SHOW_COMMENTS=$(get_tmux_option "@powerkit_plugin_github_show_comments" "$POWERKIT_PLUGIN_GITHUB_SHOW_COMMENTS")
-GITHUB_ICON_ISSUE=$(get_tmux_option "@powerkit_plugin_github_icon_issue" "$POWERKIT_PLUGIN_GITHUB_ICON_ISSUE")
-GITHUB_ICON_PR=$(get_tmux_option "@powerkit_plugin_github_icon_pr" "$POWERKIT_PLUGIN_GITHUB_ICON_PR")
-GITHUB_TOKEN=$(get_tmux_option "@powerkit_plugin_github_token" "$POWERKIT_PLUGIN_GITHUB_TOKEN")
-GITHUB_FORMAT=$(get_tmux_option "@powerkit_plugin_github_format" "$POWERKIT_PLUGIN_GITHUB_FORMAT")
-GITHUB_WARNING_THRESHOLD=$(get_tmux_option "@powerkit_plugin_github_warning_threshold" "$POWERKIT_PLUGIN_GITHUB_WARNING_THRESHOLD")
-GITHUB_SEPARATOR=$(get_tmux_option "@powerkit_plugin_github_separator" "$POWERKIT_PLUGIN_GITHUB_SEPARATOR")
-
-# =============================================================================
-# GitHub API Helper Functions
+# Main Logic
 # =============================================================================
 
 # Make authenticated API call
-make_github_api_call() {
+_make_github_api_call() {
     local url="$1"
-    make_api_call "$url" "bearer" "$GITHUB_TOKEN" 5
+    local token
+    token=$(get_option "token")
+    make_api_call "$url" "github" "$token" 5
 }
 
 
 # Extract error message from API response
-get_api_error_message() {
+_get_api_error_message() {
     local response="$1"
     echo "$response" | jq -r '.message // empty' 2>/dev/null
 }
 
 # Show API error using toast (only once per cache cycle)
-show_github_api_error() {
+_show_github_api_error() {
     local error_msg="$1"
     local error_cache="${CACHE_DIR}/github_error.cache"
 
@@ -72,7 +108,7 @@ show_github_api_error() {
     if [[ "$is_critical" == "true" ]] || is_debug_mode; then
         local short_msg="${error_msg:0:50}"
         [[ ${#error_msg} -gt 50 ]] && short_msg="${short_msg}..."
-        toast "⚠️ GitHub: $short_msg" "warning"
+        toast "GitHub: $short_msg" "warning"
 
         # Cache the error message to avoid spam
         printf '%s' "$error_msg" > "$error_cache"
@@ -80,107 +116,109 @@ show_github_api_error() {
 }
 
 # Validate API response (check for error messages)
-is_valid_api_response() {
+_is_valid_api_response() {
     local response="$1"
-    
+
     # Empty response is invalid
     [[ -z "$response" ]] && return 1
-    
+
     # Check if response is an error object (has "message" key indicating error)
     local error_msg
-    error_msg=$(get_api_error_message "$response")
+    error_msg=$(_get_api_error_message "$response")
     if [[ -n "$error_msg" ]]; then
-        show_github_api_error "$error_msg"
+        _show_github_api_error "$error_msg"
         return 1
     fi
-    
+
     # Check if response is an array (expected for lists)
     if echo "$response" | jq -e 'type == "array"' &>/dev/null; then
         # Clear error cache on successful response
         rm -f "${CACHE_DIR}/github_error.cache" 2>/dev/null
         return 0
     fi
-    
+
     return 1
 }
 
 # Check API rate limit
-check_rate_limit() {
+_check_rate_limit() {
     local response
-    response=$(make_github_api_call "$GITHUB_API/rate_limit")
+    response=$(_make_github_api_call "$GITHUB_API/rate_limit")
     echo "$response" | jq -r '.rate.remaining // 0' 2>/dev/null || echo "0"
 }
 
-# =============================================================================
-# Data Retrieval Functions
-# =============================================================================
-
-# Count open issues for a repository (excluding PRs)
-count_issues() {
-    local user="$1"
+# Count open issues for a repository (excluding PRs) using Search API
+_count_issues() {
+    local owner="$1"
     local repo="$2"
     local filter_user="$3"
-    local url="$GITHUB_API/repos/$user/$repo/issues?state=open&per_page=100"
 
+    local query="repo:${owner}/${repo}+type:issue+state:open"
+    [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
+
+    local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
     local response
-    response=$(make_github_api_call "$url")
-    
-    # Validate response before processing
-    if ! is_valid_api_response "$response"; then
+    response=$(_make_github_api_call "$url")
+
+    # Check for errors
+    if [[ -z "$response" ]]; then
         echo "0"
         return 1
     fi
 
-    if [[ -z "$filter_user" ]]; then
-        # Count all issues (excluding PRs)
-        echo "$response" | jq '[.[] | select(.pull_request == null)] | length' 2>/dev/null || echo "0"
-    else
-        # Count issues by specific user (creator or assignee)
-        echo "$response" | jq --arg user "$filter_user" \
-            '[.[] | select(.pull_request == null) | select(.user.login == $user or (.assignees[]?.login == $user))] | length' \
-            2>/dev/null || echo "0"
+    local error_msg
+    error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
+    if [[ -n "$error_msg" ]]; then
+        _show_github_api_error "$error_msg"
+        echo "0"
+        return 1
     fi
+
+    echo "$response" | jq -r '.total_count // 0' 2>/dev/null || echo "0"
 }
 
-# Count open PRs for a repository
-count_prs() {
-    local user="$1"
+# Count open PRs for a repository using Search API
+_count_prs() {
+    local owner="$1"
     local repo="$2"
     local filter_user="$3"
-    local url="$GITHUB_API/repos/$user/$repo/pulls?state=open&per_page=100"
 
+    local query="repo:${owner}/${repo}+type:pr+state:open"
+    [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
+
+    local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
     local response
-    response=$(make_github_api_call "$url")
-    
-    # Validate response before processing
-    if ! is_valid_api_response "$response"; then
+    response=$(_make_github_api_call "$url")
+
+    # Check for errors
+    if [[ -z "$response" ]]; then
         echo "0"
         return 1
     fi
 
-    if [[ -z "$filter_user" ]]; then
-        # Count all PRs
-        echo "$response" | jq 'length' 2>/dev/null || echo "0"
-    else
-        # Count PRs by specific user
-        echo "$response" | jq --arg user "$filter_user" \
-            '[.[] | select(.user.login == $user)] | length' \
-            2>/dev/null || echo "0"
+    local error_msg
+    error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
+    if [[ -n "$error_msg" ]]; then
+        _show_github_api_error "$error_msg"
+        echo "0"
+        return 1
     fi
+
+    echo "$response" | jq -r '.total_count // 0' 2>/dev/null || echo "0"
 }
 
 # Count PR comments for a repository
-count_pr_comments() {
+_count_pr_comments() {
     local user="$1"
     local repo="$2"
     local filter_user="$3"
     local url="$GITHUB_API/repos/$user/$repo/pulls?state=open&per_page=100"
 
     local response
-    response=$(make_github_api_call "$url")
-    
+    response=$(_make_github_api_call "$url")
+
     # Validate response before processing
-    if ! is_valid_api_response "$response"; then
+    if ! _is_valid_api_response "$response"; then
         echo "0"
         return 1
     fi
@@ -199,10 +237,10 @@ count_pr_comments() {
 
         local comments_url="$GITHUB_API/repos/$user/$repo/issues/$pr_number/comments?per_page=100"
         local comments_response
-        comments_response=$(make_github_api_call "$comments_url")
-        
+        comments_response=$(_make_github_api_call "$comments_url")
+
         # Validate comments response
-        if ! is_valid_api_response "$comments_response"; then
+        if ! _is_valid_api_response "$comments_response"; then
             continue
         fi
 
@@ -220,47 +258,53 @@ count_pr_comments() {
 
     echo "$total_comments"
 }
+
 # Wrapper to count all items (issues, prs, comments)
-count_issues_and_prs() {
+_count_issues_and_prs() {
     local owner="$1"
     local repo="$2"
     local filter_user="$3"
     local show_comments="$4"
 
     local issues
-    issues=$(count_issues "$owner" "$repo" "$filter_user")
+    issues=$(_count_issues "$owner" "$repo" "$filter_user")
 
     local prs
-    prs=$(count_prs "$owner" "$repo" "$filter_user")
+    prs=$(_count_prs "$owner" "$repo" "$filter_user")
 
     local comments=0
-    if [[ "$show_comments" == "on" ]]; then
-        comments=$(count_pr_comments "$owner" "$repo" "$filter_user")
+    if [[ "$show_comments" == "on" || "$show_comments" == "true" ]]; then
+        comments=$(_count_pr_comments "$owner" "$repo" "$filter_user")
     fi
 
     echo "$issues $prs $comments"
 }
-# =============================================================================
-# Display Functions
-# =============================================================================
 
 # Format repository status (uses shared helper from plugin_helpers.sh)
-format_repo_status() {
+_format_repo_status() {
     local issues="$1"
     local prs="$2"
     local comments="$3"
     local show_comments="$4"
 
+    local format separator show_issues show_prs icon_issue icon_pr
+    format=$(get_option "format")
+    separator=$(get_option "separator")
+    show_issues=$(get_option "show_issues")
+    show_prs=$(get_option "show_prs")
+    icon_issue=$(get_option "icon_issue")
+    icon_pr=$(get_option "icon_pr")
+
     format_repo_metrics \
-        "$GITHUB_SEPARATOR" \
-        "$GITHUB_FORMAT" \
-        "$GITHUB_SHOW_ISSUES" \
+        "$separator" \
+        "$format" \
+        "$show_issues" \
         "$issues" \
-        "$GITHUB_ICON_ISSUE" \
+        "$icon_issue" \
         "i" \
-        "$GITHUB_SHOW_PRS" \
+        "$show_prs" \
         "$prs" \
-        "$GITHUB_ICON_PR" \
+        "$icon_pr" \
         "p" \
         "$show_comments" \
         "$comments" \
@@ -268,7 +312,7 @@ format_repo_status() {
 }
 
 # Get GitHub info for all configured repos
-get_github_info() {
+_get_github_info() {
     local repos_csv="$1"
     local filter_user="$2"
     local show_comments="$3"
@@ -303,7 +347,7 @@ get_github_info() {
         fi
 
         local issues prs comments
-        read -r issues prs comments <<<"$(count_issues_and_prs "$owner" "$repo" "$filter_user" "$show_comments")"
+        read -r issues prs comments <<<"$(_count_issues_and_prs "$owner" "$repo" "$filter_user" "$show_comments")"
 
         # Add to totals
         total_issues=$((total_issues + issues))
@@ -315,7 +359,6 @@ get_github_info() {
     if [[ "$total_issues" -gt 0 ]] || [[ "$total_prs" -gt 0 ]]; then
         active=true
     fi
-    # Also check comments if enabled? Usually issues/PRs driving visibility is enough.
 
     # Return "no activity" if nothing found (plugin logic handles hiding)
     if [[ "$active" == "false" ]]; then
@@ -324,11 +367,11 @@ get_github_info() {
     fi
 
     # Output aggregated status
-    format_repo_status "$total_issues" "$total_prs" "$total_comments" "$show_comments"
+    _format_repo_status "$total_issues" "$total_prs" "$total_comments" "$show_comments"
 }
 
 # =============================================================================
-# Plugin Interface
+# Plugin Contract Implementation
 # =============================================================================
 
 plugin_get_type() {
@@ -352,29 +395,37 @@ plugin_get_display_info() {
         total_count="${BASH_REMATCH[1]}"
     fi
 
+    local warning_threshold
+    warning_threshold=$(get_option "warning_threshold")
+
     # Use warning color if count exceeds threshold
-    if [[ $total_count -ge $GITHUB_WARNING_THRESHOLD ]]; then
-        local warning_color
-        local warning_icon
-        warning_color=$(get_tmux_option "@powerkit_plugin_github_warning_accent_color" "$POWERKIT_PLUGIN_GITHUB_WARNING_ACCENT_COLOR")
-        warning_icon=$(get_tmux_option "@powerkit_plugin_github_warning_accent_color_icon" "$POWERKIT_PLUGIN_GITHUB_WARNING_ACCENT_COLOR_ICON")
+    if [[ $total_count -ge $warning_threshold ]]; then
+        local warning_color warning_icon
+        warning_color=$(get_option "warning_accent_color")
+        warning_icon=$(get_option "warning_accent_color_icon")
         printf '1:%s:%s:' "$warning_color" "$warning_icon"
     else
-        local accent_color
-        local accent_icon
-        accent_color=$(get_tmux_option "@powerkit_plugin_github_accent_color" "$POWERKIT_PLUGIN_GITHUB_ACCENT_COLOR")
-        accent_icon=$(get_tmux_option "@powerkit_plugin_github_accent_color_icon" "$POWERKIT_PLUGIN_GITHUB_ACCENT_COLOR_ICON")
+        local accent_color accent_icon
+        accent_color=$(get_option "accent_color")
+        accent_icon=$(get_option "accent_color_icon")
         printf '1:%s:%s:' "$accent_color" "$accent_icon"
     fi
 }
 
 _compute_github() {
-    get_github_info "$GITHUB_REPOS" "$GITHUB_FILTER_USER" "$GITHUB_SHOW_COMMENTS"
+    local repos filter_user show_comments
+    repos=$(get_option "repos")
+    filter_user=$(get_option "filter_user")
+    show_comments=$(get_option "show_comments")
+
+    _get_github_info "$repos" "$filter_user" "$show_comments"
 }
 
 load_plugin() {
-    # Use defer_plugin_load for network operations with lazy loading
-    defer_plugin_load "$CACHE_KEY" cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_github
+    # Runtime check - dependency contract handles notification
+    has_cmd curl || return 0
+
+    cache_get_or_compute "$CACHE_KEY" "$CACHE_TTL" _compute_github
 }
 
 # Only run if executed directly (not sourced)

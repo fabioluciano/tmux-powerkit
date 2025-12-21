@@ -8,6 +8,47 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Dependency Check (Plugin Contract)
+# =============================================================================
+
+plugin_check_dependencies() {
+    # macOS: No user-accessible GPU metrics without third-party tools
+    # Apple Silicon doesn't expose GPU usage via standard APIs
+    # Skip silently on macOS (don't show "missing dependencies" error)
+    is_macos && return 1
+
+    require_any_cmd "nvidia-smi" "rocm-smi" "intel_gpu_top" || return 1
+    return 0
+}
+
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "show_memory" "bool" "true" "Show GPU memory usage"
+
+    # Icons
+    declare_option "icon" "icon" $'\U000F01B2' "Plugin icon (generic GPU)"
+    declare_option "icon_nvidia" "icon" "" "Plugin icon for NVIDIA GPU"
+    declare_option "icon_amd" "icon" "" "Plugin icon for AMD GPU"
+    declare_option "icon_intel" "icon" "" "Plugin icon for Intel GPU"
+    declare_option "icon_apple" "icon" "" "Plugin icon for Apple Silicon"
+
+    # Colors
+    declare_option "accent_color" "color" "secondary" "Background color"
+    declare_option "accent_color_icon" "color" "active" "Icon background color"
+
+    # Thresholds
+    declare_option "warning_threshold" "number" "70" "Warning threshold percentage"
+    declare_option "critical_threshold" "number" "90" "Critical threshold percentage"
+
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+}
+
 plugin_init "gpu"
 
 # =============================================================================
@@ -17,13 +58,13 @@ plugin_init "gpu"
 # Detect available GPU and return type
 detect_gpu() {
     # NVIDIA (most common for monitoring)
-    require_cmd nvidia-smi 1 && { echo "nvidia"; return 0; }
+    has_cmd nvidia-smi && { echo "nvidia"; return 0; }
 
     # AMD ROCm
-    require_cmd rocm-smi 1 && { echo "amd"; return 0; }
+    has_cmd rocm-smi && { echo "amd"; return 0; }
 
     # Intel (Linux)
-    require_cmd intel_gpu_top 1 && { echo "intel"; return 0; }
+    has_cmd intel_gpu_top && { echo "intel"; return 0; }
 
     # Apple Silicon - no user-accessible GPU metrics without sudo
     # Skip detection on macOS as we can't provide useful data
@@ -103,10 +144,10 @@ plugin_get_display_info() {
     gpu_type=$(detect_gpu)
 
     case "$gpu_type" in
-        nvidia) icon=$(get_cached_option "@powerkit_plugin_gpu_icon_nvidia" "$POWERKIT_PLUGIN_GPU_ICON_NVIDIA") ;;
-        amd)    icon=$(get_cached_option "@powerkit_plugin_gpu_icon_amd" "$POWERKIT_PLUGIN_GPU_ICON_AMD") ;;
-        intel)  icon=$(get_cached_option "@powerkit_plugin_gpu_icon_intel" "$POWERKIT_PLUGIN_GPU_ICON_INTEL") ;;
-        *)      icon=$(get_cached_option "@powerkit_plugin_gpu_icon" "$POWERKIT_PLUGIN_GPU_ICON") ;;
+        nvidia) icon=$(get_option "icon_nvidia") ;;
+        amd)    icon=$(get_option "icon_amd") ;;
+        intel)  icon=$(get_option "icon_intel") ;;
+        *)      icon=$(get_option "icon") ;;
     esac
 
     # Apply threshold colors using centralized helper
@@ -135,7 +176,7 @@ load_plugin() {
     gpu_type=$(detect_gpu) || return 0
 
     local show_mem
-    show_mem=$(get_cached_option "@powerkit_plugin_gpu_show_memory" "$POWERKIT_PLUGIN_GPU_SHOW_MEMORY")
+    show_mem=$(get_option "show_memory")
 
     case "$gpu_type" in
         nvidia) result=$(get_nvidia "$show_mem") ;;

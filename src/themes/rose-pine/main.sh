@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#ebbcba"              # Rose - Primary
     [secondary]="#1f1d2e"            # Surface - Secondary (plugin content bg)
     [secondary-strong]="#191724"     # Base - Strong secondary (darker)
+    [secondary-subtle]="#322f45"     # Subtle secondary (18.9% lighter)
 
     # Status Colors (PowerKit Standard)
     [success]="#9ccfd8"              # Foam
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#403d52"               # Muted - Active state (icon bg, lighter than secondary)
     [focus]="#c4a7e7"                # Iris - Focus state
     [disabled]="#6e6a86"             # Muted - Disabled state
+    [disabled-subtle]="#87839e"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#3d3a4b"      # Strong disabled (44.2% darker)
 
     # Additional Variants
     [success-subtle]="#aed8df"       # Subtle success (18.9% lighter)

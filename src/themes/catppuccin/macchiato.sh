@@ -30,6 +30,7 @@ declare -A THEME_COLORS=(
     [primary]="#8aadf4"              # Blue - Primary
     [secondary]="#363a4f"            # Surface0 - Secondary (plugin content bg)
     [secondary-strong]="#24273a"     # Base - Strong secondary (darker)
+    [secondary-subtle]="#4a4e65"     # Subtle secondary (18.9% lighter)
 
     # Status Colors (PowerKit Standard)
     [success]="#a6da95"              # Green
@@ -42,6 +43,8 @@ declare -A THEME_COLORS=(
     [active]="#5b6078"               # Surface2 - Active state (icon bg, lighter than secondary)
     [focus]="#b7bdf8"                # Lavender - Focus state
     [disabled]="#6e738d"             # Overlay1 - Disabled state
+    [disabled-subtle]="#868ba3"      # Subtle disabled (18.9% lighter)
+    [disabled-strong]="#3d404f"      # Strong disabled (44.2% darker)
 
     # Additional Variants
     [success-subtle]="#b6e0a9"       # Subtle success (18.9% lighter)

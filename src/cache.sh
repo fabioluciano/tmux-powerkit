@@ -82,7 +82,7 @@ cache_clear_all() {
 # Setup cache clear keybinding
 setup_cache_keybinding() {
     local clear_key
-    clear_key=$(get_tmux_option "@powerkit_cache_clear_key" "${POWERKIT_PLUGIN_CACHE_CLEAR_KEY:-Q}")
+    clear_key=$(get_tmux_option "@powerkit_cache_clear_key" "C-d")
 
     [[ -n "$clear_key" ]] && tmux bind-key "$clear_key" run-shell \
         "rm -rf '${CACHE_DIR:?}'/* 2>/dev/null; tmux refresh-client -S" \
@@ -93,41 +93,28 @@ setup_cache_keybinding() {
 # Advanced Cache Functions
 # =============================================================================
 
-# Cache with automatic refresh (returns stale value while refreshing)
+# Cache with automatic refresh
 # Usage: cache_get_or_compute <key> <ttl> <command...>
 cache_get_or_compute() {
     local key="$1"
     local ttl="$2"
     shift 2
-    local cmd=("$@")
 
     cache_init
-
-    # Start telemetry timing
-    local start_ts=""
-    declare -f telemetry_plugin_start &>/dev/null && start_ts=$(telemetry_plugin_start "$key")
 
     # Try to get valid cache
     local cached
     if cached=$(cache_get "$key" "$ttl"); then
-        # Record cache hit
-        [[ -n "$start_ts" ]] && declare -f telemetry_plugin_end &>/dev/null && \
-            telemetry_plugin_end "$key" "$start_ts" "true"
         printf '%s' "$cached"
         return 0
     fi
 
     # Compute new value
     local result
-    result=$("${cmd[@]}" 2>/dev/null) || return 1
+    result=$("$@" 2>/dev/null) || return 1
 
     # Store and return
     [[ -n "$result" ]] && cache_set "$key" "$result"
-
-    # Record cache miss (computed)
-    [[ -n "$start_ts" ]] && declare -f telemetry_plugin_end &>/dev/null && \
-        telemetry_plugin_end "$key" "$start_ts" "false"
-
     printf '%s' "$result"
 }
 

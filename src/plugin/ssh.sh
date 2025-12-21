@@ -8,18 +8,55 @@
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$ROOT_DIR/../plugin_bootstrap.sh"
 
+# =============================================================================
+# Options Declaration
+# =============================================================================
+
+plugin_declare_options() {
+    # Display options
+    declare_option "format" "string" "auto" "Display format: auto, host, user, indicator"
+    declare_option "text" "string" "SSH" "Text for indicator format"
+    declare_option "detection_mode" "string" "current" "Detection mode: session, pane, current"
+    declare_option "show_when_local" "bool" "false" "Show plugin when local"
+
+    # Icons
+    declare_option "icon" "icon" $'\U000F0489' "Plugin icon"
+
+    # Colors - Active state
+    declare_option "active_accent_color" "color" "warning" "Background color when active"
+    declare_option "active_accent_color_icon" "color" "warning" "Icon background when active"
+}
+
 plugin_init "ssh"
 
 # =============================================================================
-# SSH Detection Functions
+# Plugin Contract Implementation
 # =============================================================================
 
-is_ssh_session() {
+plugin_get_type() { printf 'conditional'; }
+
+plugin_get_display_info() {
+    local content="$1"
+    if [[ -n "$content" ]]; then
+        local accent accent_icon
+        accent=$(get_option "active_accent_color")
+        accent_icon=$(get_option "active_accent_color_icon")
+        build_display_info "1" "$accent" "$accent_icon" ""
+    else
+        build_display_info "0" "" "" ""
+    fi
+}
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+_is_ssh_session() {
     # Check environment variables (fastest method)
     [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]]
 }
 
-is_ssh_in_pane() {
+_is_ssh_in_pane() {
     local pane_pid
     pane_pid=$(tmux display-message -p "#{pane_pid}" 2>/dev/null)
     [[ -z "$pane_pid" ]] && return 1
@@ -35,7 +72,7 @@ is_ssh_in_pane() {
 }
 
 # Get SSH destination from pane's ssh process
-get_ssh_destination() {
+_get_ssh_destination() {
     local pane_pid
     pane_pid=$(tmux display-message -p "#{pane_pid}" 2>/dev/null)
     [[ -z "$pane_pid" ]] && return 1
@@ -65,13 +102,13 @@ get_ssh_destination() {
     return 1
 }
 
-get_ssh_info() {
+_get_ssh_info() {
     local format
-    format=$(get_cached_option "@powerkit_plugin_ssh_format" "$POWERKIT_PLUGIN_SSH_FORMAT")
+    format=$(get_option "format")
 
     # Check if we're in an incoming SSH session or outgoing SSH connection
     local is_incoming=false
-    is_ssh_session && is_incoming=true
+    _is_ssh_session && is_incoming=true
 
     case "$format" in
         host)
@@ -81,7 +118,7 @@ get_ssh_info() {
             else
                 # Outgoing SSH: get destination from process
                 local dest
-                dest=$(get_ssh_destination) && printf '%s' "${dest#*@}"
+                dest=$(_get_ssh_destination) && printf '%s' "${dest#*@}"
             fi
             ;;
         user)
@@ -89,13 +126,13 @@ get_ssh_info() {
                 whoami 2>/dev/null
             else
                 local dest
-                dest=$(get_ssh_destination)
+                dest=$(_get_ssh_destination)
                 [[ "$dest" == *@* ]] && printf '%s' "${dest%%@*}" || whoami 2>/dev/null
             fi
             ;;
         indicator)
             local text
-            text=$(get_cached_option "@powerkit_plugin_ssh_text" "$POWERKIT_PLUGIN_SSH_TEXT")
+            text=$(get_option "text")
             printf '%s' "$text"
             ;;
         *)
@@ -105,47 +142,29 @@ get_ssh_info() {
             else
                 # Outgoing SSH: show destination
                 local dest
-                dest=$(get_ssh_destination) && printf '%s' "$dest"
+                dest=$(_get_ssh_destination) && printf '%s' "$dest"
             fi
             ;;
     esac
 }
 
 # =============================================================================
-# Plugin Interface
-# =============================================================================
-
-plugin_get_type() { printf 'conditional'; }
-
-plugin_get_display_info() {
-    local content="$1"
-    if [[ -n "$content" ]]; then
-        local accent accent_icon
-        accent=$(get_cached_option "@powerkit_plugin_ssh_active_accent_color" "$POWERKIT_PLUGIN_SSH_ACTIVE_ACCENT_COLOR")
-        accent_icon=$(get_cached_option "@powerkit_plugin_ssh_active_accent_color_icon" "$POWERKIT_PLUGIN_SSH_ACTIVE_ACCENT_COLOR_ICON")
-        build_display_info "1" "$accent" "$accent_icon" ""
-    else
-        build_display_info "0" "" "" ""
-    fi
-}
-
-# =============================================================================
-# Main
+# Main Logic
 # =============================================================================
 
 load_plugin() {
     local detection_mode in_ssh=false
-    detection_mode=$(get_cached_option "@powerkit_plugin_ssh_detection_mode" "$POWERKIT_PLUGIN_SSH_DETECTION_MODE")
+    detection_mode=$(get_option "detection_mode")
 
     case "$detection_mode" in
-        session) is_ssh_session && in_ssh=true ;;
-        pane)    is_ssh_in_pane && in_ssh=true ;;
-        *)       { is_ssh_session || is_ssh_in_pane; } && in_ssh=true ;;
+        session) _is_ssh_session && in_ssh=true ;;
+        pane)    _is_ssh_in_pane && in_ssh=true ;;
+        *)       { _is_ssh_session || _is_ssh_in_pane; } && in_ssh=true ;;
     esac
 
     [[ "$in_ssh" != "true" ]] && return 0
 
-    get_ssh_info
+    _get_ssh_info
 }
 
 [[ "${BASH_SOURCE[0]}" == "${0}" ]] && load_plugin || true

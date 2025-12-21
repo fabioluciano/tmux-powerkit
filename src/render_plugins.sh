@@ -6,7 +6,10 @@ set -eu
 # =============================================================================
 # Unified Plugin Renderer (KISS/DRY)
 # Usage: render_plugins.sh "name:accent:accent_icon:icon:type;..."
-# Types: static, conditional
+# Valid Types: static, conditional
+# Note: "dynamic" type is deprecated - plugins should use conditional with
+#       threshold_mode option instead. For backwards compatibility, dynamic
+#       is treated as conditional.
 # =============================================================================
 #
 # DEPENDENCIES: plugin_bootstrap.sh (loads defaults, utils, cache, plugin_helpers)
@@ -42,17 +45,18 @@ SEPARATOR_STYLE=$(get_tmux_option "@powerkit_separator_style" "$POWERKIT_DEFAULT
 
 # Note: get_color() is now provided by utils.sh (alias for get_powerkit_color)
 
-# Get plugin defaults from defaults.sh
+# Get plugin defaults from plugin's declared options (via get_option)
+# Called AFTER plugin is sourced, so get_option() has access to declarations
 get_plugin_defaults() {
     local name="$1"
-    local upper
-    upper=$(normalize_plugin_name "$name")
+    local accent accent_icon icon
 
-    local accent_var="POWERKIT_PLUGIN_${upper}_ACCENT_COLOR"
-    local accent_icon_var="POWERKIT_PLUGIN_${upper}_ACCENT_COLOR_ICON"
-    local icon_var="POWERKIT_PLUGIN_${upper}_ICON"
+    # Use get_option which reads from plugin_declare_options() defaults
+    accent=$(get_option "accent_color" 2>/dev/null) || accent="secondary"
+    accent_icon=$(get_option "accent_color_icon" 2>/dev/null) || accent_icon="active"
+    icon=$(get_option "icon" 2>/dev/null) || icon=""
 
-    printf '%s:%s:%s' "${!accent_var:-secondary}" "${!accent_icon_var:-active}" "${!icon_var:-}"
+    printf '%s:%s:%s' "$accent" "$accent_icon" "$icon"
 }
 
 # Apply threshold colors if defined (DRY - uses apply_threshold_colors from plugin_helpers)
@@ -132,23 +136,17 @@ _process_external_plugin() {
     IFS='|' read -r _ cfg_icon content cfg_accent cfg_accent_icon cfg_ttl cfg_name cfg_condition <<<"$config"
     [[ -z "$content" ]] && return 1
 
-    # Default name for logging/telemetry
+    # Default name for logging
     cfg_name="${cfg_name:-external}"
     local cache_key="external_$(_string_hash "$content")"
     cfg_ttl="${cfg_ttl:-0}"
 
-    # Start telemetry if available
-    local start_ts=""
-    declare -f telemetry_plugin_start &>/dev/null && start_ts=$(telemetry_plugin_start "$cfg_name")
-
     # Try cache first if TTL > 0
-    local cache_hit="false"
     if [[ "$cfg_ttl" -gt 0 ]]; then
         local cached_content
         cached_content=$(cache_get "$cache_key" "$cfg_ttl" 2>/dev/null) || cached_content=""
         if [[ -n "$cached_content" ]]; then
             content="$cached_content"
-            cache_hit="true"
         else
             content=$(_execute_content_command "$content")
             [[ -n "$content" ]] && cache_set "$cache_key" "$content" 2>/dev/null
@@ -156,10 +154,6 @@ _process_external_plugin() {
     else
         content=$(_execute_content_command "$content")
     fi
-
-    # Record telemetry
-    [[ -n "$start_ts" ]] && declare -f telemetry_plugin_end &>/dev/null &&
-        telemetry_plugin_end "$cfg_name" "$start_ts" "$cache_hit"
 
     # Check condition (optional - skip plugin if condition fails)
     if [[ -n "$cfg_condition" ]]; then
@@ -175,8 +169,9 @@ _process_external_plugin() {
     cfg_accent="${cfg_accent:-secondary}"
     cfg_accent_icon="${cfg_accent_icon:-active}"
 
-    local cfg_accent_strong
+    local cfg_accent_strong cfg_accent_subtle
     cfg_accent_strong=$(get_color "${cfg_accent}-strong")
+    cfg_accent_subtle=$(get_color "${cfg_accent}-subtle")
     cfg_accent=$(get_color "$cfg_accent")
     cfg_accent_icon=$(get_color "$cfg_accent_icon")
 
@@ -185,11 +180,12 @@ _process_external_plugin() {
     CONTENTS+=("$content")
     ACCENTS+=("$cfg_accent")
     ACCENT_STRONGS+=("$cfg_accent_strong")
+    ACCENT_SUBTLES+=("$cfg_accent_subtle")
     ACCENT_ICONS+=("$cfg_accent_icon")
     ICONS+=("$cfg_icon")
     HAS_THRESHOLDS+=("0")
 
-    log_debug "render" "External plugin '$cfg_name' loaded (cache_hit=$cache_hit)"
+    log_debug "render" "External plugin '$cfg_name' loaded"
     return 0
 }
 
@@ -204,23 +200,51 @@ _process_internal_plugin() {
     local plugin_script="${CURRENT_DIR}/plugin/${name}.sh"
     [[ ! -f "$plugin_script" ]] && return 1
 
-    # Start telemetry
-    local start_ts=""
-    declare -f telemetry_plugin_start &>/dev/null && start_ts=$(telemetry_plugin_start "$name")
-
     # Clean previous plugin functions
-    unset -f load_plugin plugin_get_display_info 2>/dev/null || true
+    unset -f load_plugin plugin_get_display_info plugin_check_dependencies plugin_get_type plugin_declare_options 2>/dev/null || true
 
     # Source plugin
     # shellcheck source=/dev/null
     . "$plugin_script" 2>/dev/null || return 1
 
+    # ==========================================================================
+    # Contract Validation: Reject non-compliant plugins
+    # Required functions: plugin_get_type, load_plugin
+    # ==========================================================================
+    if ! declare -f plugin_get_type &>/dev/null; then
+        log_error "render" "Plugin '$name' REJECTED: missing required function plugin_get_type()"
+        return 1
+    fi
+
+    if ! declare -f load_plugin &>/dev/null; then
+        log_error "render" "Plugin '$name' REJECTED: missing required function load_plugin()"
+        return 1
+    fi
+
+    # Check dependencies if plugin implements the contract
+    if ! run_plugin_dependency_check; then
+        local missing
+        missing=$(get_missing_deps)
+        # Only show error if there are actual missing dependencies
+        # (plugins can return 1 silently to indicate "not supported on this platform")
+        if [[ -n "$missing" ]]; then
+            log_error "render" "Plugin '$name' skipped: missing dependencies: $missing"
+            # Show toast notification to user (only once per session)
+            local toast_key="deps_notified_${name}"
+            if [[ -z "${!toast_key:-}" ]]; then
+                declare -g "$toast_key=1"
+                tmux display-message "PowerKit: Plugin '$name' disabled - missing: $missing" 2>/dev/null || true
+            fi
+        fi
+        return 1
+    fi
+
     # Get content
     local content=""
     declare -f load_plugin &>/dev/null && content=$(load_plugin 2>/dev/null) || true
 
-    # Skip conditional without content
-    [[ "$plugin_type" == "conditional" && -z "$content" ]] && return 1
+    # Skip conditional/dynamic without content (dynamic treated as conditional)
+    [[ ("$plugin_type" == "conditional" || "$plugin_type" == "dynamic") && -z "$content" ]] && return 1
 
     # Get defaults if not in config
     local def_accent def_accent_icon def_icon
@@ -248,27 +272,17 @@ _process_internal_plugin() {
         [[ -n "$ov_icon" ]] && cfg_icon="$ov_icon"
     fi
 
-    # Apply thresholds (only if plugin didn't provide colors AND is dynamic type)
-    local has_threshold="0" threshold_flag="0"
-    if [[ "$plugin_provided_colors" == "0" && "$plugin_type" == "dynamic" ]]; then
-        # Plugin didn't provide colors and is dynamic type, try automatic thresholds
-        local tmp_accent tmp_accent_icon
-        IFS=':' read -r tmp_accent tmp_accent_icon threshold_flag <<<"$(apply_thresholds "$name" "$content" "$cfg_accent" "$cfg_accent_icon")"
-        # Only apply if threshold was triggered
-        if [[ -n "$tmp_accent" ]]; then
-            cfg_accent="$tmp_accent"
-            cfg_accent_icon="$tmp_accent_icon"
-        fi
-    fi
-
-    # Detect threshold state
-    if [[ "$threshold_flag" == "1" ]] || [[ "$cfg_accent" != "$original_accent" ]]; then
+    # Detect threshold state (plugin controls this via plugin_get_display_info)
+    # Threshold is detected when plugin changes colors from defaults
+    local has_threshold="0"
+    if [[ "$cfg_accent" != "$original_accent" ]]; then
         has_threshold="1"
     fi
 
     # Resolve colors
-    local cfg_accent_strong
+    local cfg_accent_strong cfg_accent_subtle
     cfg_accent_strong=$(get_color "${cfg_accent}-strong")
+    cfg_accent_subtle=$(get_color "${cfg_accent}-subtle")
     cfg_accent=$(get_color "$cfg_accent")
     cfg_accent_icon=$(get_color "$cfg_accent_icon")
 
@@ -277,13 +291,10 @@ _process_internal_plugin() {
     CONTENTS+=("$(clean_content "$content")")
     ACCENTS+=("$cfg_accent")
     ACCENT_STRONGS+=("$cfg_accent_strong")
+    ACCENT_SUBTLES+=("$cfg_accent_subtle")
     ACCENT_ICONS+=("$cfg_accent_icon")
     ICONS+=("$cfg_icon")
     HAS_THRESHOLDS+=("$has_threshold")
-
-    # Record telemetry (note: cache hits are already tracked in cache_get_or_compute)
-    [[ -n "$start_ts" ]] && declare -f telemetry_plugin_end &>/dev/null &&
-        telemetry_plugin_end "$name" "$start_ts" "false"
 
     return 0
 }
@@ -292,7 +303,7 @@ _process_internal_plugin() {
 # Main Processing Loop
 # =============================================================================
 
-declare -a NAMES=() CONTENTS=() ACCENTS=() ACCENT_STRONGS=() ACCENT_ICONS=() ICONS=() HAS_THRESHOLDS=()
+declare -a NAMES=() CONTENTS=() ACCENTS=() ACCENT_STRONGS=() ACCENT_SUBTLES=() ACCENT_ICONS=() ICONS=() HAS_THRESHOLDS=()
 
 IFS=';' read -ra CONFIGS <<<"$PLUGINS_CONFIG"
 
@@ -323,6 +334,7 @@ for ((i = 0; i < total; i++)); do
     content="${CONTENTS[$i]}"
     accent="${ACCENTS[$i]}"
     accent_strong="${ACCENT_STRONGS[$i]}"
+    accent_subtle="${ACCENT_SUBTLES[$i]}"
     accent_icon="${ACCENT_ICONS[$i]}"
     icon="${ICONS[$i]}"
     has_threshold="${HAS_THRESHOLDS[$i]}"
@@ -345,6 +357,20 @@ for ((i = 0; i < total; i++)); do
         prev_accent="$spacing_bg"
     fi
 
+    # When threshold/severity is triggered, use semantic colors:
+    # - Icon background: accent-subtle (e.g., error-subtle)
+    # - Content background: accent (e.g., error)
+    # - Text color: accent-strong (e.g., error-strong)
+    if [[ "$has_threshold" == "1" && -n "$accent_subtle" ]]; then
+        icon_bg="$accent_subtle"
+        content_bg="$accent"
+        text_fg="$accent_strong"
+    else
+        icon_bg="$accent_icon"
+        content_bg="$accent"
+        text_fg="$TEXT_COLOR"
+    fi
+
     # Separators (left-facing: fg=new color, bg=previous color)
     if [[ $i -eq 0 ]]; then
         # First plugin separator
@@ -354,40 +380,28 @@ for ((i = 0; i < total; i++)); do
 
         if [[ "$SEPARATOR_STYLE" == "rounded" ]]; then
             # Rounded/pill effect - fg=plugin_color, bg=status_bg
-            sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${LEFT_SEPARATOR_ROUNDED}#[none]"
+            sep_start="#[fg=${icon_bg},bg=${first_sep_bg}]${LEFT_SEPARATOR_ROUNDED}#[none]"
         else
             # Normal powerline - fg=plugin_color, bg=status_bg
-            sep_start="#[fg=${accent_icon},bg=${first_sep_bg}]${RIGHT_SEPARATOR}#[none]"
+            sep_start="#[fg=${icon_bg},bg=${first_sep_bg}]${RIGHT_SEPARATOR}#[none]"
         fi
     else
-        sep_start="#[fg=${accent_icon},bg=${prev_accent}]${RIGHT_SEPARATOR}#[none]"
+        sep_start="#[fg=${icon_bg},bg=${prev_accent}]${RIGHT_SEPARATOR}#[none]"
     fi
 
-    sep_mid="#[fg=${accent},bg=${accent_icon}]${RIGHT_SEPARATOR}#[none]"
+    sep_mid="#[fg=${content_bg},bg=${icon_bg}]${RIGHT_SEPARATOR}#[none]"
 
     # Build output - consistent spacing: " ICON SEP TEXT "
-    # Icon text: white for normal state, accent-strong when threshold is triggered
-    if [[ "$has_threshold" == "1" ]]; then
-        output+="${sep_start}#[fg=${accent_strong},bg=${accent_icon},bold]${icon} ${sep_mid}"
-    else
-        output+="${sep_start}#[fg=${TEXT_COLOR},bg=${accent_icon},bold]${icon} ${sep_mid}"
-    fi
+    output+="${sep_start}#[fg=${text_fg},bg=${icon_bg},bold]${icon} ${sep_mid}"
 
-    # Content text: use accent-strong + bold when threshold is triggered for better visibility
-    content_fg="${TEXT_COLOR}"
-    content_style=""
-    if [[ "$has_threshold" == "1" && -n "$accent_strong" ]]; then
-        content_fg="$accent_strong"
-        content_style=",bold"
-    fi
-
+    # Content text
     if [[ $i -eq $((total - 1)) ]]; then
-        output+="#[fg=${content_fg},bg=${accent}${content_style}] ${content} "
+        output+="#[fg=${text_fg},bg=${content_bg},bold] ${content} "
     else
-        output+="#[fg=${content_fg},bg=${accent}${content_style}] ${content} #[none]"
+        output+="#[fg=${text_fg},bg=${content_bg},bold] ${content} #[none]"
     fi
 
-    prev_accent="$accent"
+    prev_accent="$content_bg"
 done
 
 printf '%s' "$output"
