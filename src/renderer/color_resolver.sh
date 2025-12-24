@@ -65,7 +65,8 @@ resolve_color() {
 resolve_plugin_colors_full() {
     local state="$1"
     local health="$2"
-    local context="$3"  # Unused - kept for API compatibility
+    # shellcheck disable=SC2034 # Kept for API compatibility
+    local context="$3"
 
     local content_bg content_fg icon_bg icon_fg
 
@@ -105,7 +106,9 @@ resolve_session_colors() {
 # Returns: "index_bg index_fg content_bg content_fg style" (space-separated)
 resolve_window_colors() {
     local is_active="$1"
+    # shellcheck disable=SC2034 # Reserved for future use
     local has_activity="${2:-0}"
+    # shellcheck disable=SC2034 # Reserved for future use
     local has_bell="${3:-0}"
 
     local index_bg index_fg content_bg content_fg style

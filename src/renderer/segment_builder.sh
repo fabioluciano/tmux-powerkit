@@ -11,6 +11,7 @@ source_guard "renderer_segment_builder" && return 0
 
 . "${POWERKIT_ROOT}/src/core/logger.sh"
 . "${POWERKIT_ROOT}/src/core/options.sh"
+. "${POWERKIT_ROOT}/src/core/registry.sh"
 . "${POWERKIT_ROOT}/src/renderer/separator.sh"
 . "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 
@@ -326,7 +327,8 @@ render_plugins() {
         [[ -z "$plugin_name" ]] && continue
 
         # Skip external plugins for now (TODO: implement)
-        [[ "$plugin_name" == external* ]] && continue
+        # Skip external plugins (format: external("..."))
+        [[ "$plugin_name" == external\(* ]] && continue
 
         # Collect plugin data (lifecycle handles data + caching)
         local plugin_data
@@ -342,9 +344,8 @@ render_plugins() {
         local show_only_on_threshold
         show_only_on_threshold=$(get_named_plugin_option "$plugin_name" "show_only_on_threshold" 2>/dev/null || echo "false")
         local health_level=0
-        if type get_health_level &>/dev/null; then
-            health_level=$(get_health_level "$health")
-        fi
+        # Use get_health_level from registry.sh
+        health_level=$(get_health_level "$health")
         log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
         if [[ "$show_only_on_threshold" == "true" && "$health_level" -lt 1 ]]; then
             log_debug "segment_builder" "plugin=$plugin_name ocultado pelo filtro show_only_on_threshold (health_level=$health_level)"

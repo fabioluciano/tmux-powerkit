@@ -28,7 +28,7 @@ json_get_string() {
 json_get_number() {
     local json="$1"
     local key="$2"
-    echo "$json" | sed -n 's/.*"'"$key'":\([0-9.-]*\).*/\1/p' | head -1
+    echo "$json" | sed -n 's/.*"'"$key"'":\([0-9.-]*\).*/\1/p' | head -1
 }
 
 # Extract boolean from JSON
@@ -36,7 +36,8 @@ json_get_number() {
 json_get_bool() {
     local json="$1"
     local key="$2"
-    echo "$json" | sed -n 's/.*"'"$key'":\(true\|false\).*/\1/p' | head -1
+    # shellcheck disable=SC1078,SC1079 # Complex sed quoting
+    echo "$json" | sed -n 's/.*"'"$key"'":\(true\|false\).*/\1/p' | head -1
 }
 
 # Check if JSON key exists
@@ -55,6 +56,7 @@ json_get_nested() {
     
     # Split by dots and extract sequentially
     local IFS='.'
+    # shellcheck disable=SC2206 # Intentional word splitting on path
     local -a keys=($path)
     local result="$json"
     

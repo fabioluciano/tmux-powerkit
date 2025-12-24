@@ -89,7 +89,7 @@ PowerKit v2 is a contract-based tmux status bar framework with strict separation
 
 ## Directory Structure
 
-```
+```text
 tmux-powerkit/
 ├── tmux-powerkit.tmux              # TPM entry point
 ├── bin/
@@ -223,16 +223,11 @@ PLUGIN_PRESENCE=("always" "conditional")
 ### Health Precedence
 
 ```bash
-# Maps health to numeric level for comparison
+# Maps health to numeric level for comparison (from registry.sh)
+# Uses HEALTH_PRECEDENCE associative array: info=-1, ok=0, good=1, warning=2, error=3
 get_health_level() {
-    case "$1" in
-        info) echo -1 ;;
-        ok) echo 0 ;;
-        warning) echo 1 ;;
-        error) echo 2 ;;
-        good) echo 3 ;;
-        *) echo 0 ;;
-    esac
+    local health="$1"
+    echo "${HEALTH_PRECEDENCE[$health]:-0}"
 }
 ```
 
@@ -247,7 +242,7 @@ get_health_level() {
 
 ### Data Flow
 
-```
+```text
 Plugin                          Renderer
   │                                │
   ├─ plugin_collect()              │
@@ -289,6 +284,7 @@ cache_clear_all                 # Clear all cache
 ```
 
 **Performance Features**:
+
 - In-memory cache per render cycle (avoids disk reads)
 - Cached timestamp per cycle (single `date +%s` call)
 - Cache location: `$XDG_CACHE_HOME/tmux-powerkit/data` or `~/.cache/tmux-powerkit/data`
@@ -328,6 +324,7 @@ check_dependencies "curl" "jq" || return 1
 ```
 
 **Runtime check** (use in plugin logic):
+
 ```bash
 # has_cmd does NOT track dependencies - use for runtime decisions
 has_cmd "fzf" && use_fzf_feature
@@ -566,6 +563,7 @@ The system auto-generates 6 variants per base color:
 | `-darkest` | Toward black | -55% | Strong darkening |
 
 **Colors with variants** (defined in defaults.sh):
+
 ```bash
 POWERKIT_COLORS_WITH_VARIANTS="window-active-base window-inactive-base ok-base info-base warning-base error-base disabled-base accent border"
 ```
@@ -652,7 +650,7 @@ POWERKIT_BYTE_TB=1099511627776
 
 ## Plugin Lifecycle Phases
 
-```
+```text
 1. BOOTSTRAP   → Load core modules
 2. DISCOVER    → Parse @powerkit_plugins
 3. VALIDATE    → Check contract compliance
@@ -765,12 +763,6 @@ plugin_declare_options() {
 }
 
 # =============================================================================
-# Initialize Plugin
-# =============================================================================
-
-plugin_init "battery"
-
-# =============================================================================
 # Plugin Contract: Data Collection
 # =============================================================================
 
@@ -874,12 +866,15 @@ plugin_get_icon() {
 ## Recent Improvements (December 2025)
 
 ### Health System Enhancement
+
 Added `good` health level for positive states:
+
 - `ok`: Normal operation (neutral)
 - `good`: Better than ok, positive state (e.g., connected, synced, authenticated)
 - Both map to green colors but `good` semantically indicates a positive achievement
 
 ### Bluetooth Plugin Improvements
+
 - Removed legacy options: `show_device`, `truncate_suffix`, `show_when_off`
 - Uses `inactive` state when Bluetooth is off (plugin hidden)
 - Health mapping:
@@ -892,6 +887,7 @@ Added `good` health level for positive states:
 - Default max_length increased to 50
 
 ### Brightness Plugin (Linux Only)
+
 - Removed all macOS functionality (BetterDisplay, ioreg)
 - Plugin now Linux-only with multiple backends:
   - sysfs (`/sys/class/backlight`)
@@ -902,7 +898,9 @@ Added `good` health level for positive states:
 - `plugin_check_dependencies()` returns 1 on macOS
 
 ### Platform-Specific Plugin Pattern
+
 For plugins that only work on one platform:
+
 ```bash
 plugin_check_dependencies() {
     # Linux only - return 1 on macOS to fail dependency check
@@ -919,41 +917,51 @@ plugin_get_state() {
 ```
 
 ### Icon Format Standardization
+
 All icons now use UTF-32 format (`\U0000XXXX` for BMP, `\UXXXXXXXX` for surrogate pairs):
+
 - **Plugins**: battery, cpu, memory, hostname, uptime
 - **System**: session icons, window icons, pane sync icon
 - **Format**: `$'\U0000f240'` for U+F240, `$'\U000F0954'` for U+F0954 (surrogate)
 
 ### Color Cache System
+
 Consolidated theme color cache replaces per-color calculation caching:
 
 **Architecture**:
+
 - Single cache file per theme: `theme_colors__<theme>__<variant>` (e.g., `theme_colors__tokyo-night__night`)
 - Contains all base colors + 6 variants per color (light/lighter/lightest/dark/darker/darkest)
 - TTL: 24 hours
 - Cache key format uses `__` separator for filesystem compatibility
 
 **Flow**:
+
 1. `load_theme()` checks cache first via `cache_get("theme_colors__theme__variant")`
 2. If cache hit: `deserialize_theme_colors()` populates `THEME_COLORS` + `_COLOR_VARIANTS`
 3. If cache miss: load theme file → `generate_color_variants()` → `serialize_theme_colors()` → `cache_set()`
 4. All components (`get_color()`, `resolve_color()`, etc.) use in-memory arrays - no recalculation
 
 **Validation**:
+
 - Fast path: reuses in-memory theme if same theme/variant + arrays populated
 - Cache validation: checks `${#THEME_COLORS[@]}` and `${#_COLOR_VARIANTS[@]}` after deserialize
 - If invalid/empty: falls back to file load + regeneration
 
 **Implementation**:
+
 - `src/core/color_generator.sh`: `serialize_theme_colors()`, `deserialize_theme_colors()`
 - `src/core/theme_loader.sh`: cache integration in `load_theme()`
 - `src/core/cache.sh`: sanitizes keys (alphanumeric + `_` + `-`)
 
 ### Plugin Options
+
 Default option added to all plugins:
+
 ```bash
 declare_option "show_only_on_threshold" "bool" "false" "Only show when warning or critical threshold is exceeded"
 ```
+
 - Default: `false` (show always)
 - Injected automatically via `_inject_default_plugin_options()` in `src/core/options.sh`
 - Renderer filters via `get_named_plugin_option()` in `src/renderer/segment_builder.sh`
@@ -963,6 +971,7 @@ declare_option "show_only_on_threshold" "bool" "false" "Only show when warning o
 ### Separation of Concerns
 
 **Plugins** (what they DO):
+
 1. Collect data via `plugin_data_set()`
 2. Return state: `inactive|active|degraded|failed`
 3. Return health: `ok|info|warning|error`
@@ -971,6 +980,7 @@ declare_option "show_only_on_threshold" "bool" "false" "Only show when warning o
 6. Declare options (icon, thresholds, format, cache_ttl)
 
 **Plugins** (what they MUST NOT do):
+
 - ❌ Decide colors (no `accent_color`, `accent_color_icon`)
 - ❌ Apply tmux formatting (no `#[fg=...]` in render)
 - ❌ Build segments
@@ -978,13 +988,14 @@ declare_option "show_only_on_threshold" "bool" "false" "Only show when warning o
 - ❌ Implement `plugin_get_type()` (use `plugin_get_content_type()`)
 
 **Renderer** (what it does):
+
 1. Resolve colors via `color_resolver.sh` based on state/health
 2. Build segments via `segment_builder.sh` with separators
 3. Apply tmux color codes and formatting
 
 ### Color Resolution Flow
 
-```
+```text
 Plugin → state="active", health="warning"
   ↓
 Renderer → resolve_plugin_colors_full(state, health, context)
@@ -1006,12 +1017,13 @@ segment_builder → applies #[fg=...,bg=...]
 For each plugin being migrated from `src-old/plugin/`:
 
 **Structure**:
+
 - [ ] Change `ROOT_DIR` to `POWERKIT_ROOT`
 - [ ] Source `plugin_contract.sh` (not `plugin_bootstrap.sh`)
-- [ ] Move `plugin_init "name"` to END of file
 - [ ] Add `plugin_get_metadata()` with id/name/version/description/priority
 
 **Options**:
+
 - [ ] Remove `accent_color` declarations
 - [ ] Remove `accent_color_icon` declarations  
 - [ ] Keep `icon` and contextual icons (`icon_charging`, etc)
@@ -1019,6 +1031,7 @@ For each plugin being migrated from `src-old/plugin/`:
 - [ ] Verify icons are UTF-32 (`$'\U0000XXXX'`)
 
 **Contract Functions**:
+
 - [ ] Remove `plugin_get_type()` → use `plugin_get_content_type()`
 - [ ] Remove `plugin_get_display_info()` → use state/health/presence
 - [ ] Implement `plugin_get_content_type()`: `static|dynamic`
@@ -1028,6 +1041,7 @@ For each plugin being migrated from `src-old/plugin/`:
 - [ ] Optional: `plugin_get_context()` for descriptive info
 
 **Data Flow**:
+
 - [ ] Remove `load_plugin()` function
 - [ ] Create `plugin_collect()`: only use `plugin_data_set()`
 - [ ] Create `plugin_render()`: only use `plugin_data_get()` + return text
@@ -1036,6 +1050,7 @@ For each plugin being migrated from `src-old/plugin/`:
 **Example Patterns**:
 
 Platform-independent static plugin (always visible):
+
 ```bash
 plugin_get_content_type() { printf 'static'; }
 plugin_get_presence() { printf 'always'; }
@@ -1044,6 +1059,7 @@ plugin_get_health() { printf 'ok'; }
 ```
 
 Platform-specific plugin (Linux only):
+
 ```bash
 plugin_check_dependencies() {
     is_macos && return 1  # Not supported on macOS
@@ -1061,6 +1077,7 @@ plugin_get_state() {
 ```
 
 Dynamic plugin with thresholds:
+
 ```bash
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
@@ -1085,6 +1102,7 @@ plugin_get_health() {
 ```
 
 Conditional plugin with multiple health states (e.g., bluetooth):
+
 ```bash
 plugin_get_state() {
     local status=$(plugin_data_get "status")
@@ -1162,7 +1180,7 @@ HEALTH_PRECEDENCE=(
 )
 
 # Functions
-get_health_precedence "warning"  # Returns: 2
+get_health_level "warning"  # Returns: 2
 health_is_worse "error" "warning"  # Returns: true (0)
 health_max "ok" "warning" "error"  # Returns: error
 ```
@@ -1224,7 +1242,7 @@ generate_theme "my-theme" "dark" > src/themes/my-theme/dark.sh
 - Contract-compliant structure
 - Proper POWERKIT_ROOT sourcing
 - All mandatory functions pre-defined
-- NOTE comments about what NOT to do (no accent_color, no plugin_init)
+- NOTE comments about what NOT to do (no accent_color)
 
 ### Usage Example
 
@@ -1365,7 +1383,7 @@ The Helper Contract (`src/contract/helper_contract.sh`) standardizes helper crea
 
 ### Architecture
 
-```
+```text
 ┌─────────────────────────────────────────────────┐
 │                 HELPER LAYER                     │
 │  ┌─────────────┐  ┌─────────────┐               │
@@ -1470,6 +1488,7 @@ The bootstrap system loads modules in strict dependency order:
 ### Plugin Source Rules
 
 **DO**:
+
 ```bash
 # Source ONLY plugin_contract.sh at the top of your plugin
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -1477,6 +1496,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 ```
 
 **DON'T**:
+
 ```bash
 # WRONG: Re-sourcing utilities that plugin_contract.sh already provides
 . "${POWERKIT_ROOT}/src/contract/plugin_contract.sh"
@@ -1532,6 +1552,7 @@ get_plugin_keybinding_options() {
 ```
 
 This means:
+
 - **No manual updates needed** when adding new plugins with keybindings
 - Just follow the `keybinding_*` naming convention
 - Conflict detection works automatically

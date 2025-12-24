@@ -16,7 +16,7 @@ source_guard "datastore" && return 0
 # Main datastore - associative array with plugin:key format
 declare -gA _DATASTORE=()
 
-# Current plugin context (set by plugin_init)
+# Current plugin context (set by _set_plugin_context in lifecycle)
 declare -g _CURRENT_PLUGIN=""
 
 # Metadata storage

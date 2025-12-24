@@ -329,6 +329,7 @@ pad_right() {
 pad_left() {
     local text="$1"
     local width="$2"
+    # shellcheck disable=SC2034 # Reserved for future use with custom padding char
     local char="${3:- }"
 
     printf '%*s' "$width" "$text"

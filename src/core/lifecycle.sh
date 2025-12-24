@@ -50,7 +50,8 @@ discover_plugins() {
         [[ -z "$plugin_name" ]] && continue
 
         # Check if it's an external plugin
-        if [[ "$plugin_name" == external* ]]; then
+        # External plugins have format: external("...")
+        if [[ "$plugin_name" == external\(* ]]; then
             _register_external_plugin "$plugin_name"
         else
             _register_plugin "$plugin_name"

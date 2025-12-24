@@ -69,12 +69,14 @@ declare -grA PLUGIN_STATE_DESCRIPTIONS=(
 )
 
 # Valid plugin content types
+# shellcheck disable=SC2034 # Used for validation
 declare -gra PLUGIN_CONTENT_TYPES=(
     "static"   # Content doesn't change frequently
     "dynamic"  # Content changes frequently
 )
 
 # Valid plugin presence modes
+# shellcheck disable=SC2034 # Used for validation
 declare -gra PLUGIN_PRESENCE_MODES=(
     "always"       # Always show plugin
     "conditional"  # Show based on state
@@ -85,6 +87,7 @@ declare -gra PLUGIN_PRESENCE_MODES=(
 # =============================================================================
 
 # Valid session states
+# shellcheck disable=SC2034 # Used for validation
 declare -gra SESSION_STATES=(
     "attached"   # Session is attached to a client
     "detached"   # Session has no attached clients
@@ -255,11 +258,11 @@ declare -gra HEALTH_LEVELS=(
 # Health level precedence (for comparisons)
 # Higher number = more severe
 declare -grA HEALTH_PRECEDENCE=(
-    [info]=-1
     [ok]=0
-    [good]=1
-    [warning]=2
-    [error]=3
+    [info]=1
+    [good]=2
+    [warning]=3
+    [error]=4
 )
 
 # Health level descriptions
@@ -275,9 +278,9 @@ declare -grA HEALTH_DESCRIPTIONS=(
 # 7. LOOKUP FUNCTIONS
 # =============================================================================
 
-# Get health level precedence
-# Usage: level=$(get_health_precedence "warning")  # Returns: 2
-get_health_precedence() {
+# Get health level (numeric value for comparison)
+# Usage: level=$(get_health_level "warning")  # Returns: 2
+get_health_level() {
     local health="$1"
     echo "${HEALTH_PRECEDENCE[$health]:-0}"
 }
@@ -398,3 +401,45 @@ is_valid_helper_type() {
     done
     return 1
 }
+
+# Check if plugin state is valid
+is_valid_state() {
+    local state="$1"
+    local valid
+    for valid in "${PLUGIN_STATES[@]}"; do
+        [[ "$state" == "$valid" ]] && return 0
+    done
+    return 1
+}
+
+# Check if plugin content type is valid
+is_valid_content_type() {
+    local type="$1"
+    local valid
+    for valid in "${PLUGIN_CONTENT_TYPES[@]}"; do
+        [[ "$type" == "$valid" ]] && return 0
+    done
+    return 1
+}
+
+# Check if plugin presence mode is valid
+is_valid_presence() {
+    local presence="$1"
+    local valid
+    for valid in "${PLUGIN_PRESENCE_MODES[@]}"; do
+        [[ "$presence" == "$valid" ]] && return 0
+    done
+    return 1
+}
+
+# =============================================================================
+# 9. BACKWARD COMPATIBILITY ALIASES
+# =============================================================================
+
+# Alias for PLUGIN_PRESENCE_MODES (some code uses PLUGIN_PRESENCE)
+# shellcheck disable=SC2034
+declare -ga PLUGIN_PRESENCE=("${PLUGIN_PRESENCE_MODES[@]}")
+
+# Alias for HEALTH_LEVELS (some code uses PLUGIN_HEALTH)
+# shellcheck disable=SC2034
+declare -ga PLUGIN_HEALTH=("${HEALTH_LEVELS[@]}")

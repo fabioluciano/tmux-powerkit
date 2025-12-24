@@ -129,7 +129,7 @@ See [Themes Documentation](wiki/Themes.md) for previews and configuration.
 
 PowerKit v2 uses a contract-based architecture with strict separation of concerns:
 
-```
+```text
 Plugin          Renderer         Theme
   |                |               |
   +-- Data         +-- Colors      +-- Color definitions

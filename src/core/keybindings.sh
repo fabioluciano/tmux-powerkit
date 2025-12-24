@@ -213,6 +213,7 @@ _setup_command_keybinding() {
 # Setup all global PowerKit keybindings
 # Usage: setup_powerkit_keybindings [plugins_string]
 setup_powerkit_keybindings() {
+    # shellcheck disable=SC2034 # Reserved for future use
     local plugins_string="${1:-}"
 
     log_debug "keybindings" "Setting up PowerKit global keybindings (data-driven)"

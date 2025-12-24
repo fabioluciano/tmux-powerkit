@@ -338,8 +338,7 @@ _get_min_battery() {
         local battery_str="${dev#*@}"
         [[ -z "$battery_str" ]] && continue
 
-        local IFS2=':'
-        for entry in $battery_str; do
+        for entry in ${battery_str//:/ }; do
             local val="${entry#*=}"
             [[ "$val" =~ ^[0-9]+$ ]] && (( val < min_bat )) && min_bat=$val
         done

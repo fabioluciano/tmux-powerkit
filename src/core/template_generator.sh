@@ -83,6 +83,7 @@ source_guard "core_template_generator" && return 0
 # Usage: generate_plugin_template "plugin_name" ["conditional"|"always"]
 generate_plugin_template() {
     local name="$1"
+    # shellcheck disable=SC2034 # Used in template heredoc
     local presence="${2:-conditional}"
 
     cat << 'TEMPLATE_EOF'
@@ -130,7 +131,6 @@ plugin_get_metadata() {
 
 # =============================================================================
 # Plugin Contract: Data Collection
-# NOTE: Plugin initialization is handled by the lifecycle loader - do NOT call plugin_init()
 # =============================================================================
 
 plugin_collect() {

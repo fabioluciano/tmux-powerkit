@@ -48,17 +48,17 @@ for dir in "${DIRS[@]}"; do
     [[ ! -d "$dir" ]] && continue
 
     while IFS= read -r -d '' file; do
-        ((TOTAL++))
+        ((TOTAL++)) || true
 
         if bash -n "$file" 2>/dev/null; then
             echo -e "${GREEN}✓${NC} $(basename "$file")"
-            ((PASSED++))
+            ((PASSED++)) || true
         else
             echo -e "${RED}✗ FAIL:${NC} $file"
             bash -n "$file" 2>&1 | head -5 | sed 's/^/  /'
-            ((FAILED++))
+            ((FAILED++)) || true
         fi
-    done < <(find "$dir" -name "*.sh" -print0 2>/dev/null)
+    done < <(find "$dir" -name "*.sh" -print0 2>/dev/null) || true
 done
 
 echo ""

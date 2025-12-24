@@ -226,6 +226,7 @@ pk_bind() {
             ;;
         custom)
             # For custom, command is the full tmux command
+            # shellcheck disable=SC2206 # Intentional word splitting for tmux args
             bind_args+=($command)
             ;;
         *)

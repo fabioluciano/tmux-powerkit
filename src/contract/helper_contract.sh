@@ -544,6 +544,7 @@ helper_init() {
 
     # Set helper script directory for the calling script
     # BASH_SOURCE[1] is the script that called helper_init
+    # shellcheck disable=SC2034 # Exported for helpers to use
     if [[ -n "${BASH_SOURCE[1]:-}" ]]; then
         HELPER_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[1]}")" && pwd)"
         HELPER_SCRIPT_NAME="$(basename "${BASH_SOURCE[1]}" .sh)"

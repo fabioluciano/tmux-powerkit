@@ -303,7 +303,7 @@ deserialize_theme_colors() {
     _COLOR_VARIANTS=()
     
     # Parse base colors
-    local line key value
+    local key value
     while IFS='=' read -r key value; do
         [[ -z "$key" ]] && continue
         THEME_COLORS["$key"]="$value"

@@ -138,12 +138,11 @@ validate_against_enum_safe() {
 # Returns: 0 if non-empty, 1 if empty
 validate_not_empty() {
     local value="$1"
+    # name parameter reserved for future error messaging
+    # shellcheck disable=SC2034
     local name="${2:-value}"
 
-    if [[ -z "$value" ]]; then
-        return 1
-    fi
-    return 0
+    [[ -n "$value" ]]
 }
 
 # Validate that value is numeric (integer)

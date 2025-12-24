@@ -18,7 +18,6 @@ plugin_get_metadata() {
     metadata_set "name" "Git"
     metadata_set "version" "2.0.0"
     metadata_set "description" "Display current git branch and status"
-    metadata_set "priority" "40"
 }
 
 # =============================================================================
@@ -36,8 +35,11 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Icons
-    declare_option "icon" "icon" $'\U000F01D2' "Plugin icon"
-    declare_option "icon_modified" "icon" $'\U000F0A6E' "Icon for modified state"
+    declare_option "icon" "icon" $'\U000F02A2' "Plugin icon"
+    declare_option "icon_modified" "icon" $'\U000F02A2' "Icon for modified state"
+
+    # Display
+    declare_option "branch_max_length" "number" "15" "Maximum branch name length (0 to disable truncation)"
 
     # Cache
     declare_option "cache_ttl" "number" "15" "Cache duration in seconds"
@@ -56,13 +58,24 @@ plugin_get_state() {
 }
 
 plugin_get_health() {
+    local ahead=$(plugin_data_get "ahead")
     local modified=$(plugin_data_get "modified")
-    [[ "$modified" == "1" ]] && printf 'warning' || printf 'ok'
+
+    # Commits not pushed → warning (needs attention)
+    [[ "$ahead" -gt 0 ]] && { printf 'warning'; return; }
+    # Local modifications → info (informational)
+    [[ "$modified" == "1" ]] && { printf 'info'; return; }
+    # Clean state
+    printf 'ok'
 }
 
 plugin_get_context() {
+    local ahead=$(plugin_data_get "ahead")
     local modified=$(plugin_data_get "modified")
-    [[ "$modified" == "1" ]] && printf 'modified' || printf 'clean'
+
+    [[ "$ahead" -gt 0 ]] && { printf 'unpushed'; return; }
+    [[ "$modified" == "1" ]] && { printf 'modified'; return; }
+    printf 'clean'
 }
 
 plugin_get_icon() {
@@ -85,14 +98,23 @@ plugin_collect() {
     local status_output
     status_output=$(git -C "$path" status --porcelain=v1 --branch 2>/dev/null)
 
-    # Parse branch and changes
-    local branch="" modified=0 changed=0 untracked=0
+    # Parse branch, changes and ahead/behind
+    local branch="" modified=0 changed=0 untracked=0 ahead=0 behind=0
 
     while IFS= read -r line; do
         if [[ "$line" == "## "* ]]; then
-            # Branch line: ## branch...upstream
+            # Branch line: ## branch...upstream [ahead N, behind M]
             branch="${line#\#\# }"
+            # Extract ahead/behind counts
+            if [[ "$branch" =~ \[ahead\ ([0-9]+) ]]; then
+                ahead="${BASH_REMATCH[1]}"
+            fi
+            if [[ "$branch" =~ behind\ ([0-9]+) ]]; then
+                behind="${BASH_REMATCH[1]}"
+            fi
+            # Clean branch name
             branch="${branch%%...*}"
+            branch="${branch%% \[*}"
         elif [[ -n "$line" ]]; then
             # File change line
             local status="${line:0:2}"
@@ -109,19 +131,29 @@ plugin_collect() {
     plugin_data_set "modified" "$modified"
     plugin_data_set "changed" "$changed"
     plugin_data_set "untracked" "$untracked"
+    plugin_data_set "ahead" "$ahead"
+    plugin_data_set "behind" "$behind"
 }
 
 plugin_render() {
-    local branch changed untracked
+    local branch changed untracked ahead behind max_length
     branch=$(plugin_data_get "branch")
     changed=$(plugin_data_get "changed")
     untracked=$(plugin_data_get "untracked")
+    ahead=$(plugin_data_get "ahead")
+    behind=$(plugin_data_get "behind")
+    max_length=$(get_option "branch_max_length")
 
     [[ -z "$branch" ]] && return 0
+
+    # Truncate branch name if exceeds max_length
+    [[ "$max_length" -gt 0 ]] && branch=$(truncate_text "$branch" "$max_length" "…")
 
     local result="$branch"
     [[ "$changed" -gt 0 ]] && result+=" ~$changed"
     [[ "$untracked" -gt 0 ]] && result+=" +$untracked"
+    [[ "$ahead" -gt 0 ]] && result+=" ↑$ahead"
+    [[ "$behind" -gt 0 ]] && result+=" ↓$behind"
 
     printf '%s' "$result"
 }

@@ -14,10 +14,10 @@
 #   - degraded: Battery present but health is poor
 #
 # Health:
-#   - ok: Battery level is good (above warning threshold)
+#   - ok: Battery level is good (above warning threshold), or fully charged
 #   - warning: Battery level is low (below warning, above critical)
 #   - error: Battery level is critical (below critical threshold)
-#   - info: Battery is charging or fully charged
+#   - info: Battery is actively charging
 #
 # Context:
 #   - charging: Battery is actively charging
@@ -306,10 +306,10 @@ plugin_get_state() {
 # Plugin Contract: Health
 # =============================================================================
 # Health reflects battery level severity:
-#   - ok: Above warning threshold
+#   - ok: Above warning threshold, or fully charged
 #   - warning: Below warning, above critical
 #   - error: Below critical threshold
-#   - info: Charging or fully charged (informational)
+#   - info: Actively charging
 
 plugin_get_health() {
     local percent status warn_th crit_th
@@ -321,15 +321,20 @@ plugin_get_health() {
     warn_th="${warn_th:-30}"
     crit_th="${crit_th:-15}"
 
-    # Charging or fully charged is informational
+    # Actively charging is informational
     case "$status" in
-        charging|charged|ac_power)
+        charging)
             printf 'info'
+            return
+            ;;
+        charged|ac_power)
+            # Fully charged or on AC power is ok (nothing to act on)
+            printf 'ok'
             return
             ;;
     esac
 
-    # Check thresholds
+    # Check thresholds for discharging
     if (( percent <= crit_th )); then
         printf 'error'
     elif (( percent <= warn_th )); then
@@ -356,7 +361,7 @@ plugin_get_context() {
 # =============================================================================
 
 plugin_get_icon() {
-    local percent status show_ac health
+    local percent status health
 
     percent=$(plugin_data_get "percent")
     status=$(plugin_data_get "status")

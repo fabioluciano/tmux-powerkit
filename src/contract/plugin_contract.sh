@@ -17,13 +17,9 @@
 # =================
 #   1. Overview
 #   2. Contract Concepts (STATE, HEALTH, CONTEXT)
-#   3. Mandatory Functions
-#   4. Optional Functions
-#   5. Initialization
-#   6. Dependency Checking
-#   7. State and Health Constants
-#   8. Validation Helpers
-#   9. API Reference
+#   3. API Reference (Mandatory & Optional Functions)
+#   4. Dependency Checking Helpers
+#   5. Constants (from registry.sh)
 #
 # =============================================================================
 #
@@ -114,7 +110,9 @@
 #
 #   is_valid_state STATE         - Check if state is valid
 #   is_valid_health HEALTH       - Check if health is valid
-#   get_health_level HEALTH      - Get numeric precedence for health comparison
+#
+# FROM REGISTRY.SH:
+#   get_health_level HEALTH      - Get numeric level for health comparison
 #   health_max HEALTH1 HEALTH2   - Get the more severe health level
 #
 # =============================================================================
@@ -140,69 +138,15 @@ source_guard "contract_plugin" && return 0
 # State and Health Constants
 # =============================================================================
 
-# Note: These are now defined in registry.sh for centralization.
-# These aliases are kept for backward compatibility.
-
-# Valid plugin states
-# shellcheck disable=SC2034
-declare -gra PLUGIN_STATES=("${PLUGIN_STATES[@]:-inactive active degraded failed}")
-
-# Valid plugin health levels
-# shellcheck disable=SC2034
-declare -gra PLUGIN_HEALTH=("${PLUGIN_HEALTH[@]:-ok good info warning error}")
-
-# Valid content types
-declare -gra PLUGIN_CONTENT_TYPES=(
-    "static"   # Content doesn't change frequently
-    "dynamic"  # Content changes frequently
-)
-
-# Valid presence modes
-declare -gra PLUGIN_PRESENCE=(
-    "always"       # Always show plugin
-    "conditional"  # Show based on state
-)
-
-# =============================================================================
-# Plugin Initialization
-# =============================================================================
-
-# Initialize a plugin with its name
-# Usage: plugin_init "battery"
-# This sets up the plugin context and calls optional contract functions
-#
-# NOTE: plugin_init() is called by the plugin LOADER, NOT by the plugin itself.
-# Plugins should NOT call plugin_init() - it is an internal function.
-plugin_init() {
-    local plugin_name="$1"
-
-    if [[ -z "$plugin_name" ]]; then
-        log_error "plugin_contract" "plugin_init called without name"
-        return 1
-    fi
-
-    # Set plugin context for datastore and options
-    _set_plugin_context "$plugin_name"
-
-    log_debug "plugin_contract" "Initializing plugin: $plugin_name"
-
-    # Call optional contract functions if defined
-    if declare -F plugin_check_dependencies &>/dev/null; then
-        if ! plugin_check_dependencies; then
-            log_warn "plugin_contract" "Dependencies not met for: $plugin_name"
-        fi
-    fi
-
-    if declare -F plugin_declare_options &>/dev/null; then
-        plugin_declare_options
-    fi
-
-    if declare -F plugin_get_metadata &>/dev/null; then
-        plugin_get_metadata
-    fi
-
-    log_debug "plugin_contract" "Plugin initialized: $plugin_name"
-}
+# Note: All constants and validation functions are defined in registry.sh
+# Available from registry.sh:
+#   - PLUGIN_STATES: inactive, active, degraded, failed
+#   - PLUGIN_CONTENT_TYPES: static, dynamic
+#   - PLUGIN_PRESENCE_MODES: always, conditional (alias: PLUGIN_PRESENCE)
+#   - HEALTH_LEVELS: ok, good, info, warning, error (alias: PLUGIN_HEALTH)
+#   - HEALTH_PRECEDENCE: associative array with numeric levels
+#   - is_valid_state(), is_valid_health(), is_valid_content_type(), is_valid_presence()
+#   - get_health_level(), health_max(), health_is_worse()
 
 # =============================================================================
 # Dependency Checking Helpers
@@ -303,56 +247,11 @@ get_missing_optional_deps() {
 # - get_option "name"
 
 # =============================================================================
-# Health Precedence Helpers (use HEALTH_LEVELS from registry.sh)
-# =============================================================================
-
-# Get numeric precedence for health comparison
-# Usage: get_health_level "warning"  # returns 2
-# Uses HEALTH_LEVELS associative array from registry.sh
-get_health_level() {
-    local health="$1"
-    echo "${HEALTH_LEVELS[$health]:-0}"
-}
-
-# Get the more severe health level between two
-# Usage: health_max "warning" "error"  # returns "error"
-# Delegates to registry.sh implementation
-# This function is already available from registry.sh
-
-# =============================================================================
-# Contract Validation Helpers (use validate_against_enum from validation.sh)
-# =============================================================================
-
-# Check if a value is a valid state
-# Usage: is_valid_state "active"
-is_valid_state() {
-    local state="$1"
-    validate_against_enum "$state" PLUGIN_STATES
-}
-
-# Check if a value is a valid health
-# Usage: is_valid_health "warning"
-is_valid_health() {
-    local health="$1"
-    validate_against_enum "$health" PLUGIN_HEALTH
-}
-
-# Check if a value is a valid content type
-# Usage: is_valid_content_type "dynamic"
-is_valid_content_type() {
-    local type="$1"
-    validate_against_enum "$type" PLUGIN_CONTENT_TYPES
-}
-
-# Check if a value is a valid presence mode
-# Usage: is_valid_presence "conditional"
-is_valid_presence() {
-    local presence="$1"
-    validate_against_enum "$presence" PLUGIN_PRESENCE
-}
-
-# =============================================================================
 # NOTE: Plugin Output colors are determined by the RENDERER based on state/health
 # Plugins should NOT decide colors - use plugin_get_state() and plugin_get_health()
 # The renderer uses color_resolver.sh to map state/health → colors
+#
+# Validation and health functions are available from registry.sh:
+#   - is_valid_state(), is_valid_health(), is_valid_content_type(), is_valid_presence()
+#   - get_health_level(), health_max(), health_is_worse()
 # =============================================================================

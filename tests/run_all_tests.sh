@@ -42,7 +42,7 @@ run_test() {
     local test_name="$1"
     local test_file="$2"
 
-    ((TESTS_RUN++))
+    ((TESTS_RUN++)) || true
 
     print_section "Test $TESTS_RUN: $test_name"
     echo ""
@@ -62,7 +62,7 @@ run_test() {
     else
         echo ""
         echo -e "Result: ${RED}✗ FAIL${NC}"
-        ((TOTAL_FAILED++))
+        ((TOTAL_FAILED++)) || true
     fi
     echo ""
 }

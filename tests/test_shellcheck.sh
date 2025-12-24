@@ -53,20 +53,20 @@ for dir in "${DIRS[@]}"; do
     [[ ! -d "$dir" ]] && continue
 
     while IFS= read -r -d '' file; do
-        ((TOTAL++))
+        ((TOTAL++)) || true
 
         # shellcheck disable=SC2086
         if shellcheck $SHELLCHECK_OPTS "$file" 2>/dev/null; then
             echo -e "${GREEN}✓${NC} $(basename "$file")"
-            ((PASSED++))
+            ((PASSED++)) || true
         else
             echo -e "${RED}✗ FAIL:${NC} $file"
             # Show first few errors
             # shellcheck disable=SC2086
             shellcheck $SHELLCHECK_OPTS "$file" 2>&1 | head -10 | sed 's/^/  /'
-            ((FAILED++))
+            ((FAILED++)) || true
         fi
-    done < <(find "$dir" -name "*.sh" -print0 2>/dev/null)
+    done < <(find "$dir" -name "*.sh" -print0 2>/dev/null) || true
 done
 
 # Check themes separately with less strict rules (they're just variable declarations)
@@ -74,17 +74,17 @@ if [[ -d "$POWERKIT_ROOT/src/themes" ]]; then
     echo ""
     echo "--- Themes (syntax only) ---"
     while IFS= read -r -d '' file; do
-        ((TOTAL++))
+        ((TOTAL++)) || true
 
         if shellcheck -x -S error "$file" 2>/dev/null; then
             echo -e "${GREEN}✓${NC} $(basename "$file")"
-            ((PASSED++))
+            ((PASSED++)) || true
         else
             echo -e "${RED}✗ FAIL:${NC} $file"
             shellcheck -x -S error "$file" 2>&1 | head -5 | sed 's/^/  /'
-            ((FAILED++))
+            ((FAILED++)) || true
         fi
-    done < <(find "$POWERKIT_ROOT/src/themes" -name "*.sh" -print0 2>/dev/null)
+    done < <(find "$POWERKIT_ROOT/src/themes" -name "*.sh" -print0 2>/dev/null) || true
 fi
 
 echo ""

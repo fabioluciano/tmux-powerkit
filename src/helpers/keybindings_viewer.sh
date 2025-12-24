@@ -174,6 +174,7 @@ print_conflicts() {
 # =============================================================================
 
 _display_keybindings() {
+    # shellcheck disable=SC2034 # Reserved for future filtering feature
     local filter="${1:-}"
 
     # Pre-load all tmux options in one call for performance

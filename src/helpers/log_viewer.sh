@@ -33,6 +33,7 @@ helper_get_actions() {
 # =============================================================================
 
 LOG_FILE="$(get_log_file)"
+# shellcheck disable=SC2034 # Reserved for future use
 LOG_DIR="$(dirname "$LOG_FILE")"
 LOG_FILE_OLD="${LOG_FILE}.old"
 
@@ -43,6 +44,7 @@ RESET="${POWERKIT_ANSI_RESET}"
 RED="${POWERKIT_ANSI_RED}"
 GREEN="${POWERKIT_ANSI_GREEN}"
 YELLOW="${POWERKIT_ANSI_YELLOW}"
+# shellcheck disable=SC2034 # May be used in future features
 BLUE="${POWERKIT_ANSI_BLUE}"
 CYAN="${POWERKIT_ANSI_CYAN}"
 MAGENTA="${POWERKIT_ANSI_MAGENTA}"

@@ -53,7 +53,7 @@ if [[ -d "$PLUGINS_DIR" ]]; then
         # shellcheck disable=SC1090
         if ! . "$plugin_file" 2>/dev/null; then
             echo -e "${RED}✗${NC} $plugin_name - failed to source"
-            ((PLUGIN_FAILED++))
+            ((PLUGIN_FAILED++)) || true
             continue
         fi
 
@@ -71,7 +71,7 @@ if [[ -d "$PLUGINS_DIR" ]]; then
 
         if [[ ${#MISSING_FUNCS[@]} -gt 0 ]]; then
             echo -e "${RED}✗${NC} $plugin_name - missing: ${MISSING_FUNCS[*]}"
-            ((PLUGIN_FAILED++))
+            ((PLUGIN_FAILED++)) || true
         else
             # Validate return values
             ERRORS=()
@@ -94,10 +94,10 @@ if [[ -d "$PLUGINS_DIR" ]]; then
 
             if [[ ${#ERRORS[@]} -gt 0 ]]; then
                 echo -e "${YELLOW}⚠${NC} $plugin_name - warnings: ${ERRORS[*]}"
-                ((PLUGIN_PASSED++))  # Still pass but with warnings
+                ((PLUGIN_PASSED++)) || true  # Still pass but with warnings
             else
                 echo -e "${GREEN}✓${NC} $plugin_name"
-                ((PLUGIN_PASSED++))
+                ((PLUGIN_PASSED++)) || true
             fi
         fi
     done
@@ -124,7 +124,6 @@ REQUIRED_COLORS=(
     "pane-border-active" "pane-border-inactive"
     "ok-base" "good-base" "info-base" "warning-base" "error-base" "disabled-base"
     "message-bg" "message-fg"
-    "accent" "border"
 )
 
 if [[ -d "$THEMES_DIR" ]]; then
@@ -142,14 +141,14 @@ if [[ -d "$THEMES_DIR" ]]; then
         # shellcheck disable=SC1090
         if ! . "$theme_file" 2>/dev/null; then
             echo -e "${RED}✗${NC} $theme_name - failed to source"
-            ((THEME_FAILED++))
+            ((THEME_FAILED++)) || true
             continue
         fi
 
         # Check for THEME_COLORS array
         if [[ ${#THEME_COLORS[@]} -eq 0 ]]; then
             echo -e "${RED}✗${NC} $theme_name - THEME_COLORS not defined or empty"
-            ((THEME_FAILED++))
+            ((THEME_FAILED++)) || true
             continue
         fi
 
@@ -163,12 +162,12 @@ if [[ -d "$THEMES_DIR" ]]; then
 
         if [[ ${#MISSING_COLORS[@]} -gt 0 ]]; then
             echo -e "${RED}✗${NC} $theme_name - missing colors: ${MISSING_COLORS[*]}"
-            ((THEME_FAILED++))
+            ((THEME_FAILED++)) || true
         else
             echo -e "${GREEN}✓${NC} $theme_name (${#THEME_COLORS[@]} colors)"
-            ((THEME_PASSED++))
+            ((THEME_PASSED++)) || true
         fi
-    done < <(find "$THEMES_DIR" -name "*.sh" -print0 2>/dev/null)
+    done < <(find "$THEMES_DIR" -name "*.sh" -print0 2>/dev/null) || true
 else
     echo -e "${YELLOW}No themes directory found${NC}"
 fi

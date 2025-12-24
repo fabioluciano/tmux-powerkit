@@ -36,16 +36,19 @@ _load_core_modules() {
     # 6. Keybindings (depends on logger, options, defaults)
     . "${POWERKIT_ROOT}/src/core/keybindings.sh"
 
-    # 7. Color Generator (depends on logger)
+    # 7. Registry (constants and enums - depends on guard only)
+    . "${POWERKIT_ROOT}/src/core/registry.sh"
+
+    # 8. Color Generator (depends on logger)
     . "${POWERKIT_ROOT}/src/core/color_generator.sh"
 
-    # 8. Color Palette (depends on color_generator)
+    # 9. Color Palette (depends on color_generator)
     . "${POWERKIT_ROOT}/src/core/color_palette.sh"
 
-    # 9. Theme Loader (depends on color_generator, options, cache)
+    # 10. Theme Loader (depends on color_generator, options, cache)
     . "${POWERKIT_ROOT}/src/core/theme_loader.sh"
 
-    # 10. Lifecycle (depends on all above)
+    # 11. Lifecycle (depends on all above)
     . "${POWERKIT_ROOT}/src/core/lifecycle.sh"
 
     log_debug "bootstrap" "Core modules loaded"
@@ -160,7 +163,8 @@ _setup_plugin_keybindings() {
         plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"
 
         [[ -z "$plugin_name" ]] && continue
-        [[ "$plugin_name" == external* ]] && continue
+        # Skip external plugins (format: external("..."))
+        [[ "$plugin_name" == external\(* ]] && continue
 
         plugin_file="${POWERKIT_ROOT}/src/plugins/${plugin_name}.sh"
         [[ ! -f "$plugin_file" ]] && continue

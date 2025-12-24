@@ -238,8 +238,7 @@ validate_theme() {
 
     # Check syntax
     local syntax_errors
-    syntax_errors=$(bash -n "$theme_file" 2>&1)
-    if [[ $? -ne 0 ]]; then
+    if ! syntax_errors=$(bash -n "$theme_file" 2>&1); then
         echo "ERROR: Theme has syntax errors: $theme_file"
         echo "$syntax_errors"
         return 1
@@ -296,21 +295,6 @@ validate_theme() {
             [[ -n "$entry" ]] && errors+=("Invalid color format: $entry (expected #RRGGBB, NONE, or default)")
         done <<< "$invalid_colors"
     fi
-
-    # Check for optional colors and suggest
-    local optional_present
-    optional_present=$(
-        (
-            # shellcheck disable=SC1090
-            . "$theme_file" 2>/dev/null
-
-            if declare -p THEME_COLORS &>/dev/null; then
-                for color in "${THEME_OPTIONAL_COLORS[@]}"; do
-                    [[ -n "${THEME_COLORS[$color]:-}" ]] && echo "$color"
-                done
-            fi
-        )
-    )
 
     # Count defined colors for info
     local color_count
