@@ -1,29 +1,44 @@
 #!/usr/bin/env bash
-# Helper: keybindings_viewer - Display all tmux keybindings grouped by plugin
+# =============================================================================
+# Helper: keybindings_viewer
+# Description: Display all tmux keybindings grouped by plugin
+# Type: popup
+# =============================================================================
 
-set -eu
+# Source helper base (handles all initialization)
+. "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
+helper_init --no-strict
 
-CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$CURRENT_DIR/.."
+# =============================================================================
+# Metadata
+# =============================================================================
 
-# Source common dependencies
-# shellcheck source=src/helper_bootstrap.sh
-. "$ROOT_DIR/helper_bootstrap.sh"
+helper_get_metadata() {
+    helper_metadata_set "id" "keybindings_viewer"
+    helper_metadata_set "name" "Keybindings Viewer"
+    helper_metadata_set "description" "View all tmux keybindings grouped by plugin"
+    helper_metadata_set "type" "popup"
+    helper_metadata_set "version" "2.0.0"
+}
+
+helper_get_actions() {
+    echo "view [filter] - View keybindings (default)"
+}
 
 # =============================================================================
 # Constants
 # =============================================================================
 
-# ANSI colors (from defaults.sh via helper_bootstrap)
-BOLD="${POWERKIT_ANSI_BOLD:-\033[1m}"
-DIM="${POWERKIT_ANSI_DIM:-\033[2m}"
-CYAN="${POWERKIT_ANSI_CYAN:-\033[36m}"
-GREEN="${POWERKIT_ANSI_GREEN:-\033[32m}"
-YELLOW="${POWERKIT_ANSI_YELLOW:-\033[33m}"
-MAGENTA="${POWERKIT_ANSI_MAGENTA:-\033[35m}"
-BLUE="${POWERKIT_ANSI_BLUE:-\033[34m}"
-RED="${POWERKIT_ANSI_RED:-\033[31m}"
-RESET="${POWERKIT_ANSI_RESET:-\033[0m}"
+# ANSI colors from defaults.sh
+BOLD="${POWERKIT_ANSI_BOLD}"
+DIM="${POWERKIT_ANSI_DIM}"
+CYAN="${POWERKIT_ANSI_CYAN}"
+GREEN="${POWERKIT_ANSI_GREEN}"
+YELLOW="${POWERKIT_ANSI_YELLOW}"
+MAGENTA="${POWERKIT_ANSI_MAGENTA}"
+BLUE="${POWERKIT_ANSI_BLUE}"
+RED="${POWERKIT_ANSI_RED}"
+RESET="${POWERKIT_ANSI_RESET}"
 
 TPM_PLUGINS_DIR="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.tmux/plugins}"
 [[ ! -d "$TPM_PLUGINS_DIR" && -d "$HOME/.config/tmux/plugins" ]] && TPM_PLUGINS_DIR="$HOME/.config/tmux/plugins"
@@ -133,7 +148,8 @@ print_root_bindings() {
 }
 
 print_conflicts() {
-    local log_file="${POWERKIT_CACHE_DIR}/keybinding_conflicts.log"
+    local log_file
+    log_file="$(dirname "$(get_cache_dir)")/keybinding_conflicts.log"
     [[ ! -f "$log_file" ]] && return
 
     print_section "⚠️  Keybinding Conflicts Detected" "$RED"
@@ -154,10 +170,12 @@ print_conflicts() {
 }
 
 # =============================================================================
-# Main
+# Main Display
 # =============================================================================
 
-main() {
+_display_keybindings() {
+    local filter="${1:-}"
+
     # Pre-load all tmux options in one call for performance
     _batch_load_tmux_options 2>/dev/null || true
 
@@ -168,4 +186,24 @@ main() {
     echo -e "\n${DIM}Press 'q' to exit, '/' to search${RESET}\n"
 }
 
-main | less -R
+# =============================================================================
+# Main Entry Point
+# =============================================================================
+
+helper_main() {
+    local action="${1:-view}"
+
+    case "$action" in
+        view|"")
+            shift 2>/dev/null || true
+            _display_keybindings "${1:-}" | helper_pager
+            ;;
+        *)
+            # Treat unknown action as filter
+            _display_keybindings "$action" | helper_pager
+            ;;
+    esac
+}
+
+# Dispatch to handler
+helper_dispatch "$@"

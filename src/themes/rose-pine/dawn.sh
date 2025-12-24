@@ -1,64 +1,40 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: Rose Pine
+# Variant: Dawn
+# Description: Light variant with natural pine vibes
+# Source: https://rosepinetheme.com/
+# =============================================================================
 
-# Rosé Pine Dawn Theme - PowerKit Semantic Color Mapping
-# Based on https://rosepinetheme.com/
-# Light variant - All natural pine, faux fur and a bit of soho vibes
+declare -gA THEME_COLORS=(
+    # Status Bar
+    [statusbar-bg]="#f2e9e1"
+    [statusbar-fg]="#575279"
 
-declare -A THEME_COLORS=(
-    # Core System Colors
-    [transparent]="NONE"
-    [none]="NONE"
+    # Session
+    [session-bg]="#56949f"
+    [session-fg]="#faf4ed"
+    [session-prefix-bg]="#ea9d34"
+    [session-copy-bg]="#286983"
 
-    # Background Colors
-    [background]="#faf4ed"           # Base
-    [background-alt]="#fffaf3"       # Surface
-    [surface]="#f2e9e1"              # Overlay
-    [overlay]="#dfdad9"              # Muted
+    # Windows (base colors - variants auto-generated)
+    [window-active-base]="#907aa9"
+    [window-inactive-base]="#dfdad9"
 
-    # Text Colors
-    [text]="#575279"                 # Text
-    [text-muted]="#797593"           # Subtle
-    [text-disabled]="#9893a5"        # Muted
+    # Pane Borders
+    [pane-border-active]="#907aa9"
+    [pane-border-inactive]="#dfdad9"
 
-    # Border Colors
-    [border]="#dfdad9"               # Muted (inactive window content bg)
-    [border-subtle]="#cecacd"        # Highlight Med (inactive window index bg - visible on surface)
-    [border-strong]="#9893a5"        # Muted text - Strong border
+    # Health States (base colors - variants auto-generated)
+    [ok-base]="#797593"
+    [good-base]="#56949f"
+    [info-base]="#286983"
+    [warning-base]="#ea9d34"
+    [error-base]="#b4637a"
+    [disabled-base]="#9893a5"
 
-    # Semantic Colors (PowerKit Standard)
-    [accent]="#907aa9"               # Iris - Main accent
-    [primary]="#d7827e"              # Rose - Primary
-    [secondary]="#797593"            # Subtle - Secondary (dark for white text)
-    [secondary-strong]="#575279"     # Text - Strong secondary (darker)
-    [secondary-subtle]="#928ea8"     # Subtle secondary (18.9% lighter)
+    # Messages
+    [message-bg]="#f2e9e1"
+    [message-fg]="#575279"
 
-    # Status Colors (PowerKit Standard)
-    [success]="#56949f"              # Foam
-    [warning]="#ea9d34"              # Gold (original rose-pine)
-    [error]="#b4637a"                # Love
-    [info]="#286983"                 # Pine
-
-    # Interactive States
-    [hover]="#fffaf3"                # Surface - Hover state
-    [active]="#6e6a86"               # Highlight High - Active state (icon bg)
-    [focus]="#907aa9"                # Iris - Focus state
-    [disabled]="#9893a5"             # Muted - Disabled state
-    [disabled-subtle]="#aea9b8"      # Subtle disabled (18.9% lighter)
-    [disabled-strong]="#55525c"      # Strong disabled (44.2% darker)
-
-    # Additional Variants
-    [success-subtle]="#75a8b1"       # Subtle success (18.9% lighter)
-    [success-strong]="#2f5258"       # Strong success (44.2% darker)
-    [warning-strong]="#835d2a"       # Strong warning (44.2% darker)
-    [error-strong]="#643744"         # Strong error (44.2% darker)
-    [info-subtle]="#75a8b1"          # Subtle info (18.9% lighter)
-    [info-strong]="#2f5258"          # Strong info (44.2% darker)
-    [error-subtle]="#c28093"         # Subtle error (18.9% lighter)
-    [warning-subtle]="#efb86e"       # Subtle warning (18.9% lighter)
-
-    # System Colors
-    [white]="#ffffff"                # Base (lightest in light theme)
-    [black]="#575279"                # Text (darkest in light theme)
 )
-
-export THEME_COLORS

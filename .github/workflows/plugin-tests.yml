@@ -38,26 +38,25 @@ jobs:
         run: |
           brew install tmux bash shellcheck
 
-      - name: Run plugin test suite
+      - name: Run full test suite
         shell: bash
         run: |
-          chmod +x tests/test_plugins.sh
-          ./tests/test_plugins.sh
+          chmod +x tests/run_all_tests.sh
+          ./tests/run_all_tests.sh
 
-      - name: Verify theme syntax
+      - name: Validate plugin contracts
+        shell: bash
+        run: |
+          export POWERKIT_ROOT="$(pwd)"
+          chmod +x tests/test_contracts.sh
+          ./tests/test_contracts.sh
+
+      - name: Verify all scripts syntax
         shell: bash
         run: |
           set -e
-          for theme in src/themes/**/*.sh; do
-            echo "Testing theme syntax: $theme"
-            bash -n "$theme"
-          done
-
-      - name: Verify helper scripts syntax
-        shell: bash
-        run: |
-          set -e
-          for helper in src/helpers/*.sh; do
-            echo "Testing helper syntax: $helper"
-            bash -n "$helper"
+          for f in src/**/*.sh bin/* tests/*.sh; do
+            [[ -f "$f" ]] || continue
+            echo "Testing syntax: $f"
+            bash -n "$f"
           done

@@ -1,64 +1,40 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: Kanagawa
+# Variant: Lotus
+# Description: Light theme inspired by Katsushika Hokusai
+# Source: https://github.com/rebelot/kanagawa.nvim
+# =============================================================================
 
-# Kanagawa Lotus Theme - PowerKit Semantic Color Mapping
-# Based on https://github.com/rebelot/kanagawa.nvim
-# Lotus variant - Light theme
+declare -gA THEME_COLORS=(
+    # Status Bar
+    [statusbar-bg]="#e4d794"
+    [statusbar-fg]="#545464"
 
-declare -A THEME_COLORS=(
-  # Core System Colors
-  [transparent]="NONE"
-  [none]="NONE"
+    # Session
+    [session-bg]="#6f894e"
+    [session-fg]="#f2ecbc"
+    [session-prefix-bg]="#77713f"
+    [session-copy-bg]="#4e8ca2"
 
-  # Background Colors (Light theme)
-  [background]="#f2ecbc"           # lotusWhite0 - main background
-  [background-alt]="#e7dba0"       # lotusWhite1 - alternative background
-  [surface]="#e4d794"              # lotusWhite2 - surface/status bar
-  [overlay]="#d5cea3"              # lotusWhite3 - overlay/modal
+    # Windows (base colors - variants auto-generated)
+    [window-active-base]="#b35b79"
+    [window-inactive-base]="#c9cbd1"
 
-  # Text Colors (Dark for light theme)
-  [text]="#545464"                 # lotusInk1 - primary text
-  [text-muted]="#716e61"           # lotusGray - muted text
-  [text-disabled]="#8a8980"        # lotusGray2 - disabled text
+    # Pane Borders
+    [pane-border-active]="#b35b79"
+    [pane-border-inactive]="#c9cbd1"
 
-  # Border Colors
-  [border]="#c9cbd1"               # lotusWhite4
-  [border-subtle]="#9e9b93"        # lotusGray3 - visible on surface
-  [border-strong]="#716e61"        # lotusGray
+    # Health States (base colors - variants auto-generated)
+    [ok-base]="#716e61"
+    [good-base]="#6f894e"
+    [info-base]="#4e8ca2"
+    [warning-base]="#77713f"
+    [error-base]="#c84053"
+    [disabled-base]="#8a8980"
 
-  # Semantic Colors (PowerKit Standard)
-  [accent]="#b35b79"               # lotusPink - main accent
-  [primary]="#4d699b"              # lotusBlue - primary
-  [secondary]="#716e61"            # lotusGray - secondary (dark for white text)
-  [secondary-strong]="#545464"     # lotusInk1 - strong secondary
-  [secondary-subtle]="#898679"     # Subtle secondary (18.9% lighter)
+    # Messages
+    [message-bg]="#e4d794"
+    [message-fg]="#545464"
 
-  # Status Colors
-  [success]="#6f894e"              # lotusGreen
-  [warning]="#77713f"              # lotusYellow (olive)
-  [error]="#c84053"                # lotusRed
-  [info]="#4e8ca2"                 # lotusTeal
-
-  # Interactive States
-  [hover]="#e7dba0"                # lotusWhite1
-  [active]="#8a8980"               # lotusGray2 - active (lighter for icon bg)
-  [focus]="#4d699b"                # lotusBlue
-  [disabled]="#8a8980"             # lotusGray2
-  [disabled-subtle]="#a2a098"      # Subtle disabled (18.9% lighter)
-  [disabled-strong]="#4d4c48"      # Strong disabled (44.2% darker)
-
-  # Additional Variants
-  [success-subtle]="#6e915f"       # lotusGreen2
-  [success-strong]="#4a5e36"       # darker green
-  [warning-strong]="#4f4a2b"       # darker yellow
-  [error-strong]="#a3354a"         # darker red
-  [info-subtle]="#597b8d"          # lotusAqua2
-  [info-strong]="#3a6174"          # darker teal
-  [error-subtle]="#d9a594"         # lotusOrange2
-  [warning-subtle]="#de9a00"       # lotusOrange (brighter)
-
-  # System Colors
-  [white]="#f2ecbc"                # lotusWhite0
-  [black]="#545464"                # lotusInk1
 )
-
-export THEME_COLORS

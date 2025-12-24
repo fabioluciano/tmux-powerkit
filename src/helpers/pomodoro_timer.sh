@@ -1,21 +1,39 @@
 #!/usr/bin/env bash
-# Helper: pomodoro_timer - Pomodoro timer CLI operations
-# Usage: pomodoro_timer.sh {toggle|start|stop|skip}
+# =============================================================================
+# Helper: pomodoro_timer
+# Description: Pomodoro timer CLI operations
+# Type: command
+# =============================================================================
 
-set -euo pipefail
+# Source helper base (handles all initialization)
+. "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
+helper_init
 
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$_SCRIPT_DIR/.."
+# =============================================================================
+# Metadata
+# =============================================================================
 
-# Source common dependencies
-# shellcheck source=src/helper_bootstrap.sh
-. "$ROOT_DIR/helper_bootstrap.sh"
+helper_get_metadata() {
+    helper_metadata_set "id" "pomodoro_timer"
+    helper_metadata_set "name" "Pomodoro Timer"
+    helper_metadata_set "description" "Control the Pomodoro timer"
+    helper_metadata_set "type" "command"
+    helper_metadata_set "version" "2.0.0"
+}
+
+helper_get_actions() {
+    echo "toggle - Start if idle, stop if running"
+    echo "start  - Start a work session"
+    echo "stop   - Stop/reset the timer"
+    echo "skip   - Skip to next phase"
+}
 
 # =============================================================================
 # Configuration
 # =============================================================================
 
-POMODORO_STATE_FILE="${POWERKIT_CACHE_DIR}/pomodoro_state"
+_CACHE_BASE_DIR="$(dirname "$(get_cache_dir)")"
+POMODORO_STATE_FILE="${_CACHE_BASE_DIR}/pomodoro_state"
 
 # Defaults from plugin_declare_options() in pomodoro.sh
 _work_duration=$(get_tmux_option "@powerkit_plugin_pomodoro_work_duration" "25")
@@ -28,44 +46,44 @@ _sessions_before_long=$(get_tmux_option "@powerkit_plugin_pomodoro_sessions_befo
 # =============================================================================
 
 # Refresh status bar
-force_status_refresh() {
+_force_status_refresh() {
     tmux refresh-client -S 2>/dev/null || true
 }
 
 # Get current state: idle|work|short_break|long_break
-get_state() {
+_get_state() {
     [[ -f "$POMODORO_STATE_FILE" ]] && head -1 "$POMODORO_STATE_FILE" || echo "idle"
 }
 
 # Get start timestamp
-get_start_time() {
+_get_start_time() {
     [[ -f "$POMODORO_STATE_FILE" ]] && sed -n '2p' "$POMODORO_STATE_FILE" || echo "0"
 }
 
 # Get completed sessions count
-get_sessions() {
+_get_sessions() {
     [[ -f "$POMODORO_STATE_FILE" ]] && sed -n '3p' "$POMODORO_STATE_FILE" || echo "0"
 }
 
 # Save state
-save_state() {
+_save_state() {
     local state="$1"
     local start_time="${2:-$(date +%s)}"
-    local sessions="${3:-$(get_sessions)}"
+    local sessions="${3:-$(_get_sessions)}"
     printf '%s\n%s\n%s\n' "$state" "$start_time" "$sessions" > "$POMODORO_STATE_FILE"
 }
 
 # Start work session
-start_work() {
-    save_state "work" "$(date +%s)" "$(get_sessions)"
-    toast " Work session started" "simple"
-    force_status_refresh
+_start_work() {
+    _save_state "work" "$(date +%s)" "$(_get_sessions)"
+    helper_toast " Work session started"
+    _force_status_refresh
 }
 
 # Start break
-start_break() {
+_start_break() {
     local sessions
-    sessions=$(get_sessions)
+    sessions=$(_get_sessions)
     local break_type="short_break"
 
     # Long break after configured sessions
@@ -73,63 +91,75 @@ start_break() {
         break_type="long_break"
     fi
 
-    save_state "$break_type" "$(date +%s)" "$sessions"
-    force_status_refresh
+    _save_state "$break_type" "$(date +%s)" "$sessions"
+    _force_status_refresh
 }
 
 # Complete work session
-complete_work() {
+_complete_work() {
     local sessions
-    sessions=$(get_sessions)
+    sessions=$(_get_sessions)
     sessions=$((sessions + 1))
-    save_state "idle" "0" "$sessions"
-    start_break
+    _save_state "idle" "0" "$sessions"
+    _start_break
 }
 
 # Stop/reset timer
-stop_timer() {
+_stop_timer() {
     rm -f "$POMODORO_STATE_FILE"
-    toast " Timer stopped" "simple"
-    force_status_refresh
+    helper_toast " Timer stopped"
+    _force_status_refresh
 }
 
 # Toggle timer (start if idle, stop if running)
-toggle_timer() {
+_toggle_timer() {
     local state
-    state=$(get_state)
+    state=$(_get_state)
     case "$state" in
-        idle) start_work ;;
-        work|short_break|long_break) stop_timer ;;
+        idle) _start_work ;;
+        work|short_break|long_break) _stop_timer ;;
     esac
 }
 
 # Skip to next phase
-skip_phase() {
+_skip_phase() {
     local state
-    state=$(get_state)
+    state=$(_get_state)
     case "$state" in
         work)
-            complete_work
-            toast " Skipped to break" "simple"
+            _complete_work
+            helper_toast " Skipped to break"
             ;;
         short_break|long_break)
-            save_state "idle" "0" "$(get_sessions)"
-            start_work
+            _save_state "idle" "0" "$(_get_sessions)"
+            _start_work
             ;;
         idle)
-            toast " No active session" "simple"
+            helper_toast " No active session"
             ;;
     esac
 }
 
 # =============================================================================
-# Main
+# Main Entry Point
 # =============================================================================
 
-case "${1:-}" in
-    toggle) toggle_timer ;;
-    start)  start_work ;;
-    stop)   stop_timer ;;
-    skip)   skip_phase ;;
-    *)      echo "Usage: $0 {toggle|start|stop|skip}"; exit 1 ;;
-esac
+helper_main() {
+    local action="${1:-}"
+
+    case "$action" in
+        toggle) _toggle_timer ;;
+        start)  _start_work ;;
+        stop)   _stop_timer ;;
+        skip)   _skip_phase ;;
+        "")     _toggle_timer ;;  # Default action
+        *)
+            echo "Unknown action: $action" >&2
+            echo "Use --help for usage information" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Dispatch to handler
+helper_dispatch "$@"

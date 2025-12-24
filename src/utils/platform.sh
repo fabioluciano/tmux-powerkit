@@ -1,0 +1,218 @@
+#!/usr/bin/env bash
+# =============================================================================
+# PowerKit Utils: Platform
+# Description: OS and platform detection utilities
+# =============================================================================
+
+# Source guard
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+. "${POWERKIT_ROOT}/src/core/guard.sh"
+source_guard "utils_platform" && return 0
+
+# =============================================================================
+# Cached Values
+# =============================================================================
+
+declare -g _CACHED_OS=""
+declare -g _CACHED_DISTRO=""
+
+# =============================================================================
+# OS Detection
+# =============================================================================
+
+# Get OS name (cached)
+# Usage: get_os
+# Returns: darwin, linux, freebsd, etc.
+get_os() {
+    if [[ -z "$_CACHED_OS" ]]; then
+        _CACHED_OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+    fi
+    printf '%s' "$_CACHED_OS"
+}
+
+# Check if running on macOS
+# Usage: is_macos && echo "macOS"
+is_macos() {
+    [[ "$(get_os)" == "darwin" ]]
+}
+
+# Check if running on Linux
+# Usage: is_linux && echo "Linux"
+is_linux() {
+    [[ "$(get_os)" == "linux" ]]
+}
+
+# Check if running on FreeBSD
+# Usage: is_freebsd && echo "FreeBSD"
+is_freebsd() {
+    [[ "$(get_os)" == "freebsd" ]]
+}
+
+# Check if running on WSL (Windows Subsystem for Linux)
+# Usage: is_wsl && echo "WSL"
+is_wsl() {
+    is_linux && [[ -f /proc/version ]] && grep -qi microsoft /proc/version 2>/dev/null
+}
+
+# =============================================================================
+# Linux Distribution Detection
+# =============================================================================
+
+# Get Linux distribution name (cached)
+# Usage: get_distro
+# Returns: ubuntu, debian, fedora, arch, etc.
+get_distro() {
+    if [[ -n "$_CACHED_DISTRO" ]]; then
+        printf '%s' "$_CACHED_DISTRO"
+        return
+    fi
+
+    if ! is_linux; then
+        _CACHED_DISTRO="none"
+        printf '%s' "$_CACHED_DISTRO"
+        return
+    fi
+
+    # Try /etc/os-release first (most reliable)
+    if [[ -f /etc/os-release ]]; then
+        _CACHED_DISTRO=$(. /etc/os-release && echo "${ID:-unknown}")
+    # Try lsb_release
+    elif command -v lsb_release &>/dev/null; then
+        _CACHED_DISTRO=$(lsb_release -is 2>/dev/null | tr '[:upper:]' '[:lower:]')
+    # Fallback to checking specific files
+    elif [[ -f /etc/debian_version ]]; then
+        _CACHED_DISTRO="debian"
+    elif [[ -f /etc/fedora-release ]]; then
+        _CACHED_DISTRO="fedora"
+    elif [[ -f /etc/arch-release ]]; then
+        _CACHED_DISTRO="arch"
+    else
+        _CACHED_DISTRO="unknown"
+    fi
+
+    printf '%s' "$_CACHED_DISTRO"
+}
+
+# Distribution family checks
+is_debian_based() {
+    local distro
+    distro=$(get_distro)
+    [[ "$distro" == "debian" || "$distro" == "ubuntu" || "$distro" == "linuxmint" || "$distro" == "pop" ]]
+}
+
+is_fedora_based() {
+    local distro
+    distro=$(get_distro)
+    [[ "$distro" == "fedora" || "$distro" == "centos" || "$distro" == "rhel" || "$distro" == "rocky" || "$distro" == "alma" ]]
+}
+
+is_arch_based() {
+    local distro
+    distro=$(get_distro)
+    [[ "$distro" == "arch" || "$distro" == "manjaro" || "$distro" == "endeavouros" ]]
+}
+
+# =============================================================================
+# Command Availability
+# =============================================================================
+
+# Check if a command exists
+# Usage: has_cmd "git" && echo "git available"
+has_cmd() {
+    command -v "$1" &>/dev/null
+}
+
+# Get path to a command or empty string
+# Usage: cmd_path=$(get_cmd_path "git")
+get_cmd_path() {
+    command -v "$1" 2>/dev/null || true
+}
+
+# =============================================================================
+# Architecture Detection
+# =============================================================================
+
+# Get CPU architecture
+# Usage: get_arch
+# Returns: x86_64, arm64, i386, etc.
+get_arch() {
+    uname -m
+}
+
+# Check if 64-bit
+is_64bit() {
+    local arch
+    arch=$(get_arch)
+    [[ "$arch" == "x86_64" || "$arch" == "amd64" || "$arch" == "arm64" || "$arch" == "aarch64" ]]
+}
+
+# Check if ARM
+is_arm() {
+    local arch
+    arch=$(get_arch)
+    [[ "$arch" == arm* || "$arch" == "aarch64" ]]
+}
+
+# =============================================================================
+# Environment Detection
+# =============================================================================
+
+# Check if running inside tmux
+is_in_tmux() {
+    [[ -n "${TMUX:-}" ]]
+}
+
+# Check if running in a terminal
+is_interactive() {
+    [[ -t 0 ]]
+}
+
+# Get terminal emulator name
+get_terminal() {
+    # Try TERM_PROGRAM first (macOS)
+    if [[ -n "${TERM_PROGRAM:-}" ]]; then
+        printf '%s' "$TERM_PROGRAM"
+        return
+    fi
+
+    # Check common terminal environment variables
+    if [[ -n "${KITTY_WINDOW_ID:-}" ]]; then
+        printf 'kitty'
+    elif [[ -n "${ALACRITTY_SOCKET:-}" ]]; then
+        printf 'alacritty'
+    elif [[ -n "${WEZTERM_PANE:-}" ]]; then
+        printf 'wezterm'
+    elif [[ -n "${GNOME_TERMINAL_SCREEN:-}" ]]; then
+        printf 'gnome-terminal'
+    else
+        printf '%s' "${TERM:-unknown}"
+    fi
+}
+
+# =============================================================================
+# System Information
+# =============================================================================
+
+# Get hostname (short form)
+# Usage: get_hostname
+get_hostname() {
+    hostname -s 2>/dev/null || hostname | cut -d. -f1
+}
+
+# Get hostname (full form with domain)
+# Usage: get_hostname_full
+get_hostname_full() {
+    hostname -f 2>/dev/null || hostname
+}
+
+# Get current user
+# Usage: get_current_user
+get_current_user() {
+    printf '%s' "${USER:-${USERNAME:-unknown}}"
+}
+
+# Get shell name
+# Usage: get_shell
+get_shell() {
+    basename "${SHELL:-/bin/sh}"
+}

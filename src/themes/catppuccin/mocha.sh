@@ -1,64 +1,40 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: Catppuccin
+# Variant: Mocha
+# Description: Soothing pastel theme - darkest variant
+# Source: https://github.com/catppuccin/catppuccin
+# =============================================================================
 
-# Catppuccin Mocha Theme - PowerKit Semantic Color Mapping
-# Based on https://github.com/catppuccin/catppuccin
-# Soothing pastel theme for the high-spirited!
+declare -gA THEME_COLORS=(
+    # Status Bar
+    [statusbar-bg]="#313244"
+    [statusbar-fg]="#cdd6f4"
 
-declare -A THEME_COLORS=(
-    # Core System Colors
-    [transparent]="NONE"
-    [none]="NONE"
+    # Session
+    [session-bg]="#a6e3a1"
+    [session-fg]="#1e1e2e"
+    [session-prefix-bg]="#f9e2af"
+    [session-copy-bg]="#89dceb"
 
-    # Background Colors
-    [background]="#1e1e2e"           # Base
-    [background-alt]="#181825"       # Mantle
-    [surface]="#313244"              # Surface0
-    [overlay]="#45475a"              # Surface1
+    # Windows (base colors - variants auto-generated)
+    [window-active-base]="#cba6f7"
+    [window-inactive-base]="#45475a"
 
-    # Text Colors
-    [text]="#cdd6f4"                 # Text
-    [text-muted]="#a6adc8"           # Subtext0
-    [text-disabled]="#6c7086"        # Overlay1
+    # Pane Borders
+    [pane-border-active]="#cba6f7"
+    [pane-border-inactive]="#45475a"
 
-    # Border Colors
-    [border]="#45475a"               # Surface1
-    [border-subtle]="#313244"        # Surface0
-    [border-strong]="#585b70"        # Surface2
+    # Health States (base colors - variants auto-generated)
+    [ok-base]="#313244"
+    [good-base]="#a6e3a1"
+    [info-base]="#89dceb"
+    [warning-base]="#f9e2af"
+    [error-base]="#f38ba8"
+    [disabled-base]="#6c7086"
 
-    # Semantic Colors (PowerKit Standard)
-    [accent]="#cba6f7"               # Mauve - Main accent
-    [primary]="#89b4fa"              # Blue - Primary
-    [secondary]="#313244"            # Surface0 - Secondary (plugin content bg)
-    [secondary-strong]="#1e1e2e"     # Base - Strong secondary (darker)
-    [secondary-subtle]="#454759"     # Subtle secondary (18.9% lighter)
+    # Messages
+    [message-bg]="#313244"
+    [message-fg]="#cdd6f4"
 
-    # Status Colors (PowerKit Standard)
-    [success]="#a6e3a1"              # Green
-    [warning]="#f9e2af"              # Yellow - Warning (original catppuccin)
-    [error]="#f38ba8"                # Red
-    [info]="#89dceb"                 # Sky
-
-    # Interactive States
-    [hover]="#313244"                # Surface0 - Hover state
-    [active]="#585b70"               # Surface2 - Active state (icon bg, lighter than secondary)
-    [focus]="#b4befe"                # Lavender - Focus state
-    [disabled]="#6c7086"             # Overlay1 - Disabled state
-    [disabled-subtle]="#84879c"      # Subtle disabled (18.9% lighter)
-    [disabled-strong]="#3c3f4b"      # Strong disabled (44.2% darker)
-
-    # Additional Variants
-    [success-subtle]="#b6e8b2"       # Subtle success (18.9% lighter)
-    [success-strong]="#5c7e59"       # Strong success (44.2% darker)
-    [warning-strong]="#8b7e61"       # Strong warning (44.2% darker)
-    [error-strong]="#874d5d"         # Strong error (44.2% darker)
-    [info-subtle]="#9fe2ee"          # Subtle info (18.9% lighter)
-    [info-strong]="#4c7a83"          # Strong info (44.2% darker)
-    [error-subtle]="#f5a0b8"         # Subtle error (18.9% lighter)
-    [warning-subtle]="#fae7c0"       # Subtle warning (18.9% lighter)
-
-    # System Colors
-    [white]="#ffffff"                # Text
-    [black]="#11111b"                # Crust
 )
-
-export THEME_COLORS

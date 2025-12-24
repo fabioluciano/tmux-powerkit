@@ -1,15 +1,29 @@
 #!/usr/bin/env bash
-# Helper: jira_issue_selector - Interactive Jira issue browser
-# Usage: jira_issue_selector.sh
+# =============================================================================
+# Helper: jira_issue_selector
+# Description: Interactive Jira issue browser with fzf/gum
+# Type: popup
+# =============================================================================
 
-set -euo pipefail
+# Source helper base (handles all initialization)
+. "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
+helper_init
 
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$_SCRIPT_DIR/.."
+# =============================================================================
+# Metadata
+# =============================================================================
 
-# Source common dependencies
-# shellcheck source=src/helper_bootstrap.sh
-. "$ROOT_DIR/helper_bootstrap.sh"
+helper_get_metadata() {
+    helper_metadata_set "id" "jira_issue_selector"
+    helper_metadata_set "name" "Jira Issue Selector"
+    helper_metadata_set "description" "Browse and open Jira issues"
+    helper_metadata_set "type" "popup"
+    helper_metadata_set "version" "2.0.0"
+}
+
+helper_get_actions() {
+    echo "browse - Browse issues (default)"
+}
 
 # =============================================================================
 # Configuration
@@ -254,11 +268,11 @@ open_issue() {
     local key="$1"
     local url="${_url}/browse/${key}"
 
-    if command -v open &>/dev/null; then
+    if has_cmd "open"; then
         open "$url"
-    elif command -v xdg-open &>/dev/null; then
+    elif has_cmd "xdg-open"; then
         xdg-open "$url"
-    elif command -v wslview &>/dev/null; then
+    elif has_cmd "wslview"; then
         wslview "$url"
     else
         echo "Cannot open browser. URL: $url"
@@ -285,11 +299,11 @@ Required: @powerkit_plugin_jira_url, @powerkit_plugin_jira_email, @powerkit_plug
     fi
 
     # Check dependencies
-    if ! command -v fzf &>/dev/null; then
+    if ! has_cmd "fzf"; then
         show_error_and_wait "Error: fzf is required for interactive issue selection"
     fi
 
-    if ! command -v jq &>/dev/null; then
+    if ! has_cmd "jq"; then
         show_error_and_wait "Error: jq is required for JSON parsing"
     fi
 
@@ -392,9 +406,26 @@ Required: @powerkit_plugin_jira_url, @powerkit_plugin_jira_email, @powerkit_plug
 
         if [[ -n "$key" ]]; then
             open_issue "$key"
-            toast "Opened $key in browser" "simple"
+            helper_toast "Opened $key in browser" "simple"
         fi
     fi
 }
 
-main "$@"
+# =============================================================================
+# Main Entry Point
+# =============================================================================
+
+helper_main() {
+    local action="${1:-browse}"
+
+    case "$action" in
+        browse|"") main ;;
+        *)
+            echo "Unknown action: $action" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Dispatch to handler
+helper_dispatch "$@"

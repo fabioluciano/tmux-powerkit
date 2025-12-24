@@ -24,8 +24,14 @@ jobs:
           shellcheck_options: "--format=gcc --severity=error"
           check_together: "yes"
           ignore_paths: wiki
-          # Inclui temas e scripts refatorados
+          # PowerKit v2 structure
           paths: |
-            src/plugin/*.sh
+            src/core/*.sh
+            src/utils/*.sh
+            src/contract/*.sh
+            src/renderer/*.sh
+            src/plugins/*.sh
+            src/helpers/*.sh
             src/themes/**/*.sh
-            src/*.sh
+            bin/*
+            tests/*.sh

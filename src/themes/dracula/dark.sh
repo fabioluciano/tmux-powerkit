@@ -1,64 +1,40 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: Dracula
+# Variant: Dark
+# Description: A dark theme for vampires
+# Source: https://draculatheme.com/
+# =============================================================================
 
-# Dracula Theme - PowerKit Semantic Color Mapping
-# Based on https://draculatheme.com/
-# A dark theme for vampires
+declare -gA THEME_COLORS=(
+    # Status Bar
+    [statusbar-bg]="#44475a"
+    [statusbar-fg]="#f8f8f2"
 
-declare -A THEME_COLORS=(
-    # Core System Colors
-    [transparent]="NONE"
-    [none]="NONE"
+    # Session
+    [session-bg]="#50fa7b"
+    [session-fg]="#282a36"
+    [session-prefix-bg]="#ffb86c"
+    [session-copy-bg]="#8be9fd"
 
-    # Background Colors
-    [background]="#282a36"           # Background
-    [background-alt]="#21222c"       # Darker background
-    [surface]="#44475a"              # Current Line
-    [overlay]="#6272a4"              # Comment (used for overlays)
+    # Windows (base colors - variants auto-generated)
+    [window-active-base]="#bd93f9"
+    [window-inactive-base]="#6272a4"
 
-    # Text Colors
-    [text]="#f8f8f2"                 # Foreground
-    [text-muted]="#6272a4"           # Comment
-    [text-disabled]="#44475a"        # Current Line (dimmed)
+    # Pane Borders
+    [pane-border-active]="#bd93f9"
+    [pane-border-inactive]="#6272a4"
 
-    # Border Colors
-    [border]="#44475a"               # Current Line
-    [border-subtle]="#6272a4"        # Comment
-    [border-strong]="#bd93f9"        # Purple
+    # Health States (base colors - variants auto-generated)
+    [ok-base]="#44475a"
+    [good-base]="#50fa7b"
+    [info-base]="#8be9fd"
+    [warning-base]="#ffb86c"
+    [error-base]="#ff5555"
+    [disabled-base]="#6272a4"
 
-    # Semantic Colors (PowerKit Standard)
-    [accent]="#bd93f9"               # Purple - Main accent
-    [primary]="#ff79c6"              # Pink - Primary
-    [secondary]="#44475a"            # Current Line - Secondary (content bg)
-    [secondary-strong]="#282a36"     # Background - Strong secondary
-    [secondary-subtle]="#585b70"     # Subtle secondary (18.9% lighter)
+    # Messages
+    [message-bg]="#44475a"
+    [message-fg]="#f8f8f2"
 
-    # Status Colors (PowerKit Standard)
-    [success]="#50fa7b"              # Green
-    [warning]="#ffb86c"              # Orange (original dracula)
-    [error]="#ff5555"                # Red
-    [info]="#8be9fd"                 # Cyan
-
-    # Interactive States
-    [hover]="#44475a"                # Current Line
-    [active]="#6272a4"               # Comment - Active (icon bg, lighter than secondary)
-    [focus]="#bd93f9"                # Purple
-    [disabled]="#6272a4"             # Comment
-    [disabled-subtle]="#7a8ab6"      # Subtle disabled (18.9% lighter)
-    [disabled-strong]="#37405c"      # Strong disabled (44.2% darker)
-
-    # Additional Variants
-    [success-subtle]="#71fa93"       # Subtle success (18.9% lighter)
-    [success-strong]="#2c8b44"       # Strong success (44.2% darker)
-    [warning-strong]="#8e6b45"       # Strong warning (44.2% darker)
-    [error-strong]="#8e2f2f"         # Strong error (44.2% darker)
-    [info-subtle]="#a0edfd"          # Subtle info (18.9% lighter)
-    [info-strong]="#4d828d"          # Strong info (44.2% darker)
-    [error-subtle]="#ff7575"         # Subtle error (18.9% lighter)
-    [warning-subtle]="#ffcb95"       # Subtle warning (18.9% lighter)
-
-    # System Colors
-    [white]="#ffffff"                # Foreground
-    [black]="#282a36"                # Background
 )
-
-export THEME_COLORS

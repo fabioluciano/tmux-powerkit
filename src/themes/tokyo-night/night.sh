@@ -1,66 +1,83 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: Tokyo Night - Night Variant
+# Description: Neo-Tokyo inspired dark theme
+# =============================================================================
+# Theme colors use SEMANTIC names that indicate WHERE they are used.
+# Universal colors (transparent, none, white, black) are in color_generator.sh
+#
+# COLOR VARIANT SYSTEM:
+# For colors listed in POWERKIT_COLORS_WITH_VARIANTS, the system auto-generates:
+#   - {color}-lighter: +18.9% brightness (used for index/icon backgrounds)
+#   - {color}-darker:  -44.2% brightness (used for text/contrast)
+# =============================================================================
 
-# Tokyo Night Theme - PowerKit Semantic Color Mapping
-# This file maps Tokyo Night colors to universal PowerKit semantic names
-# that can be used across different themes consistently.
+declare -gA THEME_COLORS=(
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#1a1b26"               # Terminal/main background color
 
-# Populate the global THEME_COLORS array for PowerKit compatibility
-declare -A THEME_COLORS=(
-  # Core System Colors
-  [transparent]="NONE"
-  [none]="NONE"
-  
-  # Background Colors
-  [background]="#1a1b26"           # Main background
-  [background-alt]="#16161e"       # Alternative/darker background
-  [surface]="#292e42"              # Surface/card background
-  [overlay]="#3b4261"              # Overlay/modal background
-  
-  # Text Colors  
-  [text]="#ffffff"                 # Primary text
-  [text-muted]="#565f89"           # Muted/comment text
-  [text-disabled]="#414868"        # Disabled text
-  
-  # Border Colors
-  [border]="#3b4261"               # Default border
-  [border-subtle]="#545c7e"        # Subtle border
-  [border-strong]="#737aa2"        # Strong border
-  
-  # Semantic Colors (PowerKit Standard)
-  [accent]="#bb9af7"               # Main accent color (magenta)
-  [primary]="#9d7cd8"              # Primary brand color (blue)
-  [secondary]="#394b70"            # Secondary color (blue-gray)
-  [secondary-strong]="#222d47"     # Strong secondary (40% darker)
-  [secondary-subtle]="#4a5d82"     # Subtle secondary (18.9% lighter)
-  
-  # Status Colors (PowerKit Standard)
-  [success]="#9ece6a"              # Success state (green)
-  [warning]="#d9b37b"              # Warning state (yellow)
-  [error]="#f7768e"                # Error state (red)
-  [info]="#7dcfff"                 # Informational state (cyan)
-  
-  # Interactive States
-  [hover]="#292e42"                # Hover state
-  [active]="#46608a"               # Active state (10% mais clara que secondary)
-  [focus]="#7aa2f7"                # Focus state
-  [disabled]="#565f89"             # Disabled state
-  [disabled-subtle]="#6b7399"      # Subtle disabled (18.9% lighter)
-  [disabled-strong]="#303550"      # Strong disabled (44.2% darker)
-  
-  # Additional Variants
-  [success-subtle]="#abd88c"       # Subtle success (5% darker que o tom claro anterior)
-  [success-strong]="#5a8431"       # Strong success (15% darker than previous)
-  [warning-strong]="#786344"       # Strong warning (44.2% darker)
-  [error-strong]="#89414f"         # Strong error (44.2% darker)
-  [info-subtle]="#95d8ff"          # Subtle info (18.9% lighter)
-  [info-strong]="#45738e"          # Strong info (44.2% darker)
-  [error-subtle]="#f88fa3"          # Subtle error (18.9% lighter)
-  [warning-subtle]="#e0c193"        # Subtle warning (18.9% lighter)
-  
-  # System Colors
-  [white]="#ffffff"                # Pure white
-  [black]="#000000"                # Pure black
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#292e42"             # Status bar background
+    [statusbar-fg]="#c0caf5"             # Status bar text color
+
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#9ece6a"               # Session normal background
+    [session-fg]="#292e42"               # Session text color
+    [session-prefix-bg]="#e0af68"        # Session prefix mode background
+    [session-copy-bg]="#7dcfff"          # Session copy mode background
+    [session-search-bg]="#9ece6a"        # Session search mode background
+    [session-command-bg]="#bb9af7"       # Session command mode background
+
+    # =========================================================================
+    # WINDOW (active)
+    # Variants auto-generated: -lighter (index bg), -darker (text contrast)
+    # =========================================================================
+    [window-active-base]="#9d7cd8"       # Active window base color
+    [window-active-style]="bold"         # Active window text style (bold, dim, italics, none)
+
+    # =========================================================================
+    # WINDOW (inactive)
+    # Variants auto-generated: -lighter (index bg), -darker (text contrast)
+    # =========================================================================
+    [window-inactive-base]="#3b4261"     # Inactive window base color
+    [window-inactive-style]="none"       # Inactive window text style (bold, dim, italics, none)
+
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"    # Window activity text style (bold, dim, italics, none)
+    [window-bell-style]="bold"           # Window bell text style (bold, dim, italics, none)
+    [window-zoomed-bg]="#7dcfff"         # Window zoomed indicator
+
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#7aa2f7"       # Active pane border
+    [pane-border-inactive]="#3b4261"     # Inactive pane border
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # Variants auto-generated: -lighter (icon bg), -darker (contrast)
+    # =========================================================================
+    [ok-base]="#394b70"                  # OK state base color
+    [good-base]="#9ece6a"                # Good state base color (better than ok)
+    [info-base]="#7dcfff"                # Info state base color
+    [warning-base]="#e0af68"             # Warning state base color
+    [error-base]="#f7768e"               # Error state base color
+    [disabled-base]="#565f89"            # Disabled state base color
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#292e42"               # Message background
+    [message-fg]="#c0caf5"               # Message text color
 )
 
-# Export for PowerKit compatibility
+# Export for PowerKit
 export THEME_COLORS

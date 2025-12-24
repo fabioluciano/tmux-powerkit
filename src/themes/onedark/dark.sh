@@ -1,64 +1,40 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: One Dark
+# Variant: Dark
+# Description: A dark syntax theme inspired by Atom
+# Source: https://atom.io/themes/one-dark-syntax
+# =============================================================================
 
-# One Dark Theme - PowerKit Semantic Color Mapping
-# Based on Atom's One Dark theme
-# A dark syntax theme inspired by Atom
+declare -gA THEME_COLORS=(
+    # Status Bar
+    [statusbar-bg]="#2c323c"
+    [statusbar-fg]="#abb2bf"
 
-declare -A THEME_COLORS=(
-    # Core System Colors
-    [transparent]="NONE"
-    [none]="NONE"
+    # Session
+    [session-bg]="#98c379"
+    [session-fg]="#282c34"
+    [session-prefix-bg]="#d19a66"
+    [session-copy-bg]="#56b6c2"
 
-    # Background Colors
-    [background]="#282c34"           # Main background
-    [background-alt]="#21252b"       # Darker background
-    [surface]="#2c323c"              # Surface/card background
-    [overlay]="#3e4451"              # Overlay/modal background
+    # Windows (base colors - variants auto-generated)
+    [window-active-base]="#61afef"
+    [window-inactive-base]="#3e4451"
 
-    # Text Colors
-    [text]="#abb2bf"                 # Primary text
-    [text-muted]="#5c6370"           # Comment/muted text
-    [text-disabled]="#4b5263"        # Disabled text
+    # Pane Borders
+    [pane-border-active]="#61afef"
+    [pane-border-inactive]="#3e4451"
 
-    # Border Colors
-    [border]="#3e4451"               # Default border
-    [border-subtle]="#2c323c"        # Subtle border
-    [border-strong]="#5c6370"        # Strong border
+    # Health States (base colors - variants auto-generated)
+    [ok-base]="#2c323c"
+    [good-base]="#98c379"
+    [info-base]="#56b6c2"
+    [warning-base]="#d19a66"
+    [error-base]="#e06c75"
+    [disabled-base]="#5c6370"
 
-    # Semantic Colors (PowerKit Standard)
-    [accent]="#61afef"               # Blue - Main accent
-    [primary]="#c678dd"              # Magenta - Primary
-    [secondary]="#2c323c"            # Darker gray - Secondary (plugin content bg)
-    [secondary-strong]="#21252b"     # Darkest - Strong secondary
-    [secondary-subtle]="#3e4551"     # Subtle secondary (18.9% lighter)
+    # Messages
+    [message-bg]="#2c323c"
+    [message-fg]="#abb2bf"
 
-    # Status Colors (PowerKit Standard)
-    [success]="#98c379"              # Green
-    [warning]="#d19a66"              # Orange - Warning (original onedark)
-    [error]="#e06c75"                # Red
-    [info]="#56b6c2"                 # Cyan
-
-    # Interactive States
-    [hover]="#2c323c"                # Hover state
-    [active]="#3e4451"               # Active state (icon bg, lighter than secondary)
-    [focus]="#61afef"                # Focus state
-    [disabled]="#5c6370"             # Disabled state
-    [disabled-subtle]="#747989"      # Subtle disabled (18.9% lighter)
-    [disabled-strong]="#33373e"      # Strong disabled (44.2% darker)
-
-    # Additional Variants
-    [success-subtle]="#abce92"       # Subtle success (18.9% lighter)
-    [success-strong]="#546c43"       # Strong success (44.2% darker)
-    [warning-strong]="#745539"       # Strong warning (44.2% darker)
-    [error-strong]="#7c3c41"         # Strong error (44.2% darker)
-    [info-subtle]="#75c3cd"          # Subtle info (18.9% lighter)
-    [info-strong]="#2f656c"          # Strong info (44.2% darker)
-    [error-subtle]="#e5878f"         # Subtle error (18.9% lighter)
-    [warning-subtle]="#dab083"       # Subtle warning (18.9% lighter)
-
-    # System Colors
-    [white]="#ffffff"                # Pure white
-    [black]="#282c34"                # Background
 )
-
-export THEME_COLORS

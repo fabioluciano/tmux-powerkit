@@ -1,26 +1,48 @@
 #!/usr/bin/env bash
-# Helper: theme_selector - Interactive PowerKit theme selector
+# =============================================================================
+# Helper: theme_selector
+# Description: Interactive PowerKit theme selector using tmux display-menu
+# Type: menu
+# =============================================================================
 
-set -euo pipefail
+# Source helper base (handles all initialization)
+. "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
+helper_init
 
-CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$CURRENT_DIR/.."
-THEMES_DIR="$ROOT_DIR/themes"
-POWERKIT_ENTRY="$ROOT_DIR/../tmux-powerkit.tmux"
-SCRIPT_PATH="$CURRENT_DIR/theme_selector.sh"
+# =============================================================================
+# Metadata
+# =============================================================================
 
-# Source common dependencies
-# shellcheck source=src/helper_bootstrap.sh
-. "$ROOT_DIR/helper_bootstrap.sh"
+helper_get_metadata() {
+    helper_metadata_set "id" "theme_selector"
+    helper_metadata_set "name" "Theme Selector"
+    helper_metadata_set "description" "Select PowerKit theme and variant"
+    helper_metadata_set "type" "menu"
+    helper_metadata_set "version" "2.0.0"
+}
 
+helper_get_actions() {
+    echo "select           - Show theme selection menu (default)"
+    echo "variants <theme> - Show variant selection for a theme"
+    echo "apply <t> <v>    - Apply theme and variant"
+    echo "current          - Show current theme"
+}
+
+# =============================================================================
+# Configuration
+# =============================================================================
+
+THEMES_DIR="${POWERKIT_ROOT}/src/themes"
+POWERKIT_ENTRY="${POWERKIT_ROOT}/tmux-powerkit.tmux"
 THEME_CACHE_KEY="current_theme"
+SCRIPT_PATH="${BASH_SOURCE[0]}"
 
 # =============================================================================
 # Theme Management
 # =============================================================================
 
 # Get current theme (from cache file if exists, otherwise from tmux options)
-get_current_theme() {
+_get_current_theme() {
     local theme variant cached
 
     # First try to read from persistent cache
@@ -37,15 +59,15 @@ get_current_theme() {
 }
 
 # Apply theme (called directly, not via run-shell)
-apply_theme() {
+_apply_theme() {
     local theme="$1"
     local variant="$2"
 
     # Show immediate feedback FIRST (before any heavy processing)
     if [[ "$theme" == "custom" ]]; then
-        toast "󰏘 Applying theme: custom..." "simple"
+        helper_toast " Applying theme: custom..."
     else
-        toast "󰏘 Applying theme: $theme/$variant..." "simple"
+        helper_toast " Applying theme: $theme/$variant..."
     fi
 
     # Update tmux options
@@ -57,7 +79,7 @@ apply_theme() {
         local custom_path
         custom_path=$(get_tmux_option "@powerkit_custom_theme_path" "")
         if [[ -z "$custom_path" ]]; then
-            toast "❌ Custom theme path not set (@powerkit_custom_theme_path)" "error"
+            helper_toast " Custom theme path not set (@powerkit_custom_theme_path)"
             return 1
         fi
         # Don't set variant for custom theme (it's ignored anyway)
@@ -66,12 +88,13 @@ apply_theme() {
     fi
 
     # Save current theme to persistent cache (survives kill-server)
-    # Note: Write directly to cache file (without .cache extension) to match load_powerkit_theme()
-    cache_init
-    printf '%s' "$theme/$variant" > "${CACHE_DIR}/${THEME_CACHE_KEY}"
+    local _cache_base_dir
+    _cache_base_dir="$(dirname "$(get_cache_dir)")"
+    [[ -d "$_cache_base_dir" ]] || mkdir -p "$_cache_base_dir"
+    printf '%s' "$theme/$variant" > "${_cache_base_dir}/${THEME_CACHE_KEY}"
 
     # Clear plugin caches (but not theme cache)
-    find "$POWERKIT_CACHE_DIR" -maxdepth 1 -type f -name "*.cache" ! -name "${THEME_CACHE_KEY}*" -delete 2>/dev/null || true
+    find "$_cache_base_dir" -maxdepth 1 -type f -name "*.cache" ! -name "${THEME_CACHE_KEY}*" -delete 2>/dev/null || true
 
     # Immediate refresh to clear old content
     tmux refresh-client -S
@@ -88,9 +111,9 @@ apply_theme() {
 
 # Get themes structure from cache or filesystem
 # Returns: Multi-line string with format "theme:variant1,variant2,..."
-get_themes_structure() {
+_get_themes_structure() {
     local cache_key="themes_structure"
-    local ttl=86400  # 24 horas (86400 segundos)
+    local ttl=86400  # 24 hours
     local cached
 
     # Try to get from cache
@@ -132,9 +155,9 @@ get_themes_structure() {
 }
 
 # Get variants for a specific theme from cache
-# Usage: parse_theme_variants "catppuccin" "$structure"
+# Usage: _parse_theme_variants "catppuccin" "$structure"
 # Returns: Comma-separated variants (e.g., "frappe,latte,macchiato,mocha")
-parse_theme_variants() {
+_parse_theme_variants() {
     local target_theme="$1"
     local structure="$2"
 
@@ -153,9 +176,9 @@ parse_theme_variants() {
 # =============================================================================
 
 # Select theme (shows themes menu)
-select_theme() {
+_select_theme() {
     local current_theme
-    current_theme=$(get_current_theme)
+    current_theme=$(_get_current_theme)
 
     local -a menu_args=()
 
@@ -166,7 +189,7 @@ select_theme() {
     # Add custom theme option if path is configured
     if [[ -n "$custom_theme_path" ]]; then
         local marker=" "
-        [[ "$current_theme" == "custom/"* ]] && marker="●"
+        [[ "$current_theme" == "custom/"* ]] && marker="*"
         menu_args+=("$marker custom (user-defined)" "" "run-shell \"bash '$SCRIPT_PATH' apply 'custom' 'custom'\"")
         # Add separator
         menu_args+=("" "" "")
@@ -174,7 +197,7 @@ select_theme() {
 
     # Get cached themes structure
     local themes_structure
-    themes_structure=$(get_themes_structure)
+    themes_structure=$(_get_themes_structure)
 
     # Parse cache and build menu
     while IFS=: read -r theme variants_str; do
@@ -187,38 +210,38 @@ select_theme() {
         # If single variant, add direct entry; otherwise, submenu
         if [[ $variant_count -eq 1 ]]; then
             local marker=" "
-            [[ "$theme/${variants[0]}" == "$current_theme" ]] && marker="●"
+            [[ "$theme/${variants[0]}" == "$current_theme" ]] && marker="*"
             menu_args+=("$marker $theme" "" "run-shell \"bash '$SCRIPT_PATH' apply '$theme' '${variants[0]}'\"")
         else
             # Has multiple variants - show with arrow
             local marker=" "
-            [[ "$current_theme" == "$theme/"* ]] && marker="●"
-            menu_args+=("$marker $theme  →" "" "run-shell \"bash '$SCRIPT_PATH' variants '$theme'\"")
+            [[ "$current_theme" == "$theme/"* ]] && marker="*"
+            menu_args+=("$marker $theme  >" "" "run-shell \"bash '$SCRIPT_PATH' variants '$theme'\"")
         fi
     done <<< "$themes_structure"
 
-    tmux display-menu -T "󰏘  Select Theme" -x C -y C "${menu_args[@]}"
+    tmux display-menu -T " Select Theme" -x C -y C "${menu_args[@]}"
 }
 
 # Select variant for a specific theme
-select_variant() {
+_select_variant() {
     local theme="$1"
     local current_theme
-    current_theme=$(get_current_theme)
+    current_theme=$(_get_current_theme)
 
     local -a menu_args=()
 
     # Add back option
-    menu_args+=("← Back" "" "run-shell \"bash '$SCRIPT_PATH' select\"")
+    menu_args+=("< Back" "" "run-shell \"bash '$SCRIPT_PATH' select\"")
     menu_args+=("" "" "")
 
     # Get variants from cache
     local themes_structure variants_str
-    themes_structure=$(get_themes_structure)
-    variants_str=$(parse_theme_variants "$theme" "$themes_structure")
+    themes_structure=$(_get_themes_structure)
+    variants_str=$(_parse_theme_variants "$theme" "$themes_structure")
 
     if [[ -z "$variants_str" ]]; then
-        toast "❌ Theme not found: $theme" "simple"
+        helper_toast " Theme not found: $theme"
         return 1
     fi
 
@@ -227,32 +250,41 @@ select_variant() {
     for variant in "${variants[@]}"; do
         [[ -z "$variant" ]] && continue
         local marker=" "
-        [[ "$theme/$variant" == "$current_theme" ]] && marker="●"
+        [[ "$theme/$variant" == "$current_theme" ]] && marker="*"
         menu_args+=("$marker $variant" "" "run-shell \"bash '$SCRIPT_PATH' apply '$theme' '$variant'\"")
     done
 
-    tmux display-menu -T "󰏘  $theme" -x C -y C "${menu_args[@]}"
+    tmux display-menu -T " $theme" -x C -y C "${menu_args[@]}"
 }
 
 # =============================================================================
-# Main
+# Main Entry Point
 # =============================================================================
 
-case "${1:-select}" in
-    select)
-        select_theme
-        ;;
-    variants)
-        select_variant "${2:-}"
-        ;;
-    apply)
-        apply_theme "${2:-tokyo-night}" "${3:-night}"
-        ;;
-    current)
-        get_current_theme
-        ;;
-    *)
-        echo "Usage: $0 {select|variants <theme>|apply <theme> <variant>|current}"
-        exit 1
-        ;;
-esac
+helper_main() {
+    local action="${1:-select}"
+    shift 2>/dev/null || true
+
+    case "$action" in
+        select|"")
+            _select_theme
+            ;;
+        variants)
+            _select_variant "${1:-}"
+            ;;
+        apply)
+            _apply_theme "${1:-tokyo-night}" "${2:-night}"
+            ;;
+        current)
+            _get_current_theme
+            ;;
+        *)
+            echo "Unknown action: $action" >&2
+            echo "Use --help for usage information" >&2
+            return 1
+            ;;
+    esac
+}
+
+# Dispatch to handler
+helper_dispatch "$@"

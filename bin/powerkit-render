@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# =============================================================================
+# PowerKit Status Right Renderer
+# Description: Entry point for rendering status-right plugins
+# Usage: powerkit-render
+# Called by tmux via #(~/.../bin/powerkit-render)
+# =============================================================================
+
+set -uo pipefail
+
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export POWERKIT_ROOT
+
+. "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+load_powerkit_theme
+cache_reset_cycle
+. "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
+render_plugins

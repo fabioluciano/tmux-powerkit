@@ -1,64 +1,40 @@
 #!/usr/bin/env bash
+# =============================================================================
+# Theme: GitHub
+# Variant: Dark
+# Description: GitHub's Primer design system - Dark Default
+# Source: https://primer.style/design
+# =============================================================================
 
-# GitHub Dark Theme - PowerKit Semantic Color Mapping
-# Based on GitHub's Primer design system
-# Dark Default variant
+declare -gA THEME_COLORS=(
+    # Status Bar
+    [statusbar-bg]="#161b22"
+    [statusbar-fg]="#e6edf3"
 
-declare -A THEME_COLORS=(
-  # Core System Colors
-  [transparent]="NONE"
-  [none]="NONE"
+    # Session
+    [session-bg]="#3fb950"
+    [session-fg]="#0d1117"
+    [session-prefix-bg]="#d29922"
+    [session-copy-bg]="#58a6ff"
 
-  # Background Colors
-  [background]="#0d1117"           # canvas.default - main background
-  [background-alt]="#010409"       # canvas.inset - darker background
-  [surface]="#161b22"              # canvas.subtle - surface/status bar
-  [overlay]="#21262d"              # canvas.overlay - overlay/modal
+    # Windows (base colors - variants auto-generated)
+    [window-active-base]="#a371f7"
+    [window-inactive-base]="#30363d"
 
-  # Text Colors
-  [text]="#e6edf3"                 # fg.default - primary text
-  [text-muted]="#8b949e"           # fg.muted - muted text
-  [text-disabled]="#6e7681"        # fg.subtle - disabled text
+    # Pane Borders
+    [pane-border-active]="#a371f7"
+    [pane-border-inactive]="#30363d"
 
-  # Border Colors
-  [border]="#30363d"               # border.default
-  [border-subtle]="#21262d"        # border.subtle
-  [border-strong]="#8b949e"        # border.muted
+    # Health States (base colors - variants auto-generated)
+    [ok-base]="#30363d"
+    [good-base]="#3fb950"
+    [info-base]="#58a6ff"
+    [warning-base]="#d29922"
+    [error-base]="#f85149"
+    [disabled-base]="#6e7681"
 
-  # Semantic Colors (PowerKit Standard)
-  [accent]="#a371f7"               # purple - main accent
-  [primary]="#58a6ff"              # blue - primary
-  [secondary]="#30363d"            # secondary
-  [secondary-strong]="#21262d"     # strong secondary
-  [secondary-subtle]="#444c54"     # Subtle secondary (18.9% lighter)
+    # Messages
+    [message-bg]="#161b22"
+    [message-fg]="#e6edf3"
 
-  # Status Colors (GitHub's semantic colors)
-  [success]="#3fb950"              # success.fg
-  [warning]="#d29922"              # attention.fg
-  [error]="#f85149"                # danger.fg
-  [info]="#58a6ff"                 # accent.fg
-
-  # Interactive States
-  [hover]="#161b22"                # canvas.subtle
-  [active]="#484f58"               # active (lighter than secondary)
-  [focus]="#58a6ff"                # accent
-  [disabled]="#6e7681"             # fg.subtle
-  [disabled-subtle]="#868e97"      # Subtle disabled (18.9% lighter)
-  [disabled-strong]="#3d4248"      # Strong disabled (44.2% darker)
-
-  # Additional Variants
-  [success-subtle]="#56d364"       # success.emphasis
-  [success-strong]="#238636"       # success.muted
-  [warning-strong]="#9e6a03"       # attention.muted
-  [error-strong]="#b62324"         # danger.muted
-  [info-subtle]="#79c0ff"          # accent.emphasis
-  [info-strong]="#1f6feb"          # accent.muted
-  [error-subtle]="#ff7b72"         # danger.emphasis
-  [warning-subtle]="#e3b341"       # attention.emphasis
-
-  # System Colors
-  [white]="#e6edf3"                # fg.default
-  [black]="#010409"                # canvas.inset
 )
-
-export THEME_COLORS
