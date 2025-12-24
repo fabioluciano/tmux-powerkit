@@ -127,6 +127,29 @@ plugin_collect() {
         fi
     done <<< "$status_output"
 
+    # If no ahead count from status, check for unpushed commits manually
+    # This handles branches without upstream or with different tracking
+    if [[ "$ahead" -eq 0 && -n "$branch" ]]; then
+        local remote merge_branch upstream
+        remote=$(git -C "$path" config --get "branch.${branch}.remote" 2>/dev/null)
+        merge_branch=$(git -C "$path" config --get "branch.${branch}.merge" 2>/dev/null)
+        
+        if [[ -n "$remote" && -n "$merge_branch" ]]; then
+            # Use configured upstream
+            upstream="${remote}/${merge_branch#refs/heads/}"
+        else
+            # Fallback: try origin/<branch> if it exists (no config needed)
+            if git -C "$path" rev-parse --verify "origin/${branch}" &>/dev/null; then
+                upstream="origin/${branch}"
+            fi
+        fi
+        
+        if [[ -n "$upstream" ]]; then
+            ahead=$(git -C "$path" rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
+            behind=$(git -C "$path" rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
+        fi
+    fi
+
     plugin_data_set "branch" "$branch"
     plugin_data_set "modified" "$modified"
     plugin_data_set "changed" "$changed"
