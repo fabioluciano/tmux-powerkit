@@ -33,9 +33,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "wifi"
     metadata_set "name" "WiFi"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display WiFi status, SSID, IP and signal strength"
-    metadata_set "priority" "30"
 }
 
 # =============================================================================

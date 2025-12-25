@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "gitlab"
     metadata_set "name" "GitLab"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Monitor GitLab repos for issues and MRs"
-    metadata_set "priority" "110"
 }
 
 # =============================================================================

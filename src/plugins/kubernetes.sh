@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "kubernetes"
     metadata_set "name" "Kubernetes"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display Kubernetes context and namespace"
-    metadata_set "priority" "85"
 }
 
 # =============================================================================
@@ -59,8 +57,8 @@ plugin_declare_options() {
     declare_option "popup_width" "string" "50%" "Popup width"
     declare_option "popup_height" "string" "50%" "Popup height"
 
-    # Cache
-    declare_option "cache_ttl" "number" "30" "Cache duration in seconds"
+    # Cache - context/namespace rarely changes during a session
+    declare_option "cache_ttl" "number" "60" "Cache duration in seconds"
 }
 
 # =============================================================================

@@ -34,9 +34,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "disk"
     metadata_set "name" "Disk"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display disk usage for multiple mount points"
-    metadata_set "priority" "50"
 }
 
 # =============================================================================

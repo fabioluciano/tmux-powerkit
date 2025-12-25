@@ -142,7 +142,6 @@
 #         name        - Human-readable name (e.g., "Bitwarden Password Selector")
 #         description - Brief description of what the helper does
 #         type        - One of: popup, menu, command, toast
-#         version     - Semantic version (e.g., "2.0.0")
 #
 #       Example:
 #         helper_get_metadata() {
@@ -150,7 +149,6 @@
 #             helper_metadata_set "name" "My Helper"
 #             helper_metadata_set "description" "Does something useful"
 #             helper_metadata_set "type" "popup"
-#             helper_metadata_set "version" "2.0.0"
 #         }
 #
 #   helper_get_actions()
@@ -418,7 +416,6 @@
 #       helper_metadata_set "name" "Cache Clearer"
 #       helper_metadata_set "description" "Clear PowerKit cache"
 #       helper_metadata_set "type" "command"
-#       helper_metadata_set "version" "1.0.0"
 #   }
 #
 #   helper_main() {
@@ -440,7 +437,6 @@
 #       helper_metadata_set "name" "Color Picker"
 #       helper_metadata_set "description" "Pick a color from the palette"
 #       helper_metadata_set "type" "popup"
-#       helper_metadata_set "version" "1.0.0"
 #   }
 #
 #   helper_get_actions() {
@@ -483,7 +479,6 @@
 #       helper_metadata_set "name" "Quick Actions"
 #       helper_metadata_set "description" "Common tmux actions"
 #       helper_metadata_set "type" "menu"
-#       helper_metadata_set "version" "1.0.0"
 #   }
 #
 #   helper_main() {
@@ -867,20 +862,12 @@ helper_get_cache_file() {
 }
 
 # =============================================================================
-# Toast Notifications
+# END OF HELPER CONTRACT
 # =============================================================================
 
-# Send a toast notification
-# Usage: helper_toast MESSAGE [STYLE]
-#   STYLE: simple (default) or center
-helper_toast() {
-    local message="$1"
-    local style="${2:-simple}"
-    toast "$message" "$style"
-}
-
-# =============================================================================
-# Logging
-# =============================================================================
-
-log_debug "helper_contract" "Helper contract module loaded"
+# NOTE: Toast notifications are available via toast() from ui_backend.sh
+# which is loaded by bootstrap. Use toast() directly in helpers:
+#   toast "message" "warning"   # warning style (yellow)
+#   toast "message" "error"     # error style (red)
+#   toast "message" "success"   # success style (green)
+#   toast "message"             # info style (default)

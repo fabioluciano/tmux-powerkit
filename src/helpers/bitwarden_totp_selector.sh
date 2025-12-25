@@ -20,7 +20,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Bitwarden TOTP Selector"
     helper_metadata_set "description" "Copy TOTP codes from Bitwarden vault"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
@@ -87,13 +86,13 @@ select_totp_bw() {
         items=$(bw list items 2>/dev/null | \
             jq -r '.[] | select(.type == 1 and .login.totp != null and .login.totp != "") | [.name, (.login.username // ""), .id] | @tsv' 2>/dev/null)
 
-        [[ -z "$items" ]] && { helper_toast " No TOTP items found" "simple"; return 0; }
+        [[ -z "$items" ]] && { toast " No TOTP items found" "simple"; return 0; }
 
         # Save to cache for next time
         echo "$items" > "$TOTP_CACHE"
     fi
 
-    [[ -z "$items" ]] && { helper_toast " No TOTP items found" "simple"; return 0; }
+    [[ -z "$items" ]] && { toast " No TOTP items found" "simple"; return 0; }
 
     # Format for fzf: "name (user)" with hidden id
     selected=$(echo "$items" | awk -F'\t' '{
@@ -123,9 +122,9 @@ select_totp_bw() {
 
     if [[ -n "$totp_code" ]]; then
         printf '%s' "$totp_code" | copy_to_clipboard
-        helper_toast " ${item_name:0:25} ($totp_code)" "simple"
+        toast " ${item_name:0:25} ($totp_code)" "simple"
     else
-        helper_toast " Failed to get TOTP" "simple"
+        toast " Failed to get TOTP" "simple"
     fi
 }
 
@@ -149,7 +148,7 @@ select_totp_rbw() {
         fi
     done < <(rbw list --fields name,user 2>/dev/null)
 
-    [[ -z "$items" ]] && { helper_toast " No TOTP items found" "simple"; return 0; }
+    [[ -z "$items" ]] && { toast " No TOTP items found" "simple"; return 0; }
 
     selected=$(printf '%s' "$items" | fzf --prompt=" " --height=100% --layout=reverse --border \
         --header="Enter: copy TOTP | Esc: cancel" \
@@ -175,9 +174,9 @@ select_totp_rbw() {
 
     if [[ -n "$totp_code" ]]; then
         printf '%s' "$totp_code" | copy_to_clipboard
-        helper_toast " ${item_name:0:25} ($totp_code)" "simple"
+        toast " ${item_name:0:25} ($totp_code)" "simple"
     else
-        helper_toast " Failed to get TOTP" "simple"
+        toast " Failed to get TOTP" "simple"
     fi
 }
 
@@ -186,10 +185,10 @@ select_totp_rbw() {
 # =============================================================================
 
 select_totp() {
-    has_cmd "fzf" || { helper_toast "󰍉 fzf required" "simple"; return 0; }
+    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
 
     local client
-    client=$(detect_bitwarden_client) || { helper_toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
 
     # Check vault status BEFORE opening selector
     local is_unlocked=false
@@ -199,8 +198,8 @@ select_totp() {
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
-        # Vault is locked - show helper_toast and exit
-        helper_toast " Vault locked" "simple"
+        # Vault is locked - show warning toast and exit
+        toast "Vault locked" "warning"
         return 0
     fi
 
@@ -212,27 +211,27 @@ select_totp() {
 
 refresh_cache() {
     local client
-    client=$(detect_bitwarden_client) || { helper_toast " bw/rbw not found" "simple"; return 1; }
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 1; }
 
-    helper_toast "󰑓 Refreshing TOTP cache..." "simple"
+    toast "󰑓 Refreshing TOTP cache..." "simple"
 
     case "$client" in
         bw)
-            is_bitwarden_unlocked_bw || { helper_toast " Vault locked" "simple"; return 1; }
+            is_bitwarden_unlocked_bw || { toast "Vault locked" "warning"; return 1; }
             build_cache_bw
             ;;
         rbw)
-            is_bitwarden_unlocked_rbw || { helper_toast " Vault locked" "simple"; return 1; }
+            is_bitwarden_unlocked_rbw || { toast "Vault locked" "warning"; return 1; }
             build_cache_rbw
             ;;
     esac
 
-    helper_toast " TOTP cache refreshed" "simple"
+    toast " TOTP cache refreshed" "simple"
 }
 
 clear_cache() {
     rm -f "$TOTP_CACHE" "$TOTP_CACHE.tmp" 2>/dev/null
-    helper_toast "󰃨 TOTP cache cleared" "simple"
+    toast "󰃨 TOTP cache cleared" "simple"
 }
 
 # =============================================================================
@@ -245,10 +244,10 @@ check_and_select() {
     local popup_width="${1:-60%}"
     local popup_height="${2:-60%}"
 
-    has_cmd "fzf" || { helper_toast "󰍉 fzf required" "simple"; return 0; }
+    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
 
     local client
-    client=$(detect_bitwarden_client) || { helper_toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
 
     # Check vault status BEFORE opening popup
     local is_unlocked=false
@@ -258,8 +257,8 @@ check_and_select() {
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
-        # Vault is locked - show helper_toast and exit (no popup opened)
-        helper_toast " Vault locked" "simple"
+        # Vault is locked - show warning toast and exit (no popup opened)
+        toast "Vault locked" "warning"
         return 0
     fi
 

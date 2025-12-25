@@ -35,9 +35,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "cloud"
     metadata_set "name" "Cloud"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display active cloud provider context"
-    metadata_set "priority" "160"
 }
 
 # =============================================================================
@@ -66,8 +64,8 @@ plugin_declare_options() {
     declare_option "icon_azure" "icon" $'\U000F0805' "Azure icon"
     declare_option "icon_multi" "icon" $'\U000F0164' "Multi-provider icon"
 
-    # Cache
-    declare_option "cache_ttl" "number" "60" "Cache duration in seconds"
+    # Cache - cloud sessions are relatively stable (minutes to hours)
+    declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
 }
 
 # =============================================================================
@@ -90,7 +88,7 @@ plugin_get_state() {
 plugin_get_health() {
     local logged_in
     logged_in=$(plugin_data_get "logged_in")
-    [[ "$logged_in" == "true" ]] && printf 'ok' || printf 'warning'
+    [[ "$logged_in" == "true" ]] && printf 'good' || printf 'warning'
 }
 
 plugin_get_context() {

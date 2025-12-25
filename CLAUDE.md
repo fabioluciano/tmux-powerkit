@@ -1020,7 +1020,7 @@ For each plugin being migrated from `src-old/plugin/`:
 
 - [ ] Change `ROOT_DIR` to `POWERKIT_ROOT`
 - [ ] Source `plugin_contract.sh` (not `plugin_bootstrap.sh`)
-- [ ] Add `plugin_get_metadata()` with id/name/version/description/priority
+- [ ] Add `plugin_get_metadata()` with id/name/description (only these 3 fields)
 
 **Options**:
 
@@ -1394,7 +1394,7 @@ The Helper Contract (`src/contract/helper_contract.sh`) standardizes helper crea
 ┌─────────▼────────────────▼──────────────────────┐
 │              HELPER CONTRACT LAYER               │
 │  helper_init(), helper_dispatch()               │
-│  helper_filter(), helper_choose(), helper_toast()│
+│  helper_filter(), helper_choose(), toast()      │
 └─────────────────────┬───────────────────────────┘
                       │
 ┌─────────────────────▼───────────────────────────┐
@@ -1421,7 +1421,7 @@ helper_main(action, ...)  # Main entry point
 ### Optional Functions
 
 ```bash
-helper_get_metadata()  # Set id, name, description, type, version
+helper_get_metadata()  # Set id, name, description, type (version removed)
 helper_get_actions()   # List available actions
 ```
 
@@ -1436,7 +1436,17 @@ helper_get_actions()   # List available actions
 | `helper_confirm` | Yes/No confirmation |
 | `helper_spin` | Spinner while running |
 | `helper_pager` | Page through text |
-| `helper_toast` | Show notification |
+
+### Toast Notifications (via ui_backend.sh)
+
+Use `toast()` directly from `ui_backend.sh` (loaded by bootstrap):
+
+```bash
+toast "message"                # info style (default)
+toast "message" "warning"      # yellow with ⚠ icon
+toast "message" "error"        # red with ✗ icon
+toast "message" "success"      # green with ✓ icon
+```
 
 ### Helper Example
 
@@ -1448,8 +1458,8 @@ helper_init
 helper_get_metadata() {
     helper_metadata_set "id" "my_helper"
     helper_metadata_set "name" "My Helper"
+    helper_metadata_set "description" "Brief description"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "1.0.0"
 }
 
 helper_main() {
@@ -1556,3 +1566,58 @@ This means:
 - **No manual updates needed** when adding new plugins with keybindings
 - Just follow the `keybinding_*` naming convention
 - Conflict detection works automatically
+
+---
+
+## Contract Simplifications (December 2025)
+
+### Plugin Metadata Simplified
+
+`plugin_get_metadata()` now only requires 3 fields:
+
+```bash
+plugin_get_metadata() {
+    metadata_set "id" "my_plugin"
+    metadata_set "name" "My Plugin"
+    metadata_set "description" "What this plugin does"
+}
+```
+
+**Removed fields**:
+- `version` - Not used by the system
+- `priority` - Plugin order is determined by user configuration in `@powerkit_plugins`
+
+### Helper Metadata Simplified
+
+`helper_get_metadata()` also simplified:
+
+```bash
+helper_get_metadata() {
+    helper_metadata_set "id" "my_helper"
+    helper_metadata_set "name" "My Helper"
+    helper_metadata_set "description" "What this helper does"
+    helper_metadata_set "type" "popup"  # popup|menu|command|toast
+}
+```
+
+**Removed fields**:
+- `version` - Not used by the system
+
+### Toast Notifications Centralized
+
+Toast notifications moved from `helper_contract.sh` to `ui_backend.sh`:
+
+**Old approach** (deprecated):
+```bash
+helper_toast "message" "simple"  # No longer exists
+```
+
+**New approach**:
+```bash
+toast "message"                # info style (default)
+toast "message" "warning"      # yellow with ⚠ icon
+toast "message" "error"        # red with ✗ icon
+toast "message" "success"      # green with ✓ icon
+```
+
+The `toast()` function is available globally after bootstrap via `ui_backend.sh`

@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "bitbucket"
     metadata_set "name" "Bitbucket"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display Bitbucket pull requests"
-    metadata_set "priority" "115"
 }
 
 # =============================================================================

@@ -18,11 +18,11 @@ helper_get_metadata() {
     helper_metadata_set "name" "Options Viewer"
     helper_metadata_set "description" "View and search all PowerKit options"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
-    echo "view [filter] - View options (default)"
+    echo "view [filter] - View PowerKit options (default)"
+    echo "all [filter] - Include other TPM plugins (slower)"
 }
 
 # =============================================================================
@@ -102,15 +102,32 @@ _get_plugin_option_description() {
 
 _print_option() {
     local option="$1" default="$2" possible="$3" description="$4"
-    local current
-    current=$(get_tmux_option "$option" "")
+    local current=""
 
-    # If no default provided, try to get it from defaults.sh for plugin options
+    # For plugin options, get metadata from cache (fast - no tmux calls)
+    if [[ "$option" == @powerkit_plugin_* ]]; then
+        local metadata
+        metadata=$(_get_option_metadata "$option")
+        if [[ -n "$metadata" ]]; then
+            local meta_type meta_default meta_desc
+            IFS='|' read -r meta_type meta_default meta_desc <<< "$metadata"
+            [[ -z "$default" ]] && default="$meta_default"
+            [[ -z "$description" || "$description" == "Plugin option" ]] && description="$meta_desc"
+            [[ -z "$possible" && -n "$meta_type" ]] && possible="($meta_type)"
+        fi
+        # Check pre-loaded tmux cache for user-customized value (no tmux call)
+        current="${_TMUX_OPTIONS_CACHE[$option]:-}"
+    else
+        # For non-plugin options (theme options), use get_tmux_option
+        current=$(get_tmux_option "$option" "")
+    fi
+
+    # If still no default for plugin options, try defaults.sh
     if [[ -z "$default" && "$option" == @powerkit_plugin_* ]]; then
         default=$(_get_plugin_default_value "$option")
     fi
 
-    # If no description provided, generate one based on option name
+    # If still no description, generate one based on option name
     if [[ -z "$description" || "$description" == "Plugin option" ]] && [[ "$option" == @powerkit_plugin_* ]]; then
         description=$(_get_plugin_option_description "$option")
     fi
@@ -128,35 +145,81 @@ _print_option() {
 }
 
 _print_tpm_option() {
-    local option="$1"; local current
-    current=$(get_tmux_option "$option" "")
+    local option="$1"
+    # Use pre-loaded cache instead of calling tmux for each option
+    local current="${_TMUX_OPTIONS_CACHE[$option]:-}"
     printf "${GREEN}%-45s${RESET}" "$option"
     [[ -n "$current" ]] && echo -e " ${YELLOW}= $current${RESET}" || echo -e " ${DIM}(not set)${RESET}"
 }
 
-_discover_plugin_options() {
-    local -A plugin_options=()
+# Cache for option metadata
+declare -gA _OPTION_METADATA_CACHE=()
+declare -g _OPTIONS_LOADED=0
 
-    # Scan plugin files using grep (much faster than line-by-line reading)
-    while IFS= read -r match; do
-        # Extract just the option name from grep output
-        if [[ "$match" =~ (@powerkit_plugin_[a-zA-Z0-9_]+) ]]; then
-            plugin_options["${BASH_REMATCH[1]}"]=1
-        fi
-    done < <(grep -rho '@powerkit_plugin_[a-zA-Z0-9_]\+' "${POWERKIT_ROOT}/src/plugins" 2>/dev/null | sort -u)
+# Fast option discovery using grep + bash parsing (no subshells)
+_load_all_plugin_options() {
+    [[ "$_OPTIONS_LOADED" -eq 1 ]] && return 0
 
-    # Also scan defaults.sh to discover all POWERKIT_PLUGIN_* defaults
-    if [[ -f "${POWERKIT_ROOT}/src/core/defaults.sh" ]]; then
+    local plugin_file plugin_name line
+
+    for plugin_file in "${POWERKIT_ROOT}/src/plugins"/*.sh; do
+        [[ ! -f "$plugin_file" ]] && continue
+        plugin_name=$(basename "$plugin_file" .sh)
+
+        # Fast grep to extract declare_option lines, then parse with bash
         while IFS= read -r line; do
-            if [[ "$line" =~ ^POWERKIT_PLUGIN_([A-Z0-9_]+)= ]]; then
-                local var_name="${BASH_REMATCH[1]}"
-                local option_name="@powerkit_plugin_${var_name,,}"
-                plugin_options["$option_name"]=1
-            fi
-        done < "${POWERKIT_ROOT}/src/core/defaults.sh"
-    fi
+            # Parse: declare_option "name" "type" "default" "description"
+            local opt_name="" opt_type="" opt_default="" opt_desc=""
 
-    printf '%s\n' "${!plugin_options[@]}" | sort
+            # Extract name (first quoted string after declare_option)
+            if [[ "$line" =~ declare_option[[:space:]]+\"([^\"]+)\" ]]; then
+                opt_name="${BASH_REMATCH[1]}"
+                line="${line#*\"$opt_name\"}"
+
+                # Extract type (next quoted string)
+                if [[ "$line" =~ ^[[:space:]]*\"([^\"]+)\" ]]; then
+                    opt_type="${BASH_REMATCH[1]}"
+                    line="${line#*\"$opt_type\"}"
+
+                    # Extract default - handle $'...' or "..."
+                    if [[ "$line" =~ ^[[:space:]]*\$\' ]]; then
+                        opt_default="(icon)"
+                        line="${line#*\'}"
+                        line="${line#*\'}"
+                    elif [[ "$line" =~ ^[[:space:]]*\"([^\"]*)\" ]]; then
+                        opt_default="${BASH_REMATCH[1]}"
+                        line="${line#*\"$opt_default\"}"
+                    fi
+
+                    # Extract description (remaining quoted string)
+                    if [[ "$line" =~ \"([^\"]+)\" ]]; then
+                        opt_desc="${BASH_REMATCH[1]}"
+                    fi
+                fi
+
+                [[ -n "$opt_name" ]] && {
+                    local full_opt="@powerkit_plugin_${plugin_name}_${opt_name}"
+                    _OPTION_METADATA_CACHE["$full_opt"]="${opt_type}|${opt_default}|${opt_desc}"
+                }
+            fi
+        done < <(grep -E '^[[:space:]]*declare_option[[:space:]]+"' "$plugin_file" 2>/dev/null)
+    done
+
+    _OPTIONS_LOADED=1
+}
+
+# Get option metadata from cache
+_get_option_metadata() {
+    local option="$1"
+    _load_all_plugin_options
+    printf '%s' "${_OPTION_METADATA_CACHE[$option]:-}"
+}
+
+_discover_plugin_options() {
+    _load_all_plugin_options
+
+    # Return all discovered option names sorted
+    printf '%s\n' "${!_OPTION_METADATA_CACHE[@]}" | sort
 }
 
 _scan_tpm_plugin_options() {
@@ -227,15 +290,18 @@ _display_options() {
         done
     done
 
-    echo -e "\n\n${BOLD}${BLUE}+===========================================================================+${RESET}"
-    echo -e "${BOLD}${BLUE}|  Other TPM Plugins Options                                                |${RESET}"
-    echo -e "${BOLD}${BLUE}+===========================================================================+${RESET}"
+    # TPM plugins scan disabled by default (too slow with many plugins)
+    # Run with "all" action to include: options_viewer.sh all
+    if [[ "${_INCLUDE_TPM_PLUGINS:-}" == "1" ]]; then
+        echo -e "\n\n${BOLD}${BLUE}+===========================================================================+${RESET}"
+        echo -e "${BOLD}${BLUE}|  Other TPM Plugins Options                                                |${RESET}"
+        echo -e "${BOLD}${BLUE}+===========================================================================+${RESET}"
 
-    # Scan TPM plugins with timeout to avoid hanging
-    if [[ -d "$TPM_PLUGINS_DIR" ]]; then
-        for plugin_dir in "$TPM_PLUGINS_DIR"/*/; do
-            [[ -d "$plugin_dir" ]] && _scan_tpm_plugin_options "$plugin_dir" 2>/dev/null || true
-        done
+        if [[ -d "$TPM_PLUGINS_DIR" ]]; then
+            for plugin_dir in "$TPM_PLUGINS_DIR"/*/; do
+                [[ -d "$plugin_dir" ]] && _scan_tpm_plugin_options "$plugin_dir" 2>/dev/null || true
+            done
+        fi
     fi
 
     echo -e "\n${DIM}Press 'q' to exit, '/' to search${RESET}\n"
@@ -252,6 +318,11 @@ helper_main() {
         view|"")
             shift 2>/dev/null || true
             _display_options "${1:-}" | helper_pager
+            ;;
+        all)
+            # Include other TPM plugins (slower)
+            shift 2>/dev/null || true
+            _INCLUDE_TPM_PLUGINS=1 _display_options "${1:-}" | helper_pager
             ;;
         *)
             # Treat unknown action as filter

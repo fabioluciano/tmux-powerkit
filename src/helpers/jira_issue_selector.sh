@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Jira Issue Selector"
     helper_metadata_set "description" "Browse and open Jira issues"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
@@ -406,7 +405,7 @@ Required: @powerkit_plugin_jira_url, @powerkit_plugin_jira_email, @powerkit_plug
 
         if [[ -n "$key" ]]; then
             open_issue "$key"
-            helper_toast "Opened $key in browser" "simple"
+            toast "Opened $key in browser" "success"
         fi
     fi
 }

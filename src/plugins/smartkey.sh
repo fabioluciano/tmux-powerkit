@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "smartkey"
     metadata_set "name" "SmartKey"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display custom key-value data"
-    metadata_set "priority" "175"
 }
 
 # =============================================================================
@@ -34,8 +32,8 @@ plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F0383' "Key icon"
 
-    # Cache
-    declare_option "cache_ttl" "number" "30" "Cache duration in seconds"
+    # Cache - environment variables are relatively static
+    declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
 }
 
 # =============================================================================

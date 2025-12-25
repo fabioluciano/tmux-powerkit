@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Pomodoro Timer"
     helper_metadata_set "description" "Control the Pomodoro timer"
     helper_metadata_set "type" "command"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
@@ -76,7 +75,7 @@ _save_state() {
 # Start work session
 _start_work() {
     _save_state "work" "$(date +%s)" "$(_get_sessions)"
-    helper_toast " Work session started"
+    toast " Work session started" "success"
     _force_status_refresh
 }
 
@@ -107,7 +106,7 @@ _complete_work() {
 # Stop/reset timer
 _stop_timer() {
     rm -f "$POMODORO_STATE_FILE"
-    helper_toast " Timer stopped"
+    toast " Timer stopped"
     _force_status_refresh
 }
 
@@ -128,14 +127,14 @@ _skip_phase() {
     case "$state" in
         work)
             _complete_work
-            helper_toast " Skipped to break"
+            toast " Skipped to break"
             ;;
         short_break|long_break)
             _save_state "idle" "0" "$(_get_sessions)"
             _start_work
             ;;
         idle)
-            helper_toast " No active session"
+            toast " No active session" "warning"
             ;;
     esac
 }

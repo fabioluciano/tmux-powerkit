@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "iops"
     metadata_set "name" "IOPS"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display disk IOPS"
-    metadata_set "priority" "170"
 }
 
 # =============================================================================

@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "bitwarden"
     metadata_set "name" "Bitwarden"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display Bitwarden vault status"
-    metadata_set "priority" "140"
 }
 
 # =============================================================================
@@ -75,7 +73,7 @@ plugin_get_state() {
 plugin_get_health() {
     local status=$(plugin_data_get "status")
     case "$status" in
-        unlocked) printf 'ok' ;;
+        unlocked) printf 'good' ;;
         locked) printf 'warning' ;;
         unauthenticated|*) printf 'error' ;;
     esac
@@ -210,8 +208,9 @@ plugin_setup_keybindings() {
     pw_helper="${POWERKIT_ROOT}/src/helpers/bitwarden_password_selector.sh"
     totp_helper="${POWERKIT_ROOT}/src/helpers/bitwarden_totp_selector.sh"
     
-    pk_bind_popup "$pw_key" "bash '$pw_helper' select" "$width" "$height" "bitwarden:password"
-    pk_bind_popup "$totp_key" "bash '$totp_helper' select" "$width" "$height" "bitwarden:totp"
+    # Use check-and-select to verify vault is unlocked BEFORE opening popup
+    pk_bind_shell "$pw_key" "bash '$pw_helper' check-and-select '$width' '$height'" "bitwarden:password"
+    pk_bind_shell "$totp_key" "bash '$totp_helper' check-and-select '$width' '$height'" "bitwarden:totp"
     pk_bind_popup "$unlock_key" "bash '$pw_helper' unlock" "$unlock_width" "$unlock_height" "bitwarden:unlock"
     pk_bind_shell "$lock_key" "bash '$pw_helper' lock" "bitwarden:lock"
 }

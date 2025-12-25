@@ -12,15 +12,14 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "uptime"
     metadata_set "name" "Uptime"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display system uptime"
-    metadata_set "priority" "15"
 }
 
 plugin_declare_options() {
     declare_option "icon" "icon" $'\uf254' "Plugin icon"
 
-    declare_option "cache_ttl" "number" "60" "Cache duration in seconds"
+    # Cache - uptime changes slowly, no need for frequent updates
+    declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
 }
 
 

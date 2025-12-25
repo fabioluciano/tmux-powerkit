@@ -11,9 +11,9 @@
 #   3. basic (minimal) - Native bash select/read
 #
 # Configuration:
-#   @powerkit_ui_backend "auto"  - Auto-detect (default)
-#   @powerkit_ui_backend "gum"   - Force gum
-#   @powerkit_ui_backend "fzf"   - Force fzf
+#   @powerkit_ui_backend "fzf"   - Use fzf (default, fast)
+#   @powerkit_ui_backend "gum"   - Force gum (slower startup)
+#   @powerkit_ui_backend "auto"  - Auto-detect (prefers gum > fzf > basic)
 #   @powerkit_ui_backend "basic" - Force basic
 #
 # =============================================================================
@@ -41,7 +41,7 @@ ui_get_backend() {
 
     # Check for forced backend via option
     local forced_backend
-    forced_backend=$(get_tmux_option "@powerkit_ui_backend" "auto")
+    forced_backend=$(get_tmux_option "@powerkit_ui_backend" "fzf")
 
     case "$forced_backend" in
         gum)
@@ -464,31 +464,37 @@ ui_spin() {
 # Usage: ui_pager [OPTIONS] < long_text.txt
 #
 # Options:
-#   --soft-wrap           Soft wrap lines (gum only)
+#   --soft-wrap           Soft wrap lines
+#   --use-gum             Force gum pager (slower startup)
+#
+# Note: Always uses less -R by default for fast startup.
+#       gum pager has slow initialization (~1s) so it's opt-in.
 #
 ui_pager() {
-    local soft_wrap=""
+    local soft_wrap="" use_gum=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --soft-wrap) soft_wrap="1"; shift ;;
+            --use-gum)   use_gum="1"; shift ;;
             *)           shift ;;
         esac
     done
 
-    local backend
-    backend=$(ui_get_backend)
+    # Use gum pager only if explicitly requested
+    if [[ -n "$use_gum" ]] && has_cmd "gum"; then
+        local gum_args=(pager)
+        [[ -n "$soft_wrap" ]] && gum_args+=(--soft-wrap)
+        gum "${gum_args[@]}"
+        return
+    fi
 
-    case "$backend" in
-        gum)
-            local gum_args=(pager)
-            [[ -n "$soft_wrap" ]] && gum_args+=(--soft-wrap)
-            gum "${gum_args[@]}"
-            ;;
-        *)
-            less -R
-            ;;
-    esac
+    # Default: use less -R (fast startup)
+    if [[ -n "$soft_wrap" ]]; then
+        less -RS
+    else
+        less -R
+    fi
 }
 
 # Style text with formatting
@@ -644,6 +650,84 @@ ui_file() {
             else
                 ls "${ls_args[@]}" "$directory" | _ui_basic_select "Select file:"
             fi
+            ;;
+    esac
+}
+
+# =============================================================================
+# UI Functions: Toast Notifications (tmux display-message)
+# =============================================================================
+
+# Show a simple toast notification via tmux display-message
+# Usage: ui_toast MESSAGE [LEVEL]
+#   LEVEL: info (default), warning, error, success
+ui_toast() {
+    local message="${1:-}"
+    local level="${2:-info}"
+    [[ -z "$message" ]] && return 0
+
+    local styled_message="$message"
+    case "$level" in
+        warning)
+            styled_message="#[fg=yellow,bold]⚠ ${message}#[default]"
+            ;;
+        error)
+            styled_message="#[fg=red,bold]✗ ${message}#[default]"
+            ;;
+        success)
+            styled_message="#[fg=green,bold]✓ ${message}#[default]"
+            ;;
+        *)
+            # info/default - no styling
+            ;;
+    esac
+
+    tmux display-message "$styled_message"
+}
+
+# Show a centered popup toast with a message
+# Usage: ui_toast_popup MESSAGE [WIDTH] [HEIGHT]
+ui_toast_popup() {
+    local message="${1:-}"
+    local width="${2:-50%}"
+    local height="${3:-30%}"
+
+    [[ -z "$message" ]] && return 0
+
+    tmux display-popup -E -w "$width" -h "$height" \
+        "printf '%s\n\nPress any key...' '$message'; read -rsn1"
+}
+
+# Display toast notification (convenience wrapper)
+# Usage: toast "message" [STYLE] [LEVEL]
+#   STYLE: simple (default), center, warning, error, success
+#   LEVEL: info (default), warning, error, success
+toast() {
+    local message="${1:-}"
+    local style="${2:-simple}"
+    local level="${3:-info}"
+
+    [[ -z "$message" ]] && return 0
+
+    case "$style" in
+        simple)
+            ui_toast "$message" "$level"
+            ;;
+        center)
+            ui_toast_popup "$message"
+            ;;
+        warning)
+            # Shorthand: toast "msg" warning -> toast "msg" simple warning
+            ui_toast "$message" "warning"
+            ;;
+        error)
+            ui_toast "$message" "error"
+            ;;
+        success)
+            ui_toast "$message" "success"
+            ;;
+        *)
+            ui_toast "$message" "$level"
             ;;
     esac
 }

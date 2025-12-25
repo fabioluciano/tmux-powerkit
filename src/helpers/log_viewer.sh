@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Log Viewer"
     helper_metadata_set "description" "View PowerKit logs with follow mode"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {

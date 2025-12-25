@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Theme Selector"
     helper_metadata_set "description" "Select PowerKit theme and variant"
     helper_metadata_set "type" "menu"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
@@ -65,9 +64,9 @@ _apply_theme() {
 
     # Show immediate feedback FIRST (before any heavy processing)
     if [[ "$theme" == "custom" ]]; then
-        helper_toast " Applying theme: custom..."
+        toast " Applying theme: custom..."
     else
-        helper_toast " Applying theme: $theme/$variant..."
+        toast " Applying theme: $theme/$variant..."
     fi
 
     # Update tmux options
@@ -79,7 +78,7 @@ _apply_theme() {
         local custom_path
         custom_path=$(get_tmux_option "@powerkit_custom_theme_path" "")
         if [[ -z "$custom_path" ]]; then
-            helper_toast " Custom theme path not set (@powerkit_custom_theme_path)"
+            toast " Custom theme path not set (@powerkit_custom_theme_path)" "error"
             return 1
         fi
         # Don't set variant for custom theme (it's ignored anyway)
@@ -241,7 +240,7 @@ _select_variant() {
     variants_str=$(_parse_theme_variants "$theme" "$themes_structure")
 
     if [[ -z "$variants_str" ]]; then
-        helper_toast " Theme not found: $theme"
+        toast " Theme not found: $theme" "error"
         return 1
     fi
 

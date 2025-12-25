@@ -126,7 +126,6 @@ plugin_get_metadata() {
     metadata_set "id" "PLUGIN_NAME"
     metadata_set "name" "PLUGIN_NAME_TITLE"
     metadata_set "description" "TODO - Add description"
-    metadata_set "version" "1.0.0"
 }
 
 # =============================================================================
@@ -213,7 +212,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "HELPER_NAME_TITLE"
     helper_metadata_set "description" "TODO - Add description"
     helper_metadata_set "type" "HELPER_TYPE"
-    helper_metadata_set "version" "1.0.0"
 }
 
 helper_get_actions() {

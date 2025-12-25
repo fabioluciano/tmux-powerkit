@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Keybinding Conflict Toast"
     helper_metadata_set "description" "Display keybinding conflicts notification"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {

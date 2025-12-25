@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "crypto"
     metadata_set "name" "Crypto"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display cryptocurrency prices"
-    metadata_set "priority" "75"
 }
 
 # =============================================================================

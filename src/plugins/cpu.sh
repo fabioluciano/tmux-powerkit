@@ -34,9 +34,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "cpu"
     metadata_set "name" "CPU"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display CPU usage percentage with threshold support"
-    metadata_set "priority" "70"
 }
 
 # =============================================================================

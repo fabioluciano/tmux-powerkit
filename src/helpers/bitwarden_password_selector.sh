@@ -20,7 +20,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Bitwarden Password Selector"
     helper_metadata_set "description" "Copy passwords from Bitwarden vault"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
@@ -83,7 +82,7 @@ select_bw() {
         items=$(bw list items 2>/dev/null | \
             jq -r '.[] | select(.type == 1) | [.name, (.login.username // ""), .id] | @tsv' 2>/dev/null)
 
-        [[ -z "$items" ]] && { helper_helper_toast " No items found" "simple"; return 0; }
+        [[ -z "$items" ]] && { toast " No items found" "simple"; return 0; }
 
         # Save to cache for next time
         echo "$items" > "$ITEMS_CACHE"
@@ -117,9 +116,9 @@ select_bw() {
 
     if [[ -n "$password" ]]; then
         printf '%s' "$password" | copy_to_clipboard
-        helper_toast " ${item_name:0:30}" "simple"
+        toast " ${item_name:0:30}" "simple"
     else
-        helper_toast " Failed to get password" "simple"
+        toast " Failed to get password" "simple"
     fi
 }
 
@@ -132,7 +131,7 @@ select_rbw() {
 
     # rbw is fast, no cache needed
     items=$(rbw list --fields name,user 2>/dev/null)
-    [[ -z "$items" ]] && { helper_toast " No items found" "simple"; return 0; }
+    [[ -z "$items" ]] && { toast " No items found" "simple"; return 0; }
 
     selected=$(echo "$items" | awk -F'\t' '{
         user = ($2 != "") ? " ("$2")" : ""
@@ -156,9 +155,9 @@ select_rbw() {
 
     if [[ -n "$password" ]]; then
         printf '%s' "$password" | copy_to_clipboard
-        helper_toast " ${item_name:0:30}" "simple"
+        toast " ${item_name:0:30}" "simple"
     else
-        helper_toast " Failed to get password" "simple"
+        toast " Failed to get password" "simple"
     fi
 }
 
@@ -167,10 +166,10 @@ select_rbw() {
 # =============================================================================
 
 select_password() {
-    has_cmd "fzf" || { helper_toast "󰍉 fzf required" "simple"; return 0; }
+    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
 
     local client
-    client=$(detect_bitwarden_client) || { helper_toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
 
     # Check vault status BEFORE opening selector
     local is_unlocked=false
@@ -180,8 +179,8 @@ select_password() {
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
-        # Vault is locked - show helper_toast and exit
-        helper_toast " Vault locked" "simple"
+        # Vault is locked - show warning toast and exit
+        toast "Vault locked" "warning"
         return 0
     fi
 
@@ -199,28 +198,28 @@ select_password() {
 
 refresh_cache() {
     local client
-    client=$(detect_bitwarden_client) || { helper_toast " bw/rbw not found" "simple"; return 1; }
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 1; }
 
-    helper_toast "󰑓 Refreshing cache..." "simple"
+    toast "󰑓 Refreshing cache..." "simple"
 
     case "$client" in
         bw)
-            is_bitwarden_unlocked_bw || { helper_toast " Vault locked" "simple"; return 1; }
+            is_bitwarden_unlocked_bw || { toast " Vault locked" "simple"; return 1; }
             build_cache_bw
             ;;
         rbw)
             # rbw doesn't need cache
-            helper_toast " rbw doesn't use cache" "simple"
+            toast " rbw doesn't use cache" "simple"
             return 0
             ;;
     esac
 
-    helper_toast " Cache refreshed" "simple"
+    toast " Cache refreshed" "simple"
 }
 
 clear_cache() {
     rm -f "$ITEMS_CACHE" "$ITEMS_CACHE.tmp" 2>/dev/null
-    helper_toast "󰃨 Cache cleared" "simple"
+    toast "󰃨 Cache cleared" "simple"
 }
 
 # =============================================================================
@@ -233,10 +232,10 @@ check_and_select() {
     local popup_width="${1:-60%}"
     local popup_height="${2:-60%}"
 
-    has_cmd "fzf" || { helper_toast "󰍉 fzf required" "simple"; return 0; }
+    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
 
     local client
-    client=$(detect_bitwarden_client) || { helper_toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
 
     # Check vault status BEFORE opening popup
     local is_unlocked=false
@@ -246,8 +245,8 @@ check_and_select() {
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
-        # Vault is locked - show helper_toast and exit (no popup opened)
-        helper_toast " Vault locked" "simple"
+        # Vault is locked - show warning toast and exit (no popup opened)
+        toast "Vault locked" "warning"
         return 0
     fi
 

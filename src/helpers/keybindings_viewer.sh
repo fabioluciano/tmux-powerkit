@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Keybindings Viewer"
     helper_metadata_set "description" "View all tmux keybindings grouped by plugin"
     helper_metadata_set "type" "popup"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {

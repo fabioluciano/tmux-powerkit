@@ -16,9 +16,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "timezones"
     metadata_set "name" "Timezones"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display time in multiple time zones"
-    metadata_set "priority" "15"
 }
 
 # =============================================================================
@@ -35,15 +33,15 @@ plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F00AC' "Plugin icon"
 
-    # Cache
-    declare_option "cache_ttl" "number" "30" "Cache duration in seconds"
+    # Cache - time changes constantly, keep TTL short for accuracy
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
 }
 
 # =============================================================================
 # Plugin Contract: Implementation
 # =============================================================================
 
-plugin_get_content_type() { printf 'static'; }
+plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {

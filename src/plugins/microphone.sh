@@ -33,9 +33,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "microphone"
     metadata_set "name" "Microphone"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display microphone activity status"
-    metadata_set "priority" "155"
 }
 
 # =============================================================================

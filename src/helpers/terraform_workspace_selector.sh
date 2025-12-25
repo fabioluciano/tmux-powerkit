@@ -18,7 +18,6 @@ helper_get_metadata() {
     helper_metadata_set "name" "Terraform Workspace Selector"
     helper_metadata_set "description" "Switch Terraform/OpenTofu workspaces"
     helper_metadata_set "type" "menu"
-    helper_metadata_set "version" "2.0.0"
 }
 
 helper_get_actions() {
@@ -76,12 +75,12 @@ select_workspace() {
 
     # Check if we're in a terraform directory
     if ! is_tf_directory "$pane_path"; then
-        helper_toast "❌ Not in a Terraform directory" "simple"
+        toast "❌ Not in a Terraform directory" "error"
         return 0  # Return 0 to avoid tmux showing error message
     fi
 
     # Detect tool
-    tool=$(detect_tool) || { helper_toast "❌ terraform/tofu not found" "simple"; return 0; }
+    tool=$(detect_tool) || { toast "❌ terraform/tofu not found" "error"; return 0; }
 
     # Get current workspace
     current_ws=$(cd "$pane_path" && "$tool" workspace show 2>/dev/null) || current_ws="default"
@@ -97,7 +96,7 @@ select_workspace() {
         workspaces+=("$ws")
     done < <(cd "$pane_path" && "$tool" workspace list 2>/dev/null)
 
-    [[ ${#workspaces[@]} -eq 0 ]] && { helper_toast "❌ No workspaces found" "simple"; return 0; }
+    [[ ${#workspaces[@]} -eq 0 ]] && { toast "❌ No workspaces found" "error"; return 0; }
 
     # Build menu
     local -a menu_args=()

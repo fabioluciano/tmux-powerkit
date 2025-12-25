@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "volume"
     metadata_set "name" "Volume"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display system volume percentage with mute indicator"
-    metadata_set "priority" "65"
 }
 
 # =============================================================================

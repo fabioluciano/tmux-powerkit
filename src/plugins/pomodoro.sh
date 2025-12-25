@@ -16,9 +16,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "pomodoro"
     metadata_set "name" "Pomodoro"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Pomodoro timer with work/break cycles"
-    metadata_set "priority" "95"
 }
 
 # =============================================================================

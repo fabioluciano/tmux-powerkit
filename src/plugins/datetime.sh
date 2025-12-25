@@ -16,9 +16,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "datetime"
     metadata_set "name" "DateTime"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display current date/time with advanced formatting"
-    metadata_set "priority" "10"
 }
 
 # =============================================================================
@@ -35,15 +33,15 @@ plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F0954' "Plugin icon (nf-mdi-calendar_clock)"
 
-    # Cache
-    declare_option "cache_ttl" "number" "30" "Cache duration in seconds"
+    # Cache - time changes constantly, keep TTL short for accuracy
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
 }
 
 # =============================================================================
 # Plugin Contract: Implementation
 # =============================================================================
 
-plugin_get_content_type() { printf 'static'; }
+plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'always'; }
 plugin_get_state() { printf 'active'; }
 plugin_get_health() { printf 'ok'; }

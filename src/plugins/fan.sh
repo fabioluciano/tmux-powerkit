@@ -33,9 +33,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "fan"
     metadata_set "name" "Fan"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display fan speed (RPM)"
-    metadata_set "priority" "145"
 }
 
 # =============================================================================

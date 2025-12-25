@@ -11,9 +11,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "hostname"
     metadata_set "name" "Hostname"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display current hostname"
-    metadata_set "priority" "10"
 }
 
 plugin_declare_options() {

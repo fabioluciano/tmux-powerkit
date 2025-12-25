@@ -35,9 +35,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "bluetooth"
     metadata_set "name" "Bluetooth"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display Bluetooth status and connected devices"
-    metadata_set "priority" "130"
 }
 
 # =============================================================================
@@ -437,12 +435,12 @@ plugin_get_health() {
         if (( min_bat < warn_th )); then
             printf 'warning'
         else
-            printf 'ok'
+            printf 'good'
         fi
         return
     fi
 
-    printf 'ok'
+    printf 'good'
 }
 
 # =============================================================================

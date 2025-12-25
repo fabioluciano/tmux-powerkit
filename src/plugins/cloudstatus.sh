@@ -33,9 +33,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "cloudstatus"
     metadata_set "name" "Cloud Status"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Monitor cloud provider status"
-    metadata_set "priority" "165"
 }
 
 # =============================================================================

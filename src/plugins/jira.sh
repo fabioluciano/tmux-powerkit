@@ -15,9 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "jira"
     metadata_set "name" "Jira"
-    metadata_set "version" "2.0.0"
     metadata_set "description" "Display Jira assigned issues count"
-    metadata_set "priority" "100"
 }
 
 # =============================================================================

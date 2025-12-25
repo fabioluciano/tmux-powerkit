@@ -12,6 +12,7 @@ source_guard "utils_keybinding" && return 0
 . "${POWERKIT_ROOT}/src/core/logger.sh"
 . "${POWERKIT_ROOT}/src/core/options.sh"
 . "${POWERKIT_ROOT}/src/core/cache.sh"
+. "${POWERKIT_ROOT}/src/utils/ui_backend.sh"
 
 # =============================================================================
 # Conflict Detection
@@ -582,50 +583,20 @@ SCRIPT_EOF
     tmux run-shell -b "bash -c '$popup_script'" 2>/dev/null || true
 }
 
-# Show a simple toast message (wrapper around tmux display-message)
-# Usage: pk_toast MESSAGE
+# =============================================================================
+# Toast Wrappers (delegates to ui_backend.sh)
+# =============================================================================
+
+# Legacy wrapper - delegates to ui_toast from ui_backend.sh
+# Usage: pk_toast MESSAGE [LEVEL]
 pk_toast() {
-    local message="${1:-}"
-    [[ -z "$message" ]] && return 0
-    tmux display-message "$message"
+    ui_toast "$@"
 }
 
-# Show a centered popup toast with a message
+# Legacy wrapper - delegates to ui_toast_popup from ui_backend.sh
 # Usage: pk_toast_popup MESSAGE [WIDTH] [HEIGHT]
 pk_toast_popup() {
-    local message="${1:-}"
-    local width="${2:-50%}"
-    local height="${3:-30%}"
-    
-    [[ -z "$message" ]] && return 0
-    
-    pk_popup -w "$width" -H "$height" "printf '%s\n\nPress any key...' '$message'; read -rsn1"
-}
-
-# =============================================================================
-# Legacy Compatibility
-# =============================================================================
-
-# Display toast notification in tmux (legacy wrapper)
-# Usage: toast "message" ["simple"|"center"]
-# Deprecated: Use pk_toast or pk_toast_popup instead
-toast() {
-    local message="${1:-}"
-    local style="${2:-simple}"
-
-    [[ -z "$message" ]] && return 0
-
-    case "$style" in
-        simple)
-            pk_toast "$message"
-            ;;
-        center)
-            pk_toast_popup "$message"
-            ;;
-        *)
-            pk_toast "$message"
-            ;;
-    esac
+    ui_toast_popup "$@"
 }
 
 # =============================================================================

@@ -37,7 +37,6 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "battery"
     metadata_set "name" "Battery"
-    metadata_set "version" "2.1.0"
     metadata_set "description" "Display battery status with multi-platform support"
 }
 
