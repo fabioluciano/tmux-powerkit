@@ -56,6 +56,7 @@ Full documentation is available in the [Wiki](wiki/Home.md).
 | [Installation](wiki/Installation.md) | Detailed setup guide |
 | [Quick Start](wiki/Quick-Start.md) | Get started in 5 minutes |
 | [Configuration](wiki/Configuration.md) | All configuration options |
+| [Options Reference](assets/powerkit-options.conf) | Complete tmux.conf template with all options |
 | [Plugins](wiki/Home.md#available-plugins) | 42 available plugins |
 | [Themes](wiki/Themes.md) | 13 themes with 27 variants |
 | [Developing Plugins](wiki/DevelopingPlugins.md) | Create your own plugins |
