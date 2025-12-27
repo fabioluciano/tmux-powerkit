@@ -619,6 +619,7 @@ POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"           # Element rendering or
 **Single Layout** (default): Traditional single status line with session+windows and plugins.
 
 **Double Layout**: Two status lines:
+
 - Line 0: Session + Windows
 - Line 1: Plugins only (right-aligned)
 
@@ -639,6 +640,7 @@ set -g @powerkit_status_order "plugins,session"
 ```
 
 **Notes**:
+
 - `session` includes both the session indicator AND windows as a single entity
 - `plugins` are all the status bar plugins
 - The last element is always right-aligned
@@ -1616,6 +1618,7 @@ plugin_get_metadata() {
 ```
 
 **Removed fields**:
+
 - `version` - Not used by the system
 - `priority` - Plugin order is determined by user configuration in `@powerkit_plugins`
 
@@ -1633,6 +1636,7 @@ helper_get_metadata() {
 ```
 
 **Removed fields**:
+
 - `version` - Not used by the system
 
 ### Toast Notifications Centralized
@@ -1640,11 +1644,13 @@ helper_get_metadata() {
 Toast notifications moved from `helper_contract.sh` to `ui_backend.sh`:
 
 **Old approach** (deprecated):
+
 ```bash
 helper_toast "message" "simple"  # No longer exists
 ```
 
 **New approach**:
+
 ```bash
 toast "message"                # info style (default)
 toast "message" "warning"      # yellow with ⚠ icon

@@ -238,8 +238,8 @@ _get_provider_status() {
     local provider_config="${CLOUD_PROVIDERS[$provider_key]}"
     [[ -z "$provider_config" ]] && return 1
 
-    local name api_url icon timeout
-    IFS='|' read -r name api_url icon <<< "$provider_config"
+    local _name api_url icon timeout
+    IFS='|' read -r _name api_url icon <<< "$provider_config"
     timeout=$(get_option "timeout")
     timeout="${timeout:-5}"
 
