@@ -9,6 +9,9 @@
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
 helper_init
 
+# Source UI backend for selector
+. "${POWERKIT_ROOT}/src/utils/ui_backend.sh"
+
 # =============================================================================
 # Metadata
 # =============================================================================
@@ -28,13 +31,16 @@ helper_get_actions() {
 # Configuration
 # =============================================================================
 
-# Defaults from plugin_declare_options() in jira.sh
-_url=$(get_tmux_option "@powerkit_plugin_jira_url" "")
+# Get config from plugin options (matching jira.sh plugin_declare_options)
+_domain=$(get_tmux_option "@powerkit_plugin_jira_domain" "")
 _email=$(get_tmux_option "@powerkit_plugin_jira_email" "")
-_token=$(get_tmux_option "@powerkit_plugin_jira_api_token" "")
+_token=$(get_tmux_option "@powerkit_plugin_jira_token" "")
 _project=$(get_tmux_option "@powerkit_plugin_jira_project" "")
 _jql=$(get_tmux_option "@powerkit_plugin_jira_jql" "")
 _selector_cache_ttl=$(get_tmux_option "@powerkit_plugin_jira_selector_cache_ttl" "7200")
+
+# Build full URL from domain
+_url="https://${_domain}"
 
 # Cache key for selector issues
 SELECTOR_CACHE_KEY="jira_selector_issues"
@@ -292,14 +298,16 @@ show_error_and_wait() {
 
 main() {
     # Validate configuration
-    if [[ -z "$_url" || -z "$_email" || -z "$_token" ]]; then
+    if [[ -z "$_domain" || -z "$_email" || -z "$_token" ]]; then
         show_error_and_wait "Error: Jira plugin not configured.
-Required: @powerkit_plugin_jira_url, @powerkit_plugin_jira_email, @powerkit_plugin_jira_api_token"
+Required: @powerkit_plugin_jira_domain, @powerkit_plugin_jira_email, @powerkit_plugin_jira_token"
     fi
 
     # Check dependencies
-    if ! has_cmd "fzf"; then
-        show_error_and_wait "Error: fzf is required for interactive issue selection"
+    local backend
+    backend=$(ui_get_backend)
+    if [[ "$backend" == "basic" ]]; then
+        show_error_and_wait "Error: fzf or gum is required for interactive issue selection"
     fi
 
     if ! has_cmd "jq"; then
@@ -366,7 +374,7 @@ Required: @powerkit_plugin_jira_url, @powerkit_plugin_jira_email, @powerkit_plug
         formatted+="$content"$'\n'
     done <<< "$sorted_lines"
 
-    # Use fzf for selection with header
+    # Use ui_filter for selection with header
     local selected
     local header
     local h_status h_key h_summary h_priority
@@ -380,19 +388,15 @@ Required: @powerkit_plugin_jira_url, @powerkit_plugin_jira_email, @powerkit_plug
         "$h_summary" \
         "$h_priority")
 
-    # fzf returns: 0 on selection, 1 on no match, 130 on Ctrl+C/Esc
-    # All are valid user actions, not errors
-    local fzf_exit_code=0
-    selected=$(printf '%s' "$formatted" | fzf --ansi \
-        --header="$header" \
-        --preview-window=hidden \
-        --bind 'enter:accept' \
-        --prompt="Select issue > " \
-        --height=100% \
-        --layout=reverse) || fzf_exit_code=$?
+    # ui_filter handles both fzf and gum backends
+    selected=$(printf '%s' "$formatted" | ui_filter \
+        -h "$header" \
+        -p "Select issue >" \
+        -a \
+        --height "100%") || true
 
-    # Exit gracefully if user cancelled (130) or no selection (1)
-    if [[ $fzf_exit_code -ne 0 ]]; then
+    # Exit gracefully if user cancelled or no selection
+    if [[ -z "$selected" ]]; then
         exit 0
     fi
 

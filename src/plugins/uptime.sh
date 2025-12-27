@@ -7,7 +7,7 @@
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 . "${POWERKIT_ROOT}/src/contract/plugin_contract.sh"
-. "${POWERKIT_ROOT}/src/utils/numbers.sh"
+
 
 plugin_get_metadata() {
     metadata_set "id" "uptime"

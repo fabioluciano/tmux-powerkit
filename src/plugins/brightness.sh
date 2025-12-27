@@ -130,7 +130,7 @@ _get_brightness_ioreg() {
         value=$(echo "$brightness_info" | grep -o '"value"=[0-9]*' | cut -d= -f2)
         max=$(echo "$brightness_info" | grep -o '"max"=[0-9]*' | cut -d= -f2)
         if [[ -n "$value" && -n "$max" && "$max" -gt 0 ]]; then
-            printf '%d' "$((value * 100 / max))"
+            calc_percent "$value" "$max"
             return 0
         fi
     fi
@@ -141,7 +141,7 @@ _get_brightness_ioreg() {
         value=$(echo "$brightness_info" | grep -o '"value"=[0-9]*' | cut -d= -f2)
         max=$(echo "$brightness_info" | grep -o '"max"=[0-9]*' | cut -d= -f2)
         if [[ -n "$value" && -n "$max" && "$max" -gt 0 ]]; then
-            printf '%d' "$((value * 100 / max))"
+            calc_percent "$value" "$max"
             return 0
         fi
     fi
@@ -201,8 +201,7 @@ _get_brightness_macos() {
                 if [[ ${#result_parts[@]} -eq 1 ]]; then
                     printf '%s' "${result_parts[0]}"
                 else
-                    local IFS="$separator"
-                    printf '%s' "${result_parts[*]}"
+                    join_with_separator "$separator" "${result_parts[@]}"
                 fi
                 return 0
             fi
@@ -227,7 +226,7 @@ _get_brightness_linux() {
             cur=$(cat "$d/brightness" 2>/dev/null)
             max=$(cat "$d/max_brightness" 2>/dev/null)
             if [[ -n "$cur" && -n "$max" && "$max" -gt 0 ]]; then
-                printf '%d' "$((cur * 100 / max))"
+                calc_percent "$cur" "$max"
                 return 0
             fi
         done
@@ -239,7 +238,7 @@ _get_brightness_linux() {
         max=$(brightnessctl max 2>/dev/null)
         cur=$(brightnessctl get 2>/dev/null)
         if [[ -n "$max" && "$max" -gt 0 && -n "$cur" ]]; then
-            printf '%d' "$((cur * 100 / max))"
+            calc_percent "$cur" "$max"
             return 0
         fi
     fi

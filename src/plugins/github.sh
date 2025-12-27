@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Plugin: github
-# Description: Monitor GitHub repositories for issues, PRs and comments
+# Description: Monitor GitHub repositories for issues and PRs
 # Dependencies: curl, jq (optional for better parsing), gh CLI (optional)
 # =============================================================================
 
@@ -15,7 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "github"
     metadata_set "name" "GitHub"
-    metadata_set "description" "Monitor GitHub repos for issues, PRs and comments"
+    metadata_set "description" "Monitor GitHub repos for issues and PRs"
 }
 
 # =============================================================================
@@ -43,8 +43,7 @@ plugin_declare_options() {
     # Display options
     declare_option "show_issues" "bool" "true" "Show open issues count"
     declare_option "show_prs" "bool" "true" "Show open PRs count"
-    declare_option "show_comments" "bool" "false" "Show PR comments count"
-    declare_option "format" "string" "simple" "Format style: simple or detailed"
+    declare_option "format" "string" "detailed" "Format style: simple or detailed"
     declare_option "separator" "string" " | " "Separator between metrics"
 
     # Icons
@@ -53,7 +52,8 @@ plugin_declare_options() {
     declare_option "icon_pr" "icon" $'\U0000F407' "PR icon"
 
     # Thresholds
-    declare_option "warning_threshold" "number" "10" "Warning when total exceeds threshold"
+    declare_option "warning_threshold_issues" "number" "10" "Warning when issues exceed threshold"
+    declare_option "warning_threshold_prs" "number" "5" "Warning when PRs exceed threshold"
 
     # Cache
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
@@ -66,23 +66,53 @@ plugin_declare_options() {
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
-_is_authenticated() {
-    # Check gh CLI authentication
-    if has_cmd "gh"; then
-        gh auth status &>/dev/null && return 0
-    fi
-    # Check for token options or env vars
-    local token=$(get_option "token")
-    [[ -n "$token" ]] && return 0
-    [[ -n "${GITHUB_TOKEN:-}" || -n "${GH_TOKEN:-}" ]] && return 0
-    return 1
-}
-
 _get_token() {
-    local token=$(get_option "token")
+    local token
+    token=$(get_option "token")
     [[ -n "$token" ]] && { printf '%s' "$token"; return 0; }
     [[ -n "${GITHUB_TOKEN:-}" ]] && { printf '%s' "$GITHUB_TOKEN"; return 0; }
     [[ -n "${GH_TOKEN:-}" ]] && { printf '%s' "$GH_TOKEN"; return 0; }
+    return 1
+}
+
+_verify_token() {
+    local token="$1"
+    [[ -z "$token" ]] && return 1
+
+    # Make API call to verify token is valid
+    local http_code
+    http_code=$(curl -s -w "%{http_code}" -o /dev/null \
+        -H "Authorization: Bearer ${token}" \
+        -H "Accept: application/vnd.github+json" \
+        --connect-timeout 5 \
+        "${GITHUB_API}/user" 2>/dev/null)
+
+    [[ "$http_code" == "200" ]] && return 0
+    return 1
+}
+
+_is_authenticated() {
+    # Priority 1: Check gh CLI authentication (most reliable)
+    if has_cmd "gh"; then
+        gh auth status &>/dev/null && return 0
+    fi
+
+    # Priority 2: Verify token via API call
+    local token
+    token=$(_get_token)
+    if [[ -n "$token" ]]; then
+        _verify_token "$token" && return 0
+    fi
+
+    return 1
+}
+
+_has_repos_configured() {
+    local repos
+    repos=$(get_option "repos")
+    [[ -n "$repos" ]] && return 0
+    # gh CLI can work without explicit repos
+    has_cmd "gh" && return 0
     return 1
 }
 
@@ -91,9 +121,16 @@ plugin_get_state() {
         printf 'failed'
         return
     fi
-    local total=$(plugin_data_get "total")
-    local api_error=$(plugin_data_get "api_error")
-    
+
+    if ! _has_repos_configured; then
+        printf 'degraded'
+        return
+    fi
+
+    local total api_error
+    total=$(plugin_data_get "total")
+    api_error=$(plugin_data_get "api_error")
+
     if [[ "$api_error" == "1" ]]; then
         printf 'degraded'
     elif [[ "${total:-0}" -gt 0 ]]; then
@@ -108,14 +145,24 @@ plugin_get_health() {
         printf 'error'
         return
     fi
-    
-    local api_error=$(plugin_data_get "api_error")
+
+    local api_error
+    api_error=$(plugin_data_get "api_error")
     [[ "$api_error" == "1" ]] && { printf 'error'; return; }
-    
-    local total=$(plugin_data_get "total")
-    local warning_threshold=$(get_option "warning_threshold")
-    
-    [[ "${total:-0}" -ge "$warning_threshold" ]] && printf 'warning' || printf 'ok'
+
+    local issues prs
+    issues=$(plugin_data_get "issues")
+    prs=$(plugin_data_get "prs")
+
+    local warning_threshold_issues warning_threshold_prs
+    warning_threshold_issues=$(get_option "warning_threshold_issues")
+    warning_threshold_prs=$(get_option "warning_threshold_prs")
+
+    if [[ "${issues:-0}" -ge "$warning_threshold_issues" || "${prs:-0}" -ge "$warning_threshold_prs" ]]; then
+        printf 'warning'
+    else
+        printf 'ok'
+    fi
 }
 
 plugin_get_context() {
@@ -158,11 +205,7 @@ _make_github_api_call() {
     local url="$1"
     local token=$(_get_token)
     
-    local curl_opts=(-s -f --connect-timeout 5 --max-time 10)
-    [[ -n "$token" ]] && curl_opts+=(-H "Authorization: token $token")
-    curl_opts+=(-H "Accept: application/vnd.github+json")
-    
-    curl "${curl_opts[@]}" "$url" 2>/dev/null
+    make_api_call "$url" "github" "$token" 5
 }
 
 _get_api_error_message() {
@@ -227,52 +270,6 @@ _count_prs() {
     fi
 }
 
-# Count PR comments
-_count_pr_comments() {
-    local owner="$1"
-    local repo="$2"
-    local filter_user="$3"
-    
-    local url="$GITHUB_API/repos/$owner/$repo/pulls?state=open&per_page=100"
-    local response=$(_make_github_api_call "$url")
-    
-    [[ -z "$response" ]] || ! _is_valid_api_response "$response" && { echo "0"; return 1; }
-    
-    local pr_numbers
-    if has_cmd jq; then
-        pr_numbers=$(echo "$response" | jq -r '.[].number' 2>/dev/null)
-    else
-        pr_numbers=$(echo "$response" | grep -o '"number":[0-9]*' | grep -o '[0-9]*')
-    fi
-    
-    [[ -z "$pr_numbers" ]] && { echo "0"; return 0; }
-    
-    local total_comments=0
-    while IFS= read -r pr_number; do
-        [[ -z "$pr_number" ]] && continue
-        
-        local comments_url="$GITHUB_API/repos/$owner/$repo/issues/$pr_number/comments?per_page=100"
-        local comments_response=$(_make_github_api_call "$comments_url")
-        
-        [[ -z "$comments_response" ]] && continue
-        
-        local count=0
-        if has_cmd jq; then
-            if [[ -z "$filter_user" ]]; then
-                count=$(echo "$comments_response" | jq 'length' 2>/dev/null || echo "0")
-            else
-                count=$(echo "$comments_response" | jq --arg user "$filter_user" \
-                    '[.[] | select(.user.login == $user)] | length' 2>/dev/null || echo "0")
-            fi
-        else
-            count=$(echo "$comments_response" | grep -c '"id"')
-        fi
-        total_comments=$((total_comments + count))
-    done <<<"$pr_numbers"
-    
-    echo "$total_comments"
-}
-
 # Use gh CLI if available
 _fetch_via_gh_cli() {
     local show_issues=$(get_option "show_issues")
@@ -280,12 +277,24 @@ _fetch_via_gh_cli() {
     
     local issues=0 prs=0
     
-    if [[ "$show_issues" == "true" ]]; then
-        issues=$(gh issue list --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
-    fi
-    
-    if [[ "$show_prs" == "true" ]]; then
-        prs=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+    # Check if gh has a default repo set, if not use search API
+    if ! gh repo set-default --view &>/dev/null; then
+        # Use gh search for user's issues/PRs across all repos
+        if [[ "$show_issues" == "true" ]]; then
+            issues=$(gh search issues --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+        fi
+        
+        if [[ "$show_prs" == "true" ]]; then
+            prs=$(gh search prs --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+        fi
+    else
+        if [[ "$show_issues" == "true" ]]; then
+            issues=$(gh issue list --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+        fi
+        
+        if [[ "$show_prs" == "true" ]]; then
+            prs=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+        fi
     fi
     
     echo "$issues $prs 0"
@@ -298,11 +307,9 @@ _fetch_via_gh_cli() {
 _format_repo_status() {
     local issues="$1"
     local prs="$2"
-    local comments="$3"
     
     local show_issues=$(get_option "show_issues")
     local show_prs=$(get_option "show_prs")
-    local show_comments=$(get_option "show_comments")
     local format=$(get_option "format")
     local separator=$(get_option "separator")
     local icon_issue=$(get_option "icon_issue")
@@ -325,10 +332,6 @@ _format_repo_status() {
             parts+=("${prs}p")
         fi
     fi
-    
-    if [[ "$show_comments" == "true" && "$comments" -gt 0 ]]; then
-        parts+=("${comments}c")
-    fi
 
     [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
@@ -336,7 +339,6 @@ _format_repo_status() {
 _get_github_info() {
     local repos_csv=$(get_option "repos")
     local filter_user=$(get_option "filter_user")
-    local show_comments=$(get_option "show_comments")
     
     # If no repos configured, try gh CLI for user's repos
     if [[ -z "$repos_csv" ]] && has_cmd gh; then
@@ -349,7 +351,7 @@ _get_github_info() {
     
     IFS=',' read -ra repos <<<"$repos_csv"
     
-    local total_issues=0 total_prs=0 total_comments=0
+    local total_issues=0 total_prs=0
     local api_error=0
     
     for repo_spec in "${repos[@]}"; do
@@ -359,7 +361,7 @@ _get_github_info() {
         local owner="${repo_spec%%/*}"
         local repo="${repo_spec#*/}"
         
-        local issues prs comments
+        local issues prs
         
         if [[ "$(get_option "show_issues")" == "true" ]]; then
             issues=$(_count_issues "$owner" "$repo" "$filter_user")
@@ -377,62 +379,60 @@ _get_github_info() {
             prs=0
         fi
         
-        if [[ "$show_comments" == "true" ]]; then
-            comments=$(_count_pr_comments "$owner" "$repo" "$filter_user")
-            comments="${comments:-0}"
-        else
-            comments=0
-        fi
-        
         total_issues=$((total_issues + issues))
         total_prs=$((total_prs + prs))
-        total_comments=$((total_comments + comments))
     done
     
-    echo "$total_issues $total_prs $total_comments $api_error"
+    echo "$total_issues $total_prs $api_error"
 }
 
 plugin_collect() {
     if ! _is_authenticated; then
         plugin_data_set "issues" "0"
         plugin_data_set "prs" "0"
-        plugin_data_set "comments" "0"
         plugin_data_set "total" "0"
         plugin_data_set "api_error" "0"
         return 0
     fi
-    
+
     local result=$(_get_github_info)
-    local issues prs comments api_error
-    read -r issues prs comments api_error <<<"$result"
-    
+    local issues prs api_error
+    read -r issues prs api_error <<<"$result"
+
     issues="${issues:-0}"
     prs="${prs:-0}"
-    comments="${comments:-0}"
     api_error="${api_error:-0}"
-    
-    local total=$((issues + prs + comments))
-    
+
+    local total=$((issues + prs))
+
     plugin_data_set "issues" "$issues"
     plugin_data_set "prs" "$prs"
-    plugin_data_set "comments" "$comments"
     plugin_data_set "total" "$total"
     plugin_data_set "api_error" "$api_error"
 }
 
 plugin_render() {
-    local issues=$(plugin_data_get "issues")
-    local prs=$(plugin_data_get "prs")
-    local comments=$(plugin_data_get "comments")
-    local total=$(plugin_data_get "total")
-    
+    if ! _is_authenticated; then
+        printf 'unauthenticated'
+        return 0
+    fi
+
+    if ! _has_repos_configured; then
+        printf 'no repos'
+        return 0
+    fi
+
+    local issues prs total
+    issues=$(plugin_data_get "issues")
+    prs=$(plugin_data_get "prs")
+    total=$(plugin_data_get "total")
+
     issues="${issues:-0}"
     prs="${prs:-0}"
-    comments="${comments:-0}"
     total="${total:-0}"
-    
+
     [[ "$total" -eq 0 ]] && return 0
-    
-    _format_repo_status "$issues" "$prs" "$comments"
+
+    _format_repo_status "$issues" "$prs"
 }
 

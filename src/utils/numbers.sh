@@ -112,6 +112,25 @@ format_bytes() {
     fi
 }
 
+# Format number to human readable with SI suffixes (base 1000)
+# Usage: format_metric 1500  # Returns "1.5K"
+# Usage: format_metric 1500000  # Returns "1.5M"
+format_metric() {
+    local value="$1"
+    local precision="${2:-1}"
+    local suffix="${3:-}"  # optional suffix (e.g., "/s" for rate)
+
+    if (( value >= 1000000000 )); then
+        awk -v v="$value" -v p="$precision" -v s="$suffix" 'BEGIN { printf "%.*fG%s", p, v / 1000000000, s }'
+    elif (( value >= 1000000 )); then
+        awk -v v="$value" -v p="$precision" -v s="$suffix" 'BEGIN { printf "%.*fM%s", p, v / 1000000, s }'
+    elif (( value >= 1000 )); then
+        awk -v v="$value" -v p="$precision" -v s="$suffix" 'BEGIN { printf "%.*fK%s", p, v / 1000, s }'
+    else
+        printf '%d%s' "$value" "$suffix"
+    fi
+}
+
 # Format percentage
 # Usage: format_percent 45.678 1  # Returns "45.7%"
 format_percent() {
@@ -266,5 +285,29 @@ format_uptime_seconds() {
         printf '%dh %dm' "$hours" "$minutes"
     else
         printf '%dm' "$minutes"
+    fi
+}
+
+# =============================================================================
+# Speed Formatting
+# =============================================================================
+
+# Format speed (KB per second) to human readable
+# Usage: format_speed 1536     # Returns "1.5M" (input is KB/s)
+# Usage: format_speed 512      # Returns "512K"
+# Usage: format_speed 512 1 "/s"  # Returns "512.0K/s"
+format_speed() {
+    local kb_per_sec="${1:-0}"
+    local precision="${2:-0}"
+    local suffix="${3:-}"
+
+    if (( kb_per_sec >= 1024 )); then
+        awk -v v="$kb_per_sec" -v p="$precision" -v s="$suffix" 'BEGIN { printf "%.*fM%s", p, v / 1024, s }'
+    else
+        if (( precision > 0 )); then
+            awk -v v="$kb_per_sec" -v p="$precision" -v s="$suffix" 'BEGIN { printf "%.*fK%s", p, v, s }'
+        else
+            printf '%dK%s' "$kb_per_sec" "$suffix"
+        fi
     fi
 }

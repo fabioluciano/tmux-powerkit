@@ -407,3 +407,13 @@ format_percentage() {
 }
 
 # NOTE: format_number is in numbers.sh - use that for number formatting with thousands separator
+
+# Format seconds to mm:ss timer format
+# Usage: format_timer 125   # Returns "02:05"
+# Usage: format_timer 3661  # Returns "61:01"
+format_timer() {
+    local seconds="${1:-0}"
+    local minutes=$((seconds / 60))
+    local secs=$((seconds % 60))
+    printf '%02d:%02d' "$minutes" "$secs"
+}

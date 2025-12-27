@@ -1,8 +1,27 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Plugin: smartkey
-# Description: Display custom key-value data from environment or file
-# Dependencies: none
+# Description: Display hardware key touch indicator (YubiKey, SoloKeys, Nitrokey)
+# Dependencies: gpg-connect-agent (optional), pcsc_scan (optional)
+# =============================================================================
+#
+# CONTRACT IMPLEMENTATION:
+#
+# State:
+#   - active: Hardware key is waiting for touch
+#   - inactive: No key is waiting for touch
+#
+# Health:
+#   - error: Key is waiting for touch (urgent attention needed)
+#   - ok: No key activity
+#
+# Context:
+#   - waiting: Key is waiting for touch interaction
+#   - idle: No key activity
+#
+# =============================================================================
+# Only shows when hardware key is actively waiting for touch interaction.
+# Uses multiple detection methods to minimize false positives.
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -15,7 +34,18 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "smartkey"
     metadata_set "name" "SmartKey"
-    metadata_set "description" "Display custom key-value data"
+    metadata_set "description" "Hardware key touch indicator (YubiKey, SoloKeys, Nitrokey)"
+}
+
+# =============================================================================
+# Plugin Contract: Dependencies
+# =============================================================================
+
+plugin_check_dependencies() {
+    # All dependencies are optional - different detection methods use different tools
+    require_cmd "gpg-connect-agent" 1  # Optional: for scdaemon checks
+    require_cmd "pcsc_scan" 1          # Optional: for PCSC checks
+    return 0
 }
 
 # =============================================================================
@@ -23,90 +53,224 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_declare_options() {
-    # Display options
-    declare_option "key" "string" "" "Environment variable or key to display"
-    declare_option "file" "string" "" "File to read value from"
-    declare_option "default" "string" "" "Default value if key not found"
-    declare_option "format" "string" "%s" "Format string (%s for value)"
-
     # Icons
-    declare_option "icon" "icon" $'\U000F0383' "Key icon"
+    declare_option "icon" "icon" $'\U000F0084' "Default plugin icon (key)"
+    declare_option "icon_waiting" "icon" $'\U000F0084' "Icon when waiting for touch"
 
-    # Cache - environment variables are relatively static
-    declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
+    # Cache - very short TTL since touch state changes quickly
+    declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
 }
 
 # =============================================================================
-# Plugin Contract: Implementation
+# YubiKey Touch Detection Methods
 # =============================================================================
 
-plugin_get_content_type() { printf 'static'; }
-plugin_get_presence() { printf 'conditional'; }
-plugin_get_state() {
-    local value=$(plugin_data_get "value")
-    [[ -n "$value" ]] && printf 'active' || printf 'inactive'
-}
-plugin_get_health() { printf 'ok'; }
+# Method 1: Check for yubikey-touch-detector (most reliable if installed)
+# https://github.com/maximbaz/yubikey-touch-detector
+_check_yubikey_touch_detector() {
+    # Check if the socket exists and has pending notification
+    local socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/yubikey-touch-detector.socket"
+    [[ -S "$socket" ]] || return 1
 
-plugin_get_context() {
-    local key file value
-    key=$(get_option "key")
-    file=$(get_option "file")
-    value=$(plugin_data_get "value")
-    
-    if [[ -z "$value" ]]; then
-        printf 'empty'
-    elif [[ -n "$file" && -f "$file" ]]; then
-        printf 'from_file'
-    elif [[ -n "$key" ]]; then
-        printf 'from_env'
+    # Check if detector process indicates waiting state
+    local state_file="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/yubikey-touch-detector.state"
+    if [[ -f "$state_file" ]]; then
+        local state
+        state=$(cat "$state_file" 2>/dev/null)
+        [[ "$state" == "1" || "$state" == "GPG" || "$state" == "U2F" ]] && return 0
+    fi
+
+    return 1
+}
+
+# Method 2: Check for gpg-agent waiting for card (specific pinentry prompt)
+# Only triggers when pinentry is specifically waiting for smartcard PIN/touch
+_check_gpg_card_prompt() {
+    # Look for pinentry processes with smartcard-related prompts
+    # pinentry shows specific window titles when waiting for card
+    if is_macos; then
+        # macOS: check for pinentry-mac with card prompt
+        pgrep -f "pinentry-mac" &>/dev/null || return 1
+        # Verify it's actually waiting (has a window)
+        osascript -e 'tell application "System Events" to return (name of processes) contains "pinentry-mac"' 2>/dev/null | grep -q "true"
     else
-        printf 'default'
+        # Linux: check for pinentry with specific card-related environment
+        local pinentry_pid
+        pinentry_pid=$(pgrep -f "pinentry" 2>/dev/null | head -1) || return 1
+
+        # Check if pinentry has TTY (interactive prompt active)
+        [[ -d "/proc/$pinentry_pid/fd" ]] || return 1
+        # Use find instead of ls|grep to check for tty/pts file descriptors
+        find -L "/proc/$pinentry_pid/fd" -maxdepth 1 -type c 2>/dev/null | while read -r fd; do
+            [[ "$(readlink "$fd" 2>/dev/null)" =~ (tty|pts) ]] && exit 0
+        done && return 0
+        return 1
     fi
 }
 
-plugin_get_icon() { get_option "icon"; }
+# Method 3: Check for SSH FIDO2 authentication waiting
+# ssh-agent prompts for FIDO2 key touch with specific behavior
+_check_ssh_fido_waiting() {
+    # Look for ssh-sk-helper process (FIDO2/U2F authenticator helper)
+    pgrep -f "ssh-sk-helper" &>/dev/null && return 0
 
-# =============================================================================
-# Main Logic
-# =============================================================================
+    # Alternative: check for libfido2 waiting
+    pgrep -f "fido2-" &>/dev/null && return 0
 
-_get_smartkey_value() {
-    local key file default_val
-    key=$(get_option "key")
-    file=$(get_option "file")
-    default_val=$(get_option "default")
-
-    # Try file first
-    if [[ -n "$file" && -f "$file" ]]; then
-        cat "$file" 2>/dev/null && return 0
-    fi
-
-    # Try environment variable
-    if [[ -n "$key" ]]; then
-        local value="${!key}"
-        [[ -n "$value" ]] && printf '%s' "$value" && return 0
-    fi
-
-    # Return default
-    [[ -n "$default_val" ]] && printf '%s' "$default_val"
+    return 1
 }
+
+# Method 4: Check YubiKey Manager notification (ykman)
+_check_ykman_waiting() {
+    # ykman sometimes spawns helper processes when waiting
+    pgrep -f "ykman.*--wait" &>/dev/null
+}
+
+# Method 5: Check for active CCID transaction (low-level)
+# PC/SC daemon shows specific state when card is being accessed
+_check_pcscd_waiting() {
+    has_cmd pcsc_scan || return 1
+
+    # Check if pcscd is running
+    pgrep -f "pcscd" &>/dev/null || return 1
+
+    # Check for recent card activity (file modification)
+    local pcsc_dir="/var/run/pcscd"
+    [[ -d "$pcsc_dir" ]] || return 1
+
+    # Only return true if there's very recent activity (within 2 seconds)
+    find "$pcsc_dir" -type s -mmin -0.05 2>/dev/null | grep -q . && return 0
+
+    return 1
+}
+
+# Method 6: Check gpg-agent scdaemon for PKSIGN/PKAUTH waiting
+# This is more specific than just checking if scdaemon is busy
+_check_scdaemon_signing() {
+    has_cmd gpg-connect-agent || return 1
+
+    # Quick check: is scdaemon even running?
+    pgrep -f "scdaemon" &>/dev/null || return 1
+
+    # Check if gpg-agent is in a blocked state waiting for card
+    # GETINFO scd_running returns quickly if not blocked
+    local start end elapsed
+    start=$(date +%s%N)
+    timeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
+    local result_code=$?
+    end=$(date +%s%N)
+
+    # If command timed out or took > 200ms, likely waiting for user
+    if [[ $result_code -eq 124 ]]; then
+        return 0  # Timeout = blocked waiting
+    fi
+
+    elapsed=$(( (end - start) / 1000000 ))  # Convert to ms
+    [[ $elapsed -gt 200 ]] && return 0
+
+    return 1
+}
+
+# Main detection orchestrator - checks all methods in priority order
+_is_waiting_for_touch() {
+    # Priority order (most reliable first):
+    # 1. yubikey-touch-detector (explicit touch detection daemon)
+    # 2. ssh-sk-helper (FIDO2 SSH authentication)
+    # 3. gpg card prompt (pinentry for smartcard)
+    # 4. scdaemon signing (GPG smartcard operation)
+    # 5. ykman waiting
+
+    _check_yubikey_touch_detector && return 0
+    _check_ssh_fido_waiting && return 0
+    _check_gpg_card_prompt && return 0
+    _check_scdaemon_signing && return 0
+    _check_ykman_waiting && return 0
+
+    return 1
+}
+
+# =============================================================================
+# Plugin Contract: Data Collection
+# =============================================================================
 
 plugin_collect() {
-    local value
-    value=$(_get_smartkey_value)
-
-    [[ -n "$value" ]] && plugin_data_set "value" "$value"
+    if _is_waiting_for_touch; then
+        plugin_data_set "waiting" "1"
+    else
+        plugin_data_set "waiting" "0"
+    fi
 }
 
+# =============================================================================
+# Plugin Contract: Type and Presence
+# =============================================================================
+
+plugin_get_content_type() {
+    printf 'dynamic'
+}
+
+plugin_get_presence() {
+    # Only show when key is waiting for touch
+    printf 'conditional'
+}
+
+# =============================================================================
+# Plugin Contract: State
+# =============================================================================
+
+plugin_get_state() {
+    local waiting
+    waiting=$(plugin_data_get "waiting")
+    [[ "$waiting" == "1" ]] && printf 'active' || printf 'inactive'
+}
+
+# =============================================================================
+# Plugin Contract: Health
+# =============================================================================
+# When key is waiting for touch, it's urgent (error level) to get attention
+
+plugin_get_health() {
+    local waiting
+    waiting=$(plugin_data_get "waiting")
+    [[ "$waiting" == "1" ]] && printf 'error' || printf 'ok'
+}
+
+# =============================================================================
+# Plugin Contract: Context
+# =============================================================================
+
+plugin_get_context() {
+    local waiting
+    waiting=$(plugin_data_get "waiting")
+    [[ "$waiting" == "1" ]] && printf 'waiting' || printf 'idle'
+}
+
+# =============================================================================
+# Plugin Contract: Icon
+# =============================================================================
+
+plugin_get_icon() {
+    local waiting
+    waiting=$(plugin_data_get "waiting")
+
+    if [[ "$waiting" == "1" ]]; then
+        local icon_waiting
+        icon_waiting=$(get_option "icon_waiting")
+        [[ -n "$icon_waiting" ]] && printf '%s' "$icon_waiting" || get_option "icon"
+    else
+        get_option "icon"
+    fi
+}
+
+# =============================================================================
+# Plugin Contract: Render
+# =============================================================================
+
 plugin_render() {
-    local value format
-    value=$(plugin_data_get "value")
-    format=$(get_option "format")
+    local waiting
+    waiting=$(plugin_data_get "waiting")
 
-    [[ -z "$value" ]] && return 0
-
-    # shellcheck disable=SC2059
-    printf "$format" "$value"
+    # Only render when waiting for touch
+    [[ "$waiting" == "1" ]] && printf 'TOUCH'
 }
 

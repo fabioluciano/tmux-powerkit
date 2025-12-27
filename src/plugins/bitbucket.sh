@@ -50,7 +50,8 @@ plugin_declare_options() {
     declare_option "icon_pr" "icon" $'\U0000F407' "Icon for pull requests"
 
     # Thresholds
-    declare_option "warning_threshold" "number" "10" "Warning when total exceeds threshold"
+    declare_option "warning_threshold_issues" "number" "10" "Warning when issues exceed threshold"
+    declare_option "warning_threshold_prs" "number" "5" "Warning when PRs exceed threshold"
 
     # Cache
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
@@ -63,26 +64,32 @@ plugin_declare_options() {
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
-_is_configured() {
-    local bb_type repos email token url
+_is_authenticated() {
+    local bb_type email token url
     bb_type=$(get_option "type")
-    repos=$(get_option "repos")
     email=$(get_option "email")
     token=$(get_option "token")
     url=$(get_option "url")
     
-    # repos is always required
-    [[ -z "$repos" ]] && return 1
-    
     if [[ "$bb_type" == "datacenter" ]]; then
         # Datacenter requires url and token
-        [[ -z "$url" || -z "$token" ]] && return 1
+        [[ -n "$url" && -n "$token" ]] && return 0
     else
         # Cloud requires email and token
-        [[ -z "$email" || -z "$token" ]] && return 1
+        [[ -n "$email" && -n "$token" ]] && return 0
     fi
     
-    return 0
+    return 1
+}
+
+_has_repos_configured() {
+    local repos=$(get_option "repos")
+    [[ -n "$repos" ]] && return 0
+    return 1
+}
+
+_is_configured() {
+    _is_authenticated && _has_repos_configured
 }
 
 plugin_get_state() {
@@ -104,13 +111,17 @@ plugin_get_health() {
         return
     fi
     
-    local issues prs total warning_threshold
+    local issues prs warning_threshold_issues warning_threshold_prs
     issues=$(plugin_data_get "issues")
     prs=$(plugin_data_get "prs")
-    total=$((${issues:-0} + ${prs:-0}))
-    warning_threshold=$(get_option "warning_threshold")
+    warning_threshold_issues=$(get_option "warning_threshold_issues")
+    warning_threshold_prs=$(get_option "warning_threshold_prs")
     
-    [[ "$total" -ge "$warning_threshold" ]] && printf 'warning' || printf 'ok'
+    if [[ "${issues:-0}" -ge "$warning_threshold_issues" || "${prs:-0}" -ge "$warning_threshold_prs" ]]; then
+        printf 'warning'
+    else
+        printf 'ok'
+    fi
 }
 
 plugin_get_context() {
@@ -248,9 +259,14 @@ plugin_collect() {
 }
 
 plugin_render() {
-    if ! _is_configured; then
-        printf 'Not configured'
-        return
+    if ! _is_authenticated; then
+        printf 'unauthenticated'
+        return 0
+    fi
+    
+    if ! _has_repos_configured; then
+        printf 'no repos'
+        return 0
     fi
     
     local issues prs show_issues show_prs separator icon_issue icon_pr
@@ -264,17 +280,16 @@ plugin_render() {
 
     [[ "${issues:-0}" -eq 0 && "${prs:-0}" -eq 0 ]] && return 0
 
-    local output=""
+    local parts=()
     
     if [[ "$show_issues" == "on" || "$show_issues" == "true" ]] && [[ "${issues:-0}" -gt 0 ]]; then
-        output="${icon_issue} ${issues}"
+        parts+=("${icon_issue} ${issues}")
     fi
     
     if [[ "$show_prs" == "on" || "$show_prs" == "true" ]] && [[ "${prs:-0}" -gt 0 ]]; then
-        [[ -n "$output" ]] && output+="$separator"
-        output+="${icon_pr} ${prs}"
+        parts+=("${icon_pr} ${prs}")
     fi
 
-    printf '%s' "$output"
+    [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
 

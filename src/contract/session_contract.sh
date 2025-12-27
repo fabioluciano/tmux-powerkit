@@ -78,10 +78,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 . "${POWERKIT_ROOT}/src/core/guard.sh"
 source_guard "contract_session" && return 0
 
-. "${POWERKIT_ROOT}/src/core/logger.sh"
-. "${POWERKIT_ROOT}/src/core/options.sh"
-. "${POWERKIT_ROOT}/src/core/registry.sh"
-. "${POWERKIT_ROOT}/src/utils/validation.sh"
+# Note: All core and utils modules are loaded by bootstrap.sh
 
 # =============================================================================
 # Session Modes

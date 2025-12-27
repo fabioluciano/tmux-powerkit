@@ -62,6 +62,7 @@ plugin_declare_options() {
     declare_option "show_ssid" "bool" "true" "Show WiFi network name"
     declare_option "show_ip" "bool" "false" "Show IP address instead of SSID"
     declare_option "show_signal" "bool" "false" "Show signal strength percentage"
+    declare_option "hide_when_connected" "bool" "false" "Hide plugin when connected (show only when disconnected)"
 
     # Icons - signal-based
     declare_option "icon" "icon" "󰤨" "WiFi connected (full signal)"
@@ -337,9 +338,18 @@ plugin_get_presence() {
 # =============================================================================
 
 plugin_get_state() {
-    local connected
+    local connected hide_when_connected
     connected=$(plugin_data_get "connected")
-    [[ "$connected" == "1" ]] && printf 'active' || printf 'inactive'
+    hide_when_connected=$(get_option "hide_when_connected")
+
+    # If hide_when_connected is true, invert the visibility logic
+    if [[ "$hide_when_connected" == "true" ]]; then
+        # Show only when NOT connected
+        [[ "$connected" != "1" ]] && printf 'active' || printf 'inactive'
+    else
+        # Normal: show only when connected
+        [[ "$connected" == "1" ]] && printf 'active' || printf 'inactive'
+    fi
 }
 
 # =============================================================================

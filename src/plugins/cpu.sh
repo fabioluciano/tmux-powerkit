@@ -63,8 +63,7 @@ plugin_declare_options() {
     declare_option "icon_warning" "icon" "" "Icon when warning (empty = use default)"
     declare_option "icon_critical" "icon" "" "Icon when critical (empty = use default)"
 
-    # Thresholds (normal mode: higher = worse)
-    declare_option "threshold_mode" "string" "normal" "Threshold mode (none|normal|inverted)"
+    # Thresholds (higher = worse)
     declare_option "warning_threshold" "number" "70" "Warning threshold percentage"
     declare_option "critical_threshold" "number" "90" "Critical threshold percentage"
 
@@ -234,9 +233,8 @@ plugin_get_state() {
 #   - error: Above critical threshold
 
 plugin_get_health() {
-    local percent mode warn_th crit_th
+    local percent warn_th crit_th
     percent=$(plugin_data_get "percent")
-    mode=$(get_option "threshold_mode")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
@@ -244,31 +242,14 @@ plugin_get_health() {
     warn_th="${warn_th:-70}"
     crit_th="${crit_th:-90}"
 
-    case "$mode" in
-        none)
-            printf 'ok'
-            ;;
-        inverted)
-            # Inverted: lower is worse (unusual for CPU)
-            if (( percent <= crit_th )); then
-                printf 'error'
-            elif (( percent <= warn_th )); then
-                printf 'warning'
-            else
-                printf 'ok'
-            fi
-            ;;
-        normal|*)
-            # Normal: higher is worse (default for CPU)
-            if (( percent >= crit_th )); then
-                printf 'error'
-            elif (( percent >= warn_th )); then
-                printf 'warning'
-            else
-                printf 'ok'
-            fi
-            ;;
-    esac
+    # Higher is worse
+    if (( percent >= crit_th )); then
+        printf 'error'
+    elif (( percent >= warn_th )); then
+        printf 'warning'
+    else
+        printf 'ok'
+    fi
 }
 
 # =============================================================================

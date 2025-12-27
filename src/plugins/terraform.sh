@@ -92,8 +92,7 @@ plugin_get_health() {
     if [[ "$warn_on_prod" == "true" ]]; then
         local IFS=','
         for keyword in $prod_keywords; do
-            keyword="${keyword#"${keyword%%[![:space:]]*}"}"
-            keyword="${keyword%"${keyword##*[![:space:]]}"}"
+            keyword=$(trim "$keyword")
             if [[ "${workspace,,}" == *"${keyword,,}"* ]]; then
                 printf 'error'
                 return
@@ -123,8 +122,7 @@ plugin_get_context() {
     # Check for production
     local IFS=','
     for keyword in $prod_keywords; do
-        keyword="${keyword#"${keyword%%[![:space:]]*}"}"
-        keyword="${keyword%"${keyword##*[![:space:]]}"}"
+        keyword=$(trim "$keyword")
         if [[ "${workspace,,}" == *"${keyword,,}"* ]]; then
             [[ "$has_pending" == "1" ]] && printf 'production_pending' || printf 'production'
             return

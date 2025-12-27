@@ -58,15 +58,11 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display format
-    declare_option "format" "string" "percent" "Display format (percent|usage)"
+    declare_option "format" "string" "percent" "Display format (percent|usage|used)"
 
     # Icons
     declare_option "icon" "icon" $'\U0000efc5' "Plugin icon"
-    declare_option "icon_warning" "icon" "" "Icon when warning (empty = use default)"
-    declare_option "icon_critical" "icon" "" "Icon when critical (empty = use default)"
-
-    # Thresholds (normal mode: higher = worse)
-    declare_option "threshold_mode" "string" "normal" "Threshold mode (none|normal|inverted)"
+    # Thresholds (higher = worse)
     declare_option "warning_threshold" "number" "80" "Warning threshold percentage"
     declare_option "critical_threshold" "number" "90" "Critical threshold percentage"
 
@@ -104,11 +100,7 @@ _collect_linux() {
     mem_used=$((mem_total - mem_available))
 
     # Calculate percentage (mem_total is in KB)
-    if [[ $mem_total -gt 0 ]]; then
-        percent=$(( (mem_used * 100) / mem_total ))
-    else
-        percent=0
-    fi
+    percent=$(calc_percent "$mem_used" "$mem_total")
 
     # Ensure valid range
     (( percent > 100 )) && percent=100
@@ -162,11 +154,7 @@ _collect_macos_vm_stat() {
 
     mem_used=$((pages_used * page_size))
 
-    if [[ $mem_total -gt 0 ]]; then
-        percent=$(( (mem_used * 100) / mem_total ))
-    else
-        percent=0
-    fi
+    percent=$(calc_percent "$mem_used" "$mem_total")
 
     echo "$percent $mem_used $mem_total"
 }
@@ -242,9 +230,8 @@ plugin_get_state() {
 # =============================================================================
 
 plugin_get_health() {
-    local percent mode warn_th crit_th
+    local percent warn_th crit_th
     percent=$(plugin_data_get "percent")
-    mode=$(get_option "threshold_mode")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
@@ -252,31 +239,14 @@ plugin_get_health() {
     warn_th="${warn_th:-80}"
     crit_th="${crit_th:-90}"
 
-    case "$mode" in
-        none)
-            printf 'ok'
-            ;;
-        inverted)
-            # Lower is worse (unusual for memory)
-            if (( percent <= crit_th )); then
-                printf 'error'
-            elif (( percent <= warn_th )); then
-                printf 'warning'
-            else
-                printf 'ok'
-            fi
-            ;;
-        normal|*)
-            # Higher is worse (default for memory)
-            if (( percent >= crit_th )); then
-                printf 'error'
-            elif (( percent >= warn_th )); then
-                printf 'warning'
-            else
-                printf 'ok'
-            fi
-            ;;
-    esac
+    # Higher is worse
+    if (( percent >= crit_th )); then
+        printf 'error'
+    elif (( percent >= warn_th )); then
+        printf 'warning'
+    else
+        printf 'ok'
+    fi
 }
 
 # =============================================================================
@@ -298,25 +268,7 @@ plugin_get_context() {
 # Plugin Contract: Icon
 # =============================================================================
 
-plugin_get_icon() {
-    local health icon_warn icon_crit
-
-    health=$(plugin_get_health)
-    icon_warn=$(get_option "icon_warning")
-    icon_crit=$(get_option "icon_critical")
-
-    case "$health" in
-        error)
-            [[ -n "$icon_crit" ]] && printf '%s' "$icon_crit" || get_option "icon"
-            ;;
-        warning)
-            [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
-            ;;
-        *)
-            get_option "icon"
-            ;;
-    esac
-}
+plugin_get_icon() { get_option "icon"; }
 
 # =============================================================================
 # Plugin Contract: Render
@@ -337,6 +289,9 @@ plugin_render() {
     case "$format" in
         usage)
             printf '%s/%s' "$(_bytes_to_human "$used")" "$(_bytes_to_human "$total")"
+            ;;
+        used)
+            printf '%s' "$(_bytes_to_human "$used")"
             ;;
         percent|*)
             printf '%3d%%' "$percent"

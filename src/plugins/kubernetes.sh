@@ -2,7 +2,7 @@
 # =============================================================================
 # Plugin: kubernetes
 # Description: Display current Kubernetes context and namespace
-# Dependencies: kubectl (optional for basic info - reads kubeconfig directly)
+# Dependencies: kubectl (optional - can read kubeconfig directly)
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -26,6 +26,7 @@ plugin_check_dependencies() {
     # kubectl is optional - we can read kubeconfig directly
     local kubeconfig="${KUBECONFIG:-$HOME/.kube/config}"
     [[ -f "$kubeconfig" ]] || require_cmd "kubectl" || return 1
+    require_cmd "fzf" 1  # Optional: for selectors
     return 0
 }
 
@@ -57,7 +58,7 @@ plugin_declare_options() {
     declare_option "popup_width" "string" "50%" "Popup width"
     declare_option "popup_height" "string" "50%" "Popup height"
 
-    # Cache - context/namespace rarely changes during a session
+    # Cache
     declare_option "cache_ttl" "number" "60" "Cache duration in seconds"
 }
 
@@ -69,9 +70,10 @@ plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {
-    local context=$(plugin_data_get "context")
-    local connected=$(plugin_data_get "connected")
-    local display_mode=$(get_option "display_mode")
+    local context connected display_mode
+    context=$(plugin_data_get "context")
+    connected=$(plugin_data_get "connected")
+    display_mode=$(get_option "display_mode")
     
     if [[ -z "$context" ]]; then
         printf 'inactive'
@@ -83,20 +85,19 @@ plugin_get_state() {
 }
 
 plugin_get_health() {
-    local context=$(plugin_data_get "context")
-    local connected=$(plugin_data_get "connected")
-    local warn_on_prod=$(get_option "warn_on_prod")
-    local prod_keywords=$(get_option "prod_keywords")
+    local context connected warn_on_prod prod_keywords
+    context=$(plugin_data_get "context")
+    connected=$(plugin_data_get "connected")
+    warn_on_prod=$(get_option "warn_on_prod")
+    prod_keywords=$(get_option "prod_keywords")
     
     # Check if disconnected
-    if [[ "$connected" == "0" ]]; then
-        printf 'warning'
-        return
-    fi
+    [[ "$connected" == "0" ]] && { printf 'warning'; return; }
     
     # Check if in production context
     if [[ "$warn_on_prod" == "true" && -n "$context" ]]; then
         local IFS=','
+        local keyword
         for keyword in $prod_keywords; do
             if [[ "${context,,}" == *"${keyword,,}"* ]]; then
                 printf 'error'
@@ -109,27 +110,19 @@ plugin_get_health() {
 }
 
 plugin_get_context() {
-    local context=$(plugin_data_get "context")
-    local connected=$(plugin_data_get "connected")
-    local prod_keywords=$(get_option "prod_keywords")
+    local context connected prod_keywords
+    context=$(plugin_data_get "context")
+    connected=$(plugin_data_get "connected")
+    prod_keywords=$(get_option "prod_keywords")
     
-    if [[ -z "$context" ]]; then
-        printf 'no_context'
-        return
-    fi
-    
-    if [[ "$connected" == "0" ]]; then
-        printf 'disconnected'
-        return
-    fi
+    [[ -z "$context" ]] && { printf 'no_context'; return; }
+    [[ "$connected" == "0" ]] && { printf 'disconnected'; return; }
     
     # Detect environment type from context name
     local IFS=','
+    local keyword
     for keyword in $prod_keywords; do
-        if [[ "${context,,}" == *"${keyword,,}"* ]]; then
-            printf 'production'
-            return
-        fi
+        [[ "${context,,}" == *"${keyword,,}"* ]] && { printf 'production'; return; }
     done
     
     if [[ "${context,,}" == *stag* || "${context,,}" == *staging* ]]; then
@@ -153,33 +146,41 @@ _get_kubeconfig_path() {
     printf '%s' "${KUBECONFIG:-$HOME/.kube/config}"
 }
 
-# Check if kubeconfig changed since last cache
-_check_kubeconfig_changed() {
+# Get kubeconfig modification time for change detection
+_get_kubeconfig_mtime() {
     local kubeconfig=$(_get_kubeconfig_path)
-    local mtime_cache="${POWERKIT_CACHE_DIR:-/tmp}/kubernetes_mtime.cache"
+    [[ ! -f "$kubeconfig" ]] && { printf '0'; return; }
     
-    [[ ! -f "$kubeconfig" ]] && return 1
-    
-    local current_mtime
     if is_macos; then
-        current_mtime=$(stat -f "%m" "$kubeconfig" 2>/dev/null) || return 1
+        stat -f "%m" "$kubeconfig" 2>/dev/null || printf '0'
     else
-        current_mtime=$(stat -c "%Y" "$kubeconfig" 2>/dev/null) || return 1
+        stat -c "%Y" "$kubeconfig" 2>/dev/null || printf '0'
+    fi
+}
+
+# Check if kubeconfig changed since last check
+_kubeconfig_changed() {
+    local current_mtime cached_mtime
+    current_mtime=$(_get_kubeconfig_mtime)
+    
+    # Get cached mtime
+    if cached_mtime=$(cache_get "kubernetes_kubeconfig_mtime" 86400); then
+        if [[ "$current_mtime" != "$cached_mtime" ]]; then
+            # Changed - update cache and invalidate connectivity
+            cache_set "kubernetes_kubeconfig_mtime" "$current_mtime"
+            cache_invalidate "kubernetes_connectivity"
+            return 0
+        fi
+        return 1
     fi
     
-    local cached_mtime=""
-    [[ -f "$mtime_cache" ]] && cached_mtime=$(<"$mtime_cache")
-    
-    if [[ "$current_mtime" != "$cached_mtime" ]]; then
-        printf '%s' "$current_mtime" > "$mtime_cache"
-        return 0  # Changed
-    fi
-    
-    return 1  # Not changed
+    # First run - save mtime
+    cache_set "kubernetes_kubeconfig_mtime" "$current_mtime"
+    return 0
 }
 
 # Get current context directly from kubeconfig (no kubectl required)
-_get_current_context_from_file() {
+_get_context_from_file() {
     local kubeconfig=$(_get_kubeconfig_path)
     [[ ! -f "$kubeconfig" ]] && return 1
     awk '/^current-context:/ {print $2; exit}' "$kubeconfig" 2>/dev/null
@@ -189,6 +190,7 @@ _get_current_context_from_file() {
 _get_namespace_from_file() {
     local context="$1"
     local kubeconfig=$(_get_kubeconfig_path)
+    [[ ! -f "$kubeconfig" ]] && return 1
     
     awk -v ctx="$context" '
         /^contexts:/ { in_contexts=1; next }
@@ -204,8 +206,9 @@ _get_namespace_from_file() {
 # Connectivity Check
 # =============================================================================
 
-_check_k8s_connectivity() {
-    local timeout=$(get_option "connectivity_timeout")
+_check_connectivity() {
+    local timeout
+    timeout=$(get_option "connectivity_timeout")
     
     if has_cmd kubectl; then
         kubectl cluster-info --request-timeout="${timeout}s" &>/dev/null
@@ -216,30 +219,23 @@ _check_k8s_connectivity() {
 }
 
 _get_cached_connectivity() {
-    local conn_cache="${POWERKIT_CACHE_DIR:-/tmp}/kubernetes_connectivity.cache"
-    local conn_ttl=$(get_option "connectivity_cache_ttl")
+    local conn_ttl
+    conn_ttl=$(get_option "connectivity_cache_ttl")
     
-    # Check if cache exists and is fresh
-    if [[ -f "$conn_cache" ]]; then
-        local now=$(date +%s)
-        local cache_mtime
-        if is_macos; then
-            cache_mtime=$(stat -f "%m" "$conn_cache" 2>/dev/null || echo 0)
-        else
-            cache_mtime=$(stat -c "%Y" "$conn_cache" 2>/dev/null || echo 0)
-        fi
-        local cache_age=$((now - cache_mtime))
-        if (( cache_age < conn_ttl )); then
-            cat "$conn_cache"
-            return
-        fi
+    # Try to get from cache
+    local cached
+    if cached=$(cache_get "kubernetes_connectivity" "$conn_ttl"); then
+        printf '%s' "$cached"
+        return
     fi
     
     # Check connectivity and cache result
-    if _check_k8s_connectivity; then
-        printf '1' | tee "$conn_cache"
+    if _check_connectivity; then
+        cache_set "kubernetes_connectivity" "1"
+        printf '1'
     else
-        printf '0' | tee "$conn_cache"
+        cache_set "kubernetes_connectivity" "0"
+        printf '0'
     fi
 }
 
@@ -247,20 +243,21 @@ _get_cached_connectivity() {
 # Main Logic
 # =============================================================================
 
-_get_k8s_context() {
-    # Try kubectl first, fall back to file parsing
+_get_context() {
+    # Try kubectl first (respects KUBECONFIG env var better)
     if has_cmd kubectl; then
         kubectl config current-context 2>/dev/null && return
     fi
-    _get_current_context_from_file
+    _get_context_from_file
 }
 
-_get_k8s_namespace() {
+_get_namespace() {
     local context="$1"
     
     # Try kubectl first
     if has_cmd kubectl; then
-        local ns=$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)
+        local ns
+        ns=$(kubectl config view --minify --output 'jsonpath={..namespace}' 2>/dev/null)
         [[ -n "$ns" ]] && { printf '%s' "$ns"; return; }
     fi
     
@@ -270,16 +267,14 @@ _get_k8s_namespace() {
 
 plugin_collect() {
     # Check for kubeconfig changes (invalidates connectivity cache)
-    if _check_kubeconfig_changed; then
-        rm -f "${POWERKIT_CACHE_DIR:-/tmp}/kubernetes_connectivity.cache" 2>/dev/null
-    fi
+    _kubeconfig_changed
     
     local context namespace connected display_mode
     
-    context=$(_get_k8s_context)
+    context=$(_get_context)
     [[ -z "$context" ]] && return 0
     
-    namespace=$(_get_k8s_namespace "$context")
+    namespace=$(_get_namespace "$context")
     [[ -z "$namespace" ]] && namespace="default"
     
     display_mode=$(get_option "display_mode")
@@ -297,7 +292,9 @@ plugin_collect() {
 }
 
 plugin_render() {
-    local show_context show_namespace separator context namespace connected display_mode
+    local show_context show_namespace separator display_mode
+    local context namespace connected
+    
     show_context=$(get_option "show_context")
     show_namespace=$(get_option "show_namespace")
     separator=$(get_option "separator")
@@ -310,9 +307,7 @@ plugin_render() {
     [[ -z "$context" ]] && return 0
     
     # If display_mode is "connected" and not connected, don't render
-    if [[ "$display_mode" == "connected" && "$connected" == "0" ]]; then
-        return 0
-    fi
+    [[ "$display_mode" == "connected" && "$connected" == "0" ]] && return 0
     
     # Shorten context name (remove user@ and cluster: prefixes)
     local display="${context##*@}"
@@ -320,9 +315,7 @@ plugin_render() {
     
     local result=""
     
-    if [[ "$show_context" == "true" ]]; then
-        result="$display"
-    fi
+    [[ "$show_context" == "true" ]] && result="$display"
     
     if [[ "$show_namespace" == "true" ]]; then
         [[ -n "$result" ]] && result+="$separator"
@@ -337,34 +330,29 @@ plugin_render() {
 # =============================================================================
 
 plugin_setup_keybindings() {
-    local ctx_key ns_key popup_w popup_h
+    # Check prerequisites
+    has_cmd kubectl || return 0
+    has_cmd fzf || return 0
+    
+    local kubeconfig=$(_get_kubeconfig_path)
+    [[ ! -f "$kubeconfig" ]] && return 0
+    
+    local ctx_key ns_key popup_w popup_h conn_timeout
     ctx_key=$(get_option "keybinding_context")
     ns_key=$(get_option "keybinding_namespace")
     popup_w=$(get_option "popup_width")
     popup_h=$(get_option "popup_height")
-    
-    local conn_timeout=$(get_option "connectivity_timeout")
-    local cache_dir="${POWERKIT_CACHE_DIR:-/tmp}"
+    conn_timeout=$(get_option "connectivity_timeout")
     
     # Context selector - can switch even if current cluster is down
-    if [[ -n "$ctx_key" ]] && has_cmd kubectl && has_cmd fzf; then
-        register_keybinding "$ctx_key" "display-popup -E -w '$popup_w' -h '$popup_h' \
-            'selected=\$(kubectl config get-contexts -o name | fzf --header=\"Select Kubernetes Context\" --reverse) && \
-            [ -n \"\$selected\" ] && kubectl config use-context \"\$selected\" && \
-            rm -f \"${cache_dir}/kubernetes.cache\" \"${cache_dir}/kubernetes_connectivity.cache\" && \
-            tmux refresh-client -S'"
+    local helper_script="${POWERKIT_ROOT}/src/helpers/kubernetes_selector.sh"
+    if [[ -n "$ctx_key" ]]; then
+        pk_bind_popup "$ctx_key" "bash '$helper_script' context" "$popup_w" "$popup_h" "kubernetes:context"
     fi
-    
+
     # Namespace selector - requires cluster connectivity
-    if [[ -n "$ns_key" ]] && has_cmd kubectl && has_cmd fzf; then
-        register_keybinding "$ns_key" "display-popup -E -w '$popup_w' -h '$popup_h' \
-            'if ! kubectl cluster-info --request-timeout=${conn_timeout}s &>/dev/null; then \
-                echo \"❌ Cluster not reachable. Press any key to close.\"; read -n1; exit 1; \
-            fi; \
-            selected=\$(kubectl get namespaces -o name | sed \"s/namespace\\///\" | fzf --header=\"Select Namespace\" --reverse) && \
-            [ -n \"\$selected\" ] && kubectl config set-context --current --namespace=\"\$selected\" && \
-            rm -f \"${cache_dir}/kubernetes.cache\" && \
-            tmux refresh-client -S'"
+    if [[ -n "$ns_key" ]]; then
+        pk_bind_popup "$ns_key" "bash '$helper_script' namespace" "$popup_w" "$popup_h" "kubernetes:namespace"
     fi
 }
 

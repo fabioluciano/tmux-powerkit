@@ -98,7 +98,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 . "${POWERKIT_ROOT}/src/core/guard.sh"
 source_guard "contract_plugin_validator" && return 0
 
-. "${POWERKIT_ROOT}/src/core/logger.sh"
+# Note: All core and utils modules are loaded by bootstrap.sh
 
 # =============================================================================
 # Contract Function Lists

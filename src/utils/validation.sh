@@ -12,6 +12,11 @@
 #  Generic validation functions for PowerKit contracts
 #
 # =============================================================================
+
+# Source guard
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+. "${POWERKIT_ROOT}/src/core/guard.sh"
+source_guard "utils_validation" && return 0
 #
 # TABLE OF CONTENTS
 # =================
@@ -90,11 +95,6 @@
 # =============================================================================
 # END OF DOCUMENTATION
 # =============================================================================
-
-# Source guard
-POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-. "${POWERKIT_ROOT}/src/core/guard.sh"
-source_guard "utils_validation" && return 0
 
 # =============================================================================
 # Enum Validation

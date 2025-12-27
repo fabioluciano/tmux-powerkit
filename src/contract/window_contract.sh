@@ -66,7 +66,11 @@
 #     window_last_format(last, normal)         - Conditional last window format
 #     window_state_indicators()                - Combined state indicators
 #
-#   Icons:
+#   Index Icons:
+#     window_get_index_icon_format() - Tmux conditional for numeric icons (1-10)
+#     window_get_index_display()     - Returns icon format or #{window_index}
+#
+#   Command Icons:
 #     window_get_icon_format()      - Dynamic icon based on command
 #     window_get_simple_icon(active) - Simple static icon
 #
@@ -86,10 +90,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 . "${POWERKIT_ROOT}/src/core/guard.sh"
 source_guard "contract_window" && return 0
 
-. "${POWERKIT_ROOT}/src/core/logger.sh"
-. "${POWERKIT_ROOT}/src/core/options.sh"
-. "${POWERKIT_ROOT}/src/core/registry.sh"
-. "${POWERKIT_ROOT}/src/utils/validation.sh"
+# Note: All core and utils modules are loaded by bootstrap.sh
 
 # =============================================================================
 # Window States
@@ -168,6 +169,54 @@ window_state_indicators() {
     format+='#{?window_activity_flag,!,}'
     format+='#{?window_bell_flag,B,}'
     printf '%s' "$format"
+}
+
+# =============================================================================
+# Window Index Icon Resolution
+# =============================================================================
+
+# Build tmux conditional format for index-based numeric icons
+# Uses WINDOW_INDEX_ICON_MAP from registry.sh
+# Returns: nested conditional that maps #{window_index} to numeric icons
+# For indices 1-9: single icon; 10+: composite icons (e.g., 1+0 for 10)
+window_get_index_icon_format() {
+    local fallback='#{window_index}'
+
+    # Build nested conditional format
+    local format="$fallback"
+    local index icon
+
+    # Build composite icons for 10-99 (two digits)
+    for index in {99..10}; do
+        local tens=$((index / 10))
+        local ones=$((index % 10))
+        local tens_icon="${WINDOW_INDEX_ICON_MAP[$tens]}"
+        local ones_icon="${WINDOW_INDEX_ICON_MAP[$ones]}"
+        icon="${tens_icon}${ones_icon}"
+        format="#{?#{==:#{window_index},$index},$icon,$format}"
+    done
+
+    # Single digit icons 1-9
+    for index in 9 8 7 6 5 4 3 2 1; do
+        icon="${WINDOW_INDEX_ICON_MAP[$index]}"
+        format="#{?#{==:#{window_index},$index},$icon,$format}"
+    done
+
+    printf '%s' "$format"
+}
+
+# Get window index format based on settings
+# If @powerkit_window_index_icons is true, returns icon format
+# Otherwise returns plain #{window_index}
+window_get_index_display() {
+    local use_icons
+    use_icons=$(get_tmux_option "@powerkit_window_index_icons" "${POWERKIT_DEFAULT_WINDOW_INDEX_ICONS:-false}")
+
+    if [[ "$use_icons" == "true" ]]; then
+        window_get_index_icon_format
+    else
+        printf '#{window_index}'
+    fi
 }
 
 # =============================================================================

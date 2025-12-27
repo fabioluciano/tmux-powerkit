@@ -121,6 +121,9 @@ POWERKIT_DEFAULT_PANE_SYNCHRONIZED_ICON=$'\U00002735'
 POWERKIT_DEFAULT_ACTIVE_WINDOW_TITLE="#W"
 POWERKIT_DEFAULT_INACTIVE_WINDOW_TITLE="#W"
 
+# Window index icons (show icons instead of numbers for indices 1-10)
+POWERKIT_DEFAULT_WINDOW_INDEX_ICONS="false"
+
 # Window colors are derived automatically from base colors:
 # - window-active-base: content bg (index bg = -lighter, text = -darker)
 # - window-inactive-base: content bg (index bg = -lighter, text = -darker)
@@ -179,7 +182,7 @@ POWERKIT_DEFAULT_KEYBINDING_CONFLICT_ACTION="warn"
 # Light variants (toward white)
 POWERKIT_COLOR_LIGHT_PERCENT=10       # -light: subtle lightening
 POWERKIT_COLOR_LIGHTER_PERCENT=20      # -lighter: medium lightening
-POWERKIT_COLOR_LIGHTEST_PERCENT=55     # -lightest: strong lightening
+POWERKIT_COLOR_LIGHTEST_PERCENT=80     # -lightest: strong lightening
 
 # Dark variants (toward black)
 POWERKIT_COLOR_DARK_PERCENT=10         # -dark: subtle darkening

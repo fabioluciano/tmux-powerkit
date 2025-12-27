@@ -39,7 +39,7 @@ plugin_declare_options() {
     declare_option "unit" "string" "ms" "Unit to display"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0012' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F06F3' "Plugin icon"
 
     # Thresholds
     declare_option "warning_threshold" "number" "100" "Warning threshold in ms"

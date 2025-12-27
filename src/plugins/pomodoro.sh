@@ -7,7 +7,7 @@
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 . "${POWERKIT_ROOT}/src/contract/plugin_contract.sh"
-. "${POWERKIT_ROOT}/src/core/datastore.sh"
+
 
 # =============================================================================
 # Plugin Contract: Metadata
@@ -74,10 +74,10 @@ plugin_get_health() {
     case "$phase" in
         work)
             # Warning if less than 5 minutes remaining
-            [[ "${remaining:-0}" -lt 300 ]] && printf 'warning' || printf 'ok'
+            [[ "${remaining:-0}" -lt 300 ]] && printf 'warning' || printf 'info'
             ;;
         short_break|long_break)
-            printf 'info'
+            printf 'warning'
             ;;
         *)
             printf 'ok'
@@ -118,37 +118,38 @@ plugin_get_icon() {
 }
 
 # =============================================================================
-# State Management
+# State Management (using cache functions)
 # =============================================================================
 
-_get_state_file() {
-    printf '%s/pomodoro_state' "${POWERKIT_CACHE_DIR:-/tmp}"
-}
+# Cache TTL for pomodoro state (24 hours - timer should persist)
+_POMODORO_STATE_TTL=86400
 
 _load_state() {
-    local state_file=$(_get_state_file)
-    if [[ -f "$state_file" ]]; then
-        # Format: phase start_time sessions
-        read -r _phase _start_time _sessions < "$state_file"
-    else
-        _phase="idle"
-        _start_time="0"
-        _sessions="0"
-    fi
+    # Read state from cache
+    _phase=$(cache_get "pomodoro_phase" "$_POMODORO_STATE_TTL")
+    _start_time=$(cache_get "pomodoro_start_time" "$_POMODORO_STATE_TTL")
+    _sessions=$(cache_get "pomodoro_sessions" "$_POMODORO_STATE_TTL")
+
+    # Set defaults if not found
+    [[ -z "$_phase" ]] && _phase="idle"
+    [[ -z "$_start_time" ]] && _start_time="0"
+    [[ -z "$_sessions" ]] && _sessions="0"
 }
 
 _save_state() {
     local phase="$1"
     local start_time="${2:-$(date +%s)}"
     local sessions="${3:-0}"
-    local state_file=$(_get_state_file)
-    
-    printf '%s %s %s\n' "$phase" "$start_time" "$sessions" > "$state_file"
+
+    cache_set "pomodoro_phase" "$phase"
+    cache_set "pomodoro_start_time" "$start_time"
+    cache_set "pomodoro_sessions" "$sessions"
 }
 
 _clear_state() {
-    local state_file=$(_get_state_file)
-    rm -f "$state_file"
+    cache_clear "pomodoro_phase"
+    cache_clear "pomodoro_start_time"
+    cache_clear "pomodoro_sessions"
 }
 
 # =============================================================================
@@ -170,14 +171,6 @@ _should_long_break() {
     local sessions_before=$(get_option "sessions_before_long")
     
     [[ "$sessions" -gt 0 && $((sessions % sessions_before)) -eq 0 ]]
-}
-
-_format_time() {
-    local seconds=$1
-    [[ "$seconds" -lt 0 ]] && seconds=0
-    local minutes=$((seconds / 60))
-    local secs=$((seconds % 60))
-    printf '%02d:%02d' "$minutes" "$secs"
 }
 
 _notify() {
@@ -255,7 +248,9 @@ plugin_render() {
     local output=""
     
     if [[ "$show_remaining" == "true" ]]; then
-        output=$(_format_time "${remaining:-0}")
+        local secs="${remaining:-0}"
+        (( secs < 0 )) && secs=0
+        output=$(format_timer "$secs")
     else
         case "$phase" in
             work)        output="Work" ;;

@@ -110,8 +110,7 @@ plugin_render() {
     local parts=()
 
     for tz in "${tz_array[@]}"; do
-        tz="${tz#"${tz%%[![:space:]]*}"}"  # trim leading
-        tz="${tz%"${tz##*[![:space:]]}"}"  # trim trailing
+        tz=$(trim "$tz")
         [[ -z "$tz" ]] && continue
         parts+=("$(_format_tz_time "$tz" "$format" "$show_label")")
     done

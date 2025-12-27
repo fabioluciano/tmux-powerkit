@@ -246,7 +246,8 @@ powerkit_run() {
 # Initialization
 # =============================================================================
 
-# Auto-load core modules when this file is sourced
+# Auto-load core and utils modules when this file is sourced
 _load_core_modules
+_load_utils_modules
 
 log_debug "bootstrap" "Bootstrap module loaded"

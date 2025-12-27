@@ -409,9 +409,8 @@ plugin_render() {
 
     # Connected - show name or generic "VPN"
     if [[ "$show_name" == "true" && -n "$name" ]]; then
-        # Truncate if needed
-        if [[ "$max_len" -gt 0 && ${#name} -gt "$max_len" ]]; then
-            printf '%s%s' "${name:0:$((max_len - ${#suffix}))}" "$suffix"
+        if [[ "$max_len" -gt 0 ]]; then
+            printf '%s' "$(truncate_text "$name" "$max_len" "$suffix")"
         else
             printf '%s' "$name"
         fi

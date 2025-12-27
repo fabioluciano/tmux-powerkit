@@ -1,8 +1,26 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Plugin: loadavg
-# Description: Display system load average
-# Dependencies: uptime (built-in)
+# Description: Display system load average with CPU core-aware thresholds
+# Dependencies: None (uses /proc/loadavg, sysctl, or uptime)
+# =============================================================================
+#
+# CONTRACT IMPLEMENTATION:
+#
+# State:
+#   - active: Load average metrics are available
+#   - inactive: Unable to read load metrics
+#
+# Health:
+#   - ok: Load is below warning threshold (cores × multiplier)
+#   - warning: Load is above warning but below critical
+#   - error: Load is above critical threshold
+#
+# Context:
+#   - normal_load: Load is normal
+#   - high_load: Load is elevated (warning level)
+#   - critical_load: Load is critical
+#
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -15,7 +33,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "loadavg"
     metadata_set "name" "Load Average"
-    metadata_set "description" "Display system load average"
+    metadata_set "description" "Display system load average with CPU core-aware thresholds"
 }
 
 # =============================================================================
@@ -23,7 +41,7 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    require_cmd "uptime" || return 1
+    # No hard dependencies - uses built-in /proc/loadavg or sysctl
     return 0
 }
 
@@ -33,15 +51,15 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display options
-    declare_option "period" "string" "1" "Load average period: 1, 5, or 15 minutes"
-    declare_option "show_cores" "bool" "true" "Show number of CPU cores"
+    declare_option "format" "string" "1" "Load average format (1|5|15|all)"
+    declare_option "separator" "string" " | " "Separator between load values (for format=all)"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0EE7' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F199F' "Plugin icon"
 
-    # Thresholds (based on number of cores)
-    declare_option "warning_multiplier" "number" "0.7" "Warning threshold (cores * multiplier)"
-    declare_option "critical_multiplier" "number" "1.0" "Critical threshold (cores * multiplier)"
+    # Thresholds (multiplied by CPU cores)
+    declare_option "warning_threshold_multiplier" "number" "2" "Warning threshold multiplier (times CPU cores)"
+    declare_option "critical_threshold_multiplier" "number" "4" "Critical threshold multiplier (times CPU cores)"
 
     # Cache
     declare_option "cache_ttl" "number" "10" "Cache duration in seconds"
@@ -56,24 +74,35 @@ plugin_get_presence() { printf 'always'; }
 plugin_get_state() { printf 'active'; }
 
 plugin_get_health() {
-    local load cores warn_th crit_th
-    load=$(plugin_data_get "load")
-    cores=$(plugin_data_get "cores")
-    
-    warn_th=$(get_option "warning_multiplier")
-    crit_th=$(get_option "critical_multiplier")
+    local load num_cores warning_mult critical_mult
+    load=$(plugin_data_get "load_value")
+    num_cores=$(plugin_data_get "num_cores")
+    warning_mult=$(get_option "warning_threshold_multiplier")
+    critical_mult=$(get_option "critical_threshold_multiplier")
 
+    # Defaults
     load="${load:-0}"
-    cores="${cores:-1}"
-    warn_th="${warn_th:-0.7}"
-    crit_th="${crit_th:-1.0}"
+    num_cores="${num_cores:-1}"
+    warning_mult="${warning_mult:-2}"
+    critical_mult="${critical_mult:-4}"
 
-    local warn_level=$(awk "BEGIN {printf \"%.2f\", $cores * $warn_th}")
-    local crit_level=$(awk "BEGIN {printf \"%.2f\", $cores * $crit_th}")
+    # Convert load to int*100 for comparison (avoid floating point)
+    local value=0
+    if [[ "$load" =~ ([0-9]+)\.?([0-9]*) ]]; then
+        local int_part="${BASH_REMATCH[1]}"
+        local dec_part="${BASH_REMATCH[2]:-0}"
+        dec_part="${dec_part:0:2}"  # max 2 decimal places
+        [[ ${#dec_part} -eq 1 ]] && dec_part="${dec_part}0"
+        value=$((int_part * 100 + ${dec_part:-0}))
+    fi
 
-    if (( $(awk "BEGIN {print ($load >= $crit_level)}") )); then
+    # Calculate thresholds (multiplied by cores)
+    local warning_int=$((num_cores * warning_mult * 100))
+    local critical_int=$((num_cores * critical_mult * 100))
+
+    if [[ "$value" -ge "$critical_int" ]]; then
         printf 'error'
-    elif (( $(awk "BEGIN {print ($load >= $warn_level)}") )); then
+    elif [[ "$value" -ge "$warning_int" ]]; then
         printf 'warning'
     else
         printf 'ok'
@@ -94,58 +123,121 @@ plugin_get_context() {
 plugin_get_icon() { get_option "icon"; }
 
 # =============================================================================
-# Main Logic
+# Helper Functions
 # =============================================================================
-
-_get_load_average() {
-    local period=$(get_option "period")
-    local output
-    
-    if is_macos; then
-        output=$(sysctl -n vm.loadavg 2>/dev/null)
-        # Output: { 2.50 2.30 2.10 }
-        output="${output#\{ }"
-        output="${output% \}}"
-    else
-        output=$(cat /proc/loadavg 2>/dev/null)
-    fi
-
-    [[ -z "$output" ]] && return 1
-
-    local load1 load5 load15
-    read -r load1 load5 load15 _ <<< "$output"
-
-    case "$period" in
-        1) printf '%s' "$load1" ;;
-        5) printf '%s' "$load5" ;;
-        15) printf '%s' "$load15" ;;
-        *) printf '%s' "$load1" ;;
-    esac
-}
 
 _get_cpu_cores() {
     if is_macos; then
-        sysctl -n hw.ncpu 2>/dev/null
+        sysctl -n hw.ncpu 2>/dev/null || echo 4
     else
-        nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null
+        nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 4
     fi
 }
 
-plugin_collect() {
-    local load cores
-    load=$(_get_load_average)
-    cores=$(_get_cpu_cores)
+_format_loadavg() {
+    local one="$1" five="$2" fifteen="$3"
+    local format separator
+    format=$(get_option "format")
+    separator=$(get_option "separator")
 
-    plugin_data_set "load" "${load:-0}"
-    plugin_data_set "cores" "${cores:-1}"
+    case "$format" in
+        "1")   printf '%s' "$one" ;;
+        "5")   printf '%s' "$five" ;;
+        "15")  printf '%s' "$fifteen" ;;
+        "all") printf '%s%s%s%s%s' "$one" "$separator" "$five" "$separator" "$fifteen" ;;
+        *)     printf '%s' "$one" ;;
+    esac
+}
+
+_get_loadavg_linux() {
+    local one five fifteen
+    
+    if [[ -r /proc/loadavg ]]; then
+        read -r one five fifteen _ < /proc/loadavg
+    else
+        # Fallback: parse uptime output using bash regex (avoids forks)
+        local uptime_out
+        uptime_out=$(uptime 2>/dev/null)
+        # Extract load averages from "load average: 1.23, 4.56, 7.89"
+        if [[ "$uptime_out" =~ load\ average:\ ([0-9]+\.[0-9]+),\ ([0-9]+\.[0-9]+),\ ([0-9]+\.[0-9]+) ]]; then
+            one="${BASH_REMATCH[1]}"
+            five="${BASH_REMATCH[2]}"
+            fifteen="${BASH_REMATCH[3]}"
+        fi
+    fi
+    
+    _format_loadavg "$one" "$five" "$fifteen"
+}
+
+_get_loadavg_macos() {
+    local sysctl_out one five fifteen
+    sysctl_out=$(sysctl -n vm.loadavg 2>/dev/null)
+
+    if [[ -n "$sysctl_out" ]]; then
+        # Output format: "{ 1.23 4.56 7.89 }" - use bash to parse
+        read -r _ one five fifteen _ <<< "$sysctl_out"
+    else
+        # Fallback: parse uptime output using bash regex (avoids forks)
+        local uptime_out
+        uptime_out=$(uptime 2>/dev/null)
+        # Extract load averages from "load averages: 1.23 4.56 7.89"
+        if [[ "$uptime_out" =~ load\ averages?:\ ([0-9]+\.[0-9]+)\ ([0-9]+\.[0-9]+)\ ([0-9]+\.[0-9]+) ]]; then
+            one="${BASH_REMATCH[1]}"
+            five="${BASH_REMATCH[2]}"
+            fifteen="${BASH_REMATCH[3]}"
+        fi
+    fi
+    
+    _format_loadavg "$one" "$five" "$fifteen"
+}
+
+_get_load_value() {
+    # Get just the first load value for threshold comparison
+    local one five fifteen
+    
+    if is_macos; then
+        local sysctl_out
+        sysctl_out=$(sysctl -n vm.loadavg 2>/dev/null)
+        if [[ -n "$sysctl_out" ]]; then
+            read -r _ one five fifteen _ <<< "$sysctl_out"
+        fi
+    elif [[ -r /proc/loadavg ]]; then
+        read -r one five fifteen _ < /proc/loadavg
+    fi
+    
+    printf '%s' "${one:-0}"
+}
+
+# =============================================================================
+# Main Logic
+# =============================================================================
+
+plugin_collect() {
+    local result num_cores load_value
+    
+    # Get CPU cores (cache for performance)
+    num_cores=$(_get_cpu_cores)
+    
+    # Get load average based on platform
+    if is_linux; then
+        result=$(_get_loadavg_linux)
+    elif is_macos; then
+        result=$(_get_loadavg_macos)
+    else
+        result="N/A"
+    fi
+    
+    # Get first load value for threshold comparison
+    load_value=$(_get_load_value)
+    
+    plugin_data_set "result" "$result"
+    plugin_data_set "num_cores" "$num_cores"
+    plugin_data_set "load_value" "$load_value"
 }
 
 plugin_render() {
-    local load cores show_cores
-    load=$(plugin_data_get "load")
-    cores=$(plugin_data_get "cores")
-    show_cores=$(get_option "show_cores")
-
-    [[ "$show_cores" == "true" ]] && printf '%s/%s' "$load" "$cores" || printf '%s' "$load"
+    local result
+    result=$(plugin_data_get "result")
+    printf '%s' "${result:-N/A}"
 }
 

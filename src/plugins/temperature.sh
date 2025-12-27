@@ -68,8 +68,7 @@ plugin_declare_options() {
     declare_option "icon_warning" "icon" "" "Icon for warning temperature"
     declare_option "icon_hot" "icon" "󱃂" "Icon for critical temperature"
 
-    # Thresholds (in Celsius)
-    declare_option "threshold_mode" "string" "normal" "Threshold mode (none|normal)"
+    # Thresholds (in Celsius, higher = worse)
     declare_option "warning_threshold" "number" "70" "Warning threshold in °C"
     declare_option "critical_threshold" "number" "85" "Critical threshold in °C"
 
@@ -298,9 +297,8 @@ plugin_get_state() {
 # =============================================================================
 
 plugin_get_health() {
-    local temp mode warn_th crit_th
+    local temp warn_th crit_th
     temp=$(plugin_data_get "temp_c")
-    mode=$(get_option "threshold_mode")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
@@ -308,8 +306,7 @@ plugin_get_health() {
     warn_th="${warn_th:-70}"
     crit_th="${crit_th:-85}"
 
-    [[ "$mode" == "none" ]] && { printf 'ok'; return; }
-
+    # Higher is worse
     if (( temp >= crit_th )); then
         printf 'error'
     elif (( temp >= warn_th )); then

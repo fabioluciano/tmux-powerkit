@@ -1,25 +1,25 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Plugin: microphone
-# Description: Display microphone activity status (active/inactive/muted)
-# Type: conditional (hidden when inactive)
-# Dependencies: macOS: osascript, Linux: pactl/amixer (optional)
+# Description: Display microphone status - shows only when microphone is active
+# Type: conditional (hidden when microphone is inactive)
+# Dependencies: Linux: pactl/amixer (optional)
 # =============================================================================
 #
 # CONTRACT IMPLEMENTATION:
 #
 # State:
-#   - active: Microphone is being used
+#   - active: Microphone is in use
 #   - inactive: Microphone is not in use (plugin hidden)
 #
 # Health:
-#   - ok: Microphone active, unmuted
+#   - ok: Microphone active and unmuted
 #   - warning: Microphone active but muted
-#   - info: Microphone available but not in use
+#   - info: Microphone inactive
 #
 # Context:
-#   - muted: Input volume is 0
-#   - active: Microphone in use
+#   - muted: Microphone is muted
+#   - unmuted: Microphone is not muted
 #
 # =============================================================================
 
@@ -33,7 +33,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "microphone"
     metadata_set "name" "Microphone"
-    metadata_set "description" "Display microphone activity status"
+    metadata_set "description" "Display microphone status"
 }
 
 # =============================================================================
@@ -41,9 +41,7 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    if is_macos; then
-        require_cmd "osascript" || return 1
-    elif is_linux; then
+    if is_linux; then
         require_any_cmd "pactl" "amixer" 1  # Optional
     fi
     return 0
@@ -54,14 +52,8 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    # Display options
-    declare_option "show_volume" "bool" "false" "Show input volume level"
-
-    # Icons (Material Design Icons)
-    declare_option "icon" "icon" $'\U000F036C' "Microphone on icon"
+    declare_option "icon" "icon" $'\U000F036C' "Microphone icon"
     declare_option "icon_muted" "icon" $'\U000F036D' "Microphone muted icon"
-
-    # Cache
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
 }
 
@@ -73,21 +65,17 @@ plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {
-    local usage
-    usage=$(plugin_data_get "usage")
-    [[ "$usage" == "active" ]] && printf 'active' || printf 'inactive'
+    local status
+    status=$(plugin_data_get "status")
+    [[ "$status" == "active" ]] && printf 'active' || printf 'inactive'
 }
 
 plugin_get_health() {
-    local usage mute
-    usage=$(plugin_data_get "usage")
+    local status mute
+    status=$(plugin_data_get "status")
     mute=$(plugin_data_get "mute")
 
-    if [[ "$usage" != "active" ]]; then
-        printf 'info'
-        return
-    fi
-
+    [[ "$status" != "active" ]] && { printf 'info'; return; }
     [[ "$mute" == "muted" ]] && printf 'warning' || printf 'ok'
 }
 
@@ -104,29 +92,7 @@ plugin_get_icon() {
 }
 
 # =============================================================================
-# macOS Detection
-# =============================================================================
-
-_get_macos_input_volume() {
-    osascript -e "input volume of (get volume settings)" 2>/dev/null
-}
-
-_detect_macos_mute() {
-    local volume
-    volume=$(_get_macos_input_volume)
-    [[ "$volume" == "0" ]] && echo "muted" || echo "unmuted"
-}
-
-_detect_macos_usage() {
-    # On macOS, we can't reliably detect microphone usage without SIP bypass
-    # Just check if input is available (volume > 0 or muted)
-    local volume
-    volume=$(_get_macos_input_volume)
-    [[ -n "$volume" ]] && echo "active" || echo "inactive"
-}
-
-# =============================================================================
-# Linux Detection
+# Detection Logic
 # =============================================================================
 
 _detect_linux_mute() {
@@ -161,14 +127,22 @@ _detect_linux_usage() {
         [[ "${active_capture:-0}" -gt 0 ]] && { echo "active"; return; }
     fi
 
-    # Method 3: Check for common microphone-using processes
-    local mic_processes=("zoom" "teams" "discord" "skype" "obs" "audacity" "arecord" "ffmpeg")
-    local proc
-    for proc in "${mic_processes[@]}"; do
-        pgrep -x "$proc" >/dev/null 2>&1 && { echo "active"; return; }
-    done
-
     echo "inactive"
+}
+
+_is_microphone_active() {
+    # macOS: Cannot reliably detect microphone usage without SIP bypass
+    is_macos && return 1
+
+    # Linux: Multiple detection methods
+    is_linux && [[ "$(_detect_linux_usage)" == "active" ]] && return 0
+
+    return 1
+}
+
+_get_mute_status() {
+    is_linux && { _detect_linux_mute; return; }
+    echo "unmuted"
 }
 
 # =============================================================================
@@ -176,25 +150,13 @@ _detect_linux_usage() {
 # =============================================================================
 
 plugin_collect() {
-    local usage mute volume
-
-    if is_macos; then
-        volume=$(_get_macos_input_volume)
-        mute=$(_detect_macos_mute)
-        # macOS: always show if we can read volume (simplified behavior)
-        usage="inactive"
-        [[ -n "$volume" ]] && usage="active"
-    elif is_linux; then
-        usage=$(_detect_linux_usage)
-        mute=$(_detect_linux_mute)
-        volume=""
+    if _is_microphone_active; then
+        plugin_data_set "status" "active"
+        plugin_data_set "mute" "$(_get_mute_status)"
     else
-        return 0
+        plugin_data_set "status" "inactive"
+        plugin_data_set "mute" "unmuted"
     fi
-
-    plugin_data_set "usage" "$usage"
-    plugin_data_set "mute" "$mute"
-    plugin_data_set "volume" "${volume:-0}"
 }
 
 # =============================================================================
@@ -202,19 +164,7 @@ plugin_collect() {
 # =============================================================================
 
 plugin_render() {
-    local usage mute volume show_volume
-    usage=$(plugin_data_get "usage")
+    local mute
     mute=$(plugin_data_get "mute")
-    volume=$(plugin_data_get "volume")
-    show_volume=$(get_option "show_volume")
-
-    [[ "$usage" != "active" ]] && return 0
-
-    if [[ "$mute" == "muted" ]]; then
-        printf 'MUTED'
-    elif [[ "$show_volume" == "true" && -n "$volume" && "$volume" != "0" ]]; then
-        printf '%s%%' "$volume"
-    else
-        printf 'ON'
-    fi
+    [[ "$mute" == "muted" ]] && printf 'MUTED' || printf 'ON'
 }

@@ -41,15 +41,16 @@ plugin_declare_options() {
     # Display options
     declare_option "show_issues" "bool" "true" "Show open issues count"
     declare_option "show_mrs" "bool" "true" "Show open MRs count"
-    declare_option "separator" "string" " / " "Separator between metrics"
+    declare_option "separator" "string" " | " "Separator between metrics"
     
     # Icons
-    declare_option "icon" "icon" $'\U000F0296' "Plugin icon"
-    declare_option "icon_issue" "icon" "" "Issues icon"
-    declare_option "icon_mr" "icon" "" "MR icon"
+    declare_option "icon" "icon" $'\U000F0BA0' "Plugin icon"
+    declare_option "icon_issue" "icon" $'\U0000F41B' "Issues icon"
+    declare_option "icon_mr" "icon" $'\U0000F407' "MR icon"
     
     # Thresholds
-    declare_option "warning_threshold" "number" "10" "Warning when total exceeds threshold"
+    declare_option "warning_threshold_issues" "number" "10" "Warning when issues exceed threshold"
+    declare_option "warning_threshold_mrs" "number" "5" "Warning when MRs exceed threshold"
     
     # Cache
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
@@ -74,6 +75,14 @@ _is_authenticated() {
     return 1
 }
 
+_has_repos_configured() {
+    local repos=$(get_option "repos")
+    [[ -n "$repos" ]] && return 0
+    # glab CLI can work without explicit repos
+    has_cmd "glab" && return 0
+    return 1
+}
+
 _get_token() {
     local token=$(get_option "token")
     [[ -n "$token" ]] && { printf '%s' "$token"; return 0; }
@@ -85,6 +94,10 @@ _get_token() {
 plugin_get_state() {
     if ! _is_authenticated; then
         printf 'failed'
+        return
+    fi
+    if ! _has_repos_configured; then
+        printf 'degraded'
         return
     fi
     local total=$(plugin_data_get "total")
@@ -108,10 +121,16 @@ plugin_get_health() {
     local api_error=$(plugin_data_get "api_error")
     [[ "$api_error" == "1" ]] && { printf 'error'; return; }
     
-    local total=$(plugin_data_get "total")
-    local warning_threshold=$(get_option "warning_threshold")
+    local issues=$(plugin_data_get "issues")
+    local mrs=$(plugin_data_get "mrs")
+    local warning_threshold_issues=$(get_option "warning_threshold_issues")
+    local warning_threshold_mrs=$(get_option "warning_threshold_mrs")
     
-    [[ "${total:-0}" -ge "$warning_threshold" ]] && printf 'warning' || printf 'ok'
+    if [[ "${issues:-0}" -ge "$warning_threshold_issues" || "${mrs:-0}" -ge "$warning_threshold_mrs" ]]; then
+        printf 'warning'
+    else
+        printf 'ok'
+    fi
 }
 
 plugin_get_context() {
@@ -175,20 +194,14 @@ _make_gitlab_api_call() {
     local url="$1"
     local token=$(_get_token)
     
-    local curl_opts=(-s -f --connect-timeout 5 --max-time 10)
-    [[ -n "$token" ]] && curl_opts+=(-H "PRIVATE-TOKEN: $token")
-    
-    curl "${curl_opts[@]}" "$url" 2>/dev/null
+    make_api_call "$url" "private-token" "$token" 5
 }
 
 _make_gitlab_head_call() {
     local url="$1"
     local token=$(_get_token)
     
-    local curl_opts=(-s -I --connect-timeout 5 --max-time 10)
-    [[ -n "$token" ]] && curl_opts+=(-H "PRIVATE-TOKEN: $token")
-    
-    curl "${curl_opts[@]}" "$url" 2>/dev/null
+    safe_curl "$url" 5 -I -H "PRIVATE-TOKEN: $token"
 }
 
 _count_issues() {
@@ -276,8 +289,7 @@ _format_status() {
         fi
     fi
     
-    local IFS="$separator"
-    echo "${parts[*]}"
+    [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
 
 _get_gitlab_info() {
@@ -300,9 +312,7 @@ _get_gitlab_info() {
     local api_error=0
     
     for repo_spec in "${repos[@]}"; do
-        # Trim whitespace
-        repo_spec="${repo_spec#"${repo_spec%%[![:space:]]*}"}"
-        repo_spec="${repo_spec%"${repo_spec##*[![:space:]]}"}"
+        repo_spec=$(trim "$repo_spec")
         [[ -z "$repo_spec" || "$repo_spec" != *"/"* ]] && continue
         
         local project_encoded=$(_url_encode "$repo_spec")
@@ -353,6 +363,16 @@ plugin_collect() {
 }
 
 plugin_render() {
+    if ! _is_authenticated; then
+        printf 'unauthenticated'
+        return 0
+    fi
+    
+    if ! _has_repos_configured; then
+        printf 'no repos'
+        return 0
+    fi
+    
     local issues=$(plugin_data_get "issues")
     local mrs=$(plugin_data_get "mrs")
     local total=$(plugin_data_get "total")

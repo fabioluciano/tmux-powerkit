@@ -124,15 +124,8 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 . "${POWERKIT_ROOT}/src/core/guard.sh"
 source_guard "contract_plugin" && return 0
 
-. "${POWERKIT_ROOT}/src/core/logger.sh"
-. "${POWERKIT_ROOT}/src/core/datastore.sh"
-. "${POWERKIT_ROOT}/src/core/options.sh"
-. "${POWERKIT_ROOT}/src/core/registry.sh"
-. "${POWERKIT_ROOT}/src/utils/platform.sh"
-. "${POWERKIT_ROOT}/src/utils/network.sh"
-. "${POWERKIT_ROOT}/src/utils/strings.sh"
-. "${POWERKIT_ROOT}/src/utils/keybinding.sh"
-. "${POWERKIT_ROOT}/src/utils/validation.sh"
+# Note: All core and utils modules are loaded by bootstrap.sh
+# This contract only defines the plugin interface specification
 
 # =============================================================================
 # State and Health Constants

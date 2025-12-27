@@ -125,9 +125,9 @@ _get_window_colors() {
         base_color="window-active-base"
         # Active window: use lightest variant for text
         index_bg=$(resolve_color "${base_color}-light")
-        index_fg=$(resolve_color "${base_color}-darkest")
+        index_fg=$(resolve_color "${base_color}-lightest")
         content_bg=$(resolve_color "$base_color")
-        content_fg=$(resolve_color "${base_color}-darkest")
+        content_fg=$(resolve_color "${base_color}-lightest")
     else
         base_color="window-inactive-base"
         # Inactive window: always use white text for readability
@@ -205,8 +205,12 @@ build_window_format() {
         format+="#{?#{!=:#{window_index},1},#[fg=${previous_bg}#,bg=${index_bg}]${sep_right},}"
     fi
 
+    # Get window index display (icon or number based on settings)
+    local window_index_display
+    window_index_display=$(window_get_index_display)
+
     # Index segment (uses index_fg for text)
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] #I "
+    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] ${window_index_display} "
 
     # Index-to-content separator: fg=index, bg=content
     format+="#[fg=${index_bg},bg=${content_bg}]${sep_right}"
@@ -293,8 +297,12 @@ build_window_current_format() {
         format+="#{?#{!=:#{window_index},1},#[fg=${previous_bg}#,bg=${index_bg}]${sep_right},}"
     fi
 
+    # Get window index display (icon or number based on settings)
+    local window_index_display
+    window_index_display=$(window_get_index_display)
+
     # Index segment (uses index_fg for text)
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] #I "
+    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] ${window_index_display} "
 
     # Index-to-content separator: fg=index, bg=content
     format+="#[fg=${index_bg},bg=${content_bg}]${sep_right}"

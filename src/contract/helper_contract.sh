@@ -504,7 +504,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$_HELPER_CONTRACT_DIR/../..}"
 
 # Source guard
 . "${POWERKIT_ROOT}/src/core/guard.sh"
-source_guard "helper_contract" && return 0
+source_guard "contract_helper" && return 0
 
 # =============================================================================
 # Helper Initialization

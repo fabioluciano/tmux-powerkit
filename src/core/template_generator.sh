@@ -73,7 +73,7 @@
 # Source guard
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 . "${POWERKIT_ROOT}/src/core/guard.sh"
-source_guard "core_template_generator" && return 0
+source_guard "template_generator" && return 0
 
 # =============================================================================
 # Plugin Template Generator

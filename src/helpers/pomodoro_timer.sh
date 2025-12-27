@@ -31,8 +31,8 @@ helper_get_actions() {
 # Configuration
 # =============================================================================
 
-_CACHE_BASE_DIR="$(dirname "$(get_cache_dir)")"
-POMODORO_STATE_FILE="${_CACHE_BASE_DIR}/pomodoro_state"
+# Cache TTL for pomodoro state (24 hours - timer should persist)
+_POMODORO_STATE_TTL=86400
 
 # Defaults from plugin_declare_options() in pomodoro.sh
 _work_duration=$(get_tmux_option "@powerkit_plugin_pomodoro_work_duration" "25")
@@ -41,7 +41,7 @@ _long_break=$(get_tmux_option "@powerkit_plugin_pomodoro_long_break" "15")
 _sessions_before_long=$(get_tmux_option "@powerkit_plugin_pomodoro_sessions_before_long" "4")
 
 # =============================================================================
-# Timer Functions
+# Timer Functions (using cache functions)
 # =============================================================================
 
 # Refresh status bar
@@ -51,17 +51,23 @@ _force_status_refresh() {
 
 # Get current state: idle|work|short_break|long_break
 _get_state() {
-    [[ -f "$POMODORO_STATE_FILE" ]] && head -1 "$POMODORO_STATE_FILE" || echo "idle"
+    local state
+    state=$(cache_get "pomodoro_phase" "$_POMODORO_STATE_TTL")
+    echo "${state:-idle}"
 }
 
 # Get start timestamp
 _get_start_time() {
-    [[ -f "$POMODORO_STATE_FILE" ]] && sed -n '2p' "$POMODORO_STATE_FILE" || echo "0"
+    local start_time
+    start_time=$(cache_get "pomodoro_start_time" "$_POMODORO_STATE_TTL")
+    echo "${start_time:-0}"
 }
 
 # Get completed sessions count
 _get_sessions() {
-    [[ -f "$POMODORO_STATE_FILE" ]] && sed -n '3p' "$POMODORO_STATE_FILE" || echo "0"
+    local sessions
+    sessions=$(cache_get "pomodoro_sessions" "$_POMODORO_STATE_TTL")
+    echo "${sessions:-0}"
 }
 
 # Save state
@@ -69,7 +75,9 @@ _save_state() {
     local state="$1"
     local start_time="${2:-$(date +%s)}"
     local sessions="${3:-$(_get_sessions)}"
-    printf '%s\n%s\n%s\n' "$state" "$start_time" "$sessions" > "$POMODORO_STATE_FILE"
+    cache_set "pomodoro_phase" "$state"
+    cache_set "pomodoro_start_time" "$start_time"
+    cache_set "pomodoro_sessions" "$sessions"
 }
 
 # Start work session
@@ -105,7 +113,9 @@ _complete_work() {
 
 # Stop/reset timer
 _stop_timer() {
-    rm -f "$POMODORO_STATE_FILE"
+    cache_clear "pomodoro_phase"
+    cache_clear "pomodoro_start_time"
+    cache_clear "pomodoro_sessions"
     toast " Timer stopped"
     _force_status_refresh
 }

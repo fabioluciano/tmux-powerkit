@@ -62,8 +62,7 @@ plugin_declare_options() {
     declare_option "icon_warning" "icon" "" "Icon when warning (empty = use default)"
     declare_option "icon_critical" "icon" "" "Icon when critical (empty = use default)"
 
-    # Thresholds
-    declare_option "threshold_mode" "string" "normal" "Threshold mode (none|normal|inverted)"
+    # Thresholds (higher = worse)
     declare_option "warning_threshold" "number" "70" "Warning threshold percentage"
     declare_option "critical_threshold" "number" "90" "Critical threshold percentage"
 
@@ -226,9 +225,8 @@ plugin_get_state() {
 # =============================================================================
 
 plugin_get_health() {
-    local max_pct mode warn_th crit_th
+    local max_pct warn_th crit_th
     max_pct=$(plugin_data_get "max_percent")
-    mode=$(get_option "threshold_mode")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
@@ -236,31 +234,14 @@ plugin_get_health() {
     warn_th="${warn_th:-70}"
     crit_th="${crit_th:-90}"
 
-    case "$mode" in
-        none)
-            printf 'ok'
-            ;;
-        inverted)
-            # Lower is worse (unusual for disk, but supported)
-            if (( max_pct <= crit_th )); then
-                printf 'error'
-            elif (( max_pct <= warn_th )); then
-                printf 'warning'
-            else
-                printf 'ok'
-            fi
-            ;;
-        normal|*)
-            # Higher is worse (default for disk)
-            if (( max_pct >= crit_th )); then
-                printf 'error'
-            elif (( max_pct >= warn_th )); then
-                printf 'warning'
-            else
-                printf 'ok'
-            fi
-            ;;
-    esac
+    # Higher is worse
+    if (( max_pct >= crit_th )); then
+        printf 'error'
+    elif (( max_pct >= warn_th )); then
+        printf 'warning'
+    else
+        printf 'ok'
+    fi
 }
 
 # =============================================================================

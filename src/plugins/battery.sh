@@ -37,6 +37,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "battery"
     metadata_set "name" "Battery"
+    metadata_set "version" "2.1.0"
     metadata_set "description" "Display battery status with multi-platform support"
 }
 
@@ -150,7 +151,10 @@ _get_charging_status() {
     if is_wsl; then
         local f
         f=$(find /sys/class/power_supply/*/status 2>/dev/null | head -1)
-        [[ -n "$f" ]] && status=$(cat "$f" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+        if [[ -n "$f" ]]; then
+            status=$(cat "$f" 2>/dev/null)
+            status="${status,,}"
+        fi
     elif is_macos && has_cmd pmset; then
         local out
         out=$(pmset -g batt 2>/dev/null)
@@ -187,7 +191,8 @@ _get_charging_status() {
         fi
     elif has_cmd termux-battery-status && has_cmd jq; then
         local ts
-        ts=$(termux-battery-status 2>/dev/null | jq -r '.status' | tr '[:upper:]' '[:lower:]')
+        ts=$(termux-battery-status 2>/dev/null | jq -r '.status')
+        ts="${ts,,}"
         case "$ts" in
             charging) status="charging" ;;
             full) status="charged" ;;
@@ -198,7 +203,8 @@ _get_charging_status() {
         local bat
         for bat in /sys/class/power_supply/BAT*; do
             if [[ -f "$bat/status" ]]; then
-                status=$(cat "$bat/status" 2>/dev/null | tr '[:upper:]' '[:lower:]')
+                status=$(cat "$bat/status" 2>/dev/null)
+                status="${status,,}"
                 break
             fi
         done

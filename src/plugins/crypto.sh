@@ -37,11 +37,11 @@ plugin_declare_options() {
     declare_option "coins" "string" "BTC,ETH" "Crypto symbols (comma-separated)"
     declare_option "currency" "string" "USD" "Fiat currency"
     declare_option "format" "string" "full" "Price format (full|short)"
-    declare_option "show_change" "bool" "false" "Show 24h price change percentage"
+    declare_option "show_change" "bool" "true" "Show 24h price change percentage"
     declare_option "separator" "string" " | " "Separator between coin prices"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0132' "Plugin icon"
+    declare_option "icon" "icon" $'\U0000f10f' "Plugin icon"
 
     # Cache (prices don't change very frequently)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds (5 min)"

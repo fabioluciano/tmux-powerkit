@@ -4,6 +4,21 @@
 # Description: Display current weather from wttr.in
 # Dependencies: curl
 # =============================================================================
+#
+# CONTRACT IMPLEMENTATION:
+#
+# State:
+#   - active: Weather data retrieved
+#   - inactive: No weather data available
+#
+# Health:
+#   - ok: Normal operation
+#
+# Context:
+#   - available: Weather data available
+#   - unavailable: No weather data
+#
+# =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 . "${POWERKIT_ROOT}/src/contract/plugin_contract.sh"
@@ -15,7 +30,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "weather"
     metadata_set "name" "Weather"
-    metadata_set "description" "Display current weather"
+    metadata_set "description" "Display current weather from wttr.in"
 }
 
 # =============================================================================
@@ -35,7 +50,7 @@ plugin_declare_options() {
     # Display options
     declare_option "location" "string" "" "Location (empty for auto-detect)"
     declare_option "units" "string" "m" "Units: m (metric), u (US), or M (SI)"
-    declare_option "format" "string" "%t" "Format string: %c=condition icon %t=temp %w=wind %h=humidity %C=condition text"
+    declare_option "format" "string" "compact" "Format: compact, full, minimal, detailed, or custom format string (%c %t %w %h %C %l)"
     declare_option "language" "string" "" "Language code (e.g., pt, es, fr)"
     declare_option "hide_plus_sign" "bool" "true" "Hide + sign for positive temperatures"
 
@@ -48,26 +63,73 @@ plugin_declare_options() {
 }
 
 # =============================================================================
+# Format Presets
+# =============================================================================
+# Format codes from wttr.in:
+#   %c - Weather condition icon (emoji)
+#   %C - Weather condition text
+#   %t - Temperature
+#   %w - Wind
+#   %h - Humidity
+#   %l - Location
+#   %m - Moon phase
+#   %p - Precipitation
+#   %P - Pressure
+
+_resolve_format() {
+    local format="$1"
+
+    case "$format" in
+        compact)
+            # Compact: temperature and condition icon
+            printf '%s' '%t %c'
+            ;;
+        full)
+            # Full: temperature, condition icon, and humidity
+            printf '%s' '%t %c H:%h'
+            ;;
+        minimal)
+            # Minimal: just temperature
+            printf '%s' '%t'
+            ;;
+        detailed)
+            # Detailed: location, temperature, and condition icon
+            printf '%s' '%l: %t %c'
+            ;;
+        *)
+            # Custom format string - pass through as-is
+            printf '%s' "$format"
+            ;;
+    esac
+}
+
+# =============================================================================
 # Plugin Contract: Implementation
 # =============================================================================
 
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
+
 plugin_get_state() {
-    local weather=$(plugin_data_get "weather")
+    local weather
+    weather=$(plugin_data_get "weather")
     [[ -n "$weather" ]] && printf 'active' || printf 'inactive'
 }
+
 plugin_get_health() { printf 'ok'; }
 
 plugin_get_context() {
-    local weather=$(plugin_data_get "weather")
+    local weather
+    weather=$(plugin_data_get "weather")
     [[ -n "$weather" ]] && printf 'available' || printf 'unavailable'
 }
 
 plugin_get_icon() {
-    local icon_mode=$(get_option "icon_mode")
+    local icon_mode
+    icon_mode=$(get_option "icon_mode")
     if [[ "$icon_mode" == "dynamic" ]]; then
-        local symbol=$(plugin_data_get "symbol")
+        local symbol
+        symbol=$(plugin_data_get "symbol")
         [[ -n "$symbol" ]] && printf '%s' "$symbol" || get_option "icon"
     else
         get_option "icon"
@@ -75,16 +137,20 @@ plugin_get_icon() {
 }
 
 # =============================================================================
-# Main Logic
+# API Functions
 # =============================================================================
 
 _fetch_weather() {
-    local location units format language icon_mode
+    local location units format_option language icon_mode
     location=$(get_option "location")
     units=$(get_option "units")
-    format=$(get_option "format")
+    format_option=$(get_option "format")
     language=$(get_option "language")
     icon_mode=$(get_option "icon_mode")
+
+    # Resolve format presets to actual format strings
+    local format
+    format=$(_resolve_format "$format_option")
 
     # URL encode location if provided
     local encoded_location=""
@@ -108,20 +174,20 @@ _fetch_weather() {
 
     # Fetch with timeout and error handling
     local result
-    result=$(safe_curl "$url" 3 -L) || return 1
-    
+    result=$(safe_curl "$url" 5 -L) || return 1
+
     # Return only if we got valid data (not error messages)
     if [[ -n "$result" && ! "$result" =~ ^(Unknown|Error|Sorry) ]]; then
         if [[ "$needs_symbol" -eq 1 && "$result" == *"|||"* ]]; then
             # Extract symbol and weather separately
             local symbol="${result%%|||*}"
             local weather="${result#*|||}"
-            
+
             # Clean up symbol (remove variation selectors and whitespace)
             symbol=$(printf '%s' "$symbol" | sed 's/[[:space:]]*$//')
             command -v perl &>/dev/null && symbol=$(printf '%s' "$symbol" | perl -CS -pe 's/\x{FE0E}|\x{FE0F}//g')
-            
-            # Output: symbol\nsweather (newline separated for easy parsing)
+
+            # Output: symbol\nweather (newline separated for easy parsing)
             printf '%s\n%s' "$symbol" "$weather"
         else
             # No symbol extraction needed or format already has %c
@@ -129,6 +195,10 @@ _fetch_weather() {
         fi
     fi
 }
+
+# =============================================================================
+# Plugin Contract: Data Collection
+# =============================================================================
 
 plugin_collect() {
     local result icon_mode
@@ -138,7 +208,7 @@ plugin_collect() {
     [[ -z "$result" ]] && return
 
     local weather symbol
-    
+
     # Check if result contains symbol (newline separated)
     if [[ "$result" == *$'\n'* ]]; then
         symbol="${result%%$'\n'*}"
@@ -161,19 +231,22 @@ plugin_collect() {
         sed 's/\x1b\[[0-9;]*m//g' | \
         tr -d '\n\r' | \
         sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-    
+
     # Remove + sign from positive temperatures if configured
-    local hide_plus=$(get_option "hide_plus_sign")
+    local hide_plus
+    hide_plus=$(get_option "hide_plus_sign")
     [[ "$hide_plus" == "true" ]] && weather="${weather//+/}"
-    
+
     # Limit to reasonable length (50 chars max)
-    if [[ ${#weather} -gt 50 ]]; then
-        weather="${weather:0:47}..."
-    fi
-    
+    weather=$(truncate_text "$weather" 50 "...")
+
     plugin_data_set "weather" "$weather"
     [[ -n "$symbol" ]] && plugin_data_set "symbol" "$symbol"
 }
+
+# =============================================================================
+# Plugin Contract: Render
+# =============================================================================
 
 plugin_render() {
     local weather

@@ -45,7 +45,7 @@
 # Source guard
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 . "${POWERKIT_ROOT}/src/core/guard.sh"
-source_guard "core_registry" && return 0
+source_guard "registry" && return 0
 
 # =============================================================================
 # 2. PLUGIN CONSTANTS
@@ -222,6 +222,26 @@ declare -grA WINDOW_ICON_MAP=(
 # Default window icon (when command not in map)
 WINDOW_DEFAULT_ICON=$'\uf120'
 
+# Window index icon map (index number -> icon)
+# Nerd Font numeric icons (nf-md-numeric_X)
+# Used for displaying window index as icons instead of numbers
+# Only single digits 0-9; composite numbers are built dynamically
+declare -grA WINDOW_INDEX_ICON_MAP=(
+    [0]=$'\U000f0b39'    # nf-md-numeric_0
+    [1]=$'\U000f0b3a'    # nf-md-numeric_1
+    [2]=$'\U000f0b3b'    # nf-md-numeric_2
+    [3]=$'\U000f0b3c'    # nf-md-numeric_3
+    [4]=$'\U000f0b3d'    # nf-md-numeric_4
+    [5]=$'\U000f0b3e'    # nf-md-numeric_5
+    [6]=$'\U000f0b3f'    # nf-md-numeric_6
+    [7]=$'\U000f0b40'    # nf-md-numeric_7
+    [8]=$'\U000f0b41'    # nf-md-numeric_8
+    [9]=$'\U000f0b42'    # nf-md-numeric_9
+)
+
+# Fallback icon for window indices > 10
+WINDOW_INDEX_FALLBACK_ICON=$'\uf120'  # Terminal icon as fallback
+
 # =============================================================================
 # 5. HELPER CONSTANTS
 # =============================================================================
@@ -308,6 +328,20 @@ health_max() {
 get_window_icon() {
     local command="$1"
     echo "${WINDOW_ICON_MAP[$command]:-$WINDOW_DEFAULT_ICON}"
+}
+
+# Get window index icon (numeric icon for 1-10, fallback for others)
+# Usage: icon=$(get_window_index_icon "1")
+get_window_index_icon() {
+    local index="$1"
+    echo "${WINDOW_INDEX_ICON_MAP[$index]:-$WINDOW_INDEX_FALLBACK_ICON}"
+}
+
+# Check if window index has an icon
+# Usage: has_window_index_icon "5" && echo "Has icon"
+has_window_index_icon() {
+    local index="$1"
+    [[ -n "${WINDOW_INDEX_ICON_MAP[$index]:-}" ]]
 }
 
 # Check if window icon exists for command

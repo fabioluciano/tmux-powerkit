@@ -11,6 +11,9 @@
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
 helper_init
 
+# Source UI backend for selector
+. "${POWERKIT_ROOT}/src/utils/ui_backend.sh"
+
 # =============================================================================
 # Metadata
 # =============================================================================
@@ -166,7 +169,9 @@ select_rbw() {
 # =============================================================================
 
 select_password() {
-    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
+    local backend
+    backend=$(ui_get_backend)
+    [[ "$backend" == "basic" ]] && { toast "❯ fzf or gum required" "simple"; return 0; }
 
     local client
     client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }

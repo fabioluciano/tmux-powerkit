@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Plugin: network
-# Description: Display network traffic (upload/download speed)
+# Plugin: netspeed
+# Description: Display network speed (upload/download rates)
 # Dependencies: ifstat or netstat
 # =============================================================================
 
@@ -13,9 +13,9 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 # =============================================================================
 
 plugin_get_metadata() {
-    metadata_set "id" "network"
-    metadata_set "name" "Network"
-    metadata_set "description" "Display network traffic"
+    metadata_set "id" "netspeed"
+    metadata_set "name" "Net Speed"
+    metadata_set "description" "Display network upload/download speed"
 }
 
 # =============================================================================
@@ -34,14 +34,13 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Display options
     declare_option "interface" "string" "auto" "Network interface to monitor"
-    declare_option "show_upload" "bool" "true" "Show upload speed"
-    declare_option "show_download" "bool" "true" "Show download speed"
-    declare_option "separator" "string" " " "Separator between up/down"
+    declare_option "display" "enum" "both" "What to display: both, upload, download"
+    declare_option "separator" "string" " | " "Separator between up/down"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F090C' "Plugin icon"
-    declare_option "icon_upload" "icon" $'\U000F0552' "Upload icon"
-    declare_option "icon_download" "icon" $'\U000F0151' "Download icon"
+    declare_option "icon" "icon" $'\U0000F0B5' "Plugin icon"
+    declare_option "icon_download" "icon" $'\U000F01DA' "Icon for download"
+    declare_option "icon_upload" "icon" $'\U000F0552' "Icon for upload"
 
     # Cache
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
@@ -96,65 +95,73 @@ _get_network_stats() {
     [[ "$interface" == "auto" ]] && interface=$(_get_active_interface)
     [[ -z "$interface" ]] && return 1
 
-    # Try ifstat first (more accurate)
+    # Try ifstat first (more accurate, real-time)
     if has_cmd "ifstat"; then
         local stats
         stats=$(ifstat -i "$interface" -b 0.1 1 2>/dev/null | tail -1)
         [[ -z "$stats" ]] && return 1
-        
+
         local rx_rate tx_rate
         read -r rx_rate tx_rate <<< "$stats"
-        
+
         # Convert to KB/s
         rx_rate=$(awk "BEGIN {printf \"%.0f\", $rx_rate / 1024}")
         tx_rate=$(awk "BEGIN {printf \"%.0f\", $tx_rate / 1024}")
-        
+
+        printf '%s|%s' "$rx_rate" "$tx_rate"
+        return 0
+    fi
+
+    # Fallback: cumulative byte counters (requires delta calculation)
+    local rx_bytes tx_bytes
+
+    if is_macos; then
+        # macOS: use netstat -ib
+        local netstat_line
+        netstat_line=$(netstat -ib -I "$interface" 2>/dev/null | awk 'NR==2 {print $7, $10}')
+        read -r rx_bytes tx_bytes <<< "$netstat_line"
+    elif [[ -f "/sys/class/net/$interface/statistics/rx_bytes" ]]; then
+        # Linux: read from sysfs
+        rx_bytes=$(cat "/sys/class/net/$interface/statistics/rx_bytes" 2>/dev/null)
+        tx_bytes=$(cat "/sys/class/net/$interface/statistics/tx_bytes" 2>/dev/null)
+    else
+        return 1
+    fi
+
+    [[ -z "$rx_bytes" || -z "$tx_bytes" ]] && return 1
+
+    # Calculate rate from delta (use cache for persistence across renders)
+    local cache_ttl=60  # Keep baseline for 60s
+    local prev_rx prev_tx prev_time
+    prev_rx=$(cache_get "netspeed_prev_rx" "$cache_ttl")
+    prev_tx=$(cache_get "netspeed_prev_tx" "$cache_ttl")
+    prev_time=$(cache_get "netspeed_prev_time" "$cache_ttl")
+
+    local curr_time
+    curr_time=$(date +%s)
+
+    if [[ -n "$prev_rx" && -n "$prev_time" ]]; then
+        local time_diff=$((curr_time - prev_time))
+        [[ "$time_diff" -eq 0 ]] && time_diff=1
+
+        local rx_rate=$(( (rx_bytes - prev_rx) / time_diff / 1024 ))
+        local tx_rate=$(( (tx_bytes - prev_tx) / time_diff / 1024 ))
+
+        # Handle counter overflow or negative values
+        (( rx_rate < 0 )) && rx_rate=0
+        (( tx_rate < 0 )) && tx_rate=0
+
+        cache_set "netspeed_prev_rx" "$rx_bytes"
+        cache_set "netspeed_prev_tx" "$tx_bytes"
+        cache_set "netspeed_prev_time" "$curr_time"
+
         printf '%s|%s' "$rx_rate" "$tx_rate"
     else
-        # Fallback: read from /sys or netstat
-        if [[ -f "/sys/class/net/$interface/statistics/rx_bytes" ]]; then
-            local rx_bytes tx_bytes
-            rx_bytes=$(cat "/sys/class/net/$interface/statistics/rx_bytes" 2>/dev/null)
-            tx_bytes=$(cat "/sys/class/net/$interface/statistics/tx_bytes" 2>/dev/null)
-            
-            local prev_rx prev_tx prev_time
-            prev_rx=$(plugin_data_get "prev_rx_bytes")
-            prev_tx=$(plugin_data_get "prev_tx_bytes")
-            prev_time=$(plugin_data_get "prev_time")
-            
-            local curr_time
-            curr_time=$(date +%s)
-            
-            if [[ -n "$prev_rx" && -n "$prev_time" ]]; then
-                local time_diff=$((curr_time - prev_time))
-                [[ "$time_diff" -eq 0 ]] && time_diff=1
-                
-                local rx_rate=$(( (rx_bytes - prev_rx) / time_diff / 1024 ))
-                local tx_rate=$(( (tx_bytes - prev_tx) / time_diff / 1024 ))
-                
-                plugin_data_set "prev_rx_bytes" "$rx_bytes"
-                plugin_data_set "prev_tx_bytes" "$tx_bytes"
-                plugin_data_set "prev_time" "$curr_time"
-                
-                printf '%s|%s' "$rx_rate" "$tx_rate"
-            else
-                plugin_data_set "prev_rx_bytes" "$rx_bytes"
-                plugin_data_set "prev_tx_bytes" "$tx_bytes"
-                plugin_data_set "prev_time" "$curr_time"
-                printf '0|0'
-            fi
-        else
-            return 1
-        fi
-    fi
-}
-
-_format_speed() {
-    local kb_per_sec=${1:-0}
-    if (( kb_per_sec >= 1024 )); then
-        awk "BEGIN {printf \"%.1fM\", $kb_per_sec / 1024}"
-    else
-        printf '%dK' "$kb_per_sec"
+        # First run: store baseline
+        cache_set "netspeed_prev_rx" "$rx_bytes"
+        cache_set "netspeed_prev_tx" "$tx_bytes"
+        cache_set "netspeed_prev_time" "$curr_time"
+        printf '0|0'
     fi
 }
 
@@ -169,26 +176,28 @@ plugin_collect() {
 }
 
 plugin_render() {
-    local show_upload show_download separator
-    show_upload=$(get_option "show_upload")
-    show_download=$(get_option "show_download")
+    local display separator
+    display=$(get_option "display")
     separator=$(get_option "separator")
 
     local rx_rate tx_rate
     rx_rate=$(plugin_data_get "rx_rate")
     tx_rate=$(plugin_data_get "tx_rate")
 
+    local icon_download icon_upload
+    icon_download=$(get_option "icon_download")
+    icon_upload=$(get_option "icon_upload")
+
     local parts=()
-    
-    if [[ "$show_download" == "true" ]]; then
-        parts+=("↓$(_format_speed "$rx_rate")")
-    fi
-    
-    if [[ "$show_upload" == "true" ]]; then
-        parts+=("↑$(_format_speed "$tx_rate")")
+
+    if [[ "$display" == "both" || "$display" == "download" ]]; then
+        parts+=("${icon_download} $(format_speed "$rx_rate" 1)")
     fi
 
-    local IFS="$separator"
-    printf '%s' "${parts[*]}"
+    if [[ "$display" == "both" || "$display" == "upload" ]]; then
+        parts+=("${icon_upload} $(format_speed "$tx_rate" 1)")
+    fi
+
+    [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
 

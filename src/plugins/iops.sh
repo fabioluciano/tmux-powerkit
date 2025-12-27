@@ -2,7 +2,7 @@
 # =============================================================================
 # Plugin: iops
 # Description: Display disk IOPS (Input/Output Operations Per Second)
-# Dependencies: iostat
+# Dependencies: iostat (Linux) or ioreg (macOS)
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -15,7 +15,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 plugin_get_metadata() {
     metadata_set "id" "iops"
     metadata_set "name" "IOPS"
-    metadata_set "description" "Display disk IOPS"
+    metadata_set "description" "Display disk IOPS (read/write)"
 }
 
 # =============================================================================
@@ -23,7 +23,11 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    require_cmd "iostat" || return 1
+    if is_macos; then
+        require_cmd "ioreg" || return 1
+    else
+        require_cmd "iostat" || return 1
+    fi
     return 0
 }
 
@@ -33,19 +37,20 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display options
-    declare_option "device" "string" "disk0" "Disk device to monitor"
-    declare_option "show_read" "bool" "true" "Show read IOPS"
-    declare_option "show_write" "bool" "true" "Show write IOPS"
+    declare_option "show" "string" "both" "What to show: both, read, write"
+    declare_option "icon_read" "icon" $'\U000F06C3' "Read icon (arrow up)"
+    declare_option "icon_write" "icon" $'\U000F06C0' "Write icon (arrow down)"
+    declare_option "separator" "string" " | " "Separator between read/write"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0A27' "Disk icon"
+    declare_option "icon" "icon" $'\U000F02CA' "Plugin icon (harddisk)"
 
-    # Thresholds
-    declare_option "warning_threshold" "number" "500" "Warning threshold (total IOPS)"
-    declare_option "critical_threshold" "number" "1000" "Critical threshold (total IOPS)"
+    # Thresholds (in bytes/s - 100MB/s warning, 500MB/s critical)
+    declare_option "warning_threshold" "number" "104857600" "Warning threshold (bytes/s)"
+    declare_option "critical_threshold" "number" "524288000" "Critical threshold (bytes/s)"
 
-    # Cache - iostat takes ~1 second to collect data, so cache longer
-    declare_option "cache_ttl" "number" "10" "Cache duration in seconds"
+    # Cache
+    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
 }
 
 # =============================================================================
@@ -57,18 +62,16 @@ plugin_get_presence() { printf 'always'; }
 plugin_get_state() { printf 'active'; }
 
 plugin_get_health() {
-    local total_iops warn_th crit_th
-    total_iops=$(plugin_data_get "total_iops")
+    local total_rate warn_th crit_th
+    total_rate=$(plugin_data_get "total_rate")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
-    total_iops="${total_iops:-0}"
-    warn_th="${warn_th:-500}"
-    crit_th="${crit_th:-1000}"
+    total_rate="${total_rate:-0}"
 
-    if (( total_iops >= crit_th )); then
+    if (( total_rate >= crit_th )); then
         printf 'error'
-    elif (( total_iops >= warn_th )); then
+    elif (( total_rate >= warn_th )); then
         printf 'warning'
     else
         printf 'ok'
@@ -76,20 +79,20 @@ plugin_get_health() {
 }
 
 plugin_get_context() {
-    local read_iops write_iops total_iops
-    read_iops=$(plugin_data_get "read_iops")
-    write_iops=$(plugin_data_get "write_iops")
-    total_iops=$(plugin_data_get "total_iops")
+    local read_rate write_rate total_rate
+    read_rate=$(plugin_data_get "read_rate")
+    write_rate=$(plugin_data_get "write_rate")
+    total_rate=$(plugin_data_get "total_rate")
     
-    read_iops="${read_iops:-0}"
-    write_iops="${write_iops:-0}"
-    total_iops="${total_iops:-0}"
+    read_rate="${read_rate:-0}"
+    write_rate="${write_rate:-0}"
+    total_rate="${total_rate:-0}"
     
-    if (( total_iops == 0 )); then
+    if (( total_rate == 0 )); then
         printf 'idle'
-    elif (( read_iops > write_iops * 2 )); then
+    elif (( read_rate > write_rate * 2 )); then
         printf 'read_heavy'
-    elif (( write_iops > read_iops * 2 )); then
+    elif (( write_rate > read_rate * 2 )); then
         printf 'write_heavy'
     else
         printf 'balanced'
@@ -99,62 +102,165 @@ plugin_get_context() {
 plugin_get_icon() { get_option "icon"; }
 
 # =============================================================================
+# macOS Implementation using ioreg
+# =============================================================================
+
+_get_throughput_macos() {
+    local now=$(date +%s)
+    
+    # Get current bytes from ioreg (all disks combined)
+    local stats
+    stats=$(ioreg -c IOBlockStorageDriver -r -w 0 2>/dev/null | grep -o '"Statistics" = {[^}]*}')
+    
+    [[ -z "$stats" ]] && { printf '0|0'; return 1; }
+    
+    # Sum bytes from all disks
+    local total_read_bytes=0
+    local total_write_bytes=0
+    
+    while IFS= read -r line; do
+        local read_bytes write_bytes
+        read_bytes=$(echo "$line" | grep -o '"Bytes (Read)"=[0-9]*' | grep -o '[0-9]*')
+        write_bytes=$(echo "$line" | grep -o '"Bytes (Write)"=[0-9]*' | grep -o '[0-9]*')
+        total_read_bytes=$((total_read_bytes + ${read_bytes:-0}))
+        total_write_bytes=$((total_write_bytes + ${write_bytes:-0}))
+    done <<< "$stats"
+    
+    # Read previous state from cache
+    local prev_state prev_time=0 prev_read=0 prev_write=0
+    if prev_state=$(cache_get "iops_state" 86400); then
+        IFS='|' read -r prev_time prev_read prev_write <<< "$prev_state"
+    fi
+    
+    # Save current state to cache
+    cache_set "iops_state" "${now}|${total_read_bytes}|${total_write_bytes}"
+    
+    # Calculate delta (bytes per second)
+    local time_delta=$((now - prev_time))
+    if (( time_delta > 0 && prev_time > 0 )); then
+        local read_delta=$((total_read_bytes - prev_read))
+        local write_delta=$((total_write_bytes - prev_write))
+        
+        # Avoid negative values (can happen on system restart)
+        (( read_delta < 0 )) && read_delta=0
+        (( write_delta < 0 )) && write_delta=0
+        
+        local read_rate=$((read_delta / time_delta))
+        local write_rate=$((write_delta / time_delta))
+        
+        printf '%d|%d' "$read_rate" "$write_rate"
+    else
+        # First run, no delta available
+        printf '0|0'
+    fi
+}
+
+# =============================================================================
+# Linux Implementation using /proc/diskstats
+# =============================================================================
+
+_get_throughput_linux() {
+    local now=$(date +%s)
+    
+    # Read from /proc/diskstats (sectors read/written)
+    # Format: major minor name reads_completed reads_merged sectors_read ms_reading writes_completed writes_merged sectors_written ...
+    local stats
+    stats=$(cat /proc/diskstats 2>/dev/null)
+    
+    [[ -z "$stats" ]] && { printf '0|0'; return 1; }
+    
+    # Sum sectors from all real disks (sd*, nvme*, vd*)
+    local total_read_sectors=0
+    local total_write_sectors=0
+    
+    while IFS= read -r line; do
+        local name read_sectors write_sectors
+        name=$(echo "$line" | awk '{print $3}')
+        
+        # Only count main disks, not partitions (sda not sda1, nvme0n1 not nvme0n1p1)
+        if [[ "$name" =~ ^(sd[a-z]|nvme[0-9]+n[0-9]+|vd[a-z])$ ]]; then
+            read_sectors=$(echo "$line" | awk '{print $6}')
+            write_sectors=$(echo "$line" | awk '{print $10}')
+            total_read_sectors=$((total_read_sectors + ${read_sectors:-0}))
+            total_write_sectors=$((total_write_sectors + ${write_sectors:-0}))
+        fi
+    done <<< "$stats"
+    
+    # Convert sectors to bytes (sector = 512 bytes)
+    local total_read_bytes=$((total_read_sectors * 512))
+    local total_write_bytes=$((total_write_sectors * 512))
+    
+    # Read previous state from cache
+    local prev_state prev_time=0 prev_read=0 prev_write=0
+    if prev_state=$(cache_get "iops_state" 86400); then
+        IFS='|' read -r prev_time prev_read prev_write <<< "$prev_state"
+    fi
+    
+    # Save current state to cache
+    cache_set "iops_state" "${now}|${total_read_bytes}|${total_write_bytes}"
+    
+    # Calculate delta (bytes per second)
+    local time_delta=$((now - prev_time))
+    if (( time_delta > 0 && prev_time > 0 )); then
+        local read_delta=$((total_read_bytes - prev_read))
+        local write_delta=$((total_write_bytes - prev_write))
+        
+        # Avoid negative values
+        (( read_delta < 0 )) && read_delta=0
+        (( write_delta < 0 )) && write_delta=0
+        
+        local read_rate=$((read_delta / time_delta))
+        local write_rate=$((write_delta / time_delta))
+        
+        printf '%d|%d' "$read_rate" "$write_rate"
+    else
+        printf '0|0'
+    fi
+}
+
+# =============================================================================
 # Main Logic
 # =============================================================================
 
-_get_iops() {
-    local device=$(get_option "device")
-
+_get_throughput() {
     if is_macos; then
-        # macOS iostat format
-        local output
-        output=$(iostat -c 2 -w 1 "$device" 2>/dev/null | tail -1)
-        
-        [[ -z "$output" ]] && return 1
-
-        # Parse KB/t, tps (transactions per second = IOPS)
-        local tps
-        tps=$(echo "$output" | awk '{print $3}')
-        
-        printf '%.0f|%.0f' "${tps:-0}" "${tps:-0}"
+        _get_throughput_macos
     else
-        # Linux iostat format
-        local output
-        output=$(iostat -x 1 2 "$device" 2>/dev/null | grep "$device" | tail -1)
-        
-        [[ -z "$output" ]] && return 1
-
-        local r_iops w_iops
-        r_iops=$(echo "$output" | awk '{print $4}')
-        w_iops=$(echo "$output" | awk '{print $5}')
-        
-        printf '%.0f|%.0f' "${r_iops:-0}" "${w_iops:-0}"
+        _get_throughput_linux
     fi
 }
 
 plugin_collect() {
-    local iops_data
-    iops_data=$(_get_iops) || return 1
+    local data
+    data=$(_get_throughput)
 
-    IFS='|' read -r read_iops write_iops <<< "$iops_data"
+    local read_rate write_rate
+    IFS='|' read -r read_rate write_rate <<< "$data"
 
-    plugin_data_set "read_iops" "${read_iops:-0}"
-    plugin_data_set "write_iops" "${write_iops:-0}"
-    plugin_data_set "total_iops" "$((${read_iops:-0} + ${write_iops:-0}))"
+    read_rate="${read_rate:-0}"
+    write_rate="${write_rate:-0}"
+
+    plugin_data_set "read_rate" "$read_rate"
+    plugin_data_set "write_rate" "$write_rate"
+    plugin_data_set "total_rate" "$((read_rate + write_rate))"
 }
 
 plugin_render() {
-    local show_read show_write read_iops write_iops
-    show_read=$(get_option "show_read")
-    show_write=$(get_option "show_write")
-    read_iops=$(plugin_data_get "read_iops")
-    write_iops=$(plugin_data_get "write_iops")
+    local show read_rate write_rate icon_read icon_write separator
+    show=$(get_option "show")
+    icon_read=$(get_option "icon_read")
+    icon_write=$(get_option "icon_write")
+    separator=$(get_option "separator")
+    read_rate=$(plugin_data_get "read_rate")
+    write_rate=$(plugin_data_get "write_rate")
+
+    read_rate="${read_rate:-0}"
+    write_rate="${write_rate:-0}"
 
     local parts=()
-    [[ "$show_read" == "true" ]] && parts+=("R:${read_iops}")
-    [[ "$show_write" == "true" ]] && parts+=("W:${write_iops}")
+    [[ "$show" == "both" || "$show" == "read" ]] && parts+=("$(format_bytes "$read_rate")/s ${icon_read}")
+    [[ "$show" == "both" || "$show" == "write" ]] && parts+=("$(format_bytes "$write_rate")/s ${icon_write}")
 
-    local IFS=" "
-    printf '%s' "${parts[*]}"
+    [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
 

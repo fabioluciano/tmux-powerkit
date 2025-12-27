@@ -3,6 +3,11 @@
 # PowerKit Utils: UI Backend
 # Description: Abstract UI backend for helpers (gum > fzf > basic)
 # =============================================================================
+
+# Source guard
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+. "${POWERKIT_ROOT}/src/core/guard.sh"
+source_guard "utils_ui_backend" && return 0
 #
 # This module provides a unified API for interactive UI elements that can
 # use different backends depending on what's available:
@@ -17,11 +22,6 @@
 #   @powerkit_ui_backend "basic" - Force basic
 #
 # =============================================================================
-
-# Source guard
-POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-. "${POWERKIT_ROOT}/src/core/guard.sh"
-source_guard "utils_ui_backend" && return 0
 
 . "${POWERKIT_ROOT}/src/core/logger.sh"
 . "${POWERKIT_ROOT}/src/utils/platform.sh"
@@ -107,17 +107,21 @@ ui_reset_backend_cache() {
 #   -p, --prompt PROMPT    Prompt/placeholder text
 #   -h, --header HEADER    Header text above list
 #   -m, --multi            Allow multiple selection
+#   -q, --query QUERY      Initial query/filter text
+#   -a, --ansi             Enable ANSI color processing
 #   --height HEIGHT        Height (fzf only, default: 40%)
 #   --reverse              Reverse layout (fzf only)
 #
 ui_filter() {
-    local prompt="Select:" header="" multi="" height="40%" reverse="--reverse"
+    local prompt="Select:" header="" multi="" height="40%" reverse="--reverse" query="" ansi=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -p|--prompt)   prompt="$2"; shift 2 ;;
             -h|--header)   header="$2"; shift 2 ;;
             -m|--multi)    multi="1"; shift ;;
+            -q|--query)    query="$2"; shift 2 ;;
+            -a|--ansi)     ansi="1"; shift ;;
             --height)      height="$2"; shift 2 ;;
             --reverse)     reverse="--reverse"; shift ;;
             --no-reverse)  reverse=""; shift ;;
@@ -134,6 +138,7 @@ ui_filter() {
             gum_args+=(--placeholder "$prompt")
             [[ -n "$header" ]] && gum_args+=(--header "$header")
             [[ -n "$multi" ]] && gum_args+=(--no-limit)
+            [[ -n "$query" ]] && gum_args+=(--value "$query")
             gum "${gum_args[@]}"
             ;;
         fzf)
@@ -141,6 +146,8 @@ ui_filter() {
             fzf_args+=(--prompt "$prompt ")
             [[ -n "$header" ]] && fzf_args+=(--header "$header")
             [[ -n "$multi" ]] && fzf_args+=(-m)
+            [[ -n "$query" ]] && fzf_args+=(--query "$query")
+            [[ -n "$ansi" ]] && fzf_args+=(--ansi)
             [[ -n "$height" ]] && fzf_args+=(--height="$height")
             [[ -n "$reverse" ]] && fzf_args+=("$reverse")
             fzf "${fzf_args[@]}"

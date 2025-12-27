@@ -9,10 +9,7 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 . "${POWERKIT_ROOT}/src/core/guard.sh"
 source_guard "contract_message" && return 0
 
-. "${POWERKIT_ROOT}/src/core/logger.sh"
-. "${POWERKIT_ROOT}/src/core/options.sh"
-. "${POWERKIT_ROOT}/src/core/color_palette.sh"
-. "${POWERKIT_ROOT}/src/utils/keybinding.sh"
+# Note: All core and utils modules are loaded by bootstrap.sh
 
 # =============================================================================
 # Message Contract Definition
