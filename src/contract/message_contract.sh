@@ -167,7 +167,7 @@ message_popup_cmd() {
 # Usage: message_confirm "Are you sure?" && echo "confirmed"
 message_confirm() {
     local prompt="$1"
-    local default="${2:-n}"
+    local _default="${2:-n}"  # Reserved for future use
 
     if [[ -z "${TMUX:-}" ]]; then
         read -rp "$prompt [y/n]: " answer

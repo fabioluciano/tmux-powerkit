@@ -188,9 +188,9 @@ configure_status_left() {
 configure_status_right() {
     log_debug "renderer" "Configuring status-right"
 
-    local bar_layout status_order
+    local bar_layout _status_order
     bar_layout=$(get_tmux_option "@powerkit_bar_layout" "${POWERKIT_DEFAULT_BAR_LAYOUT}")
-    status_order=$(get_tmux_option "@powerkit_status_order" "${POWERKIT_DEFAULT_STATUS_ORDER}")
+    _status_order=$(get_tmux_option "@powerkit_status_order" "${POWERKIT_DEFAULT_STATUS_ORDER}")  # Reserved for future use
 
     # NOTE: Plugin lifecycle runs in powerkit-render, not here
     # This avoids slow initialization - plugins are rendered on-demand with caching

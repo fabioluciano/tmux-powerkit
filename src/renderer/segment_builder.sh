@@ -26,6 +26,7 @@ declare -g DEFAULT_SEGMENT_TEMPLATE='{sep_left}{icon_section}{sep_internal}{cont
 
 # Get global or plugin-specific template
 # Usage: get_segment_template ["plugin_name"]
+# shellcheck disable=SC2120  # Function designed to be called with or without arguments
 get_segment_template() {
     local plugin="${1:-}"
 

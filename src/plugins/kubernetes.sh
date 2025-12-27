@@ -338,12 +338,11 @@ plugin_setup_keybindings() {
     local kubeconfig=$(_get_kubeconfig_path)
     [[ ! -f "$kubeconfig" ]] && return 0
     
-    local ctx_key ns_key popup_w popup_h conn_timeout
+    local ctx_key ns_key popup_w popup_h
     ctx_key=$(get_option "keybinding_context")
     ns_key=$(get_option "keybinding_namespace")
     popup_w=$(get_option "popup_width")
     popup_h=$(get_option "popup_height")
-    conn_timeout=$(get_option "connectivity_timeout")
     
     # Context selector - can switch even if current cluster is down
     local helper_script="${POWERKIT_ROOT}/src/helpers/kubernetes_selector.sh"

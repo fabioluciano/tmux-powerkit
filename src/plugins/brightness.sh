@@ -169,8 +169,8 @@ _get_brightness_macos() {
         
         if [[ -n "$helper_output" ]]; then
             local result_parts=()
-            local line display_id display_type brightness
-            
+            local display_id display_type brightness
+
             while IFS=: read -r display_id display_type brightness; do
                 # Skip displays without brightness control
                 [[ "$brightness" == "-1" ]] && continue
