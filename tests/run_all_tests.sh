@@ -24,7 +24,7 @@ TESTS_RUN=0
 print_header() {
     echo ""
     echo -e "${BLUE}${BOLD}╔═══════════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}${BOLD}║     PowerKit v2 Test Suite                ║${NC}"
+    echo -e "${BLUE}${BOLD}║     PowerKit Test Suite                   ║${NC}"
     echo -e "${BLUE}${BOLD}╚═══════════════════════════════════════════╝${NC}"
     echo ""
 }

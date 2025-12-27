@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PowerKit v2 - Enterprise tmux Status Bar Framework
+# PowerKit - tmux Status Bar Framework
 # TPM Entry Point
 # =============================================================================
 

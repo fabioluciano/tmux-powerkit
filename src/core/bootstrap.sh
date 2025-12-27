@@ -109,7 +109,7 @@ _load_renderer_modules() {
 # Full PowerKit bootstrap
 # Usage: powerkit_bootstrap
 powerkit_bootstrap() {
-    log_info "bootstrap" "PowerKit v2 starting..."
+    log_info "bootstrap" "PowerKit starting..."
 
     # Load all modules
     _load_core_modules

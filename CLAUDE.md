@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 42 plugins migrated to v2 contract system
+**Status**: ✅ COMPLETE - All 42 plugins migrated to contract system
 
 ### Migration Statistics
 
@@ -78,7 +78,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-PowerKit v2 is a contract-based tmux status bar framework with strict separation of concerns:
+PowerKit is a contract-based tmux status bar framework with strict separation of concerns:
 
 - **Core**: Orchestration, lifecycle, cache, options
 - **Plugin**: Data + semantics ONLY (no UI)
@@ -158,7 +158,7 @@ powerkit_bootstrap_minimal()  # Core + utils only (no plugins)
 powerkit_run()                # Bootstrap + run full lifecycle
 ```
 
-## Plugin Contract v2
+## Plugin Contract
 
 Plugins provide **data and semantics**, NOT UI decisions.
 
