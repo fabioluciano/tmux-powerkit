@@ -63,12 +63,18 @@ POWERKIT_DEFAULT_THEME="tokyo-night"
 POWERKIT_DEFAULT_THEME_VARIANT="night"
 POWERKIT_DEFAULT_CUSTOM_THEME_PATH=""
 POWERKIT_DEFAULT_TRANSPARENT="false"
-POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory"
+POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 POWERKIT_DEFAULT_STATUS_LEFT_LENGTH="100"
 POWERKIT_DEFAULT_STATUS_RIGHT_LENGTH="500"
 POWERKIT_DEFAULT_STATUS_INTERVAL="5"
 POWERKIT_DEFAULT_STATUS_POSITION="top"
 POWERKIT_DEFAULT_STATUS_JUSTIFY="left"
+POWERKIT_DEFAULT_BAR_LAYOUT="single"       # single or double (2 status lines)
+
+# Status bar element order - comma-separated list of: session (includes windows), plugins
+# Examples: "session,plugins" (default), "plugins,session"
+# POWERKIT_DEFAULT_STATUS_ORDER="plugins,session"
+POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"
 
 # =============================================================================
 # SEPARATORS

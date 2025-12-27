@@ -3,7 +3,7 @@
 # Plugin: temperature
 # Description: Display CPU/system temperature with threshold colors
 # Type: conditional (can hide when below threshold or unavailable)
-# Dependencies: sensors (Linux), osx-cpu-temp/smctemp (macOS - optional)
+# Dependencies: sensors (Linux - optional), powerkit-temperature binary (macOS)
 # =============================================================================
 #
 # CONTRACT IMPLEMENTATION:
@@ -45,10 +45,7 @@ plugin_check_dependencies() {
     if is_linux; then
         require_cmd "sensors" 1  # Optional, can use sysfs
     fi
-    if is_macos; then
-        require_cmd "osx-cpu-temp" 1  # Optional
-        require_cmd "smctemp" 1       # Alternative
-    fi
+    # macOS: powerkit-temperature binary is bundled, no external deps needed
     return 0
 }
 
@@ -58,15 +55,18 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display options
-    declare_option "source" "string" "auto" "Temperature source (auto|cpu|cpu-pkg|cpu-acpi|nvme|wifi|acpi|dell)"
+    # Linux sources: auto|cpu|cpu-pkg|cpu-acpi|nvme|wifi|acpi|dell
+    # macOS sources: auto|cpu-cluster|gpu|soc|battery|wifi or specific SMC key (e.g., Tp0f, TC0P)
+    # Use 'powerkit-temperature -l' to list available sensors on macOS
+    declare_option "source" "string" "auto" "Temperature source (auto, or SMC key like Tp0f, TC0P)"
     declare_option "unit" "string" "C" "Temperature unit (C or F)"
     declare_option "show_unit" "bool" "true" "Show unit symbol (°C/°F)"
     declare_option "hide_below_threshold" "number" "" "Hide plugin when temp is below this value (°C)"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F02C7' "Plugin icon"
-    declare_option "icon_warning" "icon" "" "Icon for warning temperature"
-    declare_option "icon_hot" "icon" "󱃂" "Icon for critical temperature"
+    declare_option "icon" "icon" $'\U0000F2CB' "Plugin icon"
+    declare_option "icon_warning" "icon" $'\U0000F2C9' "Icon for warning temperature"
+    declare_option "icon_hot" "icon" $'\U0000EF2A' "Icon for critical temperature"
 
     # Thresholds (in Celsius, higher = worse)
     declare_option "warning_threshold" "number" "70" "Warning threshold in °C"
@@ -226,9 +226,48 @@ _get_temp_linux() {
 # =============================================================================
 
 _get_temp_macos() {
+    local source="$1"
     local temp
+    local powerkit_temp="${POWERKIT_ROOT}/bin/macos/powerkit-temperature"
 
-    # Try osx-cpu-temp first
+    # Try powerkit-temperature first (works on Apple Silicon and Intel)
+    if [[ -x "$powerkit_temp" ]]; then
+        case "$source" in
+            auto|"")
+                # Default: highest temperature
+                temp=$("$powerkit_temp" 2>/dev/null)
+                ;;
+            cpu-cluster|cpu)
+                # CPU cluster (P-Cluster for Apple Silicon)
+                temp=$("$powerkit_temp" -s Tp0f 2>/dev/null)
+                [[ -z "$temp" || "$temp" == "-1" ]] && temp=$("$powerkit_temp" -s TC0P 2>/dev/null)
+                ;;
+            gpu)
+                # GPU
+                temp=$("$powerkit_temp" -s Tg0j 2>/dev/null)
+                [[ -z "$temp" || "$temp" == "-1" ]] && temp=$("$powerkit_temp" -s TG0D 2>/dev/null)
+                ;;
+            soc)
+                # SoC (Apple Silicon only)
+                temp=$("$powerkit_temp" -s Ts0S 2>/dev/null)
+                ;;
+            battery)
+                # Battery
+                temp=$("$powerkit_temp" -s TB0T 2>/dev/null)
+                ;;
+            wifi)
+                # WiFi module
+                temp=$("$powerkit_temp" -s TW0P 2>/dev/null)
+                ;;
+            *)
+                # Specific SMC key (e.g., Tp0f, TC0P)
+                temp=$("$powerkit_temp" -s "$source" 2>/dev/null)
+                ;;
+        esac
+        [[ -n "$temp" && "$temp" =~ ^[0-9]+$ ]] && { printf '%s' "$temp"; return 0; }
+    fi
+
+    # Fallback: Try osx-cpu-temp (Intel only)
     if has_cmd osx-cpu-temp; then
         local output
         output=$(osx-cpu-temp 2>/dev/null)
@@ -237,7 +276,7 @@ _get_temp_macos() {
         [[ -n "$temp" ]] && { printf '%.0f' "$temp" 2>/dev/null; return 0; }
     fi
 
-    # Try smctemp
+    # Fallback: Try smctemp
     if has_cmd smctemp; then
         temp=$(smctemp -c 2>/dev/null | head -1)
         [[ -n "$temp" ]] && { printf '%.0f' "$temp" 2>/dev/null; return 0; }
@@ -258,7 +297,7 @@ plugin_collect() {
     if is_linux; then
         temp=$(_get_temp_linux "$source")
     elif is_macos; then
-        temp=$(_get_temp_macos)
+        temp=$(_get_temp_macos "$source")
     fi
 
     if [[ -n "$temp" && "$temp" =~ ^[0-9]+$ ]]; then
@@ -302,18 +341,8 @@ plugin_get_health() {
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
-    temp="${temp:-0}"
-    warn_th="${warn_th:-70}"
-    crit_th="${crit_th:-85}"
-
-    # Higher is worse
-    if (( temp >= crit_th )); then
-        printf 'error'
-    elif (( temp >= warn_th )); then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Higher is worse (default behavior)
+    evaluate_threshold_health "${temp:-0}" "${warn_th:-70}" "${crit_th:-85}"
 }
 
 # =============================================================================

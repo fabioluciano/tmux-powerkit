@@ -254,7 +254,7 @@ plugin_get_state() {
 # Plugin Contract: Health
 # =============================================================================
 
-plugin_get_health() { printf 'ok'; }
+plugin_get_health() { printf 'info'; }
 
 # =============================================================================
 # Plugin Contract: Context

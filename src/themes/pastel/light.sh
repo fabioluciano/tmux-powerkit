@@ -10,26 +10,26 @@ declare -gA THEME_COLORS=(
     [statusbar-bg]="#f0f0f0"
     [statusbar-fg]="#2e3440"
 
-    # Session
-    [session-bg]="#95b86f"
+    # Session (pink = signature pastel accent)
+    [session-bg]="#d87a9e"        # pastel pink (darker for light bg)
     [session-fg]="#fafafa"
-    [session-prefix-bg]="#c4b891"
-    [session-copy-bg]="#b38470"
+    [session-prefix-bg]="#c4b891" # pastel cream
+    [session-copy-bg]="#6a9ec5"   # pastel blue (darker for light bg)
 
     # Windows (base colors - variants auto-generated)
-    [window-active-base]="#e88fb5"
+    [window-active-base]="#b086d0"  # pastel purple
     [window-inactive-base]="#d8d8d8"
 
     # Pane Borders
-    [pane-border-active]="#e88fb5"
+    [pane-border-active]="#d87a9e"  # pastel pink
     [pane-border-inactive]="#d8d8d8"
 
     # Health States (base colors - variants auto-generated)
-    [ok-base]="#e0e0e0"
-    [good-base]="#95b86f"
-    [info-base]="#b38470"
-    [warning-base]="#c4b891"
-    [error-base]="#b35f73"
+    [ok-base]="#a0a0a0"
+    [good-base]="#6a9e4f"         # pastel green (darker) ✓
+    [info-base]="#6a9ec5"         # pastel blue ✓
+    [warning-base]="#c4a050"      # pastel yellow (darker) ✓
+    [error-base]="#b35f73"        # pastel red ✓
     [disabled-base]="#c0c0c0"
 
     # Messages

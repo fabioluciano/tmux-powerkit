@@ -231,9 +231,18 @@ build_icon_segment() {
 # Plugin Segment Rendering (for powerkit-render)
 # =============================================================================
 
-# Render a plugin segment for status-right
+# Render a plugin segment for status bar
 # This is the main function used by powerkit-render
-# Usage: render_plugin_segment "icon" "content" "state" "health" "icon_bg" "icon_fg" "content_bg" "content_fg" "prev_bg" ["is_first"]
+# Usage: render_plugin_segment "icon" "content" "state" "health" "icon_bg" "icon_fg" "content_bg" "content_fg" "prev_bg" ["is_first"] ["is_last"] ["side"]
+# - is_first: 1 if this is the first plugin (affects opening separator)
+# - is_last: 1 if this is the last plugin (affects closing separator)
+# - side: "left" or "right" (default: "right" for backwards compatibility)
+#   - "left": plugins on left side of bar → RIGHT-pointing separators (▶)
+#     - First plugin: NO opening separator (starts from statusbar)
+#     - Last plugin: edge closing separator (to statusbar before windows)
+#   - "right": plugins on right side of bar → LEFT-pointing separators (◀)
+#     - First plugin: edge opening separator (from statusbar)
+#     - Last plugin: NO closing separator (next element follows)
 # Returns: formatted segment string
 render_plugin_segment() {
     local icon="$1"
@@ -246,26 +255,53 @@ render_plugin_segment() {
     local content_fg="$8"
     local prev_bg="$9"
     local is_first="${10:-0}"
+    local is_last="${11:-0}"
+    local side="${12:-right}"
 
-    # Use initial separator for first plugin opening, regular for others
-    local sep_opening sep_internal
-    if [[ "$is_first" -eq 1 ]]; then
-        sep_opening=$(get_initial_separator)
-    else
-        sep_opening=$(get_left_separator)
-    fi
-    # Internal separator (between icon and content) always uses regular style
-    sep_internal=$(get_left_separator)
+    local sep_internal
+    sep_internal=$(get_internal_separator_for_side "$side")
 
     local segment=""
 
-    # Opening separator - transitions FROM prev_bg TO icon_bg
-    segment+="#[fg=${icon_bg},bg=${prev_bg}]${sep_opening}#[none]"
+    # Opening separator logic depends on side and position
+    if [[ "$side" == "left" ]]; then
+        # Left side: plugins flow left-to-right with RIGHT separators (▶)
+        # First plugin: NO opening separator (starts directly from statusbar bg)
+        # Other plugins: normal right separator
+        if [[ $is_first -eq 1 ]]; then
+            # First plugin: add small padding from edge
+            segment+="#[bg=${icon_bg}] "
+        else
+            local sep_opening
+            sep_opening=$(get_right_separator)
+            # Right-pointing (▶): fg=source (prev), bg=destination (icon)
+            segment+="#[fg=${prev_bg},bg=${icon_bg}]${sep_opening}#[none]"
+        fi
+    else
+        # Right side: plugins flow right-to-left with LEFT separators (◀)
+        # First plugin: edge opening separator (from statusbar)
+        # Other plugins: normal left separator
+        local sep_opening
+        if [[ $is_first -eq 1 ]]; then
+            sep_opening=$(get_initial_separator)
+        else
+            sep_opening=$(get_left_separator)
+        fi
+        # Left-pointing (◀): fg=destination (icon), bg=source (prev)
+        segment+="#[fg=${icon_bg},bg=${prev_bg}]${sep_opening}#[none]"
+    fi
 
     # Icon section (no bold - icons don't need emphasis)
     if [[ -n "$icon" ]]; then
         segment+="#[fg=${icon_fg},bg=${icon_bg}]${icon} "
-        segment+="#[fg=${content_bg},bg=${icon_bg}]${sep_internal}#[none]"
+        # Internal separator between icon and content
+        if [[ "$side" == "left" ]]; then
+            # Right-pointing (▶): fg=source (icon), bg=destination (content)
+            segment+="#[fg=${icon_bg},bg=${content_bg}]${sep_internal}#[none]"
+        else
+            # Left-pointing (◀): fg=destination (content), bg=source (icon)
+            segment+="#[fg=${content_bg},bg=${icon_bg}]${sep_internal}#[none]"
+        fi
     fi
 
     # Content section - bold when:
@@ -286,9 +322,14 @@ render_plugin_segment() {
 
 # Render all plugins from the plugin list
 # This is the main function that orchestrates plugin rendering
-# Usage: render_plugins
+# Usage: render_plugins ["side"]
+# - side: "left" or "right" (default: "right")
+#   - "left": plugins on left side of bar → RIGHT-pointing separators (▶)
+#   - "right": plugins on right side of bar → LEFT-pointing separators (◀)
 # Returns: complete formatted string for status bar
 render_plugins() {
+    local side="${1:-right}"
+
     # Source lifecycle for data collection
     . "${POWERKIT_ROOT}/src/core/lifecycle.sh"
 
@@ -314,11 +355,9 @@ render_plugins() {
     use_spacing=$(has_plugin_spacing && echo "true" || echo "false")
     local spacing_bg="default"
 
-    # Render each plugin
-    local output=""
-    local prev_bg="$status_bg"
-    local is_first_plugin=1
-
+    # First pass: collect visible plugins to know total count (for is_last detection)
+    local visible_plugins=()
+    local visible_data=()
     local plugin_name
     for plugin_name in "${plugin_names[@]}"; do
         # Trim whitespace
@@ -327,14 +366,13 @@ render_plugins() {
         [[ -z "$plugin_name" ]] && continue
 
         # Skip external plugins for now (TODO: implement)
-        # Skip external plugins (format: external("..."))
         [[ "$plugin_name" == external\(* ]] && continue
 
         # Collect plugin data (lifecycle handles data + caching)
         local plugin_data
         plugin_data=$(collect_plugin_render_data "$plugin_name") || continue
         [[ -z "$plugin_data" ]] && continue
-        [[ "$plugin_data" == "HIDDEN" ]] && continue  # Plugin is conditionally hidden
+        [[ "$plugin_data" == "HIDDEN" ]] && continue
 
         # Parse data: icon|content|state|health (4 fields from lifecycle)
         local icon content state health
@@ -344,7 +382,6 @@ render_plugins() {
         local show_only_on_threshold
         show_only_on_threshold=$(get_named_plugin_option "$plugin_name" "show_only_on_threshold" 2>/dev/null || echo "false")
         local health_level=0
-        # Use get_health_level from registry.sh
         health_level=$(get_health_level "$health")
         log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
         if [[ "$show_only_on_threshold" == "true" && "$health_level" -lt 1 ]]; then
@@ -352,21 +389,42 @@ render_plugins() {
             continue
         fi
 
+        visible_plugins+=("$plugin_name")
+        visible_data+=("$plugin_data")
+    done
+
+    local total_plugins=${#visible_plugins[@]}
+    [[ $total_plugins -eq 0 ]] && return 0
+
+    # Second pass: render plugins
+    local output=""
+    local prev_bg="$status_bg"
+    local plugin_idx=0
+
+    for plugin_name in "${visible_plugins[@]}"; do
+        local plugin_data="${visible_data[$plugin_idx]}"
+        local icon content state health
+        IFS=$'\x1f' read -r icon content state health <<< "$plugin_data"
+
+        local is_first=$(( plugin_idx == 0 ? 1 : 0 ))
+        local is_last=$(( plugin_idx == total_plugins - 1 ? 1 : 0 ))
+
         # Add spacing between plugins if enabled (not before first plugin)
-        if [[ "$use_spacing" == "true" && $is_first_plugin -eq 0 ]]; then
-            # Add a gap by transitioning to default/transparent background
-            local sep_left spacing_fg
-            sep_left=$(get_left_separator)
-            
-            # For transparent mode, use theme background color for separator visibility
+        if [[ "$use_spacing" == "true" && $is_first -eq 0 ]]; then
+            local spacing_sep spacing_fg
+            spacing_sep=$(get_closing_separator_for_side "$side")
+
             if [[ "$transparent" == "true" ]]; then
                 spacing_fg=$(resolve_color "background")
             else
                 spacing_fg=$(resolve_color "surface")
             fi
-            
-            # Close previous segment and add gap
-            output+=" #[fg=${spacing_fg},bg=${prev_bg}]${sep_left}#[bg=${spacing_bg}]#[none]"
+
+            if [[ "$side" == "left" ]]; then
+                output+=" #[fg=${prev_bg},bg=${spacing_bg}]${spacing_sep}#[bg=${spacing_bg}]#[none]"
+            else
+                output+=" #[fg=${spacing_fg},bg=${prev_bg}]${spacing_sep}#[bg=${spacing_bg}]#[none]"
+            fi
             prev_bg="$spacing_bg"
         fi
 
@@ -374,14 +432,23 @@ render_plugins() {
         local content_bg content_fg icon_bg icon_fg
         read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "")"
 
-        # Render segment (pass is_first_plugin for initial separator styling)
+        # Render segment (pass is_first, is_last and side for correct separator styling)
         local segment
-        segment=$(render_plugin_segment "$icon" "$content" "$state" "$health" "$icon_bg" "$icon_fg" "$content_bg" "$content_fg" "$prev_bg" "$is_first_plugin")
+        segment=$(render_plugin_segment "$icon" "$content" "$state" "$health" "$icon_bg" "$icon_fg" "$content_bg" "$content_fg" "$prev_bg" "$is_first" "$is_last" "$side")
 
         output+="$segment"
         prev_bg="$content_bg"
-        is_first_plugin=0
+        ((plugin_idx++))
     done
+
+    # Add closing edge separator after last plugin when on left side
+    # This creates the transition from plugins to the gap before windows/session
+    if [[ "$side" == "left" && $total_plugins -gt 0 ]]; then
+        local edge_sep
+        edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+        # Right-pointing (▶): fg=source (last plugin content), bg=destination (statusbar)
+        output+="#[fg=${prev_bg},bg=${status_bg}]${edge_sep}#[none]"
+    fi
 
     printf '%s' "$output"
 }

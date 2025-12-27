@@ -108,8 +108,9 @@ is_file_newer_than() {
 # Path Utilities
 # =============================================================================
 
-# Expand tilde and environment variables in path
+# Expand tilde and common environment variables in path (safe, no eval)
 # Usage: expand_path "~/Documents"
+# Supports: ~ (tilde), $HOME, $USER, $XDG_CONFIG_HOME, $XDG_CACHE_HOME, $XDG_DATA_HOME
 expand_path() {
     local path="$1"
 
@@ -121,8 +122,18 @@ expand_path() {
         path="${HOME}${path:1}"
     fi
 
-    # Expand environment variables
-    path=$(eval echo "$path" 2>/dev/null || echo "$path")
+    # Expand common environment variables (safe substitution, no eval)
+    # Only expand variables that are commonly used in paths
+    path="${path//\$HOME/$HOME}"
+    path="${path//\${HOME\}/$HOME}"
+    path="${path//\$USER/${USER:-}}"
+    path="${path//\${USER\}/${USER:-}}"
+    path="${path//\$XDG_CONFIG_HOME/${XDG_CONFIG_HOME:-$HOME/.config}}"
+    path="${path//\${XDG_CONFIG_HOME\}/${XDG_CONFIG_HOME:-$HOME/.config}}"
+    path="${path//\$XDG_CACHE_HOME/${XDG_CACHE_HOME:-$HOME/.cache}}"
+    path="${path//\${XDG_CACHE_HOME\}/${XDG_CACHE_HOME:-$HOME/.cache}}"
+    path="${path//\$XDG_DATA_HOME/${XDG_DATA_HOME:-$HOME/.local/share}}"
+    path="${path//\${XDG_DATA_HOME\}/${XDG_DATA_HOME:-$HOME/.local/share}}"
 
     printf '%s' "$path"
 }

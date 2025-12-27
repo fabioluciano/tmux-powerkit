@@ -43,19 +43,67 @@ TPM_PLUGINS_DIR="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.tmux/plugins}"
 [[ ! -d "$TPM_PLUGINS_DIR" && -d "$HOME/.config/tmux/plugins" ]] && TPM_PLUGINS_DIR="$HOME/.config/tmux/plugins"
 
 declare -a THEME_OPTIONS=(
-    "@powerkit_variation|night|night|Color scheme variation"
-    "@powerkit_plugins|datetime,weather|(comma-separated)|Enabled plugins"
-    "@powerkit_disable_plugins|0|0,1|Disable all plugins"
+    # Theme
+    "@powerkit_theme|tokyo-night|theme name|Theme name"
+    "@powerkit_theme_variant|night|variant name|Theme variant"
     "@powerkit_transparent|false|true,false|Transparent status bar"
-    "@powerkit_bar_layout|single|single,double|Status bar layout"
+    "@powerkit_custom_theme_path||(path)|Custom theme file path"
+    # Plugins
+    "@powerkit_plugins|datetime,battery,cpu,memory,hostname,git|(comma-separated)|Enabled plugins"
+    # Status Bar
+    "@powerkit_status_interval|5|(integer)|Refresh interval (seconds)"
+    "@powerkit_status_position|top|top,bottom|Status bar position"
+    "@powerkit_status_justify|left|left,centre,right|Window list alignment"
     "@powerkit_status_left_length|100|(integer)|Maximum left status length"
-    "@powerkit_status_right_length|250|(integer)|Maximum right status length"
-    "@powerkit_separator_style|rounded|rounded,normal|Separator style (pill or arrows)"
-    "@powerkit_left_separator||Powerline|Left separator"
-    "@powerkit_right_separator||Powerline|Right separator"
-    "@powerkit_session_icon| |Icon/emoji|Session icon"
-    "@powerkit_active_window_title|#W |tmux format|Active window title format"
-    "@powerkit_inactive_window_title|#W |tmux format|Inactive window title format"
+    "@powerkit_status_right_length|500|(integer)|Maximum right status length"
+    "@powerkit_bar_layout|single|single,double|Status bar layout"
+    "@powerkit_status_order|session,plugins|session,plugins or plugins,session|Element order"
+    # Separators
+    "@powerkit_separator_style|normal|normal,rounded,flame,pixel,honeycomb,none|Separator style"
+    "@powerkit_edge_separator_style|rounded|normal,rounded,flame,pixel,honeycomb,none|Edge separator style"
+    "@powerkit_initial_separator_style||(style)|Initial separator style"
+    "@powerkit_elements_spacing|false|false,true,both,windows,plugins|Spacing between elements"
+    # Session
+    "@powerkit_session_icon|auto|auto,icon|Session icon"
+    "@powerkit_session_prefix_icon||icon|Prefix mode icon"
+    "@powerkit_session_copy_icon||icon|Copy mode icon"
+    "@powerkit_session_command_icon||icon|Command mode icon"
+    "@powerkit_session_search_icon||icon|Search mode icon"
+    "@powerkit_session_normal_color|session-bg|color|Normal session color"
+    "@powerkit_session_prefix_color|session-prefix-bg|color|Prefix mode color"
+    "@powerkit_session_copy_mode_color|session-copy-bg|color|Copy mode color"
+    # Window
+    "@powerkit_active_window_icon||icon|Active window icon"
+    "@powerkit_inactive_window_icon||icon|Inactive window icon"
+    "@powerkit_zoomed_window_icon||icon|Zoomed pane indicator"
+    "@powerkit_pane_synchronized_icon||icon|Synchronized panes indicator"
+    "@powerkit_window_default_icon||icon|Default window icon"
+    "@powerkit_active_window_title|#W|tmux format|Active window title format"
+    "@powerkit_inactive_window_title|#W|tmux format|Inactive window title format"
+    "@powerkit_window_index_icons|false|true,false|Use numeric icons for index"
+    # Pane
+    "@powerkit_pane_border_lines|single|single,double,heavy,simple,number|Pane border style"
+    "@powerkit_active_pane_border_color|pane-border-active|color|Active pane border color"
+    "@powerkit_inactive_pane_border_color|pane-border-inactive|color|Inactive pane border color"
+    # Clock
+    "@powerkit_clock_style|24|12,24|Clock format"
+    # Keybindings
+    "@powerkit_show_options_key|C-e|key|Options viewer keybinding"
+    "@powerkit_show_options_width|80%|percentage|Options popup width"
+    "@powerkit_show_options_height|80%|percentage|Options popup height"
+    "@powerkit_show_keybindings_key|C-y|key|Keybindings viewer keybinding"
+    "@powerkit_show_keybindings_width|80%|percentage|Keybindings popup width"
+    "@powerkit_show_keybindings_height|80%|percentage|Keybindings popup height"
+    "@powerkit_theme_selector_key|C-r|key|Theme selector keybinding"
+    "@powerkit_cache_clear_key|M-x|key|Cache clear keybinding"
+    "@powerkit_log_viewer_key|M-l|key|Log viewer keybinding"
+    "@powerkit_log_viewer_width|90%|percentage|Log viewer popup width"
+    "@powerkit_log_viewer_height|80%|percentage|Log viewer popup height"
+    "@powerkit_keybinding_conflict_action|warn|warn,skip,ignore|Keybinding conflict handling"
+    # Advanced
+    "@powerkit_debug|false|true,false|Enable debug logging"
+    "@powerkit_ui_backend|auto|auto,gum,fzf,basic|UI backend"
+    "@powerkit_segment_template||(template)|Custom segment template"
 )
 
 # =============================================================================

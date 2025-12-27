@@ -8,33 +8,33 @@
 
 declare -gA THEME_COLORS=(
     # Status Bar
-    [statusbar-bg]="#26233a"
-    [statusbar-fg]="#e0def4"
+    [statusbar-bg]="#26233a"      # overlay
+    [statusbar-fg]="#e0def4"      # text
 
-    # Session
-    [session-bg]="#9ccfd8"
-    [session-fg]="#191724"
-    [session-prefix-bg]="#f6c177"
-    [session-copy-bg]="#31748f"
+    # Session (iris = signature Rose Pine purple)
+    [session-bg]="#c4a7e7"        # iris
+    [session-fg]="#191724"        # base
+    [session-prefix-bg]="#f6c177" # gold
+    [session-copy-bg]="#31748f"   # pine
 
     # Windows (base colors - variants auto-generated)
-    [window-active-base]="#c4a7e7"
-    [window-inactive-base]="#26233a"
+    [window-active-base]="#ebbcba"  # rose
+    [window-inactive-base]="#26233a" # overlay
 
     # Pane Borders
-    [pane-border-active]="#c4a7e7"
-    [pane-border-inactive]="#26233a"
+    [pane-border-active]="#c4a7e7"  # iris
+    [pane-border-inactive]="#26233a" # overlay
 
     # Health States (base colors - variants auto-generated)
-    [ok-base]="#1f1d2e"
-    [good-base]="#9ccfd8"
-    [info-base]="#31748f"
-    [warning-base]="#f6c177"
-    [error-base]="#eb6f92"
-    [disabled-base]="#6e6a86"
+    [ok-base]="#1f1d2e"           # surface
+    [good-base]="#9ccfd8"         # foam ✓
+    [info-base]="#31748f"         # pine (blue) ✓
+    [warning-base]="#f6c177"      # gold (yellow) ✓
+    [error-base]="#eb6f92"        # love (red) ✓
+    [disabled-base]="#6e6a86"     # muted
 
     # Messages
-    [message-bg]="#26233a"
-    [message-fg]="#e0def4"
+    [message-bg]="#26233a"        # overlay
+    [message-fg]="#e0def4"        # text
 
 )

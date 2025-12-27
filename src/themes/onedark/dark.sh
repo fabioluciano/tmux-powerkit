@@ -8,33 +8,33 @@
 
 declare -gA THEME_COLORS=(
     # Status Bar
-    [statusbar-bg]="#2c323c"
-    [statusbar-fg]="#abb2bf"
+    [statusbar-bg]="#2c323c"      # cursor grey
+    [statusbar-fg]="#abb2bf"      # white
 
-    # Session
-    [session-bg]="#98c379"
-    [session-fg]="#282c34"
-    [session-prefix-bg]="#d19a66"
-    [session-copy-bg]="#56b6c2"
+    # Session (blue = signature OneDark color)
+    [session-bg]="#61afef"        # blue
+    [session-fg]="#282c34"        # black
+    [session-prefix-bg]="#e5c07b" # yellow
+    [session-copy-bg]="#56b6c2"   # cyan
 
     # Windows (base colors - variants auto-generated)
-    [window-active-base]="#61afef"
-    [window-inactive-base]="#3e4451"
+    [window-active-base]="#c678dd"  # purple
+    [window-inactive-base]="#3e4451" # visual grey
 
     # Pane Borders
-    [pane-border-active]="#61afef"
-    [pane-border-inactive]="#3e4451"
+    [pane-border-active]="#61afef"  # blue
+    [pane-border-inactive]="#3e4451" # visual grey
 
     # Health States (base colors - variants auto-generated)
-    [ok-base]="#2c323c"
-    [good-base]="#98c379"
-    [info-base]="#56b6c2"
-    [warning-base]="#d19a66"
-    [error-base]="#e06c75"
-    [disabled-base]="#5c6370"
+    [ok-base]="#2c323c"           # cursor grey
+    [good-base]="#98c379"         # green ✓
+    [info-base]="#56b6c2"         # cyan (blue) ✓
+    [warning-base]="#e5c07b"      # yellow ✓
+    [error-base]="#e06c75"        # red ✓
+    [disabled-base]="#5c6370"     # comment grey
 
     # Messages
-    [message-bg]="#2c323c"
-    [message-fg]="#abb2bf"
+    [message-bg]="#2c323c"        # cursor grey
+    [message-fg]="#abb2bf"        # white
 
 )

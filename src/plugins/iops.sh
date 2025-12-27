@@ -67,15 +67,8 @@ plugin_get_health() {
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
-    total_rate="${total_rate:-0}"
-
-    if (( total_rate >= crit_th )); then
-        printf 'error'
-    elif (( total_rate >= warn_th )); then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Higher is worse (default behavior)
+    evaluate_threshold_health "${total_rate:-0}" "${warn_th:-104857600}" "${crit_th:-524288000}"
 }
 
 plugin_get_context() {

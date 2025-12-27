@@ -2,7 +2,7 @@
 # =============================================================================
 # PowerKit Status Right Renderer
 # Description: Entry point for rendering status-right plugins
-# Usage: powerkit-render
+# Usage: powerkit-render [side]
 # Called by tmux via #(~/.../bin/powerkit-render)
 # =============================================================================
 
@@ -15,4 +15,20 @@ export POWERKIT_ROOT
 load_powerkit_theme
 cache_reset_cycle
 . "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
-render_plugins
+# Reset per-cycle caches for separator characters (performance optimization)
+separator_reset_cache 2>/dev/null || true
+
+# Determine plugins side from status order
+# If side is passed as argument, use it; otherwise detect from order
+side="${1:-}"
+if [[ -z "$side" ]]; then
+    status_order=$(get_tmux_option "@powerkit_status_order" "${POWERKIT_DEFAULT_STATUS_ORDER}")
+    # If plugins come first in the order, they're on the left side
+    if [[ "$status_order" == plugins,* ]]; then
+        side="left"
+    else
+        side="right"
+    fi
+fi
+
+render_plugins "$side"

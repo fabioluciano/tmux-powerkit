@@ -402,6 +402,8 @@ get_visible_plugins() {
 #          (US = Unit Separator, ASCII 31, to avoid conflicts with | in content)
 # NOTE: Colors are NOT resolved here - that's the renderer's responsibility
 #       per the contract separation (lifecycle = data, renderer = UI)
+# PERFORMANCE: Cache is checked BEFORE sourcing plugin file to avoid
+#              unnecessary file I/O when data is still valid
 collect_plugin_render_data() {
     local name="$1"
     local plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
@@ -411,7 +413,26 @@ collect_plugin_render_data() {
     # Set plugin context
     _set_plugin_context "$name"
 
-    # Source plugin
+    # PERFORMANCE OPTIMIZATION: Check cache BEFORE sourcing plugin
+    # Use cached TTL if available, otherwise use default (30s)
+    local cache_key="plugin_${name}_data"
+    local ttl_cache_key="plugin_${name}_ttl"
+    local ttl
+
+    # Try to get cached TTL first (avoids sourcing just to get TTL)
+    ttl=$(cache_get "$ttl_cache_key" 86400 2>/dev/null) || ttl="${_DEFAULT_CACHE_TTL_SHORT:-30}"
+
+    # Check cache BEFORE sourcing plugin file
+    local cached_data
+    cached_data=$(cache_get "$cache_key" "$ttl" 2>/dev/null) || cached_data=""
+
+    if [[ -n "$cached_data" ]]; then
+        # Cache hit - return immediately without sourcing plugin
+        printf '%s' "$cached_data"
+        return 0
+    fi
+
+    # Cache miss - now we need to source the plugin
     # shellcheck disable=SC1090
     . "$plugin_file"
 
@@ -420,19 +441,10 @@ collect_plugin_render_data() {
         plugin_declare_options
     fi
 
-    # Get cache TTL
-    local ttl
-    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
-    local cache_key="plugin_${name}_data"
-
-    # Check cache first
-    local cached_data
-    cached_data=$(cache_get "$cache_key" "$ttl" 2>/dev/null) || cached_data=""
-
-    if [[ -n "$cached_data" ]]; then
-        printf '%s' "$cached_data"
-        return 0
-    fi
+    # Get actual TTL from plugin options and cache it for future cycles
+    local actual_ttl
+    actual_ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+    cache_set "$ttl_cache_key" "$actual_ttl"
 
     # Collect fresh data
     plugin_data_clear
@@ -440,7 +452,6 @@ collect_plugin_render_data() {
 
     # Get plugin contract values
     local state presence health icon content
-    local icon="" content="" accent="" accent_icon="" ttl=""
 
     state=$(plugin_get_state)
     presence=$(plugin_get_presence)
@@ -462,6 +473,7 @@ collect_plugin_render_data() {
     fi
 
     # Get icon (plugin decides based on its internal state)
+    local icon=""
     if declare -F plugin_get_icon &>/dev/null; then
         icon=$(plugin_get_icon)
     else

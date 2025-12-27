@@ -37,7 +37,7 @@ Then press `prefix + I` to install.
 
 ```bash
 # Choose your plugins
-set -g @powerkit_plugins "battery,cpu,memory,datetime"
+set -g @powerkit_plugins "datetime,battery,cpu,memory,hostname,git"
 
 # Select a theme
 set -g @powerkit_theme "tokyo-night"
@@ -64,44 +64,44 @@ Full documentation is available in the [Wiki](wiki/Home.md).
 ## Available Plugins
 
 <details>
-<summary><strong>System Monitoring</strong> (12 plugins)</summary>
+<summary><strong>System Monitoring</strong> (11 plugins)</summary>
 
-`battery` `cpu` `memory` `disk` `loadavg` `temperature` `fan` `gpu` `iops` `uptime` `volume` `brightness`
+`battery` `cpu` `memory` `disk` `loadavg` `uptime` `temperature` `fan` `gpu` `iops` `hostname`
 
 </details>
 
 <details>
 <summary><strong>Network</strong> (7 plugins)</summary>
 
-`network` `wifi` `vpn` `ping` `external_ip` `ssh` `weather`
+`netspeed` `wifi` `vpn` `ping` `external_ip` `ssh` `weather`
 
 </details>
 
 <details>
-<summary><strong>Development</strong> (8 plugins)</summary>
+<summary><strong>Media</strong> (7 plugins)</summary>
 
-`git` `github` `gitlab` `bitbucket` `jira` `kubernetes` `terraform` `cloud`
+`volume` `brightness` `nowplaying` `audiodevices` `camera` `microphone` `bluetooth`
 
 </details>
 
 <details>
-<summary><strong>Media & Hardware</strong> (4 plugins)</summary>
+<summary><strong>Development</strong> (10 plugins)</summary>
 
-`nowplaying` `audiodevices` `camera` `microphone`
+`git` `github` `gitlab` `bitbucket` `jira` `kubernetes` `terraform` `cloud` `cloudstatus` `packages`
 
 </details>
 
 <details>
 <summary><strong>Productivity</strong> (5 plugins)</summary>
 
-`datetime` `timezones` `pomodoro` `smartkey` `bitwarden`
+`datetime` `timezones` `pomodoro` `bitwarden` `smartkey`
 
 </details>
 
 <details>
-<summary><strong>Financial & Services</strong> (6 plugins)</summary>
+<summary><strong>Financial</strong> (2 plugins)</summary>
 
-`crypto` `stocks` `cloudstatus` `packages` `bluetooth` `hostname`
+`crypto` `stocks`
 
 </details>
 

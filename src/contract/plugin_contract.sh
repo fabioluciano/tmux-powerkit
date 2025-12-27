@@ -19,7 +19,10 @@
 #   2. Contract Concepts (STATE, HEALTH, CONTEXT)
 #   3. API Reference (Mandatory & Optional Functions)
 #   4. Dependency Checking Helpers
-#   5. Constants (from registry.sh)
+#   5. Threshold Health Evaluation Helpers
+#   6. Platform-Specific Execution Helpers
+#   7. Common Plugin Data Helpers
+#   8. Constants (from registry.sh)
 #
 # =============================================================================
 #
@@ -248,3 +251,187 @@ get_missing_optional_deps() {
 #   - is_valid_state(), is_valid_health(), is_valid_content_type(), is_valid_presence()
 #   - get_health_level(), health_max(), health_is_worse()
 # =============================================================================
+
+# =============================================================================
+# Threshold Health Evaluation Helpers
+# =============================================================================
+# These helpers reduce code duplication across plugins that use threshold-based
+# health determination (cpu, memory, disk, battery, temperature, etc.)
+
+# Evaluate health based on value and thresholds
+# Usage: evaluate_threshold_health value warn_threshold crit_threshold [invert]
+# Arguments:
+#   value           - Current numeric value to evaluate
+#   warn_threshold  - Threshold for warning state
+#   crit_threshold  - Threshold for error/critical state
+#   invert          - Optional: 1 = lower values are worse (e.g., battery)
+#                              0 = higher values are worse (default, e.g., CPU)
+# Returns: "ok", "warning", or "error"
+#
+# Examples:
+#   # CPU at 85% with warn=70, crit=90 → "warning"
+#   evaluate_threshold_health 85 70 90
+#
+#   # Battery at 15% with warn=30, crit=15, inverted → "error"
+#   evaluate_threshold_health 15 30 15 1
+#
+evaluate_threshold_health() {
+    local value="$1"
+    local warn="$2"
+    local crit="$3"
+    local invert="${4:-0}"
+
+    # Handle non-numeric values
+    [[ ! "$value" =~ ^[0-9]+$ ]] && { printf 'ok'; return; }
+
+    if [[ "$invert" -eq 1 ]]; then
+        # Lower values are worse (battery, signal strength)
+        if (( value <= crit )); then
+            printf 'error'
+        elif (( value <= warn )); then
+            printf 'warning'
+        else
+            printf 'ok'
+        fi
+    else
+        # Higher values are worse (CPU, memory, temperature)
+        if (( value >= crit )); then
+            printf 'error'
+        elif (( value >= warn )); then
+            printf 'warning'
+        else
+            printf 'ok'
+        fi
+    fi
+}
+
+# Evaluate health with decimal/float support
+# Usage: evaluate_threshold_health_float value warn_threshold crit_threshold [invert]
+# Same as evaluate_threshold_health but supports decimal values
+evaluate_threshold_health_float() {
+    local value="$1"
+    local warn="$2"
+    local crit="$3"
+    local invert="${4:-0}"
+
+    # Handle non-numeric values
+    [[ ! "$value" =~ ^[0-9]+\.?[0-9]*$ ]] && { printf 'ok'; return; }
+
+    if [[ "$invert" -eq 1 ]]; then
+        if (( $(echo "$value <= $crit" | bc -l 2>/dev/null || echo 0) )); then
+            printf 'error'
+        elif (( $(echo "$value <= $warn" | bc -l 2>/dev/null || echo 0) )); then
+            printf 'warning'
+        else
+            printf 'ok'
+        fi
+    else
+        if (( $(echo "$value >= $crit" | bc -l 2>/dev/null || echo 0) )); then
+            printf 'error'
+        elif (( $(echo "$value >= $warn" | bc -l 2>/dev/null || echo 0) )); then
+            printf 'warning'
+        else
+            printf 'ok'
+        fi
+    fi
+}
+
+# =============================================================================
+# Platform-Specific Execution Helpers
+# =============================================================================
+# These helpers reduce platform detection boilerplate across plugins
+
+# Get platform-specific value
+# Usage: get_platform_value "macos_value" "linux_value" ["freebsd_value"]
+# Returns the appropriate value based on current platform
+#
+# Example:
+#   cmd=$(get_platform_value "pmset -g batt" "upower -i /org/freedesktop/UPower/devices/battery_BAT0")
+#
+get_platform_value() {
+    local macos_val="$1"
+    local linux_val="$2"
+    local freebsd_val="${3:-$2}"
+
+    if is_macos; then
+        printf '%s' "$macos_val"
+    elif is_freebsd; then
+        printf '%s' "$freebsd_val"
+    else
+        printf '%s' "$linux_val"
+    fi
+}
+
+# Execute platform-specific function
+# Usage: run_platform_func "macos_func" "linux_func" ["freebsd_func"]
+# Calls the appropriate function based on current platform
+#
+# Example:
+#   run_platform_func "_collect_macos" "_collect_linux"
+#
+run_platform_func() {
+    local macos_func="$1"
+    local linux_func="$2"
+    local freebsd_func="${3:-$2}"
+
+    if is_macos; then
+        "$macos_func"
+    elif is_freebsd; then
+        "$freebsd_func"
+    else
+        "$linux_func"
+    fi
+}
+
+# Check if current platform is supported
+# Usage: require_platform "macos" "linux"
+# Returns 0 if current platform is in the list, 1 otherwise
+#
+# Example:
+#   require_platform "macos" || return 1  # macOS only plugin
+#   require_platform "linux" "freebsd" || return 1  # Linux/BSD only
+#
+require_platform() {
+    local platform
+    local current
+    current=$(get_os)
+
+    for platform in "$@"; do
+        [[ "$current" == "$platform" ]] && return 0
+    done
+
+    log_debug "plugin_contract" "Platform not supported: $current (requires: $*)"
+    return 1
+}
+
+# =============================================================================
+# Common Plugin Data Helpers
+# =============================================================================
+
+# Set plugin data with validation
+# Usage: plugin_data_set_validated "key" "value" "validator_func"
+# Only sets the data if validator_func returns 0
+plugin_data_set_validated() {
+    local key="$1"
+    local value="$2"
+    local validator="$3"
+
+    if [[ -n "$validator" ]] && type -t "$validator" &>/dev/null; then
+        if "$validator" "$value"; then
+            plugin_data_set "$key" "$value"
+            return 0
+        fi
+        return 1
+    fi
+
+    plugin_data_set "$key" "$value"
+}
+
+# Set multiple plugin data at once
+# Usage: plugin_data_set_multi "key1" "val1" "key2" "val2" ...
+plugin_data_set_multi() {
+    while [[ $# -ge 2 ]]; do
+        plugin_data_set "$1" "$2"
+        shift 2
+    done
+}

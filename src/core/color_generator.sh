@@ -90,6 +90,57 @@ _clamp() {
 # Color Variant Functions
 # =============================================================================
 
+# Convert percent string to integer (multiply by 10 for one decimal place precision)
+# Usage: _percent_to_int "18.9"  # Returns 189
+_percent_to_int() {
+    local percent="$1"
+    local percent_int="${percent%.*}${percent#*.}"
+    percent_int="${percent_int:0:3}"  # Limit to 3 digits
+    [[ ${#percent_int} -lt 3 ]] && percent_int="${percent_int}0"
+    printf '%s' "$percent_int"
+}
+
+# Generate lighter color from pre-parsed RGB values (internal, fast)
+# Usage: _generate_lighter_from_rgb r g b percent
+_generate_lighter_from_rgb() {
+    local r=$1 g=$2 b=$3 percent="$4"
+    local percent_int
+    percent_int=$(_percent_to_int "$percent")
+
+    # Move each component toward 255 (white)
+    local new_r=$(( r + (255 - r) * percent_int / 1000 ))
+    local new_g=$(( g + (255 - g) * percent_int / 1000 ))
+    local new_b=$(( b + (255 - b) * percent_int / 1000 ))
+
+    # Inline clamp for performance
+    (( new_r > 255 )) && new_r=255; (( new_r < 0 )) && new_r=0
+    (( new_g > 255 )) && new_g=255; (( new_g < 0 )) && new_g=0
+    (( new_b > 255 )) && new_b=255; (( new_b < 0 )) && new_b=0
+
+    printf '#%02x%02x%02x' "$new_r" "$new_g" "$new_b"
+}
+
+# Generate darker color from pre-parsed RGB values (internal, fast)
+# Usage: _generate_darker_from_rgb r g b percent
+_generate_darker_from_rgb() {
+    local r=$1 g=$2 b=$3 percent="$4"
+    local percent_int factor
+    percent_int=$(_percent_to_int "$percent")
+    factor=$(( 1000 - percent_int ))
+
+    # Scale each component toward 0 (black)
+    local new_r=$(( r * factor / 1000 ))
+    local new_g=$(( g * factor / 1000 ))
+    local new_b=$(( b * factor / 1000 ))
+
+    # Inline clamp for performance
+    (( new_r > 255 )) && new_r=255; (( new_r < 0 )) && new_r=0
+    (( new_g > 255 )) && new_g=255; (( new_g < 0 )) && new_g=0
+    (( new_b > 255 )) && new_b=255; (( new_b < 0 )) && new_b=0
+
+    printf '#%02x%02x%02x' "$new_r" "$new_g" "$new_b"
+}
+
 # Calculate lighter color (increase brightness toward white)
 # Usage: color_lighter "#ff5500" 18.9
 # Performance: Uses pure bash integer math (percent * 10 for precision)
@@ -101,25 +152,7 @@ color_lighter() {
     rgb=$(_hex_to_rgb "$hex") || return 1
     read -r r g b <<< "$rgb"
 
-    # Convert percent to integer (multiply by 10 for one decimal place precision)
-    # e.g., 18.9 -> 189
-    local percent_int="${percent%.*}${percent#*.}"
-    percent_int="${percent_int:0:3}"  # Limit to 3 digits
-    [[ ${#percent_int} -lt 3 ]] && percent_int="${percent_int}0"
-
-    # Move each component toward 255 (white)
-    # Formula: new = old + (255 - old) * percent / 100
-    # Using integer math: new = old + (255 - old) * percent_int / 1000
-    local new_r new_g new_b
-    new_r=$(( r + (255 - r) * percent_int / 1000 ))
-    new_g=$(( g + (255 - g) * percent_int / 1000 ))
-    new_b=$(( b + (255 - b) * percent_int / 1000 ))
-
-    new_r=$(_clamp "$new_r")
-    new_g=$(_clamp "$new_g")
-    new_b=$(_clamp "$new_b")
-
-    _rgb_to_hex "$new_r" "$new_g" "$new_b"
+    _generate_lighter_from_rgb "$r" "$g" "$b" "$percent"
 }
 
 # Calculate darker color (decrease brightness toward black)
@@ -133,27 +166,7 @@ color_darker() {
     rgb=$(_hex_to_rgb "$hex") || return 1
     read -r r g b <<< "$rgb"
 
-    # Convert percent to integer (multiply by 10 for one decimal place precision)
-    # e.g., 44.2 -> 442
-    local percent_int="${percent%.*}${percent#*.}"
-    percent_int="${percent_int:0:3}"  # Limit to 3 digits
-    [[ ${#percent_int} -lt 3 ]] && percent_int="${percent_int}0"
-
-    # Calculate factor as 1000 - percent_int (e.g., 44.2% -> factor = 558)
-    local factor=$(( 1000 - percent_int ))
-
-    # Scale each component toward 0 (black)
-    # Formula: new = old * (1 - percent/100) = old * factor / 1000
-    local new_r new_g new_b
-    new_r=$(( r * factor / 1000 ))
-    new_g=$(( g * factor / 1000 ))
-    new_b=$(( b * factor / 1000 ))
-
-    new_r=$(_clamp "$new_r")
-    new_g=$(_clamp "$new_g")
-    new_b=$(_clamp "$new_b")
-
-    _rgb_to_hex "$new_r" "$new_g" "$new_b"
+    _generate_darker_from_rgb "$r" "$g" "$b" "$percent"
 }
 
 # =============================================================================
@@ -171,6 +184,7 @@ _COLORS_WITH_VARIANTS=(${POWERKIT_COLORS_WITH_VARIANTS})
 #   -light, -lighter, -lightest (toward white)
 #   -dark, -darker, -darkest (toward black)
 # Note: Theme-level caching is handled by theme_loader, not here
+# Performance: Pre-parses RGB once per color (6x fewer hex parses)
 generate_color_variants() {
     # Check if THEME_COLORS exists
     if ! declare -p THEME_COLORS &>/dev/null; then
@@ -178,21 +192,25 @@ generate_color_variants() {
         return 1
     fi
 
-    local color_name base_color
+    local color_name base_color rgb r g b
 
     for color_name in "${_COLORS_WITH_VARIANTS[@]}"; do
         base_color="${THEME_COLORS[$color_name]:-}"
         [[ -z "$base_color" ]] && continue
 
-        # Generate light variants (toward white)
-        _COLOR_VARIANTS["${color_name}-light"]=$(color_lighter "$base_color" "$_COLOR_LIGHT_PERCENT")
-        _COLOR_VARIANTS["${color_name}-lighter"]=$(color_lighter "$base_color" "$_COLOR_LIGHTER_PERCENT")
-        _COLOR_VARIANTS["${color_name}-lightest"]=$(color_lighter "$base_color" "$_COLOR_LIGHTEST_PERCENT")
+        # Pre-parse RGB once (instead of 6 times)
+        rgb=$(_hex_to_rgb "$base_color") || continue
+        read -r r g b <<< "$rgb"
 
-        # Generate dark variants (toward black)
-        _COLOR_VARIANTS["${color_name}-dark"]=$(color_darker "$base_color" "$_COLOR_DARK_PERCENT")
-        _COLOR_VARIANTS["${color_name}-darker"]=$(color_darker "$base_color" "$_COLOR_DARKER_PERCENT")
-        _COLOR_VARIANTS["${color_name}-darkest"]=$(color_darker "$base_color" "$_COLOR_DARKEST_PERCENT")
+        # Generate light variants (toward white) using pre-parsed RGB
+        _COLOR_VARIANTS["${color_name}-light"]=$(_generate_lighter_from_rgb "$r" "$g" "$b" "$_COLOR_LIGHT_PERCENT")
+        _COLOR_VARIANTS["${color_name}-lighter"]=$(_generate_lighter_from_rgb "$r" "$g" "$b" "$_COLOR_LIGHTER_PERCENT")
+        _COLOR_VARIANTS["${color_name}-lightest"]=$(_generate_lighter_from_rgb "$r" "$g" "$b" "$_COLOR_LIGHTEST_PERCENT")
+
+        # Generate dark variants (toward black) using pre-parsed RGB
+        _COLOR_VARIANTS["${color_name}-dark"]=$(_generate_darker_from_rgb "$r" "$g" "$b" "$_COLOR_DARK_PERCENT")
+        _COLOR_VARIANTS["${color_name}-darker"]=$(_generate_darker_from_rgb "$r" "$g" "$b" "$_COLOR_DARKER_PERCENT")
+        _COLOR_VARIANTS["${color_name}-darkest"]=$(_generate_darker_from_rgb "$r" "$g" "$b" "$_COLOR_DARKEST_PERCENT")
 
         log_debug "color_generator" "Generated 6 variants for $color_name"
     done
@@ -265,27 +283,39 @@ clear_color_variants() {
 # Theme Color Serialization (for cache)
 # =============================================================================
 
+# Variant suffixes for detection
+_VARIANT_SUFFIXES=("-light" "-lighter" "-lightest" "-dark" "-darker" "-darkest")
+
+# Check if a color name is a variant (has variant suffix)
+_is_variant_color() {
+    local name="$1"
+    local suffix
+    for suffix in "${_VARIANT_SUFFIXES[@]}"; do
+        [[ "$name" == *"$suffix" ]] && return 0
+    done
+    return 1
+}
+
 # Serialize all colors to a single string for caching
-# Format: base_colors|variants (newline-separated key=value pairs)
+# Format: key=value pairs separated by \x1F (Unit Separator)
 # Usage: serialize_theme_colors
 serialize_theme_colors() {
     local output=""
     local key
-    
+    local sep=$'\x1F'
+
     # Serialize base colors
     for key in "${!THEME_COLORS[@]}"; do
+        [[ -n "$output" ]] && output+="$sep"
         output+="${key}=${THEME_COLORS[$key]}"
-        output+=$'\n'
     done
-    
-    output+="|"
-    
+
     # Serialize variants
     for key in "${!_COLOR_VARIANTS[@]}"; do
+        [[ -n "$output" ]] && output+="$sep"
         output+="${key}=${_COLOR_VARIANTS[$key]}"
-        output+=$'\n'
     done
-    
+
     printf '%s' "$output"
 }
 
@@ -293,25 +323,22 @@ serialize_theme_colors() {
 # Usage: deserialize_theme_colors "cache_content"
 deserialize_theme_colors() {
     local content="$1"
-    
-    # Split by pipe delimiter
-    local base_part="${content%%|*}"
-    local variants_part="${content#*|}"
-    
+    local sep=$'\x1F'
+
     # Clear existing
     THEME_COLORS=()
     _COLOR_VARIANTS=()
-    
-    # Parse base colors
-    local key value
-    while IFS='=' read -r key value; do
-        [[ -z "$key" ]] && continue
-        THEME_COLORS["$key"]="$value"
-    done <<< "$base_part"
-    
-    # Parse variants
-    while IFS='=' read -r key value; do
-        [[ -z "$key" ]] && continue
-        _COLOR_VARIANTS["$key"]="$value"
-    done <<< "$variants_part"
+
+    # Parse all colors, routing to correct array based on suffix
+    local entry key value
+    while IFS= read -r -d "$sep" entry || [[ -n "$entry" ]]; do
+        [[ -z "$entry" ]] && continue
+        key="${entry%%=*}"
+        value="${entry#*=}"
+        if _is_variant_color "$key"; then
+            _COLOR_VARIANTS["$key"]="$value"
+        else
+            THEME_COLORS["$key"]="$value"
+        fi
+    done <<< "$content"
 }

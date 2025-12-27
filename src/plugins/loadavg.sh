@@ -81,32 +81,16 @@ plugin_get_health() {
     critical_mult=$(get_option "critical_threshold_multiplier")
 
     # Defaults
-    load="${load:-0}"
     num_cores="${num_cores:-1}"
     warning_mult="${warning_mult:-2}"
     critical_mult="${critical_mult:-4}"
 
-    # Convert load to int*100 for comparison (avoid floating point)
-    local value=0
-    if [[ "$load" =~ ([0-9]+)\.?([0-9]*) ]]; then
-        local int_part="${BASH_REMATCH[1]}"
-        local dec_part="${BASH_REMATCH[2]:-0}"
-        dec_part="${dec_part:0:2}"  # max 2 decimal places
-        [[ ${#dec_part} -eq 1 ]] && dec_part="${dec_part}0"
-        value=$((int_part * 100 + ${dec_part:-0}))
-    fi
-
     # Calculate thresholds (multiplied by cores)
-    local warning_int=$((num_cores * warning_mult * 100))
-    local critical_int=$((num_cores * critical_mult * 100))
+    local warn_th=$((num_cores * warning_mult))
+    local crit_th=$((num_cores * critical_mult))
 
-    if [[ "$value" -ge "$critical_int" ]]; then
-        printf 'error'
-    elif [[ "$value" -ge "$warning_int" ]]; then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Higher is worse - use float version for load average
+    evaluate_threshold_health_float "${load:-0}" "$warn_th" "$crit_th"
 }
 
 plugin_get_context() {

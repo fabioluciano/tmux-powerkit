@@ -41,6 +41,11 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
+    # Fanless Macs don't have fans - return 1 to mark as unavailable
+    if is_macos && is_fanless_mac; then
+        return 1
+    fi
+
     if is_macos; then
         require_any_cmd "osx-cpu-temp" "smctemp" "istats" 1  # Optional
     else
@@ -82,6 +87,9 @@ plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {
+    # Fanless Macs - always inactive
+    is_fanless_mac && { printf 'inactive'; return; }
+
     local rpm=$(plugin_data_get "rpm")
     [[ "${rpm:-0}" -gt 0 ]] && printf 'active' || printf 'inactive'
 }
@@ -92,17 +100,8 @@ plugin_get_health() {
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
-    rpm="${rpm:-0}"
-    warn_th="${warn_th:-4000}"
-    crit_th="${crit_th:-6000}"
-
-    if (( rpm >= crit_th )); then
-        printf 'error'
-    elif (( rpm >= warn_th )); then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Higher is worse (default behavior)
+    evaluate_threshold_health "${rpm:-0}" "${warn_th:-4000}" "${crit_th:-6000}"
 }
 
 plugin_get_context() {
@@ -268,6 +267,9 @@ _format_rpm() {
 # =============================================================================
 
 plugin_collect() {
+    # Fanless Macs - skip collection
+    is_fanless_mac && return 0
+
     local hide_idle selection
     hide_idle=$(get_option "hide_when_idle")
     selection=$(get_option "selection")

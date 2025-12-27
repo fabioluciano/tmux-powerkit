@@ -8,33 +8,33 @@
 
 declare -gA THEME_COLORS=(
     # Status Bar
-    [statusbar-bg]="#414559"
-    [statusbar-fg]="#c6d0f5"
+    [statusbar-bg]="#414559"      # surface0
+    [statusbar-fg]="#c6d0f5"      # text
 
-    # Session
-    [session-bg]="#a6d189"
-    [session-fg]="#303446"
-    [session-prefix-bg]="#e5c890"
-    [session-copy-bg]="#99d1db"
+    # Session (mauve = signature Catppuccin color)
+    [session-bg]="#ca9ee6"        # mauve
+    [session-fg]="#303446"        # base
+    [session-prefix-bg]="#ef9f76" # peach
+    [session-copy-bg]="#85c1dc"   # sapphire
 
     # Windows (base colors - variants auto-generated)
-    [window-active-base]="#ca9ee6"
-    [window-inactive-base]="#51576d"
+    [window-active-base]="#f4b8e4"  # pink
+    [window-inactive-base]="#51576d" # surface1
 
     # Pane Borders
-    [pane-border-active]="#ca9ee6"
-    [pane-border-inactive]="#51576d"
+    [pane-border-active]="#ca9ee6"  # mauve
+    [pane-border-inactive]="#51576d" # surface1
 
     # Health States (base colors - variants auto-generated)
-    [ok-base]="#414559"
-    [good-base]="#a6d189"
-    [info-base]="#99d1db"
-    [warning-base]="#e5c890"
-    [error-base]="#e78284"
-    [disabled-base]="#737994"
+    [ok-base]="#414559"           # surface0
+    [good-base]="#a6d189"         # green ✓
+    [info-base]="#8caaee"         # blue ✓
+    [warning-base]="#e5c890"      # yellow ✓
+    [error-base]="#e78284"        # red ✓
+    [disabled-base]="#737994"     # overlay0
 
     # Messages
-    [message-bg]="#414559"
-    [message-fg]="#c6d0f5"
+    [message-bg]="#414559"        # surface0
+    [message-fg]="#c6d0f5"        # text
 
 )

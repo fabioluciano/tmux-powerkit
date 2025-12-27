@@ -8,33 +8,33 @@
 
 declare -gA THEME_COLORS=(
     # Status Bar
-    [statusbar-bg]="#282727"
-    [statusbar-fg]="#c5c9c5"
+    [statusbar-bg]="#282727"      # dragonBlack4
+    [statusbar-fg]="#c5c9c5"      # dragonWhite
 
-    # Session
-    [session-bg]="#87a987"
-    [session-fg]="#181616"
-    [session-prefix-bg]="#c4b28a"
-    [session-copy-bg]="#8ba4b0"
+    # Session (dragonViolet = signature muted purple)
+    [session-bg]="#8992a7"        # dragonViolet
+    [session-fg]="#181616"        # dragonBlack3
+    [session-prefix-bg]="#b6927b" # dragonOrange
+    [session-copy-bg]="#8ba4b0"   # dragonBlue2
 
     # Windows (base colors - variants auto-generated)
-    [window-active-base]="#8992a7"
-    [window-inactive-base]="#393836"
+    [window-active-base]="#a292a3"  # dragonPink
+    [window-inactive-base]="#393836" # dragonBlack5
 
     # Pane Borders
-    [pane-border-active]="#8992a7"
-    [pane-border-inactive]="#393836"
+    [pane-border-active]="#8992a7"  # dragonViolet
+    [pane-border-inactive]="#393836" # dragonBlack5
 
     # Health States (base colors - variants auto-generated)
-    [ok-base]="#223249"
-    [good-base]="#87a987"
-    [info-base]="#8ba4b0"
-    [warning-base]="#c4b28a"
-    [error-base]="#c4746e"
-    [disabled-base]="#625e5a"
+    [ok-base]="#282727"           # dragonBlack4
+    [good-base]="#87a987"         # dragonGreen ✓
+    [info-base]="#8ba4b0"         # dragonBlue2 ✓
+    [warning-base]="#c4b28a"      # dragonYellow ✓
+    [error-base]="#c4746e"        # dragonRed ✓
+    [disabled-base]="#625e5a"     # (muted)
 
     # Messages
-    [message-bg]="#282727"
-    [message-fg]="#c5c9c5"
+    [message-bg]="#282727"        # dragonBlack4
+    [message-fg]="#c5c9c5"        # dragonWhite
 
 )

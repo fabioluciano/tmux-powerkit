@@ -673,22 +673,59 @@ ui_toast() {
     local level="${2:-info}"
     [[ -z "$message" ]] && return 0
 
-    local styled_message="$message"
+    # Get theme colors - requires full bootstrap with theme loaded
+    # bg = base color, fg = base-darkest for contrast
+    local bg_color fg_color icon
+
     case "$level" in
         warning)
-            styled_message="#[fg=yellow,bold]⚠ ${message}#[default]"
+            bg_color=$(get_color "warning-base" 2>/dev/null || true)
+            fg_color=$(get_color "warning-base-darkest" 2>/dev/null || true)
+            icon=$'\U0000F071'
             ;;
         error)
-            styled_message="#[fg=red,bold]✗ ${message}#[default]"
+            bg_color=$(get_color "error-base" 2>/dev/null || true)
+            fg_color=$(get_color "error-base-darkest" 2>/dev/null || true)
+            icon=$'\U0000EA87'
             ;;
         success)
-            styled_message="#[fg=green,bold]✓ ${message}#[default]"
+            bg_color=$(get_color "ok-base" 2>/dev/null || true)
+            fg_color=$(get_color "ok-base-darkest" 2>/dev/null || true)
+            icon=$'\U0000F058'
+            ;;
+        info)
+            bg_color=$(get_color "info-base" 2>/dev/null || true)
+            fg_color=$(get_color "info-base-darkest" 2>/dev/null || true)
+            icon=$'\U0000F05A'
             ;;
         *)
-            # info/default - no styling
+            tmux display-message "$message"
+            return 0
             ;;
     esac
 
+    # If colors not available, fall back to plain message
+    if [[ -z "$bg_color" || -z "$fg_color" ]]; then
+        tmux display-message " ${icon} ${message}"
+        return 0
+    fi
+
+    # Get terminal width and pad message to fill the entire status bar
+    local term_width
+    term_width=$(tmux display-message -p '#{client_width}' 2>/dev/null || echo 80)
+
+    # Calculate padding needed (message + icon + spaces)
+    local content=" ${icon} ${message} "
+    local content_len=${#content}
+    local padding_needed=$((term_width - content_len))
+
+    # Create padding string
+    local padding=""
+    if (( padding_needed > 0 )); then
+        padding=$(printf '%*s' "$padding_needed" '')
+    fi
+
+    local styled_message="#[bg=${bg_color},fg=${fg_color},bold]${content}${padding}#[default]"
     tmux display-message "$styled_message"
 }
 

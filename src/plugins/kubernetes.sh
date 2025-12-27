@@ -74,11 +74,12 @@ plugin_get_state() {
     context=$(plugin_data_get "context")
     connected=$(plugin_data_get "connected")
     display_mode=$(get_option "display_mode")
-    
+
     if [[ -z "$context" ]]; then
         printf 'inactive'
     elif [[ "$display_mode" == "connected" && "$connected" != "1" ]]; then
-        printf 'degraded'
+        # Cluster not reachable - hide plugin completely (don't show empty segment)
+        printf 'inactive'
     else
         printf 'active'
     fi

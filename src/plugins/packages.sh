@@ -46,8 +46,11 @@ plugin_declare_options() {
     declare_option "warning_threshold" "number" "10" "Warning threshold"
     declare_option "critical_threshold" "number" "50" "Critical threshold"
 
-    # Cache (check for updates infrequently)
-    declare_option "cache_ttl" "number" "3600" "Cache duration in seconds (1 hour)"
+    # Cache settings:
+    # - cache_ttl: render cache (short) - how often to check for invalidation
+    # - packages_cache_ttl: expensive operation cache (long) - how often to actually run brew outdated
+    declare_option "cache_ttl" "number" "60" "Render cache duration (short, for invalidation checks)"
+    declare_option "packages_cache_ttl" "number" "3600" "Package check cache duration (1 hour)"
 }
 
 # =============================================================================
@@ -76,7 +79,7 @@ plugin_get_health() {
     elif (( count >= warn_th )); then
         printf 'warning'
     else
-        printf 'ok'
+        printf 'info'
     fi
 }
 
@@ -128,11 +131,7 @@ _invalidate_if_upgraded() {
 
     [[ -z "$log_file" || ! -e "$log_file" ]] && return 0
 
-    # Check if log/dir is newer than our cache
-    local cache_age
-    cache_age=$(cache_age "$_PACKAGES_CACHE_KEY")
-    [[ -z "$cache_age" || "$cache_age" == "0" ]] && return 0
-
+    # Get log/dir modification time
     local log_mtime current_time log_age
     current_time=$(date +%s)
     if is_macos; then
@@ -143,9 +142,19 @@ _invalidate_if_upgraded() {
 
     log_age=$((current_time - log_mtime))
 
-    # If log was modified more recently than cache was created, invalidate
-    if (( log_age < cache_age )); then
+    # Check packages cache age (the expensive operation cache)
+    local pkg_cache_age
+    pkg_cache_age=$(cache_age "$_PACKAGES_CACHE_KEY")
+
+    # Nothing to invalidate if no cache exists
+    [[ "${pkg_cache_age:-0}" -le 0 ]] && return 0
+
+    # If log/dir was modified more recently than packages cache, invalidate it
+    # This means brew install/upgrade/uninstall was run after last check
+    if (( log_age < pkg_cache_age )); then
         cache_clear "$_PACKAGES_CACHE_KEY"
+        # Also clear render cache to force immediate refresh
+        cache_clear "plugin_packages_data"
     fi
 }
 
@@ -245,7 +254,7 @@ _count_updates_pacman() {
 # =============================================================================
 
 plugin_collect() {
-    local backend count cache_ttl cached
+    local backend count packages_cache_ttl cached
     backend=$(_detect_backend)
 
     [[ -z "$backend" ]] && {
@@ -253,12 +262,12 @@ plugin_collect() {
         return 0
     }
 
-    # Invalidate cache if packages were upgraded
+    # Invalidate cache if packages were upgraded (checks log/dir modification times)
     _invalidate_if_upgraded "$backend"
 
-    # Check cache first
-    cache_ttl=$(get_option "cache_ttl")
-    cached=$(cache_get "$_PACKAGES_CACHE_KEY" "$cache_ttl" 2>/dev/null)
+    # Check packages cache (long TTL for expensive brew outdated operation)
+    packages_cache_ttl=$(get_option "packages_cache_ttl")
+    cached=$(cache_get "$_PACKAGES_CACHE_KEY" "$packages_cache_ttl" 2>/dev/null)
 
     if [[ -n "$cached" ]]; then
         plugin_data_set "update_count" "$cached"
@@ -266,7 +275,7 @@ plugin_collect() {
         return 0
     fi
 
-    # No cache - get fresh count
+    # No cache - get fresh count (expensive operation)
     case "$backend" in
         brew)   count=$(_count_updates_brew) ;;
         yay)    count=$(_count_updates_yay) ;;
@@ -279,7 +288,7 @@ plugin_collect() {
 
     count="${count:-0}"
 
-    # Store in cache
+    # Store in packages cache (long TTL)
     cache_set "$_PACKAGES_CACHE_KEY" "$count"
 
     plugin_data_set "update_count" "$count"

@@ -8,33 +8,33 @@
 
 declare -gA THEME_COLORS=(
     # Status Bar
-    [statusbar-bg]="#e4d794"
-    [statusbar-fg]="#545464"
+    [statusbar-bg]="#e4d794"      # lotusWhite5
+    [statusbar-fg]="#545464"      # lotusInk1
 
-    # Session
-    [session-bg]="#6f894e"
-    [session-fg]="#f2ecbc"
-    [session-prefix-bg]="#77713f"
-    [session-copy-bg]="#4e8ca2"
+    # Session (lotusPink = signature accent)
+    [session-bg]="#b35b79"        # lotusPink
+    [session-fg]="#f2ecbc"        # lotusWhite3
+    [session-prefix-bg]="#cc6d00" # lotusOrange
+    [session-copy-bg]="#4e8ca2"   # lotusBlue2
 
     # Windows (base colors - variants auto-generated)
-    [window-active-base]="#b35b79"
-    [window-inactive-base]="#c9cbd1"
+    [window-active-base]="#43436c"  # lotusInk2
+    [window-inactive-base]="#c9cbd1" # (muted surface)
 
     # Pane Borders
-    [pane-border-active]="#b35b79"
-    [pane-border-inactive]="#c9cbd1"
+    [pane-border-active]="#b35b79"  # lotusPink
+    [pane-border-inactive]="#c9cbd1" # (muted surface)
 
     # Health States (base colors - variants auto-generated)
-    [ok-base]="#716e61"
-    [good-base]="#6f894e"
-    [info-base]="#4e8ca2"
-    [warning-base]="#77713f"
-    [error-base]="#c84053"
-    [disabled-base]="#8a8980"
+    [ok-base]="#716e61"           # (muted)
+    [good-base]="#6f894e"         # lotusGreen ✓
+    [info-base]="#4e8ca2"         # lotusBlue2 ✓
+    [warning-base]="#77713f"      # lotusYellow ✓
+    [error-base]="#c84053"        # lotusRed ✓
+    [disabled-base]="#8a8980"     # (disabled)
 
     # Messages
-    [message-bg]="#e4d794"
-    [message-fg]="#545464"
+    [message-bg]="#e4d794"        # lotusWhite5
+    [message-fg]="#545464"        # lotusInk1
 
 )

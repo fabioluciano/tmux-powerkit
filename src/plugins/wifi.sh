@@ -58,20 +58,22 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    # Display options (visibility controlled by renderer via state)
-    declare_option "show_ssid" "bool" "true" "Show WiFi network name"
-    declare_option "show_ip" "bool" "false" "Show IP address instead of SSID"
-    declare_option "show_signal" "bool" "false" "Show signal strength percentage"
-    declare_option "hide_when_connected" "bool" "false" "Hide plugin when connected (show only when disconnected)"
+    # Visibility: connected, disconnected, always
+    declare_option "show_when" "string" "connected" "When to show: connected, disconnected, always"
+
+    # Display format: ssid, ip, signal (comma-separated for multiple: ssid,signal)
+    declare_option "format" "string" "ssid" "Display format: ssid, ip, signal (e.g., ssid,signal)"
+    declare_option "separator" "string" " | " "Separator for composite format"
+    declare_option "max_length" "number" "20" "Maximum length for display text"
 
     # Icons - signal-based
-    declare_option "icon" "icon" "󰤨" "WiFi connected (full signal)"
-    declare_option "icon_excellent" "icon" "󰤨" "Excellent signal (80-100%)"
-    declare_option "icon_good" "icon" "󰤥" "Good signal (60-80%)"
-    declare_option "icon_fair" "icon" "󰤢" "Fair signal (40-60%)"
-    declare_option "icon_weak" "icon" "󰤟" "Weak signal (20-40%)"
-    declare_option "icon_poor" "icon" "󰤯" "Poor signal (0-20%)"
-    declare_option "icon_disconnected" "icon" "󰖪" "Disconnected icon"
+    declare_option "icon" "icon" $'\U000F092F' "WiFi connected (full signal)"
+    declare_option "icon_excellent" "icon" $'\U000F0928' "Excellent signal (80-100%)"
+    declare_option "icon_good" "icon" $'\U000F0925' "Good signal (60-80%)"
+    declare_option "icon_fair" "icon" $'\U000F0922' "Fair signal (40-60%)"
+    declare_option "icon_weak" "icon" $'\U000F091F' "Weak signal (20-40%)"
+    declare_option "icon_poor" "icon" $'\U000F092B' "Poor/no signal (0-20%)"
+    declare_option "icon_disconnected" "icon" $'\U000F092E' "Disconnected icon"
 
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
@@ -338,18 +340,21 @@ plugin_get_presence() {
 # =============================================================================
 
 plugin_get_state() {
-    local connected hide_when_connected
+    local connected show_when
     connected=$(plugin_data_get "connected")
-    hide_when_connected=$(get_option "hide_when_connected")
+    show_when=$(get_option "show_when")
 
-    # If hide_when_connected is true, invert the visibility logic
-    if [[ "$hide_when_connected" == "true" ]]; then
-        # Show only when NOT connected
-        [[ "$connected" != "1" ]] && printf 'active' || printf 'inactive'
-    else
-        # Normal: show only when connected
-        [[ "$connected" == "1" ]] && printf 'active' || printf 'inactive'
-    fi
+    case "$show_when" in
+        disconnected)
+            [[ "$connected" != "1" ]] && printf 'active' || printf 'inactive'
+            ;;
+        always)
+            printf 'active'
+            ;;
+        *)  # connected (default)
+            [[ "$connected" == "1" ]] && printf 'active' || printf 'inactive'
+            ;;
+    esac
 }
 
 # =============================================================================
@@ -392,13 +397,14 @@ plugin_get_context() {
 plugin_get_icon() {
     local connected signal
     connected=$(plugin_data_get "connected")
-    signal=$(plugin_data_get "signal")
 
     if [[ "$connected" != "1" ]]; then
         get_option "icon_disconnected"
-    else
-        _get_signal_icon "${signal:-75}"
+        return
     fi
+
+    signal=$(plugin_data_get "signal")
+    _get_signal_icon "${signal:-75}"
 }
 
 # =============================================================================
@@ -409,39 +415,44 @@ plugin_render() {
     local connected
     connected=$(plugin_data_get "connected")
 
-    # Renderer handles visibility via state (inactive/active)
+    # When disconnected, show "Disconnected" or nothing based on show_when
     if [[ "$connected" != "1" ]]; then
-        printf 'N/A'
+        local show_when
+        show_when=$(get_option "show_when")
+        [[ "$show_when" == "disconnected" || "$show_when" == "always" ]] && printf 'Disconnected'
         return
     fi
 
-    # Connected - build display text
-    local show_ssid show_ip show_signal
-    local ssid signal ip display_text
+    local format separator max_len
+    format=$(get_option "format")
+    separator=$(get_option "separator")
+    max_len=$(get_option "max_length")
 
-    show_ssid=$(get_option "show_ssid")
-    show_ip=$(get_option "show_ip")
-    show_signal=$(get_option "show_signal")
-
+    local ssid ip signal
     ssid=$(plugin_data_get "ssid")
-    signal=$(plugin_data_get "signal")
     ip=$(plugin_data_get "ip")
+    signal=$(plugin_data_get "signal")
 
-    # Choose what to display
-    if [[ "$show_ip" == "true" && -n "$ip" ]]; then
-        display_text="$ip"
-    elif [[ "$show_ssid" == "true" && -n "$ssid" ]]; then
-        display_text="$ssid"
-    else
-        display_text="${ssid:-WiFi}"
+    local parts=() part
+    IFS=',' read -ra format_parts <<< "$format"
+
+    for part in "${format_parts[@]}"; do
+        case "$part" in
+            ssid)   [[ -n "$ssid" ]] && parts+=("$ssid") ;;
+            ip)     [[ -n "$ip" ]] && parts+=("$ip") ;;
+            signal) [[ -n "$signal" ]] && parts+=("${signal}%") ;;
+        esac
+    done
+
+    local output
+    output=$(join_with_separator "$separator" "${parts[@]}")
+    [[ -z "$output" ]] && output="${ssid:-WiFi}"
+
+    if [[ "$max_len" -gt 0 && ${#output} -gt $max_len ]]; then
+        output="${output:0:$((max_len-1))}…"
     fi
 
-    # Append signal if requested
-    if [[ "$show_signal" == "true" && -n "$signal" ]]; then
-        display_text="${display_text} (${signal}%)"
-    fi
-
-    printf '%s' "$display_text"
+    printf '%s' "$output"
 }
 
 # =============================================================================

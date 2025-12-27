@@ -608,9 +608,41 @@ get_color "warning-base"          # From color_generator
 POWERKIT_DEFAULT_THEME="tokyo-night"
 POWERKIT_DEFAULT_THEME_VARIANT="night"
 POWERKIT_DEFAULT_TRANSPARENT="false"
-POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory"
+POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 POWERKIT_DEFAULT_STATUS_INTERVAL="5"
+POWERKIT_DEFAULT_BAR_LAYOUT="single"                      # single or double (2 status lines)
+POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"           # Element rendering order
 ```
+
+### Status Bar Layouts
+
+**Single Layout** (default): Traditional single status line with session+windows and plugins.
+
+**Double Layout**: Two status lines:
+- Line 0: Session + Windows
+- Line 1: Plugins only (right-aligned)
+
+```bash
+set -g @powerkit_bar_layout "double"
+```
+
+### Status Element Ordering
+
+The `@powerkit_status_order` option controls the position of session+windows vs plugins:
+
+```bash
+# Default order (session+windows left, plugins right)
+set -g @powerkit_status_order "session,plugins"
+
+# Inverted order (plugins left, session+windows right)
+set -g @powerkit_status_order "plugins,session"
+```
+
+**Notes**:
+- `session` includes both the session indicator AND windows as a single entity
+- `plugins` are all the status bar plugins
+- The last element is always right-aligned
+- Custom order uses `status-format[0]` for full control
 
 ### Thresholds
 

@@ -322,9 +322,6 @@ plugin_get_health() {
     status=$(plugin_data_get "status")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
-    percent="${percent:-0}"
-    warn_th="${warn_th:-30}"
-    crit_th="${crit_th:-15}"
 
     # Actively charging is informational
     case "$status" in
@@ -339,14 +336,8 @@ plugin_get_health() {
             ;;
     esac
 
-    # Check thresholds for discharging
-    if (( percent <= crit_th )); then
-        printf 'error'
-    elif (( percent <= warn_th )); then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Check thresholds for discharging - lower is worse (invert=1)
+    evaluate_threshold_health "${percent:-0}" "${warn_th:-30}" "${crit_th:-15}" 1
 }
 
 # =============================================================================

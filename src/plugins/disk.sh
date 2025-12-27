@@ -230,18 +230,8 @@ plugin_get_health() {
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
-    max_pct="${max_pct:-0}"
-    warn_th="${warn_th:-70}"
-    crit_th="${crit_th:-90}"
-
-    # Higher is worse
-    if (( max_pct >= crit_th )); then
-        printf 'error'
-    elif (( max_pct >= warn_th )); then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Higher is worse (default behavior)
+    evaluate_threshold_health "${max_pct:-0}" "${warn_th:-70}" "${crit_th:-90}"
 }
 
 # =============================================================================

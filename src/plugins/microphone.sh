@@ -3,7 +3,7 @@
 # Plugin: microphone
 # Description: Display microphone status - shows only when microphone is active
 # Type: conditional (hidden when microphone is inactive)
-# Dependencies: Linux: pactl/amixer (optional)
+# Dependencies: powerkit-microphone binary (macOS, bundled), pactl/amixer (Linux)
 # =============================================================================
 #
 # CONTRACT IMPLEMENTATION:
@@ -41,6 +41,11 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
+    if is_macos; then
+        local powerkit_mic="${POWERKIT_ROOT}/bin/macos/powerkit-microphone"
+        [[ -x "$powerkit_mic" ]] && return 0
+        return 1
+    fi
     if is_linux; then
         require_any_cmd "pactl" "amixer" 1  # Optional
     fi
@@ -52,8 +57,14 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
+    # Display options
+    declare_option "show_volume" "bool" "false" "Show input volume percentage"
+
+    # Icons
     declare_option "icon" "icon" $'\U000F036C' "Microphone icon"
     declare_option "icon_muted" "icon" $'\U000F036D' "Microphone muted icon"
+
+    # Cache
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
 }
 
@@ -75,8 +86,10 @@ plugin_get_health() {
     status=$(plugin_data_get "status")
     mute=$(plugin_data_get "mute")
 
-    [[ "$status" != "active" ]] && { printf 'info'; return; }
-    [[ "$mute" == "muted" ]] && printf 'warning' || printf 'ok'
+    # Plugin is hidden when inactive, but return ok for consistency
+    [[ "$status" != "active" ]] && { printf 'ok'; return; }
+    # Active: muted = warning (needs attention), unmuted = info (in use)
+    [[ "$mute" == "muted" ]] && printf 'warning' || printf 'info'
 }
 
 plugin_get_context() {
@@ -92,7 +105,34 @@ plugin_get_icon() {
 }
 
 # =============================================================================
-# Detection Logic
+# macOS Detection (via powerkit-microphone binary)
+# =============================================================================
+
+_detect_macos_status() {
+    local powerkit_mic="${POWERKIT_ROOT}/bin/macos/powerkit-microphone"
+    [[ ! -x "$powerkit_mic" ]] && return 1
+
+    local output
+    output=$("$powerkit_mic" 2>/dev/null) || return 1
+
+    # Output format: status\x1Fmute\x1Fvolume
+    local mic_status mute_status volume
+    mic_status="${output%%$'\x1F'*}"
+    local rest="${output#*$'\x1F'}"
+    mute_status="${rest%%$'\x1F'*}"
+    volume="${rest#*$'\x1F'}"
+    volume="${volume%$'\n'}"
+
+    # Store all values
+    plugin_data_set "status" "$mic_status"
+    plugin_data_set "mute" "$mute_status"
+    plugin_data_set "volume" "${volume:-0}"
+
+    return 0
+}
+
+# =============================================================================
+# Linux Detection
 # =============================================================================
 
 _detect_linux_mute() {
@@ -130,19 +170,27 @@ _detect_linux_usage() {
     echo "inactive"
 }
 
-_is_microphone_active() {
-    # macOS: Cannot reliably detect microphone usage without SIP bypass
-    is_macos && return 1
+_detect_linux_volume() {
+    # Get capture volume from pactl
+    if has_cmd pactl; then
+        local default_source volume_str
+        default_source=$(pactl get-default-source 2>/dev/null)
+        if [[ -n "$default_source" ]]; then
+            volume_str=$(pactl get-source-volume "$default_source" 2>/dev/null | grep -oE '[0-9]+%' | head -1)
+            volume_str="${volume_str%\%}"
+            [[ -n "$volume_str" ]] && { echo "$volume_str"; return; }
+        fi
+    fi
 
-    # Linux: Multiple detection methods
-    is_linux && [[ "$(_detect_linux_usage)" == "active" ]] && return 0
+    # Fallback: amixer
+    if has_cmd amixer; then
+        local vol
+        vol=$(amixer get Capture 2>/dev/null | grep -oE '[0-9]+%' | head -1)
+        vol="${vol%\%}"
+        [[ -n "$vol" ]] && { echo "$vol"; return; }
+    fi
 
-    return 1
-}
-
-_get_mute_status() {
-    is_linux && { _detect_linux_mute; return; }
-    echo "unmuted"
+    echo "0"
 }
 
 # =============================================================================
@@ -150,13 +198,26 @@ _get_mute_status() {
 # =============================================================================
 
 plugin_collect() {
-    if _is_microphone_active; then
-        plugin_data_set "status" "active"
-        plugin_data_set "mute" "$(_get_mute_status)"
-    else
+    # macOS: Use native binary
+    if is_macos; then
+        _detect_macos_status && return 0
+        # Fallback if binary fails
         plugin_data_set "status" "inactive"
         plugin_data_set "mute" "unmuted"
+        plugin_data_set "volume" "0"
+        return 0
     fi
+
+    # Linux: Use pactl/amixer
+    local mic_status mute_status volume
+
+    mic_status=$(_detect_linux_usage)
+    mute_status=$(_detect_linux_mute)
+    volume=$(_detect_linux_volume)
+
+    plugin_data_set "status" "$mic_status"
+    plugin_data_set "mute" "$mute_status"
+    plugin_data_set "volume" "${volume:-0}"
 }
 
 # =============================================================================
@@ -164,7 +225,17 @@ plugin_collect() {
 # =============================================================================
 
 plugin_render() {
-    local mute
+    local mute volume show_volume
     mute=$(plugin_data_get "mute")
-    [[ "$mute" == "muted" ]] && printf 'MUTED' || printf 'ON'
+    volume=$(plugin_data_get "volume")
+    show_volume=$(get_option "show_volume")
+
+    local text
+    [[ "$mute" == "muted" ]] && text="MUTED" || text="ON"
+
+    if [[ "$show_volume" == "true" && -n "$volume" && "$volume" != "0" ]]; then
+        printf '%s %s%%' "$text" "$volume"
+    else
+        printf '%s' "$text"
+    fi
 }

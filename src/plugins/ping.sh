@@ -67,17 +67,8 @@ plugin_get_health() {
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
-    latency="${latency:-0}"
-    warn_th="${warn_th:-100}"
-    crit_th="${crit_th:-300}"
-
-    if (( latency >= crit_th )); then
-        printf 'error'
-    elif (( latency >= warn_th )); then
-        printf 'warning'
-    else
-        printf 'ok'
-    fi
+    # Higher is worse (default behavior)
+    evaluate_threshold_health "${latency:-0}" "${warn_th:-100}" "${crit_th:-300}"
 }
 
 plugin_get_context() {

@@ -7,7 +7,7 @@
 
 # Source helper base (handles all initialization)
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
-helper_init --no-strict
+helper_init --no-strict --full
 
 # =============================================================================
 # Metadata

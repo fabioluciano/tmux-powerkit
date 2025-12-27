@@ -54,8 +54,8 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Icons
-    declare_option "icon" "icon" $'\U000F0084' "Default plugin icon (key)"
-    declare_option "icon_waiting" "icon" $'\U000F0084' "Icon when waiting for touch"
+    declare_option "icon" "icon" $'\U000F0237' "Default plugin icon (key)"
+    declare_option "icon_waiting" "icon" $'\U000F0237' "Icon when waiting for touch"
 
     # Cache - very short TTL since touch state changes quickly
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
@@ -108,13 +108,16 @@ _check_gpg_card_prompt() {
     fi
 }
 
-# Method 3: Check for SSH FIDO2 authentication waiting
-# ssh-agent prompts for FIDO2 key touch with specific behavior
+# Method 3: Check for SSH/FIDO2 operations waiting for hardware key
 _check_ssh_fido_waiting() {
-    # Look for ssh-sk-helper process (FIDO2/U2F authenticator helper)
+    # Generic: any ssh-keygen process (stays active only while waiting for touch)
+    # This catches: -Y sign (git signing), -K (resident keys), etc.
+    pgrep -x "ssh-keygen" &>/dev/null && return 0
+
+    # ssh-sk-helper: FIDO2/U2F authenticator helper for SSH auth
     pgrep -f "ssh-sk-helper" &>/dev/null && return 0
 
-    # Alternative: check for libfido2 waiting
+    # libfido2 tools
     pgrep -f "fido2-" &>/dev/null && return 0
 
     return 1
@@ -171,20 +174,54 @@ _check_scdaemon_signing() {
     return 1
 }
 
+# =============================================================================
+# Generic Detection: Check if YubiKey is in transaction (LED blinking)
+# =============================================================================
+
+# Most generic method: check if YubiKey USB device is busy (transaction in progress)
+_check_smartcard_transaction() {
+    if is_macos; then
+        # Check ioreg for YubiKey with busy > 0 (active transaction)
+        # Format: "busy N" where N > 0 means device is in use
+        local busy_count
+        busy_count=$(ioreg -p IOUSB -l -w0 2>/dev/null | \
+            grep -A50 "YubiKey" | \
+            grep -o "busy [0-9]*" | \
+            awk '{sum += $2} END {print sum+0}')
+        [[ "$busy_count" -gt 0 ]] && return 0
+    else
+        # Linux: check /sys/class/hidraw for active YubiKey device
+        for hidraw in /sys/class/hidraw/hidraw*/device/uevent; do
+            if grep -q "Yubico" "$hidraw" 2>/dev/null; then
+                # Check if device is open by any process
+                local dev="/dev/$(basename "$(dirname "$(dirname "$hidraw")")")"
+                lsof "$dev" &>/dev/null && return 0
+            fi
+        done
+    fi
+
+    return 1
+}
+
 # Main detection orchestrator - checks all methods in priority order
 _is_waiting_for_touch() {
-    # Priority order (most reliable first):
-    # 1. yubikey-touch-detector (explicit touch detection daemon)
-    # 2. ssh-sk-helper (FIDO2 SSH authentication)
-    # 3. gpg card prompt (pinentry for smartcard)
-    # 4. scdaemon signing (GPG smartcard operation)
-    # 5. ykman waiting
-
+    # 1. yubikey-touch-detector daemon (most reliable if installed)
     _check_yubikey_touch_detector && return 0
+
+    # 2. Generic: any ssh-keygen process (blocked waiting for touch)
     _check_ssh_fido_waiting && return 0
+
+    # 3. GPG pinentry waiting for card
     _check_gpg_card_prompt && return 0
+
+    # 4. scdaemon blocked on crypto operation
     _check_scdaemon_signing && return 0
+
+    # 5. ykman waiting
     _check_ykman_waiting && return 0
+
+    # 6. Generic smartcard transaction detection
+    _check_smartcard_transaction && return 0
 
     return 1
 }

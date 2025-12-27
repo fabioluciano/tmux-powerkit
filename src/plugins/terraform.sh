@@ -2,7 +2,29 @@
 # =============================================================================
 # Plugin: terraform
 # Description: Display Terraform/OpenTofu workspace and status
-# Dependencies: terraform or tofu (optional - reads state directly)
+# Dependencies: terraform or tofu
+# =============================================================================
+#
+# CONTRACT IMPLEMENTATION:
+#
+# State:
+#   - active: In a Terraform directory with workspace
+#   - degraded: Has pending changes (tfplan exists)
+#   - inactive: Not in a Terraform directory
+#
+# Health:
+#   - error: In production workspace (matches prod_keywords)
+#   - warning: Has pending changes
+#   - ok: Normal workspace
+#
+# Context:
+#   - production: Production workspace
+#   - staging: Staging workspace
+#   - development: Development workspace
+#   - default: Default workspace
+#   - custom: Custom workspace
+#   - *_pending: Any of the above with pending changes
+#
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -33,13 +55,11 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Tool selection
-    declare_option "tool" "string" "terraform" "Preferred tool: terraform or tofu"
-    
+    declare_option "tool" "enum" "auto" "Preferred tool: auto, terraform, tofu"
+
     # Display options
-    declare_option "show_workspace" "bool" "true" "Show workspace name"
-    declare_option "show_only_in_dir" "bool" "false" "Only show in Terraform directories"
     declare_option "show_pending" "bool" "true" "Show indicator for pending changes"
-    
+
     # Production warning
     declare_option "warn_on_prod" "bool" "true" "Warn when in production workspace"
     declare_option "prod_keywords" "string" "prod,production,prd" "Comma-separated production keywords"
@@ -49,9 +69,7 @@ plugin_declare_options() {
     declare_option "icon_pending" "icon" $'\U000F12A3' "Pending changes icon"
 
     # Keybindings
-    declare_option "keybinding_workspace" "string" "" "Keybinding for workspace selector"
-    declare_option "popup_width" "string" "60%" "Popup width"
-    declare_option "popup_height" "string" "60%" "Popup height"
+    declare_option "keybinding_workspace" "key" "" "Keybinding for workspace selector"
 
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
@@ -153,11 +171,14 @@ _detect_tool() {
     local preferred=$(get_option "tool")
 
     case "$preferred" in
-        tofu|opentofu)
+        tofu)
             has_cmd tofu && { printf 'tofu'; return 0; }
+            ;;
+        terraform)
             has_cmd terraform && { printf 'terraform'; return 0; }
             ;;
-        terraform|*)
+        auto|*)
+            # Auto-detect: prefer terraform, fallback to tofu
             has_cmd terraform && { printf 'terraform'; return 0; }
             has_cmd tofu && { printf 'tofu'; return 0; }
             ;;
@@ -211,26 +232,20 @@ _get_terraform_workspace() {
 plugin_collect() {
     local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
     [[ -z "$path" || ! -d "$path" ]] && return 0
-    
-    local show_only_in_dir=$(get_option "show_only_in_dir")
-    
-    # Check if we should only show in TF directories
-    if ! _is_tf_directory "$path"; then
-        [[ "$show_only_in_dir" == "true" ]] && return 0
-        return 0
-    fi
-    
+
+    # Only show in Terraform directories
+    _is_tf_directory "$path" || return 0
+
     local tool=$(_detect_tool)
     local workspace=$(_get_terraform_workspace "$path" "$tool")
-    
+
     [[ -z "$workspace" ]] && return 0
-    
+
     plugin_data_set "workspace" "$workspace"
     plugin_data_set "tool" "$tool"
-    
+
     # Check for pending changes
-    local show_pending=$(get_option "show_pending")
-    if [[ "$show_pending" == "true" ]] && _has_pending_changes "$path"; then
+    if [[ "$(get_option "show_pending")" == "true" ]] && _has_pending_changes "$path"; then
         plugin_data_set "has_pending" "1"
     else
         plugin_data_set "has_pending" "0"
@@ -238,24 +253,18 @@ plugin_collect() {
 }
 
 plugin_render() {
-    local workspace show_workspace has_pending show_pending
+    local workspace has_pending
     workspace=$(plugin_data_get "workspace")
-    show_workspace=$(get_option "show_workspace")
     has_pending=$(plugin_data_get "has_pending")
-    show_pending=$(get_option "show_pending")
 
     [[ -z "$workspace" ]] && return 0
 
-    local result=""
-    if [[ "$show_workspace" == "true" ]]; then
-        result="$workspace"
-        # Add pending indicator
-        [[ "$show_pending" == "true" && "$has_pending" == "1" ]] && result+="*"
+    # Add pending indicator if enabled and has pending changes
+    if [[ "$(get_option "show_pending")" == "true" && "$has_pending" == "1" ]]; then
+        printf '%s*' "$workspace"
     else
-        result="TF"
+        printf '%s' "$workspace"
     fi
-    
-    printf '%s' "$result"
 }
 
 # =============================================================================

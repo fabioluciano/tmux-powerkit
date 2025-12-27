@@ -29,10 +29,20 @@ source_guard "renderer_format_builder" && return 0
 # =============================================================================
 
 # Build status-left format string
-# Usage: build_status_left_format
+# Usage: build_status_left_format ["side"]
+# - side: "left" (default) or "right"
+#   - "left": session on left side → RIGHT-pointing separators (▶)
+#   - "right": session on right side → LEFT-pointing separators (◀)
 build_status_left_format() {
-    local sep_right
-    sep_right=$(get_right_separator)
+    local side="${1:-left}"
+
+    # Get separator based on side
+    local sep_char
+    if [[ "$side" == "left" ]]; then
+        sep_char=$(get_right_separator)
+    else
+        sep_char=$(get_left_separator)
+    fi
 
     # Get session icons for different modes
     local session_icon_normal session_icon_prefix session_icon_copy
@@ -82,18 +92,39 @@ build_status_left_format() {
 
     # Build session segment with conditional icon
     local format=""
-    format+="#[fg=${text_color},bold,bg=${bg_condition}] ${icon_condition} #S "
 
-    # Check if spacing is enabled
-    if has_window_spacing; then
-        # Spacing enabled: add separator + gap
-        format+="#[fg=${bg_condition},bg=${spacing_bg}]${sep_right}#[bg=${spacing_bg}]"
+    # When session is on the LEFT side (standard layout: session → windows):
+    # - Session content comes first
+    # - Then separator to first window
+    #
+    # When session is on the RIGHT side (custom order: windows → session):
+    # - Windows render first with their own separators
+    # - Last window's format handles transition to session
+    # - Session content comes last (no trailing separator needed)
+
+    if [[ "$side" == "right" ]]; then
+        # Right side: session comes AFTER windows
+        # Opening separator is handled by last window's final separator
+        # Session is the LAST element - NO trailing space after #S
+        format+="#[fg=${text_color},bold,bg=${bg_condition}] ${icon_condition} #S "
+        # No closing separator needed
     else
-        # No spacing: add separator to first window
-        # IMPORTANT: This separator is rendered in status-left context,
-        # so pane_in_mode refers to the ACTIVE pane, not per-window pane.
-        # This ensures correct session-to-window color transition when in copy mode.
-        format+="#[fg=${bg_condition},bg=${first_window_bg}]${sep_right}"
+        # Left side: session comes BEFORE windows (standard layout)
+        format+="#[fg=${text_color},bold,bg=${bg_condition}] ${icon_condition} #S "
+
+        # Check if spacing is enabled
+        if has_window_spacing; then
+            # Spacing enabled: add separator + gap
+            # Right-pointing (▶): fg=source (session), bg=destination (spacing)
+            format+="#[fg=${bg_condition},bg=${spacing_bg}]${sep_char}#[bg=${spacing_bg}]"
+        else
+            # No spacing: add separator to first window
+            # IMPORTANT: This separator is rendered in status-left context,
+            # so pane_in_mode refers to the ACTIVE pane, not per-window pane.
+            # This ensures correct session-to-window color transition when in copy mode.
+            # Right-pointing (▶): fg=source (session), bg=destination (window)
+            format+="#[fg=${bg_condition},bg=${first_window_bg}]${sep_char}"
+        fi
     fi
 
     printf '%s' "$format"
@@ -103,10 +134,16 @@ build_status_left_format() {
 # Window Format Functions
 # =============================================================================
 
-# Get final separator character
+# Get final separator character (RIGHT-pointing ▶)
 # Uses @powerkit_edge_separator_style option (defaults to main style)
 _get_final_separator_char() {
     get_final_separator
+}
+
+# Get edge separator for LEFT-pointing (◀)
+# Used when windows are on the right side
+_get_edge_left_separator_char() {
+    _get_separator_glyph "$(get_edge_separator_style)" "left"
 }
 
 # Get window colors using base + variants system
@@ -143,8 +180,11 @@ _get_window_colors() {
 }
 
 # Build window format (inactive windows)
-# Usage: build_window_format
+# Usage: build_window_format ["side"]
+# - side: "left" (default) or "right"
 build_window_format() {
+    local side="${1:-left}"
+
     local index_bg index_fg content_bg content_fg style
     read -r index_bg index_fg content_bg content_fg style <<< "$(_get_window_colors "inactive")"
 
@@ -167,10 +207,15 @@ build_window_format() {
         status_bg=$(resolve_color "statusbar-bg")
     fi
 
-    # Get separators
-    local sep_right final_sep
-    sep_right=$(get_right_separator)
-    final_sep=$(_get_final_separator_char)
+    # Get separators based on side
+    local sep_char final_sep
+    if [[ "$side" == "left" ]]; then
+        sep_char=$(get_right_separator)
+        final_sep=$(_get_final_separator_char)
+    else
+        sep_char=$(get_left_separator)
+        final_sep=$(get_left_separator)  # Use left separator for final when on right side
+    fi
 
     # Calculate previous window background for window-to-window transitions
     # NOTE: First window (index 1) separator is handled by status-left, not here
@@ -178,6 +223,23 @@ build_window_format() {
     local previous_bg
     # If previous window is active, use active_content_bg; else use inactive (this window's) content_bg
     previous_bg="#{?#{==:#{e|-:#{window_index},1},#{active_window_index}},${active_content_bg},${content_bg}}"
+
+    # When on right side, last window connects to session (not statusbar)
+    # Session bg is conditional based on mode (prefix/copy/normal)
+    local session_bg_condition=""
+    if [[ "$side" == "right" ]]; then
+        local prefix_color_name copy_color_name normal_color_name
+        prefix_color_name=$(get_tmux_option "@powerkit_session_prefix_color" "${POWERKIT_DEFAULT_SESSION_PREFIX_COLOR}")
+        copy_color_name=$(get_tmux_option "@powerkit_session_copy_mode_color" "${POWERKIT_DEFAULT_SESSION_COPY_MODE_COLOR}")
+        normal_color_name=$(get_tmux_option "@powerkit_session_normal_color" "${POWERKIT_DEFAULT_SESSION_NORMAL_COLOR}")
+
+        local prefix_bg copy_bg normal_bg
+        prefix_bg=$(resolve_color "$prefix_color_name")
+        copy_bg=$(resolve_color "$copy_color_name")
+        normal_bg=$(resolve_color "$normal_color_name")
+
+        session_bg_condition="#{?client_prefix,${prefix_bg},#{?pane_in_mode,${copy_bg},${normal_bg}}}"
+    fi
 
     # Window icon and title
     local window_icon window_title zoomed_icon
@@ -188,21 +250,43 @@ build_window_format() {
     # Build format
     local format=""
 
-    # Window-to-window separator: only for windows after the first one
-    # First window's separator is in status-left (session segment)
-    # #{?#{!=:#{window_index},1},separator,}
+    # Start clickable range for this window
+    # This enables clicking on windows in the status bar
+    format+="#[range=window|#{window_id}]"
+
+    # Window-to-window separator logic:
+    # - Left side (standard): first window separator comes from session segment
+    # - Right side (custom order): first window needs edge separator from statusbar
     if has_window_spacing; then
         # Spacing mode: separator from gap to window
-        # For sep_right (▶): fg=source color (previous/spacing), bg=destination (window)
-        # When transparent, 'default' as fg renders WHITE - use theme background color instead
         local sep_fg="$spacing_bg"
         if [[ "$transparent" == "true" ]]; then
             sep_fg=$(resolve_color "background")
         fi
-        format+="#[fg=${sep_fg},bg=${index_bg}]${sep_right}"
+        if [[ "$side" == "left" ]]; then
+            # Right-pointing (▶): fg=source (spacing), bg=destination (window)
+            format+="#[fg=${sep_fg},bg=${index_bg}]${sep_char}"
+        else
+            # Left-pointing (◀): fg=destination (window), bg=source (spacing)
+            format+="#[fg=${index_bg},bg=${sep_fg}]${sep_char}"
+        fi
     else
-        # No spacing: add separator only if NOT first window (index != 1)
-        format+="#{?#{!=:#{window_index},1},#[fg=${previous_bg}#,bg=${index_bg}]${sep_right},}"
+        # No spacing mode
+        if [[ "$side" == "left" ]]; then
+            # Left side: first window separator comes from session segment
+            # Add separator only if NOT first window (index != 1)
+            # Right-pointing (▶): fg=source (previous), bg=destination (index)
+            format+="#{?#{!=:#{window_index},1},#[fg=${previous_bg}#,bg=${index_bg}]${sep_char},}"
+        else
+            # Right side: windows come BEFORE session, first window needs edge separator
+            # First window: edge separator from statusbar
+            # Other windows: normal left separator from previous window
+            local edge_sep
+            edge_sep=$(_get_edge_left_separator_char)  # LEFT separator with edge style
+            # #{?#{==:#{window_index},1},edge_sep,normal_sep}
+            # Left-pointing (◀): fg=destination (index), bg=source (prev)
+            format+="#{?#{==:#{window_index},1},#[fg=${index_bg}#,bg=${status_bg}]${edge_sep},#[fg=${index_bg}#,bg=${previous_bg}]${sep_char}}"
+        fi
     fi
 
     # Get window index display (icon or number based on settings)
@@ -212,8 +296,14 @@ build_window_format() {
     # Index segment (uses index_fg for text)
     format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] ${window_index_display} "
 
-    # Index-to-content separator: fg=index, bg=content
-    format+="#[fg=${index_bg},bg=${content_bg}]${sep_right}"
+    # Index-to-content separator
+    if [[ "$side" == "left" ]]; then
+        # Right-pointing (▶): fg=source (index), bg=destination (content)
+        format+="#[fg=${index_bg},bg=${content_bg}]${sep_char}"
+    else
+        # Left-pointing (◀): fg=destination (content), bg=source (index)
+        format+="#[fg=${content_bg},bg=${index_bg}]${sep_char}"
+    fi
 
     # Content segment (uses content_fg for text - lighter on inactive)
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] #{?window_zoomed_flag,${zoomed_icon},${window_icon}} ${window_title} "
@@ -221,19 +311,38 @@ build_window_format() {
     # Add spacing OR final separator based on window position
     if has_window_spacing; then
         # Spacing mode: each window adds its own separator + spacing
-        format+="#[fg=${content_bg},bg=${spacing_bg}]${sep_right}#[bg=${spacing_bg}]"
+        if [[ "$side" == "left" ]]; then
+            # Right-pointing (▶): fg=source (content), bg=destination (spacing)
+            format+="#[fg=${content_bg},bg=${spacing_bg}]${sep_char}#[bg=${spacing_bg}]"
+        else
+            # Left-pointing (◀): fg=destination (spacing), bg=source (content)
+            format+="#[fg=${spacing_bg},bg=${content_bg}]${sep_char}#[bg=${spacing_bg}]"
+        fi
     else
         # No spacing: add final separator only if this is the last window
         # #{?window_end_flag,final_separator,}
-        format+="#{?window_end_flag,#[fg=${content_bg}]#[bg=${status_bg}]${final_sep},}"
+        if [[ "$side" == "left" ]]; then
+            # Left side: last window separator goes to statusbar
+            format+="#{?window_end_flag,#[fg=${content_bg}]#[bg=${status_bg}]${final_sep},}"
+        else
+            # Right side: last window separator goes to session (conditional bg)
+            # Left-pointing (◀): fg=destination (session), bg=source (window content)
+            format+="#{?window_end_flag,#[fg=${session_bg_condition}#,bg=${content_bg}]${final_sep},}"
+        fi
     fi
+
+    # End clickable range for this window
+    format+="#[norange]"
 
     printf '%s' "$format"
 }
 
 # Build window-status-current-format (active window)
-# Usage: build_window_current_format
+# Usage: build_window_current_format ["side"]
+# - side: "left" (default) or "right"
 build_window_current_format() {
+    local side="${1:-left}"
+
     local index_bg index_fg content_bg content_fg style
     read -r index_bg index_fg content_bg content_fg style <<< "$(_get_window_colors "active")"
 
@@ -260,16 +369,38 @@ build_window_current_format() {
         status_bg=$(resolve_color "statusbar-bg")
     fi
 
-    # Get separators
-    local sep_right final_sep
-    sep_right=$(get_right_separator)
-    final_sep=$(_get_final_separator_char)
+    # Get separators based on side
+    local sep_char final_sep
+    if [[ "$side" == "left" ]]; then
+        sep_char=$(get_right_separator)
+        final_sep=$(_get_final_separator_char)
+    else
+        sep_char=$(get_left_separator)
+        final_sep=$(get_left_separator)  # Use left separator for final when on right side
+    fi
 
     # Calculate previous window background for window-to-window transitions
     # NOTE: First window (index 1) separator is handled by status-left, not here
     # For other windows, previous is always inactive content (since this is the active window,
     # the previous one must be inactive)
     local previous_bg="${inactive_content_bg}"
+
+    # When on right side, last window connects to session (not statusbar)
+    # Session bg is conditional based on mode (prefix/copy/normal)
+    local session_bg_condition=""
+    if [[ "$side" == "right" ]]; then
+        local prefix_color_name copy_color_name normal_color_name
+        prefix_color_name=$(get_tmux_option "@powerkit_session_prefix_color" "${POWERKIT_DEFAULT_SESSION_PREFIX_COLOR}")
+        copy_color_name=$(get_tmux_option "@powerkit_session_copy_mode_color" "${POWERKIT_DEFAULT_SESSION_COPY_MODE_COLOR}")
+        normal_color_name=$(get_tmux_option "@powerkit_session_normal_color" "${POWERKIT_DEFAULT_SESSION_NORMAL_COLOR}")
+
+        local prefix_bg copy_bg normal_bg
+        prefix_bg=$(resolve_color "$prefix_color_name")
+        copy_bg=$(resolve_color "$copy_color_name")
+        normal_bg=$(resolve_color "$normal_color_name")
+
+        session_bg_condition="#{?client_prefix,${prefix_bg},#{?pane_in_mode,${copy_bg},${normal_bg}}}"
+    fi
 
     # Window icon and title
     local window_icon window_title zoomed_icon pane_sync_icon
@@ -281,20 +412,43 @@ build_window_current_format() {
     # Build format
     local format=""
 
-    # Window-to-window separator: only for windows after the first one
-    # First window's separator is in status-left (session segment)
+    # Start clickable range for this window
+    # This enables clicking on windows in the status bar
+    format+="#[range=window|#{window_id}]"
+
+    # Window-to-window separator logic:
+    # - Left side (standard): first window separator comes from session segment
+    # - Right side (custom order): first window needs edge separator from statusbar
     if has_window_spacing; then
         # Spacing mode: separator from gap to window
-        # For sep_right (▶): fg=source color (previous/spacing), bg=destination (window)
-        # When transparent, 'default' as fg renders WHITE - use theme background color instead
         local sep_fg="$spacing_bg"
         if [[ "$transparent" == "true" ]]; then
             sep_fg=$(resolve_color "background")
         fi
-        format+="#[fg=${sep_fg},bg=${index_bg}]${sep_right}"
+        if [[ "$side" == "left" ]]; then
+            # Right-pointing (▶): fg=source (spacing), bg=destination (window)
+            format+="#[fg=${sep_fg},bg=${index_bg}]${sep_char}"
+        else
+            # Left-pointing (◀): fg=destination (window), bg=source (spacing)
+            format+="#[fg=${index_bg},bg=${sep_fg}]${sep_char}"
+        fi
     else
-        # No spacing: add separator only if NOT first window (index != 1)
-        format+="#{?#{!=:#{window_index},1},#[fg=${previous_bg}#,bg=${index_bg}]${sep_right},}"
+        # No spacing mode
+        if [[ "$side" == "left" ]]; then
+            # Left side: first window separator comes from session segment
+            # Add separator only if NOT first window (index != 1)
+            # Right-pointing (▶): fg=source (previous), bg=destination (index)
+            format+="#{?#{!=:#{window_index},1},#[fg=${previous_bg}#,bg=${index_bg}]${sep_char},}"
+        else
+            # Right side: windows come BEFORE session, first window needs edge separator
+            # First window: edge separator from statusbar
+            # Other windows: normal left separator from previous window
+            local edge_sep
+            edge_sep=$(_get_edge_left_separator_char)  # LEFT separator with edge style
+            # #{?#{==:#{window_index},1},edge_sep,normal_sep}
+            # Left-pointing (◀): fg=destination (index), bg=source (prev)
+            format+="#{?#{==:#{window_index},1},#[fg=${index_bg}#,bg=${status_bg}]${edge_sep},#[fg=${index_bg}#,bg=${previous_bg}]${sep_char}}"
+        fi
     fi
 
     # Get window index display (icon or number based on settings)
@@ -304,8 +458,14 @@ build_window_current_format() {
     # Index segment (uses index_fg for text)
     format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] ${window_index_display} "
 
-    # Index-to-content separator: fg=index, bg=content
-    format+="#[fg=${index_bg},bg=${content_bg}]${sep_right}"
+    # Index-to-content separator
+    if [[ "$side" == "left" ]]; then
+        # Right-pointing (▶): fg=source (index), bg=destination (content)
+        format+="#[fg=${index_bg},bg=${content_bg}]${sep_char}"
+    else
+        # Left-pointing (◀): fg=destination (content), bg=source (index)
+        format+="#[fg=${content_bg},bg=${index_bg}]${sep_char}"
+    fi
 
     # Content segment (uses content_fg for text, with sync indicator)
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] #{?window_zoomed_flag,${zoomed_icon},${window_icon}} ${window_title} #{?pane_synchronized,${pane_sync_icon},}"
@@ -313,12 +473,28 @@ build_window_current_format() {
     # Add spacing OR final separator based on window position
     if has_window_spacing; then
         # Spacing mode: each window adds its own separator + spacing
-        format+="#[fg=${content_bg},bg=${spacing_bg}]${sep_right}#[bg=${spacing_bg}]"
+        if [[ "$side" == "left" ]]; then
+            # Right-pointing (▶): fg=source (content), bg=destination (spacing)
+            format+="#[fg=${content_bg},bg=${spacing_bg}]${sep_char}#[bg=${spacing_bg}]"
+        else
+            # Left-pointing (◀): fg=destination (spacing), bg=source (content)
+            format+="#[fg=${spacing_bg},bg=${content_bg}]${sep_char}#[bg=${spacing_bg}]"
+        fi
     else
         # No spacing: add final separator only if this is the last window
         # #{?window_end_flag,final_separator,}
-        format+="#{?window_end_flag,#[fg=${content_bg}]#[bg=${status_bg}]${final_sep},}"
+        if [[ "$side" == "left" ]]; then
+            # Left side: last window separator goes to statusbar
+            format+="#{?window_end_flag,#[fg=${content_bg}]#[bg=${status_bg}]${final_sep},}"
+        else
+            # Right side: last window separator goes to session (conditional bg)
+            # Left-pointing (◀): fg=destination (session), bg=source (window content)
+            format+="#{?window_end_flag,#[fg=${session_bg_condition}#,bg=${content_bg}]${final_sep},}"
+        fi
     fi
+
+    # End clickable range for this window
+    format+="#[norange]"
 
     printf '%s' "$format"
 }
@@ -376,9 +552,9 @@ build_pane_border_format() {
     local fg_color
 
     if [[ "$type" == "active" ]]; then
-        fg_color=$(resolve_color "${POWERKIT_DEFAULT_ACTIVE_PANE_BORDER_COLOR}")
+        fg_color=$(resolve_color "$(get_tmux_option '@powerkit_active_pane_border_color' "${POWERKIT_DEFAULT_ACTIVE_PANE_BORDER_COLOR}")")
     else
-        fg_color=$(resolve_color "${POWERKIT_DEFAULT_INACTIVE_PANE_BORDER_COLOR}")
+        fg_color=$(resolve_color "$(get_tmux_option '@powerkit_inactive_pane_border_color' "${POWERKIT_DEFAULT_INACTIVE_PANE_BORDER_COLOR}")")
     fi
 
     printf '%s' "$fg_color"

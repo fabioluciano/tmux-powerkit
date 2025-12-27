@@ -2,8 +2,24 @@
 # =============================================================================
 # Plugin: timezones
 # Description: Display time in multiple time zones
-# Type: conditional (hidden when no zones configured)
 # Dependencies: None (uses TZ environment variable)
+# =============================================================================
+#
+# CONTRACT IMPLEMENTATION:
+#
+# State:
+#   - active: Timezones configured and displaying
+#   - degraded: No zones configured (plugin visible but needs setup)
+#   - inactive: No timezone data available
+#
+# Health:
+#   - error: No zones configured
+#   - ok: Zones configured and working
+#
+# Context:
+#   - not_configured: No zones defined
+#   - configured: Zones are set up
+#
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -27,14 +43,14 @@ plugin_declare_options() {
     # Display options
     declare_option "zones" "string" "" "Comma-separated list of timezones (e.g., America/New_York,Europe/London)"
     declare_option "format" "string" "%H:%M" "Time format string (strftime format)"
-    declare_option "show_label" "bool" "false" "Show timezone label (3-letter abbreviation)"
+    declare_option "show_label" "bool" "true" "Show timezone label (3-letter abbreviation)"
     declare_option "separator" "string" " | " "Separator between timezones"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F00AC' "Plugin icon"
+    declare_option "icon" "icon" $'\U0000F0AC' "Plugin icon"
 
     # Cache - time changes constantly, keep TTL short for accuracy
-    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+    declare_option "cache_ttl" "number" "60" "Cache duration in seconds"
 }
 
 # =============================================================================
@@ -42,18 +58,35 @@ plugin_declare_options() {
 # =============================================================================
 
 plugin_get_content_type() { printf 'dynamic'; }
-plugin_get_presence() { printf 'conditional'; }
+plugin_get_presence() { printf 'always'; }
 
 plugin_get_state() {
-    local zones=$(plugin_data_get "zones")
-    [[ -n "$zones" ]] && printf 'active' || printf 'inactive'
+    local zones
+    zones=$(get_option "zones")
+
+    # No zones configured - degraded state (visible but needs setup)
+    [[ -z "$zones" ]] && { printf 'degraded'; return; }
+
+    local stored_zones
+    stored_zones=$(plugin_data_get "zones")
+    [[ -n "$stored_zones" ]] && printf 'active' || printf 'inactive'
 }
 
-plugin_get_health() { printf 'ok'; }
+plugin_get_health() {
+    local zones
+    zones=$(get_option "zones")
+
+    # No zones configured - error health
+    [[ -z "$zones" ]] && { printf 'error'; return; }
+
+    printf 'ok'
+}
 
 plugin_get_context() {
-    local zones=$(get_option "zones")
-    [[ -n "$zones" ]] && printf 'configured' || printf 'unconfigured'
+    local zones
+    zones=$(get_option "zones")
+    [[ -z "$zones" ]] && { printf 'not_configured'; return; }
+    printf 'configured'
 }
 
 plugin_get_icon() { get_option "icon"; }
@@ -100,11 +133,13 @@ plugin_collect() {
 plugin_render() {
     local zones format show_label separator
     zones=$(plugin_data_get "zones")
+
+    # No zones configured - show message
+    [[ -z "$zones" ]] && { printf 'not configured'; return; }
+
     format=$(plugin_data_get "format")
     show_label=$(plugin_data_get "show_label")
     separator=$(plugin_data_get "separator")
-
-    [[ -z "$zones" ]] && return 0
 
     IFS=',' read -ra tz_array <<< "$zones"
     local parts=()

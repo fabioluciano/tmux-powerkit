@@ -137,6 +137,86 @@ plugin_get_icon() {
 }
 
 # =============================================================================
+# Weather Icon Mapping (Emoji to Nerd Fonts)
+# =============================================================================
+# Maps wttr.in weather condition emojis to Nerd Fonts (nf-md-weather_*)
+
+declare -gA _WEATHER_ICON_MAP=(
+    # Sunny/Clear
+    ["☀️"]=$'\U000F0599'      # nf-md-weather_sunny
+    ["☀"]=$'\U000F0599'       # nf-md-weather_sunny (no variation selector)
+    ["🌣"]=$'\U000F0599'      # nf-md-weather_sunny
+
+    # Partly cloudy
+    ["⛅"]=$'\U000F0595'       # nf-md-weather_partly_cloudy
+    ["⛅️"]=$'\U000F0595'      # nf-md-weather_partly_cloudy
+    ["🌤️"]=$'\U000F0595'      # nf-md-weather_partly_cloudy
+    ["🌤"]=$'\U000F0595'       # nf-md-weather_partly_cloudy
+
+    # Cloudy
+    ["☁️"]=$'\U000F0590'      # nf-md-weather_cloudy
+    ["☁"]=$'\U000F0590'       # nf-md-weather_cloudy
+    ["🌥️"]=$'\U000F0595'      # nf-md-weather_partly_cloudy
+    ["🌥"]=$'\U000F0595'       # nf-md-weather_partly_cloudy
+
+    # Rainy
+    ["🌧️"]=$'\U000F0597'      # nf-md-weather_rainy
+    ["🌧"]=$'\U000F0597'       # nf-md-weather_rainy
+    ["🌦️"]=$'\U000F0597'      # nf-md-weather_rainy (sun + rain)
+    ["🌦"]=$'\U000F0597'       # nf-md-weather_rainy
+    ["💧"]=$'\U000F0597'       # nf-md-weather_rainy
+
+    # Thunderstorm
+    ["⛈️"]=$'\U000F0596'      # nf-md-weather_lightning_rainy
+    ["⛈"]=$'\U000F0596'       # nf-md-weather_lightning_rainy
+    ["🌩️"]=$'\U000F0593'      # nf-md-weather_lightning
+    ["🌩"]=$'\U000F0593'       # nf-md-weather_lightning
+
+    # Snow
+    ["❄️"]=$'\U000F0598'      # nf-md-weather_snowy
+    ["❄"]=$'\U000F0598'       # nf-md-weather_snowy
+    ["🌨️"]=$'\U000F0598'      # nf-md-weather_snowy
+    ["🌨"]=$'\U000F0598'       # nf-md-weather_snowy
+    ["⛄"]=$'\U000F0598'       # nf-md-weather_snowy
+
+    # Fog/Mist
+    ["🌫️"]=$'\U000F0591'      # nf-md-weather_fog
+    ["🌫"]=$'\U000F0591'       # nf-md-weather_fog
+
+    # Wind
+    ["💨"]=$'\U000F059D'       # nf-md-weather_windy
+
+    # Night/Moon
+    ["🌙"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌑"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌒"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌓"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌔"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌕"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌖"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌗"]=$'\U000F0594'       # nf-md-weather_night
+    ["🌘"]=$'\U000F0594'       # nf-md-weather_night
+)
+
+# Map emoji to Nerd Font icon
+_map_weather_icon() {
+    local emoji="$1"
+    # Remove variation selectors for lookup
+    local clean_emoji
+    clean_emoji=$(printf '%s' "$emoji" | perl -CS -pe 's/\x{FE0E}|\x{FE0F}//g' 2>/dev/null || printf '%s' "$emoji")
+
+    # Try with cleaned emoji first, then original
+    if [[ -n "${_WEATHER_ICON_MAP[$clean_emoji]:-}" ]]; then
+        printf '%s' "${_WEATHER_ICON_MAP[$clean_emoji]}"
+    elif [[ -n "${_WEATHER_ICON_MAP[$emoji]:-}" ]]; then
+        printf '%s' "${_WEATHER_ICON_MAP[$emoji]}"
+    else
+        # Fallback to original emoji if no mapping
+        printf '%s' "$emoji"
+    fi
+}
+
+# =============================================================================
 # API Functions
 # =============================================================================
 
@@ -158,23 +238,31 @@ _fetch_weather() {
         encoded_location=$(printf '%s' "$location" | sed 's/ /%20/g')
     fi
 
-    # For dynamic icon mode, prepend %c to format if not already present
-    # We use a separator to easily extract the symbol later
+    # For dynamic icon mode, extract symbol separately and remove %c from display format
     local fetch_format="$format"
     local needs_symbol=0
-    if [[ "$icon_mode" == "dynamic" && ! "$format" =~ %c ]]; then
-        fetch_format="%c|||${format}"
+    local sep="|||"
+    if [[ "$icon_mode" == "dynamic" ]]; then
+        # Remove %c from format (we'll get it separately)
+        local clean_format="${format//%c/}"
+        # Clean up extra spaces from removal
+        clean_format=$(printf '%s' "$clean_format" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]\{2,\}/ /g')
+        fetch_format="%c${sep}${clean_format}"
         needs_symbol=1
     fi
 
+    # URL encode the format string (% -> %25, space -> %20, | -> %7C)
+    local encoded_format
+    encoded_format=$(printf '%s' "$fetch_format" | sed 's/%/%25/g; s/ /%20/g; s/|/%7C/g')
+
     local url="https://wttr.in"
     [[ -n "$encoded_location" ]] && url+="/$encoded_location"
-    url+="?format=${fetch_format}&${units}"
+    url+="?format=${encoded_format}&${units}"
     [[ -n "$language" ]] && url+="&lang=$language"
 
-    # Fetch with timeout and error handling
+    # Fetch with timeout and error handling (10s timeout for wttr.in)
     local result
-    result=$(safe_curl "$url" 5 -L) || return 1
+    result=$(safe_curl "$url" 10 -L) || return 1
 
     # Return only if we got valid data (not error messages)
     if [[ -n "$result" && ! "$result" =~ ^(Unknown|Error|Sorry) ]]; then
@@ -182,15 +270,9 @@ _fetch_weather() {
             # Extract symbol and weather separately
             local symbol="${result%%|||*}"
             local weather="${result#*|||}"
-
-            # Clean up symbol (remove variation selectors and whitespace)
-            symbol=$(printf '%s' "$symbol" | sed 's/[[:space:]]*$//')
-            command -v perl &>/dev/null && symbol=$(printf '%s' "$symbol" | perl -CS -pe 's/\x{FE0E}|\x{FE0F}//g')
-
             # Output: symbol\nweather (newline separated for easy parsing)
             printf '%s\n%s' "$symbol" "$weather"
         else
-            # No symbol extraction needed or format already has %c
             printf '%s' "$result"
         fi
     fi
@@ -201,32 +283,32 @@ _fetch_weather() {
 # =============================================================================
 
 plugin_collect() {
-    local result icon_mode
+    local result
     result=$(_fetch_weather)
-    icon_mode=$(get_option "icon_mode")
 
     [[ -z "$result" ]] && return
 
     local weather symbol
 
-    # Check if result contains symbol (newline separated)
+    # Check if result contains symbol (newline separated from _fetch_weather)
     if [[ "$result" == *$'\n'* ]]; then
         symbol="${result%%$'\n'*}"
         weather="${result#*$'\n'}"
     else
         weather="$result"
-        # If icon_mode is dynamic and format contains %c, try to extract first emoji
-        if [[ "$icon_mode" == "dynamic" ]]; then
-            # Extract first emoji-like character as symbol
-            symbol=$(printf '%s' "$weather" | grep -o '^[^a-zA-Z0-9 +-]*' | head -c 4)
-        fi
+    fi
+
+    # Clean up and map symbol to Nerd Font icon
+    if [[ -n "$symbol" ]]; then
+        symbol=$(printf '%s' "$symbol" | sed 's/[[:space:]]*$//')
+        # Map emoji to Nerd Font icon
+        symbol=$(_map_weather_icon "$symbol")
     fi
 
     # Clean up the weather output:
     # 1. Remove ANSI escape codes
     # 2. Remove newlines
     # 3. Trim whitespace
-    # 4. Limit length to prevent bar overflow
     weather=$(printf '%s' "$weather" | \
         sed 's/\x1b\[[0-9;]*m//g' | \
         tr -d '\n\r' | \

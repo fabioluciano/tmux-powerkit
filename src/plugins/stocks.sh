@@ -9,14 +9,17 @@
 #
 # State:
 #   - active: Stock data retrieved
+#   - degraded: No tickers configured (plugin visible but needs setup)
 #   - inactive: No stock data available
 #
 # Health:
+#   - error: No tickers configured
 #   - warning: At least one stock is down
 #   - ok: All stocks stable or up
 #
 # Context:
-#   - unavailable: No data
+#   - not_configured: No tickers defined
+#   - unavailable: No data from API
 #   - down: Some stocks declining
 #   - up: All stocks rising or stable
 #
@@ -50,14 +53,14 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display options
-    declare_option "symbols" "string" "AAPL" "Stock symbols (comma-separated)"
+    declare_option "tickers" "string" "AAPL" "Stock tickers to track (comma-separated, e.g., AAPL,MSFT,GOOGL)"
     declare_option "format" "string" "short" "Display format: short or full"
-    declare_option "show_symbol" "bool" "true" "Show stock symbol"
+    declare_option "show_ticker" "bool" "true" "Show stock ticker symbol"
     declare_option "show_change" "bool" "true" "Show price change with direction"
     declare_option "separator" "string" " | " "Separator between stocks"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0590' "Stock icon"
+    declare_option "icon" "icon" $'\U0000F437' "Stock icon"
 
     # Cache (check every 5 minutes)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
@@ -68,15 +71,26 @@ plugin_declare_options() {
 # =============================================================================
 
 plugin_get_content_type() { printf 'dynamic'; }
-plugin_get_presence() { printf 'conditional'; }
+plugin_get_presence() { printf 'always'; }
 
 plugin_get_state() {
-    local prices
+    local tickers prices
+    tickers=$(get_option "tickers")
+
+    # No tickers configured - degraded state (visible but needs setup)
+    [[ -z "$tickers" ]] && { printf 'degraded'; return; }
+
     prices=$(plugin_data_get "prices")
     [[ -n "$prices" ]] && printf 'active' || printf 'inactive'
 }
 
 plugin_get_health() {
+    local tickers
+    tickers=$(get_option "tickers")
+
+    # No tickers configured - error health
+    [[ -z "$tickers" ]] && { printf 'error'; return; }
+
     # Check if any stock is down
     local changes
     changes=$(plugin_data_get "changes")
@@ -84,6 +98,12 @@ plugin_get_health() {
 }
 
 plugin_get_context() {
+    local tickers
+    tickers=$(get_option "tickers")
+
+    # No tickers configured
+    [[ -z "$tickers" ]] && { printf 'not_configured'; return; }
+
     local changes
     changes=$(plugin_data_get "changes")
 
@@ -178,26 +198,30 @@ _format_change() {
 # =============================================================================
 
 plugin_collect() {
-    local symbols
-    symbols=$(get_option "symbols")
-    IFS=',' read -ra symbol_list <<< "$symbols"
+    local tickers
+    tickers=$(get_option "tickers")
+
+    # No tickers configured - nothing to collect
+    [[ -z "$tickers" ]] && return 0
+
+    IFS=',' read -ra ticker_list <<< "$tickers"
 
     local prices_data="" changes_data=""
-    for symbol in "${symbol_list[@]}"; do
-        symbol=$(trim "$symbol")
-        symbol=$(echo "$symbol" | tr '[:lower:]' '[:upper:]')
-        [[ -z "$symbol" ]] && continue
+    for ticker in "${ticker_list[@]}"; do
+        ticker=$(trim "$ticker")
+        ticker=$(echo "$ticker" | tr '[:lower:]' '[:upper:]')
+        [[ -z "$ticker" ]] && continue
 
         local stock_data
-        stock_data=$(_fetch_stock_price "$symbol")
+        stock_data=$(_fetch_stock_price "$ticker")
 
         if [[ -n "$stock_data" ]]; then
             IFS='|' read -r price change <<< "$stock_data"
             [[ -n "$prices_data" ]] && prices_data+="|"
-            prices_data+="${symbol}:${price}"
+            prices_data+="${ticker}:${price}"
 
             [[ -n "$changes_data" ]] && changes_data+="|"
-            changes_data+="${symbol}:${change}"
+            changes_data+="${ticker}:${change}"
         fi
     done
 
@@ -210,10 +234,16 @@ plugin_collect() {
 # =============================================================================
 
 plugin_render() {
-    local prices changes show_symbol show_change format separator
+    local tickers prices changes show_ticker show_change format separator
+
+    tickers=$(get_option "tickers")
+
+    # No tickers configured - show message
+    [[ -z "$tickers" ]] && { printf 'not configured'; return; }
+
     prices=$(plugin_data_get "prices")
     changes=$(plugin_data_get "changes")
-    show_symbol=$(get_option "show_symbol")
+    show_ticker=$(get_option "show_ticker")
     show_change=$(get_option "show_change")
     format=$(get_option "format")
     separator=$(get_option "separator")
@@ -225,14 +255,14 @@ plugin_render() {
     IFS='|' read -ra change_list <<< "$changes"
 
     for i in "${!price_list[@]}"; do
-        IFS=':' read -r symbol price <<< "${price_list[$i]}"
+        IFS=':' read -r ticker price <<< "${price_list[$i]}"
         IFS=':' read -r _ change <<< "${change_list[$i]:-:0}"
 
         stock_output=""
 
-        # Add symbol if enabled
-        if [[ "$show_symbol" == "true" ]]; then
-            stock_output="${symbol} "
+        # Add ticker if enabled
+        if [[ "$show_ticker" == "true" ]]; then
+            stock_output="${ticker} "
         fi
 
         # Add formatted price

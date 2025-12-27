@@ -154,6 +154,101 @@ is_arm() {
 }
 
 # =============================================================================
+# macOS Hardware Detection
+# =============================================================================
+
+# Cached values for macOS hardware
+declare -g _CACHED_MAC_MODEL=""
+declare -g _CACHED_MAC_CHIP=""
+
+# Get Mac model identifier (cached)
+# Usage: get_mac_model
+# Returns: MacBookPro18,1, MacBookAir10,1, iMac21,1, etc.
+get_mac_model() {
+    if [[ -z "$_CACHED_MAC_MODEL" ]]; then
+        if is_macos; then
+            _CACHED_MAC_MODEL=$(sysctl -n hw.model 2>/dev/null || echo "")
+        fi
+    fi
+    printf '%s' "$_CACHED_MAC_MODEL"
+}
+
+# Get Mac chip name (cached)
+# Usage: get_mac_chip
+# Returns: Apple M1, Apple M2 Pro, Apple M3 Max, Intel Core i7, etc.
+get_mac_chip() {
+    if [[ -z "$_CACHED_MAC_CHIP" ]]; then
+        if is_macos; then
+            _CACHED_MAC_CHIP=$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo "")
+        fi
+    fi
+    printf '%s' "$_CACHED_MAC_CHIP"
+}
+
+# Check if running on Apple Silicon (M1, M2, M3, etc.)
+# Usage: is_apple_silicon && echo "Apple Silicon"
+is_apple_silicon() {
+    is_macos || return 1
+    local arch chip
+    arch=$(get_arch)
+    # Primary check: ARM architecture on macOS
+    [[ "$arch" == "arm64" ]] && return 0
+    # Fallback: check CPU brand string
+    chip=$(get_mac_chip)
+    [[ "$chip" == Apple* ]] && return 0
+    return 1
+}
+
+# Check if running on Intel Mac
+# Usage: is_intel_mac && echo "Intel Mac"
+is_intel_mac() {
+    is_macos || return 1
+    local arch
+    arch=$(get_arch)
+    [[ "$arch" == "x86_64" ]]
+}
+
+# Check if running on a MacBook Air
+# Usage: is_macbook_air && echo "MacBook Air"
+# Note: Newer MacBook Air models (M2+) use Mac* identifiers instead of MacBookAir*
+is_macbook_air() {
+    is_macos || return 1
+    local model
+    model=$(get_mac_model)
+
+    # Traditional MacBook Air identifiers (M1 and earlier)
+    [[ "$model" == MacBookAir* ]] && return 0
+
+    # MacBook Air M2 (13" and 15")
+    [[ "$model" == "Mac14,2" || "$model" == "Mac14,15" ]] && return 0
+
+    # MacBook Air M3 (13" and 15")
+    [[ "$model" == "Mac15,12" || "$model" == "Mac15,13" ]] && return 0
+
+    # MacBook Air M4 (13" and 15")
+    [[ "$model" == "Mac16,12" || "$model" == "Mac16,13" ]] && return 0
+
+    return 1
+}
+
+# Check if running on a fanless Mac (MacBook Air, some Mac mini, iPad-based)
+# Usage: is_fanless_mac && echo "Fanless Mac"
+is_fanless_mac() {
+    is_macos || return 1
+
+    # All MacBook Air models with Apple Silicon are fanless
+    is_macbook_air && is_apple_silicon && return 0
+
+    # Mac mini M1 base model is fanless (Macmini9,1)
+    # Note: Mac mini M2/M2 Pro has a fan
+    local model
+    model=$(get_mac_model)
+    [[ "$model" == "Macmini9,1" ]] && return 0
+
+    return 1
+}
+
+# =============================================================================
 # Environment Detection
 # =============================================================================
 
