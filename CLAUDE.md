@@ -29,11 +29,11 @@ This file provides guidance to Claude Code when working with this repository.
 12. **datetime** - Date/time with 15 format presets
 13. **disk** - Disk usage with thresholds (df)
 14. **external_ip** - Public IP address (ipify API)
-15. **fan** - Fan speed (macOS, osx-cpu-temp/iStats)
+15. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
 16. **git** - Branch + modified files status
 17. **github** - Notifications/PRs/issues (gh CLI)
 18. **gitlab** - Merge requests/todos (glab CLI)
-19. **gpu** - GPU usage (nvidia-smi/ioreg)
+19. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
 20. **hostname** - System hostname
 21. **iops** - Disk I/O operations (iostat)
 22. **jira** - Assigned issues count (API)
@@ -70,9 +70,9 @@ This file provides guidance to Claude Code when working with this repository.
 
 ### Platform-Specific Plugins
 
-- **macOS only**: volume, temperature, fan, camera, microphone, audiodevices
+- **macOS only**: volume, temperature, camera, microphone, audiodevices
 - **Linux only**: brightness
-- **Cross-platform**: All other plugins
+- **Cross-platform**: All other plugins (including fan and gpu with platform-specific backends)
 
 ---
 
@@ -930,6 +930,93 @@ Added `good` health level for positive states:
   - xbacklight
 - Returns `inactive` state on macOS (plugin hidden)
 - `plugin_check_dependencies()` returns 1 on macOS
+
+### GPU Plugin (Multi-Platform)
+
+Cross-platform GPU monitoring with vendor-specific backends:
+
+**Supported GPUs**:
+
+| Vendor | Backend | Metrics Available |
+|--------|---------|-------------------|
+| NVIDIA | `nvidia-smi` | usage, memory, temp |
+| AMD | sysfs (`gpu_busy_percent`) | usage, memory, temp |
+| Intel | sysfs (i915/xe driver) | usage (freq-based), freq |
+| macOS | `powerkit-gpu` binary | usage, memory, temp |
+
+**Metrics**:
+
+- `usage`: GPU utilization percentage (Intel: calculated from freq_cur/freq_max)
+- `memory`: VRAM usage (not available for Intel - uses shared system memory)
+- `temp`: GPU temperature (not available for Intel via sysfs)
+- `freq`: Current/max frequency in MHz (mainly useful for Intel)
+
+**Options**:
+
+```bash
+# Metrics to display (comma-separated)
+set -g @powerkit_plugin_gpu_metric "usage"           # Default
+set -g @powerkit_plugin_gpu_metric "usage,freq"      # Intel recommended
+set -g @powerkit_plugin_gpu_metric "usage,memory,temp"  # NVIDIA/AMD
+set -g @powerkit_plugin_gpu_metric "all"             # All available for GPU type
+
+# Memory format (NVIDIA/AMD only)
+set -g @powerkit_plugin_gpu_memory_format "memory_usage"      # "409M/4.1G"
+set -g @powerkit_plugin_gpu_memory_format "memory_use"        # "409M"
+set -g @powerkit_plugin_gpu_memory_format "memory_percentage" # "10%"
+
+# Show metric icons
+set -g @powerkit_plugin_gpu_show_metric_icons "true"  # Default
+
+# Thresholds
+set -g @powerkit_plugin_gpu_usage_warning_threshold "70"
+set -g @powerkit_plugin_gpu_usage_critical_threshold "90"
+```
+
+**Intel GPU Detection**:
+
+- Uses `/sys/class/drm/card{0,1}/gt/gt0/rps_cur_freq_mhz` for current frequency
+- Uses `/sys/class/drm/card{0,1}/gt/gt0/rps_max_freq_mhz` for max frequency
+- Usage calculated as: `(freq_cur * 100) / freq_max`
+
+**Data stored** (`plugin_data_set`):
+
+- `gpu_type`: "nvidia", "amd", "intel", or "macos"
+- `usage`: Utilization percentage
+- `mem_used_mb`, `mem_total_mb`: Memory in MB (NVIDIA/AMD/macOS)
+- `temp`: Temperature in °C (NVIDIA/AMD/macOS)
+- `freq_cur`, `freq_max`: Frequency in MHz (Intel only)
+
+### Fan Plugin (Multi-Platform)
+
+Cross-platform fan speed monitoring:
+
+**Linux backends** (in order of priority):
+- Dell SMM (`/sys/class/hwmon/hwmon*/name == "dell_smm"`)
+- ThinkPad (`/proc/acpi/ibm/fan`)
+- Generic hwmon (`/sys/class/hwmon/hwmon*/fan*_input`)
+
+**macOS backends**:
+- `osx-cpu-temp -f`
+- `smctemp`
+- `istats`
+
+**Options**:
+
+```bash
+# Fan source (Linux)
+set -g @powerkit_plugin_fan_source "auto"  # auto|dell|thinkpad|hwmon
+
+# Display format
+set -g @powerkit_plugin_fan_format "icon_k"  # rpm|krpm|number|icon|icon_k
+
+# Fan selection
+set -g @powerkit_plugin_fan_selection "active"  # active (RPM>0) or all
+
+# Thresholds (RPM)
+set -g @powerkit_plugin_fan_warning_threshold "4000"
+set -g @powerkit_plugin_fan_critical_threshold "6000"
+```
 
 ### Platform-Specific Plugin Pattern
 

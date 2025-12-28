@@ -2,7 +2,13 @@
 # =============================================================================
 # Plugin: gpu
 # Description: Display GPU usage, memory, and temperature
-# Dependencies: powerkit-gpu binary (macOS, bundled) or nvidia-smi (Linux)
+# Dependencies:
+#   macOS: powerkit-gpu binary (bundled)
+#   Linux: nvidia-smi (NVIDIA) or sysfs (AMD/Intel)
+# Supported GPUs:
+#   - NVIDIA: Full support (usage, memory, temp)
+#   - AMD: Full support (usage, memory, temp via sysfs)
+#   - Intel: Frequency-based usage proxy (no dedicated memory)
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -29,10 +35,18 @@ plugin_check_dependencies() {
         [[ -x "$powerkit_gpu" ]] && return 0
         return 1
     fi
-    # Linux: nvidia-smi OR AMD sysfs
+
+    # Linux: NVIDIA
     has_cmd "nvidia-smi" && return 0
+
+    # Linux: AMD (gpu_busy_percent)
     [[ -f "/sys/class/drm/card0/device/gpu_busy_percent" ]] && return 0
     [[ -f "/sys/class/drm/card1/device/gpu_busy_percent" ]] && return 0
+
+    # Linux: Intel (frequency-based via i915/xe driver)
+    [[ -f "/sys/class/drm/card0/gt/gt0/rps_cur_freq_mhz" ]] && return 0
+    [[ -f "/sys/class/drm/card1/gt/gt0/rps_cur_freq_mhz" ]] && return 0
+
     return 1
 }
 
@@ -42,12 +56,13 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display options
-    # metric: usage, memory, temp, all, or comma-separated (e.g., "usage,temp")
-    declare_option "metric" "string" "usage,memory" "Metrics to display: usage, memory, temp, all, or comma-separated"
-    declare_option "separator" "string" " | " "Separator for 'all' metric mode"
+    # metric: usage, memory, temp, freq, all, or comma-separated (e.g., "usage,temp")
+    # Note: Intel GPUs only support usage (frequency-based) and freq metrics
+    declare_option "metric" "string" "usage" "Metrics to display: usage, memory, temp, freq, all, or comma-separated"
+    declare_option "separator" "string" " | " "Separator for multiple metrics"
     declare_option "show_metric_icons" "bool" "true" "Show icons next to each metric"
 
-    # Memory format options
+    # Memory format options (NVIDIA/AMD only - Intel uses shared system memory)
     # memory_use: only used (e.g., "409M")
     # memory_usage: used/allocated (e.g., "409M / 4.1G")
     # memory_percentage: percentage of allocation (e.g., "10%")
@@ -58,6 +73,7 @@ plugin_declare_options() {
     declare_option "icon_usage" "icon" $'\U0000f4bc' "Usage metric icon (nf-md-chip)"
     declare_option "icon_memory" "icon" $'\U0000efc5' "Memory metric icon (nf-md-memory)"
     declare_option "icon_temp" "icon" $'\U000F050F' "Temperature metric icon (nf-md-thermometer)"
+    declare_option "icon_freq" "icon" $'\U000F0A40' "Frequency metric icon (nf-md-sine-wave)"
 
     # Thresholds for GPU usage (%)
     declare_option "usage_warning_threshold" "number" "70" "Usage warning threshold (%)"
@@ -158,12 +174,55 @@ plugin_get_context() {
 plugin_get_icon() { get_option "icon"; }
 
 # =============================================================================
+# Intel GPU Detection Helper
+# =============================================================================
+
+_find_intel_gpu_dir() {
+    # Find Intel GPU sysfs directory (i915 or xe driver)
+    local card_dir
+    for card_dir in /sys/class/drm/card0 /sys/class/drm/card1; do
+        if [[ -f "${card_dir}/gt/gt0/rps_cur_freq_mhz" ]]; then
+            printf '%s' "$card_dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+_collect_intel_gpu() {
+    local card_dir="$1"
+    local cur_freq max_freq usage freq_cur freq_max
+
+    # Read current and max frequency
+    freq_cur=$(cat "${card_dir}/gt/gt0/rps_cur_freq_mhz" 2>/dev/null)
+    freq_max=$(cat "${card_dir}/gt/gt0/rps_max_freq_mhz" 2>/dev/null)
+
+    [[ -z "$freq_cur" || -z "$freq_max" ]] && return 1
+
+    # Calculate usage as percentage of max frequency
+    if (( freq_max > 0 )); then
+        usage=$(( (freq_cur * 100) / freq_max ))
+    else
+        usage=0
+    fi
+
+    plugin_data_set "usage" "$usage"
+    plugin_data_set "freq_cur" "$freq_cur"
+    plugin_data_set "freq_max" "$freq_max"
+    plugin_data_set "gpu_type" "intel"
+    plugin_data_set "available" "1"
+
+    return 0
+}
+
+# =============================================================================
 # Plugin Contract: Data Collection
 # =============================================================================
 
 plugin_collect() {
     local usage temp mem_used_mb mem_total_mb
     local available=0
+    local gpu_type=""
 
     if is_macos; then
         local powerkit_gpu="${POWERKIT_ROOT}/bin/macos/powerkit-gpu"
@@ -184,7 +243,7 @@ plugin_collect() {
             # Get temperature
             temp=$("$powerkit_gpu" -t 2>/dev/null)
 
-            [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && available=1
+            [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && { available=1; gpu_type="macos"; }
         fi
     else
         # Linux: NVIDIA GPU via nvidia-smi
@@ -201,13 +260,15 @@ plugin_collect() {
                 mem_used_mb="${mem_used:-0}"
                 mem_total_mb="${mem_total:-0}"
 
-                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && available=1
+                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && { available=1; gpu_type="nvidia"; }
             fi
         fi
 
         # Linux: AMD GPU via amdgpu driver (sysfs)
         if [[ "$available" -eq 0 ]]; then
             local amd_gpu_dir="/sys/class/drm/card0/device"
+            [[ ! -f "${amd_gpu_dir}/gpu_busy_percent" ]] && amd_gpu_dir="/sys/class/drm/card1/device"
+
             if [[ -f "${amd_gpu_dir}/gpu_busy_percent" ]]; then
                 usage=$(cat "${amd_gpu_dir}/gpu_busy_percent" 2>/dev/null)
 
@@ -230,7 +291,17 @@ plugin_collect() {
                     mem_total_mb=$(( vram_total / 1048576 ))
                 fi
 
-                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && available=1
+                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && { available=1; gpu_type="amd"; }
+            fi
+        fi
+
+        # Linux: Intel GPU via i915/xe driver (frequency-based)
+        if [[ "$available" -eq 0 ]]; then
+            local intel_dir
+            intel_dir=$(_find_intel_gpu_dir)
+            if [[ -n "$intel_dir" ]]; then
+                _collect_intel_gpu "$intel_dir"
+                return  # Intel collection sets all data internally
             fi
         fi
     fi
@@ -240,6 +311,7 @@ plugin_collect() {
     plugin_data_set "mem_used_mb" "${mem_used_mb:-0}"
     plugin_data_set "mem_total_mb" "${mem_total_mb:-0}"
     plugin_data_set "temp" "${temp:-0}"
+    plugin_data_set "gpu_type" "$gpu_type"
 }
 
 # Format MB to human-readable (M or G)
@@ -288,8 +360,8 @@ _format_memory() {
 }
 
 plugin_render() {
-    local metric separator show_icons memory_format
-    local usage mem_used_mb mem_total_mb temp
+    local metric separator show_icons memory_format gpu_type
+    local usage mem_used_mb mem_total_mb temp freq_cur freq_max
     local parts=()
 
     metric=$(get_option "metric")
@@ -301,13 +373,17 @@ plugin_render() {
     mem_used_mb=$(plugin_data_get "mem_used_mb")
     mem_total_mb=$(plugin_data_get "mem_total_mb")
     temp=$(plugin_data_get "temp")
+    freq_cur=$(plugin_data_get "freq_cur")
+    freq_max=$(plugin_data_get "freq_max")
+    gpu_type=$(plugin_data_get "gpu_type")
 
     # Get icons if enabled
-    local icon_usage="" icon_memory="" icon_temp=""
+    local icon_usage="" icon_memory="" icon_temp="" icon_freq=""
     if [[ "$show_icons" == "true" ]]; then
         icon_usage="$(get_option "icon_usage") "
         icon_memory="$(get_option "icon_memory") "
         icon_temp="$(get_option "icon_temp") "
+        icon_freq="$(get_option "icon_freq") "
     fi
 
     # Format memory based on memory_format option
@@ -315,7 +391,14 @@ plugin_render() {
     memory_str="$(_format_memory "$mem_used_mb" "$mem_total_mb" "$memory_format")"
 
     # Handle "all" as shorthand for all metrics
-    [[ "$metric" == "all" ]] && metric="usage,memory,temp"
+    # For Intel, "all" means usage and freq (no memory/temp)
+    if [[ "$metric" == "all" ]]; then
+        if [[ "$gpu_type" == "intel" ]]; then
+            metric="usage,freq"
+        else
+            metric="usage,memory,temp"
+        fi
+    fi
 
     # Build parts array based on requested metrics
     local IFS=','
@@ -330,10 +413,20 @@ plugin_render() {
                 parts+=("${icon_usage}${usage:-0}%")
                 ;;
             memory)
+                # Skip memory for Intel (uses shared system memory)
+                [[ "$gpu_type" == "intel" ]] && continue
                 parts+=("${icon_memory}${memory_str}")
                 ;;
             temp)
+                # Skip temp for Intel if not available
+                [[ "$gpu_type" == "intel" ]] && continue
                 parts+=("${icon_temp}${temp:-0}°C")
+                ;;
+            freq)
+                # Frequency metric (mainly useful for Intel)
+                if [[ -n "$freq_cur" ]]; then
+                    parts+=("${icon_freq}${freq_cur}/${freq_max}MHz")
+                fi
                 ;;
         esac
     done
