@@ -62,9 +62,8 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Display options
     declare_option "source" "string" "auto" "Fan source (auto|dell|thinkpad|hwmon)"
-    declare_option "format" "string" "rpm" "Display format (rpm|krpm|full)"
-    declare_option "hide_when_idle" "bool" "false" "Hide when fan is idle (0 RPM)"
-    declare_option "selection" "string" "active" "Fan selection (active|all)"
+    declare_option "format" "string" "icon_k" "Display format (rpm|krpm|number|icon|icon_k)"
+    declare_option "selection" "string" "active" "Fan selection: active (RPM>0) or all (include idle)"
     declare_option "separator" "string" " | " "Separator between multiple fans"
 
     # Icons
@@ -139,12 +138,13 @@ plugin_get_icon() {
 
 _get_fan_hwmon() {
     # Read from hwmon subsystem (first non-zero fan)
+    # Note: Using cat instead of $(<file) for sysfs compatibility
     for dir in /sys/class/hwmon/hwmon*; do
         [[ -d "$dir" ]] || continue
         for fan_file in "$dir"/fan*_input; do
             [[ -f "$fan_file" ]] || continue
             local rpm
-            rpm=$(<"$fan_file" 2>/dev/null)
+            rpm=$(cat "$fan_file" 2>/dev/null)
             [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
         done
     done
@@ -152,7 +152,7 @@ _get_fan_hwmon() {
 }
 
 _get_all_fans_hwmon() {
-    local hide_idle="$1"
+    local filter_idle="$1"
     local fans=()
 
     for dir in /sys/class/hwmon/hwmon*; do
@@ -160,9 +160,11 @@ _get_all_fans_hwmon() {
         for fan_file in "$dir"/fan*_input; do
             [[ -f "$fan_file" ]] || continue
             local rpm
-            rpm=$(<"$fan_file" 2>/dev/null)
-            [[ -z "$rpm" ]] && continue
-            [[ "$hide_idle" == "true" && "$rpm" -eq 0 ]] && continue
+            rpm=$(cat "$fan_file" 2>/dev/null | tr -d '[:space:]')
+            [[ -z "$rpm" || ! "$rpm" =~ ^[0-9]+$ ]] && continue
+            if [[ "$filter_idle" == "true" && "$rpm" -eq 0 ]]; then
+                continue
+            fi
             fans+=("$rpm")
         done
     done
@@ -176,11 +178,11 @@ _get_all_fans_hwmon() {
 
 _get_fan_dell() {
     for dir in /sys/class/hwmon/hwmon*; do
-        [[ -f "$dir/name" && "$(<"$dir/name")" == "dell_smm" ]] || continue
+        [[ -f "$dir/name" && "$(cat "$dir/name" 2>/dev/null)" == "dell_smm" ]] || continue
         for fan in "$dir"/fan*_input; do
             [[ -f "$fan" ]] || continue
             local rpm
-            rpm=$(<"$fan" 2>/dev/null)
+            rpm=$(cat "$fan" 2>/dev/null)
             [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
         done
     done
@@ -252,13 +254,33 @@ _get_fan_speed() {
 
 _format_rpm() {
     local rpm="$1"
+    local format icon
+    format=$(get_option "format")
+
+    case "$format" in
+        number)  printf '%s' "$rpm" ;;
+        krpm)    awk "BEGIN {printf \"%.1fk\", $rpm / 1000}" ;;
+        icon)
+            icon=$(get_option "icon")
+            printf '%s %s' "$icon" "$rpm"
+            ;;
+        icon_k)
+            icon=$(get_option "icon")
+            awk -v icon="$icon" "BEGIN {printf \"%s %.1fk\", icon, $rpm / 1000}"
+            ;;
+        *)       printf '%s' "$rpm" ;;
+    esac
+}
+
+# Get the unit suffix based on format (appended once at the end)
+_get_unit_suffix() {
     local format
     format=$(get_option "format")
 
     case "$format" in
-        krpm) awk "BEGIN {printf \"%.1fk\", $rpm / 1000}" ;;
-        full) printf '%s RPM' "$rpm" ;;
-        *)    printf '%s' "$rpm" ;;
+        number|icon)  printf ' RPM' ;;
+        krpm|icon_k)  printf ' RPM' ;;
+        *)            printf ' RPM' ;;
     esac
 }
 
@@ -270,28 +292,32 @@ plugin_collect() {
     # Fanless Macs - skip collection
     is_fanless_mac && return 0
 
-    local hide_idle selection
-    hide_idle=$(get_option "hide_when_idle")
+    local selection
     selection=$(get_option "selection")
 
-    local rpm
+    local rpm all_rpms
 
-    case "$selection" in
-        all)
-            # Get all fans, store first for health calculation
-            local fans
-            fans=$(_get_all_fans_hwmon "$hide_idle" | head -1)
-            rpm="${fans:-0}"
-            ;;
-        *)
-            rpm=$(_get_fan_speed) || rpm=0
-            ;;
-    esac
+    if is_linux; then
+        # selection=active: only fans with RPM > 0
+        # selection=all: all fans including idle (RPM = 0)
+        local filter_idle="true"
+        [[ "$selection" == "all" ]] && filter_idle="false"
 
-    [[ "$hide_idle" == "true" && "${rpm:-0}" -eq 0 ]] && return 0
+        all_rpms=$(_get_all_fans_hwmon "$filter_idle")
+        # Store max RPM for health calculation (highest speed = most stressed)
+        rpm=$(printf '%s\n' "$all_rpms" | sort -rn | head -1)
+        rpm="${rpm:-0}"
+        plugin_data_set "all_rpms" "$all_rpms"
+    else
+        # macOS: single fan value
+        rpm=$(_get_fan_speed) || rpm=0
+        plugin_data_set "all_rpms" "$rpm"
+    fi
+
+    # No active fans - plugin will be inactive
+    [[ "${rpm:-0}" -eq 0 ]] && return 0
 
     plugin_data_set "rpm" "${rpm:-0}"
-    plugin_data_set "selection" "$selection"
 }
 
 # =============================================================================
@@ -299,24 +325,30 @@ plugin_collect() {
 # =============================================================================
 
 plugin_render() {
-    local rpm selection separator hide_idle
+    local rpm separator
     rpm=$(plugin_data_get "rpm")
-    selection=$(plugin_data_get "selection")
     separator=$(get_option "separator")
-    hide_idle=$(get_option "hide_when_idle")
 
     [[ -z "$rpm" || "$rpm" -eq 0 ]] && return 0
 
-    if [[ "$selection" == "all" ]] && is_linux; then
-        # Show all fans
-        local result_parts=()
-        while IFS= read -r fan_rpm; do
-            [[ -z "$fan_rpm" ]] && continue
-            result_parts+=("$(_format_rpm "$fan_rpm")")
-        done < <(_get_all_fans_hwmon "$hide_idle")
+    # Show all collected fans (active or all depending on selection)
+    local all_rpms
+    all_rpms=$(plugin_data_get "all_rpms")
+    [[ -z "$all_rpms" ]] && { printf '%s%s' "$(_format_rpm "$rpm")" "$(_get_unit_suffix)"; return; }
 
-        [[ ${#result_parts[@]} -gt 0 ]] && join_with_separator "$separator" "${result_parts[@]}"
-    else
-        _format_rpm "$rpm"
+    local result_parts=()
+    while IFS= read -r fan_rpm; do
+        [[ -z "$fan_rpm" ]] && continue
+        result_parts+=("$(_format_rpm "$fan_rpm")")
+    done <<< "$all_rpms"
+
+    # Join fan values and append unit suffix once at the end
+    local output=""
+    if [[ ${#result_parts[@]} -gt 1 ]]; then
+        output=$(join_with_separator "$separator" "${result_parts[@]}")
+    elif [[ ${#result_parts[@]} -eq 1 ]]; then
+        output="${result_parts[0]}"
     fi
+
+    printf '%s%s' "$output" "$(_get_unit_suffix)"
 }

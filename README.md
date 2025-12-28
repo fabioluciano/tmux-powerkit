@@ -55,7 +55,7 @@ Full documentation is available in the [Wiki](../../wiki).
 | [Installation](../../wiki/Installation) | Detailed setup guide |
 | [Quick Start](../../wiki/Quick-Start) | Get started in 5 minutes |
 | [Configuration](../../wiki/Configuration) | All configuration options |
-| [Options Reference](https://raw.githubusercontent.com/fabioluciano/tmux-powerkit/main/assets/powerkit-options.conf) | Complete tmux.conf template with all options |
+| [Options Reference](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/powerkit-options.conf) | Complete tmux.conf template with all options |
 | [Plugins](../../wiki/Home#plugins-42-available) | 42 available plugins |
 | [Themes](../../wiki/Themes) | 13 themes with 27 variants |
 | [Developing Plugins](../../wiki/DevelopingPlugins) | Create your own plugins |

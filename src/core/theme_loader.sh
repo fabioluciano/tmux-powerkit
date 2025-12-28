@@ -205,8 +205,8 @@ load_powerkit_theme() {
     opt_theme=$(get_tmux_option "@powerkit_theme" "")
     opt_variant=$(get_tmux_option "@powerkit_theme_variant" "")
 
-    [[ -n "$opt_theme" ]] && theme="$opt_theme"
-    [[ -n "$opt_variant" ]] && variant="$opt_variant"
+    if [[ -n "$opt_theme" ]]; then theme="$opt_theme"; fi
+    if [[ -n "$opt_variant" ]]; then variant="$opt_variant"; fi
 
     # Fall back to defaults if not set
     theme="${theme:-${POWERKIT_DEFAULT_THEME}}"

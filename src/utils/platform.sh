@@ -311,3 +311,61 @@ get_current_user() {
 get_shell() {
     basename "${SHELL:-/bin/sh}"
 }
+
+# =============================================================================
+# OS/Distro Icons (Nerd Fonts)
+# =============================================================================
+
+# Get OS/Distro icon based on current platform
+# Usage: get_os_icon
+# Returns: Nerd Font icon for the current OS/distro
+get_os_icon() {
+    local os distro
+
+    os=$(get_os)
+
+    case "$os" in
+        darwin)
+            # macOS - Apple icon
+            printf '%s' $'\uf302'
+            ;;
+        linux)
+            distro=$(get_distro)
+            case "$distro" in
+                ubuntu)         printf '%s' $'\uf31b' ;;
+                debian)         printf '%s' $'\uf306' ;;
+                fedora)         printf '%s' $'\uf30a' ;;
+                arch|archarm)   printf '%s' $'\uf303' ;;
+                manjaro)        printf '%s' $'\uf312' ;;
+                centos)         printf '%s' $'\uf304' ;;
+                rhel|redhat)    printf '%s' $'\uf304' ;;
+                opensuse*)      printf '%s' $'\uf314' ;;
+                alpine)         printf '%s' $'\uf300' ;;
+                gentoo)         printf '%s' $'\uf30d' ;;
+                linuxmint|mint) printf '%s' $'\uf30e' ;;
+                elementary)     printf '%s' $'\uf309' ;;
+                pop|pop_os)     printf '%s' $'\uf32a' ;;
+                kali)           printf '%s' $'\uf327' ;;
+                void)           printf '%s' $'\uf32e' ;;
+                nixos|nix)      printf '%s' $'\uf313' ;;
+                raspbian)       printf '%s' $'\uf315' ;;
+                rocky)          printf '%s' $'\uf32b' ;;
+                alma|almalinux) printf '%s' $'\uf31d' ;;
+                endeavouros)    printf '%s' $'\uf322' ;;
+                garuda)         printf '%s' $'\uf337' ;;
+                artix)          printf '%s' $'\uf31f' ;;
+                *)              printf '%s' $'\uf31a' ;;  # Generic Linux
+            esac
+            ;;
+        freebsd)
+            printf '%s' $'\uf30c'
+            ;;
+        openbsd|netbsd)
+            printf '%s' $'\uf328'
+            ;;
+        *)
+            # Unknown - use generic terminal icon
+            printf '%s' $'\uf11c'
+            ;;
+    esac
+}

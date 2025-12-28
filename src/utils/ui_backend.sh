@@ -673,29 +673,29 @@ ui_toast() {
     local level="${2:-info}"
     [[ -z "$message" ]] && return 0
 
-    # Get theme colors - requires full bootstrap with theme loaded
+    # Get theme colors from loaded theme (via powerkit_bootstrap_minimal)
     # bg = base color, fg = base-darkest for contrast
     local bg_color fg_color icon
 
     case "$level" in
         warning)
-            bg_color=$(get_color "warning-base" 2>/dev/null || true)
-            fg_color=$(get_color "warning-base-darkest" 2>/dev/null || true)
+            bg_color=$(get_color "warning-base")
+            fg_color=$(get_color "warning-base-darkest")
             icon=$'\U0000F071'
             ;;
         error)
-            bg_color=$(get_color "error-base" 2>/dev/null || true)
-            fg_color=$(get_color "error-base-darkest" 2>/dev/null || true)
+            bg_color=$(get_color "error-base")
+            fg_color=$(get_color "error-base-darkest")
             icon=$'\U0000EA87'
             ;;
         success)
-            bg_color=$(get_color "ok-base" 2>/dev/null || true)
-            fg_color=$(get_color "ok-base-darkest" 2>/dev/null || true)
+            bg_color=$(get_color "ok-base")
+            fg_color=$(get_color "ok-base-darkest")
             icon=$'\U0000F058'
             ;;
         info)
-            bg_color=$(get_color "info-base" 2>/dev/null || true)
-            fg_color=$(get_color "info-base-darkest" 2>/dev/null || true)
+            bg_color=$(get_color "info-base")
+            fg_color=$(get_color "info-base-darkest")
             icon=$'\U0000F05A'
             ;;
         *)

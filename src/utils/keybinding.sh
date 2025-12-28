@@ -203,8 +203,8 @@ pk_bind() {
     local bind_args=()
     bind_args+=("-T" "$table")
     
-    [[ -n "$repeat" ]] && bind_args+=("$repeat")
-    [[ -n "$note" ]] && bind_args+=("-N" "$note")
+    if [[ -n "$repeat" ]]; then bind_args+=("$repeat"); fi
+    if [[ -n "$note" ]]; then bind_args+=("-N" "$note"); fi
     
     bind_args+=("$key")
 
@@ -215,8 +215,8 @@ pk_bind() {
             ;;
         popup)
             local popup_args=("-E")
-            [[ -n "$popup_width" ]] && popup_args+=("-w" "$popup_width")
-            [[ -n "$popup_height" ]] && popup_args+=("-h" "$popup_height")
+            if [[ -n "$popup_width" ]]; then popup_args+=("-w" "$popup_width"); fi
+            if [[ -n "$popup_height" ]]; then popup_args+=("-h" "$popup_height"); fi
             bind_args+=("display-popup" "${popup_args[@]}" "$command")
             ;;
         display-message)
@@ -508,10 +508,10 @@ pk_popup() {
     [[ -z "$command" ]] && return 1
     
     local popup_args=()
-    [[ -n "$exit_on_close" ]] && popup_args+=("$exit_on_close")
-    [[ -n "$title" ]] && popup_args+=("-T" "$title")
-    [[ -n "$width" ]] && popup_args+=("-w" "$width")
-    [[ -n "$height" ]] && popup_args+=("-h" "$height")
+    if [[ -n "$exit_on_close" ]]; then popup_args+=("$exit_on_close"); fi
+    if [[ -n "$title" ]]; then popup_args+=("-T" "$title"); fi
+    if [[ -n "$width" ]]; then popup_args+=("-w" "$width"); fi
+    if [[ -n "$height" ]]; then popup_args+=("-h" "$height"); fi
     popup_args+=("$command")
     
     tmux display-popup "${popup_args[@]}"

@@ -6,8 +6,9 @@
 # =============================================================================
 
 # Source helper base (handles all initialization)
+# Using minimal bootstrap for faster startup
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
-helper_init --full
+helper_init
 
 # =============================================================================
 # Metadata
@@ -68,13 +69,8 @@ get_pane_path() {
     echo "$path"
 }
 
-# Check if we're in a terraform directory
-is_tf_directory() {
-    local pane_path="$1"
-    [[ -d "${pane_path}/.terraform" ]] && return 0
-    ls "${pane_path}"/*.tf &>/dev/null 2>&1 && return 0
-    return 1
-}
+# Alias to shared function from filesystem.sh (loaded by helper_init)
+is_tf_directory() { is_terraform_directory "$1"; }
 
 # =============================================================================
 # Workspace Selection

@@ -6,8 +6,9 @@
 # =============================================================================
 
 # Source helper base (handles all initialization)
+# Using minimal bootstrap for faster startup
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
-helper_init --full
+helper_init
 
 # =============================================================================
 # Metadata

@@ -80,9 +80,7 @@ _inject_default_plugin_options() {
         name="${opt%%${_OPT_DELIM}*}"
         local current_opts="${_PLUGIN_OPTIONS[$_CURRENT_PLUGIN]:-}"
         if [[ ",${current_opts}," != *,${name}${_OPT_DELIM}* ]]; then
-            if [[ -n "$current_opts" ]]; then
-                _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+=";"
-            fi
+            if [[ -n "$current_opts" ]]; then _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+=";"; fi
             _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+="$opt"
         fi
     done

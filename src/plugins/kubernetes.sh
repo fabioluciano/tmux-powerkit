@@ -334,16 +334,17 @@ plugin_setup_keybindings() {
     # Check prerequisites
     has_cmd kubectl || return 0
     has_cmd fzf || return 0
-    
+
     local kubeconfig=$(_get_kubeconfig_path)
     [[ ! -f "$kubeconfig" ]] && return 0
-    
-    local ctx_key ns_key popup_w popup_h
+
+    local ctx_key ns_key popup_w popup_h conn_timeout
     ctx_key=$(get_option "keybinding_context")
     ns_key=$(get_option "keybinding_namespace")
     popup_w=$(get_option "popup_width")
     popup_h=$(get_option "popup_height")
-    
+    conn_timeout=$(get_option "connectivity_timeout")
+
     # Context selector - can switch even if current cluster is down
     local helper_script="${POWERKIT_ROOT}/src/helpers/kubernetes_selector.sh"
     if [[ -n "$ctx_key" ]]; then
@@ -351,8 +352,15 @@ plugin_setup_keybindings() {
     fi
 
     # Namespace selector - requires cluster connectivity
+    # Check connectivity BEFORE opening popup, show message if not reachable
+    # Uses kubectl cluster-info which handles auth and self-signed certs properly
     if [[ -n "$ns_key" ]]; then
-        pk_bind_popup "$ns_key" "bash '$helper_script' namespace" "$popup_w" "$popup_h" "kubernetes:namespace"
+        local ns_cmd
+        ns_cmd="if kubectl cluster-info --request-timeout=${conn_timeout}s >/dev/null 2>&1; then "
+        ns_cmd+="tmux display-popup -E -w '${popup_w}' -h '${popup_h}' \"bash '${helper_script}' namespace\"; "
+        ns_cmd+="else tmux display-message 'Cluster not reachable'; fi"
+
+        pk_bind_shell "$ns_key" "$ns_cmd" "kubernetes:namespace"
     fi
 }
 

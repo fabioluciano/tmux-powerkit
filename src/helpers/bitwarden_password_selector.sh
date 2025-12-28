@@ -8,11 +8,11 @@
 # =============================================================================
 
 # Source helper base (handles all initialization)
+# Using minimal bootstrap for faster startup - bitwarden helpers only need:
+# cache, platform, clipboard, ui_backend (all available in minimal)
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
-helper_init --full
-
-# Source UI backend for selector
-. "${POWERKIT_ROOT}/src/utils/ui_backend.sh"
+helper_init
+# Note: ui_backend.sh is loaded by helper_contract.sh
 
 # =============================================================================
 # Metadata

@@ -162,13 +162,13 @@ _setup_keybinding() {
     case "$bind_type" in
         popup)
             local cmd="bash '$helper_path'"
-            [[ -n "$action" ]] && cmd="bash '$helper_path' $action"
+            if [[ -n "$action" ]]; then cmd="bash '$helper_path' $action"; fi
             pk_bind_popup "$key" "$cmd" "$width" "$height" "core:$name"
             ;;
 
         shell)
             local cmd="bash '$helper_path'"
-            [[ -n "$action" ]] && cmd="bash '$helper_path' $action"
+            if [[ -n "$action" ]]; then cmd="bash '$helper_path' $action"; fi
             pk_bind_shell "$key" "$cmd" "core:$name"
             ;;
 

@@ -196,8 +196,8 @@ _setup_plugin_keybindings() {
                 local kb_opt kb_value
                 while IFS= read -r kb_opt; do
                     [[ -z "$kb_opt" ]] && continue
-                    kb_value=$(get_option "$kb_opt" 2>/dev/null)
-                    [[ -n "$kb_value" ]] && _conflict_check_keys+=("$kb_value")
+                    kb_value=$(get_option "$kb_opt" 2>/dev/null) || true
+                    if [[ -n "$kb_value" ]]; then _conflict_check_keys+=("$kb_value"); fi
                 done <<< "$keybinding_opts"
 
                 # Check if any key conflicts with existing non-PowerKit binding
@@ -233,6 +233,8 @@ _setup_plugin_keybindings() {
 powerkit_bootstrap_minimal() {
     _load_core_modules
     _load_utils_modules
+    # Load theme (cached, ~18ms) - needed for colors, toasts, etc.
+    load_powerkit_theme
 }
 
 # Bootstrap and run full lifecycle

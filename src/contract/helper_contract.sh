@@ -549,14 +549,22 @@ helper_init() {
     fi
 
     # Bootstrap PowerKit
+    # Temporarily disable errexit during bootstrap as plugins may not be set -e safe
     # shellcheck source=src/core/bootstrap.sh
     . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+
+    local _errexit_was_set=""
+    [[ $- == *e* ]] && _errexit_was_set="1"
+    set +e
 
     if [[ -n "$full_bootstrap" ]]; then
         powerkit_bootstrap
     else
         powerkit_bootstrap_minimal
     fi
+
+    # Restore errexit if it was set before
+    if [[ -n "$_errexit_was_set" ]]; then set -e; fi
 
     # Load UI backend
     # shellcheck source=src/utils/ui_backend.sh

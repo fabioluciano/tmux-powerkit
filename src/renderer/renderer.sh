@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
 # PowerKit Renderer: Main Orchestrator
-# Description: Main renderer that applies all formats to tmux
+# Description: Orchestrates the rendering of all tmux visual elements
+# =============================================================================
+# The renderer is the high-level orchestrator. It:
+# - Configures global status bar settings
+# - Delegates layout composition to compositor.sh
+# - Configures non-status-bar elements (panes, messages, clock, modes)
+#
+# The renderer does NOT build status formats directly - that's the compositor's job.
 # =============================================================================
 
 # Source guard
@@ -14,100 +21,15 @@ source_guard "renderer_main" && return 0
 . "${POWERKIT_ROOT}/src/core/lifecycle.sh"
 . "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 . "${POWERKIT_ROOT}/src/renderer/separator.sh"
-. "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
-. "${POWERKIT_ROOT}/src/renderer/format_builder.sh"
-
-# =============================================================================
-# Status Order Configuration
-# =============================================================================
-
-# Check if using custom status order (plugins first instead of session first)
-_is_custom_order() {
-    local order
-    order=$(get_tmux_option "@powerkit_status_order" "${POWERKIT_DEFAULT_STATUS_ORDER}")
-    # Custom order is when plugins come before session
-    [[ "$order" == "plugins,session" ]]
-}
-
-# Build status format from order
-# Builds a complete status-format string based on the specified element order
-# Elements: session (includes windows), plugins
-# Separator direction is determined by element position:
-# - Elements on the LEFT side use RIGHT-pointing separators (▶)
-# - Elements on the RIGHT side use LEFT-pointing separators (◀)
-_build_ordered_status_format() {
-    local order="$1"
-    local status_bg
-    status_bg=$(resolve_color "statusbar-bg")
-
-    local result=""
-    local elements
-    IFS=',' read -ra elements <<< "$order"
-
-    local element_count=${#elements[@]}
-    local current_idx=0
-    local is_last=0
-
-    for element in "${elements[@]}"; do
-        element=$(echo "$element" | tr -d ' ')  # trim whitespace
-        is_last=$(( (current_idx + 1) == element_count ? 1 : 0 ))
-
-        # Determine which side this element is on
-        # First element = left side, last element = right side
-        local element_side
-        if [[ $is_last -eq 1 ]]; then
-            element_side="right"
-        else
-            element_side="left"
-        fi
-
-        # Right-align the last element
-        if [[ $is_last -eq 1 ]]; then
-            result+="#[align=right]"
-        fi
-
-        case "$element" in
-            session)
-                # Session includes windows as a single entity
-                # Pass the side to get correct separator direction
-                local session_format
-                session_format=$(build_status_left_format "$element_side")
-
-                # Window list with proper list markers for click handling
-                # list=on: marks start of window list (enables click detection)
-                # list=focus: marks the focused window area
-                # nolist: marks end of window list
-                local windows_format="#[list=on]#{W:#[range=window|#{window_id}]#{T:window-status-format}#[norange],#[range=window|#{window_id} list=focus]#{T:window-status-current-format}#[norange]}#[nolist]"
-
-                # Order depends on side:
-                # - Left side: session → windows (session first, flowing right)
-                # - Right side: windows → session (windows first, session at the end)
-                if [[ "$element_side" == "right" ]]; then
-                    result+="${windows_format}${session_format}"
-                else
-                    result+="${session_format}${windows_format}"
-                fi
-                ;;
-            plugins)
-                # Plugins use #() which calls powerkit-render
-                # powerkit-render will detect the side from @powerkit_status_order
-                local plugins_format
-                plugins_format=$(build_status_right_format)
-                result+="${plugins_format}"
-                ;;
-        esac
-
-        ((current_idx++))
-    done
-
-    printf '%s' "$result"
-}
+. "${POWERKIT_ROOT}/src/renderer/styles.sh"
+. "${POWERKIT_ROOT}/src/renderer/compositor.sh"
 
 # =============================================================================
 # Status Bar Configuration
 # =============================================================================
 
-# Configure status bar settings
+# Configure global status bar settings
+# These are settings that apply regardless of layout
 configure_status_bar() {
     log_debug "renderer" "Configuring status bar"
 
@@ -115,22 +37,6 @@ configure_status_bar() {
     local position
     position=$(get_tmux_option "@powerkit_status_position" "${POWERKIT_DEFAULT_STATUS_POSITION}")
     tmux set-option -g status-position "$position"
-
-    # Status bar layout (single or double)
-    local bar_layout
-    bar_layout=$(get_tmux_option "@powerkit_bar_layout" "${POWERKIT_DEFAULT_BAR_LAYOUT}")
-    if [[ "$bar_layout" == "double" ]]; then
-        tmux set-option -g status 2
-    elif _is_custom_order; then
-        # Custom order uses status-format[0] for single line
-        tmux set-option -g status on
-        # Clear status-format[1] in case we're switching from double
-        tmux set-option -gu status-format[1] 2>/dev/null || true
-    else
-        tmux set-option -g status on
-        # Reset status-format to tmux defaults when using standard layout
-        tmux set-option -gu status-format 2>/dev/null || true
-    fi
 
     # Status bar style
     local status_style
@@ -149,153 +55,7 @@ configure_status_bar() {
     interval=$(get_tmux_option "@powerkit_status_interval" "${POWERKIT_DEFAULT_STATUS_INTERVAL}")
     tmux set-option -g status-interval "$interval"
 
-    # Justify (window list position)
-    # Skip if custom order - handled in configure_status_right()
-    if ! _is_custom_order; then
-        local justify
-        justify=$(get_tmux_option "@powerkit_status_justify" "${POWERKIT_DEFAULT_STATUS_JUSTIFY}")
-        tmux set-option -g status-justify "$justify"
-    fi
-
-    log_debug "renderer" "Status bar configured (layout: $bar_layout)"
-}
-
-# =============================================================================
-# Status Left/Right Configuration
-# =============================================================================
-
-# Configure status-left
-configure_status_left() {
-    log_debug "renderer" "Configuring status-left"
-
-    local bar_layout
-    bar_layout=$(get_tmux_option "@powerkit_bar_layout" "${POWERKIT_DEFAULT_BAR_LAYOUT}")
-
-    local format
-    format=$(build_status_left_format)
-
-    if [[ "$bar_layout" == "double" ]] || _is_custom_order; then
-        # In double layout or custom order, status-left is handled via status-format
-        tmux set-option -g status-left ""
-    else
-        tmux set-option -g status-left "$format"
-    fi
-
-    log_debug "renderer" "status-left configured"
-}
-
-# Configure status-right
-configure_status_right() {
-    log_debug "renderer" "Configuring status-right"
-
-    local bar_layout _status_order
-    bar_layout=$(get_tmux_option "@powerkit_bar_layout" "${POWERKIT_DEFAULT_BAR_LAYOUT}")
-    _status_order=$(get_tmux_option "@powerkit_status_order" "${POWERKIT_DEFAULT_STATUS_ORDER}")  # Reserved for future use
-
-    # NOTE: Plugin lifecycle runs in powerkit-render, not here
-    # This avoids slow initialization - plugins are rendered on-demand with caching
-
-    local left_format right_format
-    left_format=$(build_status_left_format)
-    right_format=$(build_status_right_format)
-
-    local status_bg
-    status_bg=$(resolve_color "statusbar-bg")
-
-    if [[ "$bar_layout" == "double" ]]; then
-        # Double layout:
-        # Line 0 (top): Session + Windows
-        # Line 1 (bottom): Plugins only (right-aligned)
-        # Window list with proper list markers for click handling
-        local windows_format="#[list=on]#{W:#[range=window|#{window_id}]#{T:window-status-format}#[norange],#[range=window|#{window_id} list=focus]#{T:window-status-current-format}#[norange]}#[nolist]"
-
-        local line0="${left_format}${windows_format}"
-        tmux set-option -g status-format[0] "$line0"
-
-        # Second line: plugins only (right-aligned)
-        local line1="#[bg=${status_bg}]#[align=right]${right_format}"
-        tmux set-option -g status-format[1] "$line1"
-
-        # Clear standard status-left/right since we use status-format
-        tmux set-option -g status-left ""
-        tmux set-option -g status-right ""
-
-    elif _is_custom_order; then
-        # Custom order (plugins,session): use standard status-left/right mechanism
-        # with status-justify right to push windows next to session
-        # This maintains click functionality which breaks with #[align=right] in status-format
-
-        # Plugins go in status-left
-        tmux set-option -g status-left "$right_format"
-
-        # Session goes in status-right (session only, no windows)
-        local session_format
-        session_format=$(build_status_left_format "right")
-        tmux set-option -g status-right "$session_format"
-
-        # Use status-justify right to push windows adjacent to status-right (session)
-        tmux set-option -g status-justify "right"
-
-        # Reset status-format to let tmux build it from status-left/right
-        tmux set-option -gu status-format 2>/dev/null || true
-
-    else
-        # Standard single layout: session | windows | plugins
-        tmux set-option -g status-right "$right_format"
-    fi
-
-    log_debug "renderer" "status-right configured"
-}
-
-# =============================================================================
-# Window Configuration
-# =============================================================================
-
-# Configure window formats
-configure_windows() {
-    log_debug "renderer" "Configuring windows"
-
-    # Determine which side windows are on based on status order
-    # If using custom order (plugins,session), windows are on the right side
-    local window_side="left"
-    if _is_custom_order; then
-        window_side="right"
-    fi
-
-    # Window status format (inactive)
-    local window_format
-    window_format=$(build_window_format "$window_side")
-    tmux set-option -g window-status-format "$window_format"
-
-    # Window status current format (active)
-    local current_format
-    current_format=$(build_window_current_format "$window_side")
-    tmux set-option -g window-status-current-format "$current_format"
-
-    # Window separator (not used in double layout since #{W:} handles it)
-    local bar_layout
-    bar_layout=$(get_tmux_option "@powerkit_bar_layout" "${POWERKIT_DEFAULT_BAR_LAYOUT}")
-    if [[ "$bar_layout" != "double" ]]; then
-        local separator
-        separator=$(build_window_separator_format)
-        tmux set-option -g window-status-separator "$separator"
-    fi
-
-    # Window status style
-    tmux set-option -g window-status-style "default"
-    tmux set-option -g window-status-current-style "default"
-
-    # Window activity/bell styles (applied automatically by tmux)
-    local activity_style bell_style
-    activity_style=$(resolve_color "window-activity-style")
-    bell_style=$(resolve_color "window-bell-style")
-    # Fallback to reasonable defaults if not defined in theme
-    [[ -z "$activity_style" || "$activity_style" == "default" || "$activity_style" == "none" ]] && activity_style="italics"
-    [[ -z "$bell_style" || "$bell_style" == "default" || "$bell_style" == "none" ]] && bell_style="bold"
-    tmux set-window-option -g window-status-activity-style "$activity_style"
-    tmux set-window-option -g window-status-bell-style "$bell_style"
-
-    log_debug "renderer" "Windows configured"
+    log_debug "renderer" "Status bar configured"
 }
 
 # =============================================================================
@@ -316,10 +76,9 @@ configure_panes() {
     active_style=$(build_pane_border_style "active")
     tmux set-option -g pane-active-border-style "$active_style"
 
-    # Pane border lines
+    # Pane border lines (tmux 3.2+)
     local border_lines
     border_lines=$(get_tmux_option "@powerkit_pane_border_lines" "${POWERKIT_DEFAULT_PANE_BORDER_LINES}")
-    # Note: pane-border-lines is tmux 3.2+
     tmux set-option -g pane-border-lines "$border_lines" 2>/dev/null || true
 
     log_debug "renderer" "Panes configured"
@@ -374,10 +133,9 @@ configure_modes() {
     log_debug "renderer" "Configuring modes"
 
     # Mode style (copy mode highlight)
-    local mode_bg mode_fg
-    mode_bg=$(resolve_color "session-copy-bg")
-    mode_fg=$(resolve_color "session-fg")
-    tmux set-option -g mode-style "fg=${mode_fg},bg=${mode_bg}"
+    local mode_style
+    mode_style=$(build_mode_style)
+    tmux set-option -g mode-style "$mode_style"
 
     log_debug "renderer" "Modes configured"
 }
@@ -390,10 +148,13 @@ configure_modes() {
 render_all() {
     log_info "renderer" "Starting full render"
 
+    # Global status bar settings
     configure_status_bar
-    configure_status_left
-    configure_status_right
-    configure_windows
+
+    # Layout composition (handles status-left, status-right, status-format, windows)
+    compose_layout
+
+    # Non-status-bar elements
     configure_panes
     configure_messages
     configure_clock
@@ -406,8 +167,7 @@ render_all() {
 render_status() {
     log_debug "renderer" "Rendering status bar"
 
-    configure_status_left
-    configure_status_right
+    compose_layout
 
     log_debug "renderer" "Status bar rendered"
 }

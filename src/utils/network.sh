@@ -78,6 +78,39 @@ make_api_call() {
 }
 
 # =============================================================================
+# Endpoint Reachability
+# =============================================================================
+
+# Check if an endpoint is reachable
+# Usage: is_endpoint_reachable <url> [timeout]
+# Returns: 0 if reachable, 1 if not
+is_endpoint_reachable() {
+    local url="$1"
+    local timeout="${2:-2}"
+
+    # Use safe_curl with -o /dev/null to just check connectivity
+    safe_curl "$url" "$timeout" -o /dev/null
+}
+
+# Check if a host:port is reachable (TCP connection test)
+# Usage: is_host_reachable <host> <port> [timeout]
+# Returns: 0 if reachable, 1 if not
+is_host_reachable() {
+    local host="$1"
+    local port="$2"
+    local timeout="${3:-2}"
+
+    if has_cmd nc; then
+        nc -z -w "$timeout" "$host" "$port" 2>/dev/null
+    elif has_cmd timeout; then
+        timeout "$timeout" bash -c "echo >/dev/tcp/$host/$port" 2>/dev/null
+    else
+        # Fallback: use safe_curl
+        safe_curl "http://${host}:${port}" "$timeout" -o /dev/null
+    fi
+}
+
+# =============================================================================
 # JSON Parsing (without jq dependency)
 # =============================================================================
 

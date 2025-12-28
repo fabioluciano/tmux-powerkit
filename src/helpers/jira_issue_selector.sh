@@ -6,11 +6,11 @@
 # =============================================================================
 
 # Source helper base (handles all initialization)
+# Using minimal bootstrap for faster startup - jira helper only needs:
+# cache, platform, ui_backend (all available in minimal)
 . "$(dirname "${BASH_SOURCE[0]}")/../contract/helper_contract.sh"
-helper_init --full
-
-# Source UI backend for selector
-. "${POWERKIT_ROOT}/src/utils/ui_backend.sh"
+helper_init
+# Note: ui_backend.sh is loaded by helper_contract.sh
 
 # =============================================================================
 # Metadata
@@ -137,7 +137,7 @@ fetch_issues() {
     local next_token=""
 
     while true; do
-        local url="search/jql?jql=${encoded_jql}&maxResults=50&fields=key,summary,status,priority"
+        local url="search/jql?jql=${encoded_jql}&maxResults=50&fields=key,summary,status,priority,flagged"
         [[ -n "$next_token" ]] && url+="&nextPageToken=${next_token}"
 
         local response
@@ -207,6 +207,30 @@ pad_string() {
     fi
 }
 
+# Check if issue is flagged (either by Jira flag field or status name)
+is_issue_flagged() {
+    local issue_json="$1"
+    local status="$2"
+
+    # Check Jira's flagged field (can be in different formats)
+    local flagged_value
+    flagged_value=$(echo "$issue_json" | jq -r '.fields.flagged // empty' 2>/dev/null)
+
+    # Flagged can be: true, "Impediment", array with "Impediment", etc.
+    if [[ -n "$flagged_value" && "$flagged_value" != "null" && "$flagged_value" != "false" && "$flagged_value" != "[]" ]]; then
+        return 0
+    fi
+
+    # Also check customfield for flagged (some Jira instances use customfield_10021)
+    flagged_value=$(echo "$issue_json" | jq -r '(.fields | to_entries | map(select(.key | test("flagged|impediment"; "i"))) | .[0].value) // empty' 2>/dev/null)
+    if [[ -n "$flagged_value" && "$flagged_value" != "null" && "$flagged_value" != "false" && "$flagged_value" != "[]" ]]; then
+        return 0
+    fi
+
+    # Fallback: check status name for flagged keywords
+    is_flagged_by_status "$status"
+}
+
 # Format issue for display with fixed-width columns
 format_issue() {
     local issue_json="$1"
@@ -230,17 +254,24 @@ format_issue() {
     padded_summary=$(pad_string "$summary" "$COL_SUMMARY")
     padded_priority=$(pad_string "$priority" "$COL_PRIORITY")
 
-    # Get color based on status
-    local color
-    if is_flagged_by_status "$status"; then
+    # Get color based on flagged status
+    local color is_flagged=0
+    if is_issue_flagged "$issue_json" "$status"; then
         color="$COLOR_FLAGGED"
+        is_flagged=1
     else
         color=$(get_status_color "$status_category")
     fi
 
     # Get sort priority for grouping
     local sort_priority
-    sort_priority=$(get_sort_priority "$status" "$status_category")
+    if [[ $is_flagged -eq 1 ]]; then
+        sort_priority="1"
+    elif [[ "$status_category" == "In Progress" ]]; then
+        sort_priority="2"
+    else
+        sort_priority="3"
+    fi
 
     # Output with sort key prefix (will be removed before display)
     # Format: SORT_KEY|colored_line

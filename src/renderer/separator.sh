@@ -185,44 +185,6 @@ has_plugin_spacing() {
 }
 
 # =============================================================================
-# Window Transition Functions
-# These calculate the correct colors for transitions between windows
-# =============================================================================
-
-# Calculate previous window background for separator transition
-# Usage: get_previous_window_background "active|inactive" "session_bg" "spacing_bg" "active_content_bg" "inactive_content_bg"
-get_previous_window_background() {
-    local current_window_state="$1"
-    local session_color="$2"
-    local spacing_bg="$3"
-    local active_content_bg="$4"
-    local inactive_content_bg="$5"
-
-    local separator_color
-
-    # Check if spacing is enabled
-    if has_window_spacing; then
-        # Spacing enabled: previous bg is always spacing color
-        printf '%s' "$spacing_bg"
-        return
-    fi
-
-    if [[ "$current_window_state" == "active" ]]; then
-        # For active window: previous window is always inactive (or session for first)
-        # Use window_index comparison for first window detection
-        separator_color="#{?#{==:#{window_index},1},${session_color},${inactive_content_bg}}"
-    else
-        # For inactive window: check if previous window is active
-        # If first window, previous is session
-        # If previous window is active, use active_content_bg
-        # Else previous is inactive window
-        separator_color="#{?#{==:#{e|-:#{window_index},1},0},${session_color},#{?#{==:#{e|-:#{window_index},1},#{active_window_index}},${active_content_bg},${inactive_content_bg}}}"
-    fi
-
-    printf '%s' "$separator_color"
-}
-
-# =============================================================================
 # Separator Building Functions
 # =============================================================================
 
@@ -255,83 +217,6 @@ build_left_separator() {
 
     # For left-facing: fg=next (where arrow points), bg=previous (where we are)
     printf '#[fg=%s,bg=%s]%s' "$next_bg" "$prev_bg" "$sep"
-}
-
-# =============================================================================
-# Window Separator Functions
-# =============================================================================
-
-# Create window-to-window separator
-# Right-facing separator (→): fg=previous, bg=current
-# Usage: create_window_separator "active|inactive" "session_bg" "spacing_bg" "active_content_bg" "inactive_content_bg" "current_index_bg"
-create_window_separator() {
-    local window_state="$1"
-    local session_bg="$2"
-    local spacing_bg="$3"
-    local active_content_bg="$4"
-    local inactive_content_bg="$5"
-    local current_index_bg="$6"
-
-    local previous_bg
-    previous_bg=$(get_previous_window_background "$window_state" "$session_bg" "$spacing_bg" "$active_content_bg" "$inactive_content_bg")
-
-    build_right_separator "$previous_bg" "$current_index_bg"
-}
-
-# Create index-to-content separator (between window number and content)
-# Right-facing separator (→): fg=index_bg, bg=content_bg
-# Usage: create_index_content_separator "index_bg" "content_bg"
-create_index_content_separator() {
-    local index_bg="$1"
-    local content_bg="$2"
-
-    build_right_separator "$index_bg" "$content_bg"
-}
-
-# =============================================================================
-# Spacing Segment Functions
-# =============================================================================
-
-# Create spacing segment between elements
-# Usage: create_spacing_segment "current_bg" "spacing_bg"
-create_spacing_segment() {
-    local current_bg="$1"
-    local spacing_bg="$2"
-
-    local sep
-    sep=$(get_right_separator)
-
-    # Create spacing: close current element with separator + small gap
-    printf '#[fg=%s,bg=%s]%s#[bg=%s] ' "$current_bg" "$spacing_bg" "$sep" "$spacing_bg"
-}
-
-# Create final separator (end of window list to status bar)
-# Uses @powerkit_edge_separator_style for different pill/rounded effects
-# Usage: create_final_separator "status_bg" "active_content_bg" "inactive_content_bg"
-create_final_separator() {
-    local status_bg="$1"
-    local active_content_bg="$2"
-    local inactive_content_bg="$3"
-
-    # If spacing is enabled, each window already adds its own separator + spacing
-    # The last window's separator IS the final separator, so we don't add another
-    if has_window_spacing; then
-        printf ''
-        return
-    fi
-
-    local sep
-    sep=$(get_final_separator)
-
-    # Handle none style
-    [[ -z "$sep" ]] && return
-
-    # Conditional: if last window is active, use active_content_bg, else inactive_content_bg
-    # #{?#{==:#{session_windows},#{active_window_index}},active,inactive}
-    # fg = window content color (what we're leaving)
-    # bg = status bar background (where we're going)
-    printf '#{?#{==:#{session_windows},#{active_window_index}},#[fg=%s],#[fg=%s]}#[bg=%s]%s' \
-        "$active_content_bg" "$inactive_content_bg" "$status_bg" "$sep"
 }
 
 # =============================================================================
