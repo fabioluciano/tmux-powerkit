@@ -58,7 +58,7 @@ plugin_declare_options() {
     # Display options
     # metric: usage, memory, temp, freq, all, or comma-separated (e.g., "usage,temp")
     # Note: Intel GPUs only support usage (frequency-based) and freq metrics
-    declare_option "metric" "string" "usage" "Metrics to display: usage, memory, temp, freq, all, or comma-separated"
+    declare_option "metric" "string" "all" "Metrics to display: usage, memory, temp, freq, all, or comma-separated"
     declare_option "separator" "string" " | " "Separator for multiple metrics"
     declare_option "show_metric_icons" "bool" "true" "Show icons next to each metric"
 
@@ -191,7 +191,7 @@ _find_intel_gpu_dir() {
 
 _collect_intel_gpu() {
     local card_dir="$1"
-    local cur_freq max_freq usage freq_cur freq_max
+    local usage freq_cur freq_max
 
     # Read current and max frequency
     freq_cur=$(cat "${card_dir}/gt/gt0/rps_cur_freq_mhz" 2>/dev/null)
