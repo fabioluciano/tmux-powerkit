@@ -73,7 +73,6 @@ POWERKIT_DEFAULT_BAR_LAYOUT="single"       # single or double (2 status lines)
 
 # Status bar element order - comma-separated list of: session (includes windows), plugins
 # Examples: "session,plugins" (default), "plugins,session"
-# POWERKIT_DEFAULT_STATUS_ORDER="plugins,session"
 POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"
 
 # =============================================================================

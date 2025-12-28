@@ -58,7 +58,7 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Display format
-    declare_option "format" "string" "percent" "Display format (percent|usage|used)"
+    declare_option "format" "string" "usage" "Display format (percent|usage|used)"
 
     # Icons
     declare_option "icon" "icon" $'\U0000efc5' "Plugin icon"

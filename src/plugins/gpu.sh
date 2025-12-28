@@ -29,9 +29,11 @@ plugin_check_dependencies() {
         [[ -x "$powerkit_gpu" ]] && return 0
         return 1
     fi
-    # Linux: nvidia-smi
-    require_cmd "nvidia-smi" || return 1
-    return 0
+    # Linux: nvidia-smi OR AMD sysfs
+    has_cmd "nvidia-smi" && return 0
+    [[ -f "/sys/class/drm/card0/device/gpu_busy_percent" ]] && return 0
+    [[ -f "/sys/class/drm/card1/device/gpu_busy_percent" ]] && return 0
+    return 1
 }
 
 # =============================================================================
@@ -49,7 +51,7 @@ plugin_declare_options() {
     # memory_use: only used (e.g., "409M")
     # memory_usage: used/allocated (e.g., "409M / 4.1G")
     # memory_percentage: percentage of allocation (e.g., "10%")
-    declare_option "memory_format" "string" "memory_use" "Memory format: memory_use, memory_usage, memory_percentage"
+    declare_option "memory_format" "string" "memory_usage" "Memory format: memory_use, memory_usage, memory_percentage"
 
     # Icons
     declare_option "icon" "icon" $'\U000F061A' "Plugin icon"
@@ -185,19 +187,51 @@ plugin_collect() {
             [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && available=1
         fi
     else
-        # Linux: NVIDIA
+        # Linux: NVIDIA GPU via nvidia-smi
         if has_cmd "nvidia-smi"; then
-            usage=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)
-            temp=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)
+            # Check if nvidia-smi works (driver might be broken/mismatched)
+            if nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 | grep -q .; then
+                usage=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)
+                temp=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)
 
-            # Get memory used/total in MB
-            local mem_used mem_total
-            mem_used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1)
-            mem_total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
-            mem_used_mb="${mem_used:-0}"
-            mem_total_mb="${mem_total:-0}"
+                # Get memory used/total in MB
+                local mem_used mem_total
+                mem_used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1)
+                mem_total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
+                mem_used_mb="${mem_used:-0}"
+                mem_total_mb="${mem_total:-0}"
 
-            [[ -n "$usage" ]] && available=1
+                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && available=1
+            fi
+        fi
+
+        # Linux: AMD GPU via amdgpu driver (sysfs)
+        if [[ "$available" -eq 0 ]]; then
+            local amd_gpu_dir="/sys/class/drm/card0/device"
+            if [[ -f "${amd_gpu_dir}/gpu_busy_percent" ]]; then
+                usage=$(cat "${amd_gpu_dir}/gpu_busy_percent" 2>/dev/null)
+
+                # AMD temperature (hwmon)
+                local hwmon_dir
+                hwmon_dir=$(ls -d "${amd_gpu_dir}"/hwmon/hwmon* 2>/dev/null | head -1)
+                if [[ -n "$hwmon_dir" && -f "${hwmon_dir}/temp1_input" ]]; then
+                    local temp_milli
+                    temp_milli=$(cat "${hwmon_dir}/temp1_input" 2>/dev/null)
+                    temp=$(( temp_milli / 1000 ))
+                fi
+
+                # AMD VRAM via drm (if available)
+                if [[ -f "${amd_gpu_dir}/mem_info_vram_used" ]]; then
+                    local vram_used vram_total
+                    vram_used=$(cat "${amd_gpu_dir}/mem_info_vram_used" 2>/dev/null)
+                    vram_total=$(cat "${amd_gpu_dir}/mem_info_vram_total" 2>/dev/null)
+                    # Convert bytes to MB
+                    mem_used_mb=$(( vram_used / 1048576 ))
+                    mem_total_mb=$(( vram_total / 1048576 ))
+                fi
+
+                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && available=1
+            fi
         fi
     fi
 
@@ -231,7 +265,7 @@ _format_memory() {
             local used_str total_str
             used_str="$(_format_memory_value "${mem_used_mb:-0}")"
             total_str="$(_format_memory_value "${mem_total_mb:-0}")"
-            printf '%s / %s' "$used_str" "$total_str"
+            printf '%s/%s' "$used_str" "$total_str"
             ;;
         memory_percentage)
             # Format: percentage of allocation (e.g., "10%")

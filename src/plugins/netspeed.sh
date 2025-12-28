@@ -23,7 +23,11 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    require_any_cmd "ifstat" "netstat" || return 1
+    # Linux uses /sys/class/net (no external deps)
+    # macOS uses netstat
+    if is_macos; then
+        require_cmd "netstat" || return 1
+    fi
     return 0
 }
 
@@ -95,24 +99,10 @@ _get_network_stats() {
     [[ "$interface" == "auto" ]] && interface=$(_get_active_interface)
     [[ -z "$interface" ]] && return 1
 
-    # Try ifstat first (more accurate, real-time)
-    if has_cmd "ifstat"; then
-        local stats
-        stats=$(ifstat -i "$interface" -b 0.1 1 2>/dev/null | tail -1)
-        [[ -z "$stats" ]] && return 1
+    # Use sysfs-based delta calculation (works on all Linux systems)
+    # This is more reliable than ifstat which has incompatible versions
 
-        local rx_rate tx_rate
-        read -r rx_rate tx_rate <<< "$stats"
-
-        # Convert to KB/s
-        rx_rate=$(awk "BEGIN {printf \"%.0f\", $rx_rate / 1024}")
-        tx_rate=$(awk "BEGIN {printf \"%.0f\", $tx_rate / 1024}")
-
-        printf '%s|%s' "$rx_rate" "$tx_rate"
-        return 0
-    fi
-
-    # Fallback: cumulative byte counters (requires delta calculation)
+    # Cumulative byte counters (requires delta calculation)
     local rx_bytes tx_bytes
 
     if is_macos; then
