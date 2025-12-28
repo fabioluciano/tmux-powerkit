@@ -392,18 +392,231 @@ get_visible_plugins() {
 }
 
 # =============================================================================
+# Lazy Loading: Background Refresh Functions
+# =============================================================================
+
+# Spawn background refresh for a plugin
+# Uses lock file to prevent concurrent refreshes
+# Usage: _spawn_plugin_refresh "plugin_name"
+_spawn_plugin_refresh() {
+    local name="$1"
+    local lock_file="${_CACHE_DIR}/.lock_${name}"
+
+    # Check if refresh already in progress
+    if [[ -f "$lock_file" ]]; then
+        local lock_age now lock_mtime
+        now=$(_get_now)
+        lock_mtime=$(_file_mtime "$lock_file")
+        lock_age=$((now - lock_mtime))
+        # Stale lock (> 60s) - remove it
+        if (( lock_age > 60 )); then
+            rm -f "$lock_file"
+        else
+            return 0  # Refresh already running
+        fi
+    fi
+
+    # Create lock
+    touch "$lock_file"
+
+    # Spawn background process using bash explicitly
+    # Pass all needed variables as arguments to avoid subshell issues
+    bash -c '
+        name="$1"
+        lock_file="$2"
+        POWERKIT_ROOT="$3"
+        export POWERKIT_ROOT
+
+        # Cleanup lock on exit
+        trap "rm -f \"$lock_file\"" EXIT
+
+        plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
+        [[ ! -f "$plugin_file" ]] && exit 1
+
+        # Source bootstrap (auto-loads core + utils modules)
+        . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+
+        # Set plugin context
+        _set_plugin_context "$name"
+
+        # Source plugin
+        . "$plugin_file"
+
+        # Declare options
+        declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+
+        # Collect data
+        plugin_data_clear
+        plugin_collect || exit 1
+
+        # Get state
+        state=$(plugin_get_state)
+
+        # Check visibility
+        presence=$(plugin_get_presence)
+        if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
+            cache_set "plugin_${name}_data" "HIDDEN"
+            exit 0
+        fi
+
+        # Get health
+        health="ok"
+        declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
+
+        # Get icon
+        icon=""
+        declare -F plugin_get_icon &>/dev/null && icon=$(plugin_get_icon) || icon=$(get_option "icon" 2>/dev/null || echo "")
+
+        # Get content
+        content=$(plugin_render)
+
+        # Build and save output
+        _delim=$'"'"'\x1f'"'"'
+        output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
+
+        cache_set "plugin_${name}_data" "$output"
+
+        # Cache TTL
+        ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+        cache_set "plugin_${name}_ttl" "$ttl"
+    ' _ "$name" "$lock_file" "$POWERKIT_ROOT" &>/dev/null &
+    disown
+}
+
+# Actually perform the plugin refresh (runs in background)
+# Usage: _do_plugin_refresh "plugin_name"
+_do_plugin_refresh() {
+    local name="$1"
+    local plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
+
+    [[ ! -f "$plugin_file" ]] && return 1
+
+    # Set plugin context
+    _set_plugin_context "$name"
+
+    # Source plugin
+    # shellcheck disable=SC1090
+    . "$plugin_file"
+
+    # Declare options
+    declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+
+    # Collect data
+    plugin_data_clear
+    plugin_collect || return 1
+
+    # Get state
+    local state
+    state=$(plugin_get_state)
+
+    # Check visibility
+    local presence
+    presence=$(plugin_get_presence)
+    if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
+        cache_set "plugin_${name}_data" "HIDDEN"
+        return 0
+    fi
+
+    # Get health
+    local health="ok"
+    declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
+
+    # Get icon
+    local icon=""
+    declare -F plugin_get_icon &>/dev/null && icon=$(plugin_get_icon) || icon=$(get_option "icon" 2>/dev/null || echo "")
+
+    # Get content
+    local content
+    content=$(plugin_render)
+
+    # Build and save output (format: icon<US>content<US>state<US>health)
+    local _delim=$'\x1f'
+    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
+
+    cache_set "plugin_${name}_data" "$output"
+
+    # Also cache TTL for future reference
+    local ttl
+    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+    cache_set "plugin_${name}_ttl" "$ttl"
+}
+
+# Synchronous plugin collection (blocking)
+# Usage: _collect_plugin_sync "plugin_name" "plugin_file" "cache_key" "ttl_cache_key"
+_collect_plugin_sync() {
+    local name="$1"
+    local plugin_file="$2"
+    local cache_key="$3"
+    local ttl_cache_key="$4"
+
+    # Source plugin
+    # shellcheck disable=SC1090
+    . "$plugin_file"
+
+    # Declare options
+    declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+
+    # Get and cache TTL
+    local ttl
+    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+    cache_set "$ttl_cache_key" "$ttl"
+
+    # Collect data
+    plugin_data_clear
+    plugin_collect
+
+    # Get state
+    local state
+    state=$(plugin_get_state)
+
+    # Check visibility
+    local presence
+    presence=$(plugin_get_presence)
+    if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
+        cache_set "$cache_key" "HIDDEN"
+        printf 'HIDDEN'
+        return 0
+    fi
+
+    # Get health
+    local health="ok"
+    declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
+
+    # Get icon
+    local icon=""
+    declare -F plugin_get_icon &>/dev/null && icon=$(plugin_get_icon) || icon=$(get_option "icon" 2>/dev/null || echo "")
+
+    # Get content
+    local content
+    content=$(plugin_render)
+
+    # Build output (format: icon<US>content<US>state<US>health)
+    local _delim=$'\x1f'
+    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
+
+    # Cache and return
+    cache_set "$cache_key" "$output"
+    printf '%s' "$output"
+}
+
+# =============================================================================
 # Plugin Data Collection (for renderer)
 # =============================================================================
 
 # Collect all data needed for rendering a plugin
 # Uses cache when available, collects fresh data when needed
+# Implements Stale-While-Revalidate pattern for non-blocking updates
 # Usage: collect_plugin_render_data "plugin_name"
 # Returns: "icon<US>content<US>state<US>health" or "HIDDEN" if not visible
 #          (US = Unit Separator, ASCII 31, to avoid conflicts with | in content)
 # NOTE: Colors are NOT resolved here - that's the renderer's responsibility
 #       per the contract separation (lifecycle = data, renderer = UI)
-# PERFORMANCE: Cache is checked BEFORE sourcing plugin file to avoid
-#              unnecessary file I/O when data is still valid
+#
+# Cache states:
+#   FRESH (age <= TTL): Return cache immediately
+#   STALE (TTL < age <= TTL*multiplier): Return cache + spawn background refresh
+#   VERY OLD (age > TTL*multiplier): Synchronous collection (blocking)
+#   MISSING: Synchronous collection (blocking)
 collect_plugin_render_data() {
     local name="$1"
     local plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
@@ -413,85 +626,65 @@ collect_plugin_render_data() {
     # Set plugin context
     _set_plugin_context "$name"
 
-    # PERFORMANCE OPTIMIZATION: Check cache BEFORE sourcing plugin
-    # Use cached TTL if available, otherwise use default (30s)
+    # Cache keys
     local cache_key="plugin_${name}_data"
     local ttl_cache_key="plugin_${name}_ttl"
-    local ttl
 
-    # Try to get cached TTL first (avoids sourcing just to get TTL)
+    # Get TTL (use cached value to avoid sourcing plugin just for TTL)
+    local ttl
     ttl=$(cache_get "$ttl_cache_key" 86400 2>/dev/null) || ttl="${_DEFAULT_CACHE_TTL_SHORT:-30}"
 
-    # Check cache BEFORE sourcing plugin file
-    local cached_data
-    cached_data=$(cache_get "$cache_key" "$ttl" 2>/dev/null) || cached_data=""
+    # Get cache file info directly (avoid cache_get overhead for age calculation)
+    local cache_file="${_CACHE_DIR}/${cache_key}"
+    local cache_age=-1
+    local cached_data=""
 
-    if [[ -n "$cached_data" ]]; then
-        # Cache hit - return immediately without sourcing plugin
+    if [[ -f "$cache_file" ]]; then
+        local now mtime
+        now=$(_get_now)
+        mtime=$(_file_mtime "$cache_file")
+        cache_age=$((now - mtime))
+        cached_data=$(< "$cache_file")
+    fi
+
+    # =========================================================================
+    # LAZY LOADING DECISION LOGIC
+    # =========================================================================
+
+    # Check if lazy loading is enabled
+    local lazy_loading
+    lazy_loading=$(get_tmux_option "@powerkit_lazy_loading" "${POWERKIT_DEFAULT_LAZY_LOADING:-true}")
+
+    if [[ "$lazy_loading" != "true" ]]; then
+        # Lazy loading disabled - use original behavior
+        if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
+            printf '%s' "$cached_data"
+            return 0
+        fi
+        _collect_plugin_sync "$name" "$plugin_file" "$cache_key" "$ttl_cache_key"
+        return
+    fi
+
+    # FRESH: age <= TTL → return cache immediately
+    if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
         printf '%s' "$cached_data"
         return 0
     fi
 
-    # Cache miss - now we need to source the plugin
-    # shellcheck disable=SC1090
-    . "$plugin_file"
+    # Get stale multiplier
+    local stale_multiplier
+    stale_multiplier="${POWERKIT_DEFAULT_STALE_MULTIPLIER:-3}"
+    local stale_limit=$((ttl * stale_multiplier))
 
-    # Declare options (required before get_option calls)
-    if declare -F plugin_declare_options &>/dev/null; then
-        plugin_declare_options
-    fi
-
-    # Get actual TTL from plugin options and cache it for future cycles
-    local actual_ttl
-    actual_ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
-    cache_set "$ttl_cache_key" "$actual_ttl"
-
-    # Collect fresh data
-    plugin_data_clear
-    plugin_collect
-
-    # Get plugin contract values
-    local state presence health icon content
-
-    state=$(plugin_get_state)
-    presence=$(plugin_get_presence)
-
-    # Check visibility - cache as HIDDEN if not visible
-    # This prevents re-running slow dependency checks on every render
-    if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
-        local output="HIDDEN"
-        cache_set "$cache_key" "$output"
-        printf '%s' "$output"
+    # STALE: TTL < age <= TTL*multiplier → return stale + background refresh
+    if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" ]]; then
+        _spawn_plugin_refresh "$name"
+        printf '%s' "$cached_data"
         return 0
     fi
 
-    # Health is optional - defaults to "ok"
-    if declare -F plugin_get_health &>/dev/null; then
-        health=$(plugin_get_health)
-    else
-        health="ok"
-    fi
-
-    # Get icon (plugin decides based on its internal state)
-    local icon=""
-    if declare -F plugin_get_icon &>/dev/null; then
-        icon=$(plugin_get_icon)
-    else
-        icon=$(get_option "icon" 2>/dev/null || echo "")
-    fi
-
-    # Get content
-    content=$(plugin_render)
-
-    # Build output - DATA ONLY (colors are renderer's responsibility)
-    # Use Unit Separator (ASCII 31) to avoid conflicts with content containing |
-    local _delim=$'\x1f'
-    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
-
-    # Cache the data
-    cache_set "$cache_key" "$output"
-
-    printf '%s' "$output"
+    # VERY OLD or MISSING: collect synchronously (blocking)
+    _collect_plugin_sync "$name" "$plugin_file" "$cache_key" "$ttl_cache_key"
 }
 
 # =============================================================================

@@ -76,6 +76,19 @@ POWERKIT_DEFAULT_BAR_LAYOUT="single"       # single or double (2 status lines)
 POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"
 
 # =============================================================================
+# LAZY LOADING (Stale-While-Revalidate)
+# =============================================================================
+
+# Enable lazy loading for plugin data collection
+# When enabled, stale cache data is returned immediately while fresh data is fetched in background
+POWERKIT_DEFAULT_LAZY_LOADING="true"
+
+# Stale multiplier: how many times the TTL before data is considered "too old"
+# Example: TTL=300s, multiplier=3 → data up to 900s old can be returned while refreshing
+# After TTL×multiplier, synchronous (blocking) refresh is forced
+POWERKIT_DEFAULT_STALE_MULTIPLIER="3"
+
+# =============================================================================
 # SEPARATORS
 # =============================================================================
 
