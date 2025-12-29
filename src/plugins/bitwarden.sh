@@ -33,6 +33,9 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
+    # Display options
+    declare_option "show_only_when_unlocked" "bool" "false" "Only show plugin when vault is unlocked"
+
     # Cache - higher TTL because bw status is slow (~1.5s)
     declare_option "cache_ttl" "number" "60" "Cache duration (bw status is slow)"
 
@@ -65,9 +68,15 @@ plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {
     local status=$(plugin_data_get "status")
-    # active: plugin is working (unlocked or locked)
-    # inactive: no logged user (unauthenticated)
-    [[ "$status" == "unauthenticated" ]] && printf 'inactive' || printf 'active'
+    local show_only_unlocked=$(get_option "show_only_when_unlocked")
+
+    # If show_only_when_unlocked is enabled, hide when locked or unauthenticated
+    if [[ "$show_only_unlocked" == "true" ]]; then
+        [[ "$status" == "unlocked" ]] && printf 'active' || printf 'inactive'
+    else
+        # Default behavior: hide only when unauthenticated
+        [[ "$status" == "unauthenticated" ]] && printf 'inactive' || printf 'active'
+    fi
 }
 
 plugin_get_health() {

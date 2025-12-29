@@ -29,7 +29,7 @@
 Choose from **13 carefully crafted themes** with **27 variants** including Catppuccin, Dracula, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
 
 ### ⚡ **Blazingly Fast**
-Smart **multi-layer caching**, **Stale-While-Revalidate lazy loading**, and optimized background rendering ensure minimal overhead even with dozens of plugins active. Never blocks on slow API calls or external commands.
+Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, and optimized background rendering ensure minimal overhead even with dozens of plugins active. Returns stale data immediately while refreshing in background - never blocks on slow API calls or external commands.
 
 </td>
 <td width="50%">
@@ -236,16 +236,19 @@ set -g @powerkit_theme_variant "dark"
 
 ## 🎭 Separator Styles
 
-Choose from **6 beautiful separator styles** to customize your status bar appearance:
+Choose from **9 beautiful separator styles** to customize your status bar appearance:
 
-| Style | Preview | Unicode |
-|-------|---------|---------|
+| Style | Right | Left | Unicode |
+|-------|-------|------|---------|
 | **normal** |  |  | E0B0/E0B2 |
 | **rounded** |  |  | E0B4/E0B6 |
+| **slant** |  |  | E0B8/E0BA |
+| **slantup** |  |  | E0BC/E0BE |
+| **trapezoid** |  |  | E0C8/E0CA |
 | **flame** |  |  | E0C0/E0C2 |
 | **pixel** |  |  | E0C4/E0C6 |
 | **honeycomb** |  |  | E0CC/E0CD |
-| **none** | No separators | - |
+| **none** | - | - | - |
 
 ```bash
 # Configure separator style
@@ -377,6 +380,7 @@ PowerKit uses a **contract-based architecture** with strict separation of concer
 4. **Core** orchestrates the lifecycle and manages caching
 
 This architecture ensures:
+
 - ✅ Plugins never decide colors or formatting
 - ✅ Themes are purely declarative
 - ✅ Rendering is consistent across all plugins
@@ -398,15 +402,42 @@ set -g @powerkit_bar_layout "single"
 set -g @powerkit_bar_layout "double"
 ```
 
-### Custom Element Order
+### Element Order and Centered Layout
+
+PowerKit supports flexible element ordering with automatic centered layout:
 
 ```bash
-# Default order (session+windows left, plugins right)
-set -g @powerkit_status_order "session,plugins"
+# 2-element orders (auto-expanded with windows):
+set -g @powerkit_status_order "session,plugins"  # Standard: session+windows LEFT, plugins RIGHT
+set -g @powerkit_status_order "plugins,session"  # Inverted: plugins LEFT, windows+session RIGHT
 
-# Inverted order (plugins left, session+windows right)
-set -g @powerkit_status_order "plugins,session"
+# 3-element orders enable CENTERED layout:
+set -g @powerkit_status_order "session,windows,plugins"  # session LEFT, windows CENTER, plugins RIGHT
+set -g @powerkit_status_order "plugins,windows,session"  # plugins LEFT, windows CENTER, session RIGHT
+set -g @powerkit_status_order "session,plugins,windows"  # session LEFT, plugins CENTER, windows RIGHT
 ```
+
+Any element in the middle position will be automatically centered in the status bar.
+
+### Lazy Loading (SWR Caching)
+
+PowerKit uses Stale-While-Revalidate caching for optimal performance:
+
+```bash
+# Enable lazy loading (default: true)
+set -g @powerkit_lazy_loading "true"
+
+# Stale multiplier: how many times the TTL before data is considered "too old"
+# Example: TTL=300s, multiplier=3 → data up to 900s old can be returned while refreshing
+set -g @powerkit_stale_multiplier "3"
+```
+
+**How it works:**
+- Fresh data (within TTL): Returns cached data immediately
+- Stale data (within TTL × multiplier): Returns stale data immediately, refreshes in background
+- Too old data (beyond TTL × multiplier): Blocks and refreshes synchronously
+
+This ensures your status bar never hangs waiting for slow API calls or network requests.
 
 ---
 

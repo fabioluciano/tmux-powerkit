@@ -1011,11 +1011,13 @@ set -g @powerkit_plugin_gpu_usage_critical_threshold "90"
 Cross-platform fan speed monitoring:
 
 **Linux backends** (in order of priority):
+
 - Dell SMM (`/sys/class/hwmon/hwmon*/name == "dell_smm"`)
 - ThinkPad (`/proc/acpi/ibm/fan`)
 - Generic hwmon (`/sys/class/hwmon/hwmon*/fan*_input`)
 
 **macOS backends**:
+
 - `osx-cpu-temp -f`
 - `smctemp`
 - `istats`
