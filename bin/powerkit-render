@@ -41,7 +41,10 @@ _is_render_in_progress() {
 }
 
 # Show loading placeholder with animated spinner
+# Usage: _show_loading "side"
 _show_loading() {
+    local side="${1:-right}"
+
     # Spinner frames (Nerd Fonts)
     local -a spinner=(
         $'\Uee06'
@@ -62,13 +65,29 @@ _show_loading() {
     fg=$(get_color "info-base-darkest")
     status_bg=$(get_color "statusbar-bg")
 
-    # Get edge separator from config
-    local edge_sep
-    edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+    local output=""
 
-    # Edge separator (left-pointing) + content
-    printf '#[fg=%s,bg=%s]%s#[fg=%s,bg=%s] %s Loading... #[none]' \
-        "$bg" "$status_bg" "$edge_sep" "$fg" "$bg" "$icon"
+    # Entry separator based on side
+    if [[ "$side" == "right" || "$side" == "center" ]]; then
+        # Left-pointing (◀) entry separator
+        local entry_sep
+        entry_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+        output+="#[fg=${bg},bg=${status_bg}]${entry_sep}"
+    fi
+
+    # Content
+    output+="#[fg=${fg},bg=${bg},bold] ${icon} Loading"
+
+    # Exit separator based on side
+    if [[ "$side" == "left" || "$side" == "center" ]]; then
+        # Right-pointing (▶) exit separator
+        local exit_sep
+        exit_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+        output+="#[fg=${bg},bg=${status_bg}]${exit_sep}"
+    fi
+
+    output+="#[none]"
+    printf '%s' "$output"
 }
 
 # Render in background and cache output
@@ -129,7 +148,7 @@ if _is_render_in_progress; then
     if [[ -n "$stale_render" ]]; then
         printf '%s' "$stale_render"
     else
-        _show_loading
+        _show_loading "$side"
     fi
     exit 0
 fi
@@ -143,5 +162,5 @@ stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
 if [[ -n "$stale_render" ]]; then
     printf '%s' "$stale_render"
 else
-    _show_loading
+    _show_loading "$side"
 fi

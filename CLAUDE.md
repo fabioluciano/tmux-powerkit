@@ -629,7 +629,9 @@ set -g @powerkit_bar_layout "double"
 
 ### Status Element Ordering
 
-The `@powerkit_status_order` option controls the position of session+windows vs plugins:
+The `@powerkit_status_order` option controls the position of session, windows, and plugins.
+
+**2-element orders** (auto-expanded, windows inserted before last element):
 
 ```bash
 # Default order (session+windows left, plugins right)
@@ -639,12 +641,29 @@ set -g @powerkit_status_order "session,plugins"
 set -g @powerkit_status_order "plugins,session"
 ```
 
+**3-element orders** (explicit windows - enables CENTERED layout):
+
+```bash
+# Windows centered (most common)
+set -g @powerkit_status_order "session,windows,plugins"
+# Result: session LEFT, windows CENTER, plugins RIGHT
+
+# Plugins centered
+set -g @powerkit_status_order "session,plugins,windows"
+# Result: session LEFT, plugins CENTER, windows RIGHT
+
+# Session centered (inverted with center)
+set -g @powerkit_status_order "plugins,session,windows"
+# Result: plugins LEFT, session CENTER, windows RIGHT
+```
+
 **Notes**:
 
-- `session` includes both the session indicator AND windows as a single entity
-- `plugins` are all the status bar plugins
-- The last element is always right-aligned
-- Custom order uses `status-format[0]` for full control
+- 2-element orders are auto-expanded (windows is inserted automatically)
+- 3-element orders with explicit `windows` enable centered layout
+- Any element can be in the center position - it will be visually centered
+- Centered layout uses `status-format[0]` with `#[align=centre]` for true centering
+- The centered element gets edge separators on both sides
 
 ### Thresholds
 

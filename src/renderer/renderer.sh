@@ -43,17 +43,15 @@ configure_status_bar() {
     status_style=$(build_status_style)
     tmux set-option -g status-style "$status_style"
 
-    # Status bar length
-    local left_length right_length
-    left_length=$(get_tmux_option "@powerkit_status_left_length" "${POWERKIT_DEFAULT_STATUS_LEFT_LENGTH}")
-    right_length=$(get_tmux_option "@powerkit_status_right_length" "${POWERKIT_DEFAULT_STATUS_RIGHT_LENGTH}")
-    tmux set-option -g status-left-length "$left_length"
-    tmux set-option -g status-right-length "$right_length"
-
     # Refresh interval
     local interval
     interval=$(get_tmux_option "@powerkit_status_interval" "${POWERKIT_DEFAULT_STATUS_INTERVAL}")
     tmux set-option -g status-interval "$interval"
+
+    # Status bar lengths - ensure enough space for plugins and session
+    # These are critical for proper display of all elements
+    tmux set-option -g status-left-length "${POWERKIT_DEFAULT_STATUS_LEFT_LENGTH}"
+    tmux set-option -g status-right-length "${POWERKIT_DEFAULT_STATUS_RIGHT_LENGTH}"
 
     log_debug "renderer" "Status bar configured"
 }

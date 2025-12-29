@@ -54,8 +54,6 @@ declare -a THEME_OPTIONS=(
     "@powerkit_status_interval|5|(integer)|Refresh interval (seconds)"
     "@powerkit_status_position|top|top,bottom|Status bar position"
     "@powerkit_status_justify|left|left,centre,right|Window list alignment"
-    "@powerkit_status_left_length|100|(integer)|Maximum left status length"
-    "@powerkit_status_right_length|500|(integer)|Maximum right status length"
     "@powerkit_bar_layout|single|single,double|Status bar layout"
     "@powerkit_status_order|session,plugins|session,plugins or plugins,session|Element order"
     # Separators

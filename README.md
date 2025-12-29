@@ -29,7 +29,7 @@
 Choose from **13 carefully crafted themes** with **27 variants** including Catppuccin, Dracula, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
 
 ### ⚡ **Blazingly Fast**
-Smart caching system, lazy loading, and optimized rendering ensure minimal overhead even with dozens of plugins active simultaneously.
+Smart **multi-layer caching**, **Stale-While-Revalidate lazy loading**, and optimized background rendering ensure minimal overhead even with dozens of plugins active. Never blocks on slow API calls or external commands.
 
 </td>
 <td width="50%">
