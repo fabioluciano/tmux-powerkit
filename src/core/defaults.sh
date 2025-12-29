@@ -64,16 +64,41 @@ POWERKIT_DEFAULT_THEME_VARIANT="night"
 POWERKIT_DEFAULT_CUSTOM_THEME_PATH=""
 POWERKIT_DEFAULT_TRANSPARENT="false"
 POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
-POWERKIT_DEFAULT_STATUS_LEFT_LENGTH="100"
-POWERKIT_DEFAULT_STATUS_RIGHT_LENGTH="500"
 POWERKIT_DEFAULT_STATUS_INTERVAL="5"
 POWERKIT_DEFAULT_STATUS_POSITION="top"
 POWERKIT_DEFAULT_STATUS_JUSTIFY="left"
+POWERKIT_DEFAULT_STATUS_LEFT_LENGTH="100"
+POWERKIT_DEFAULT_STATUS_RIGHT_LENGTH="500"
 POWERKIT_DEFAULT_BAR_LAYOUT="single"       # single or double (2 status lines)
 
-# Status bar element order - comma-separated list of: session (includes windows), plugins
-# Examples: "session,plugins" (default), "plugins,session"
+# Status bar element order - comma-separated list of: session, windows, plugins
+#
+# 2-element orders are auto-expanded (windows inserted before last element):
+#   "session,plugins" → "session,windows,plugins" (standard layout)
+#   "plugins,session" → "plugins,windows,session" (inverted layout)
+#
+# 3-element orders with explicit "windows" enable CENTERED layout:
+#   "session,windows,plugins" → session LEFT, windows CENTER, plugins RIGHT
+#   "plugins,windows,session" → plugins LEFT, windows CENTER, session RIGHT
+#   "session,plugins,windows" → session LEFT, plugins CENTER, windows RIGHT
+#
+# Any element can be in the center position - it will be centered in the status bar.
+
+# POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"
 POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"
+
+# =============================================================================
+# LAZY LOADING (Stale-While-Revalidate)
+# =============================================================================
+
+# Enable lazy loading for plugin data collection
+# When enabled, stale cache data is returned immediately while fresh data is fetched in background
+POWERKIT_DEFAULT_LAZY_LOADING="true"
+
+# Stale multiplier: how many times the TTL before data is considered "too old"
+# Example: TTL=300s, multiplier=3 → data up to 900s old can be returned while refreshing
+# After TTL×multiplier, synchronous (blocking) refresh is forced
+POWERKIT_DEFAULT_STALE_MULTIPLIER="3"
 
 # =============================================================================
 # SEPARATORS
@@ -87,6 +112,12 @@ POWERKIT_SEP_SOLID_RIGHT=$'\U0000e0b0'
 POWERKIT_SEP_SOLID_LEFT=$'\U0000e0b2'
 POWERKIT_SEP_ROUND_RIGHT=$'\U0000e0b4'
 POWERKIT_SEP_ROUND_LEFT=$'\U0000e0b6'
+POWERKIT_SEP_SLANT_RIGHT=$'\U0000e0b8'
+POWERKIT_SEP_SLANT_LEFT=$'\U0000e0ba'
+POWERKIT_SEP_SLANT_UP_RIGHT=$'\U0000e0bc'
+POWERKIT_SEP_SLANT_UP_LEFT=$'\U0000e0be'
+POWERKIT_SEP_TRAPEZOID_RIGHT=$'\U0000e0c8'
+POWERKIT_SEP_TRAPEZOID_LEFT=$'\U0000e0ca'
 POWERKIT_SEP_FLAME_RIGHT=$'\U0000e0c0'
 POWERKIT_SEP_FLAME_LEFT=$'\U0000e0c2'
 POWERKIT_SEP_PIXEL_RIGHT=$'\U0000e0c4'
@@ -95,7 +126,7 @@ POWERKIT_SEP_HONEYCOMB_RIGHT=$'\U0000e0cc'
 POWERKIT_SEP_HONEYCOMB_LEFT=$'\U0000e0cd'
 
 # Available separator styles
-POWERKIT_SEPARATOR_STYLES="normal rounded flame pixel honeycomb none"
+POWERKIT_SEPARATOR_STYLES="normal rounded slant slantup trapezoid flame pixel honeycomb none"
 
 
 # Elements spacing: false, true, both, plugins, windows
@@ -172,6 +203,9 @@ POWERKIT_DEFAULT_CACHE_CLEAR_KEY="M-x"
 POWERKIT_DEFAULT_LOG_VIEWER_KEY="M-l"
 POWERKIT_DEFAULT_LOG_VIEWER_WIDTH="90%"
 POWERKIT_DEFAULT_LOG_VIEWER_HEIGHT="80%"
+
+# Reload tmux config (prefix + r)
+POWERKIT_DEFAULT_RELOAD_CONFIG_KEY="r"
 
 # Keybinding conflict handling: warn, skip, ignore
 # - warn: detect and log conflicts, but still register (default)

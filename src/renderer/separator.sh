@@ -99,23 +99,29 @@ _get_separator_glyph() {
 
     if [[ "$direction" == "left" ]]; then
         case "$style" in
-            normal)    printf '%s' "$POWERKIT_SEP_SOLID_LEFT" ;;
-            rounded)   printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
-            flame)     printf '%s' "$POWERKIT_SEP_FLAME_LEFT" ;;
-            pixel)     printf '%s' "$POWERKIT_SEP_PIXEL_LEFT" ;;
-            honeycomb) printf '%s' "$POWERKIT_SEP_HONEYCOMB_LEFT" ;;
-            none)      printf '' ;;
-            *)         printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
+            normal)           printf '%s' "$POWERKIT_SEP_SOLID_LEFT" ;;
+            rounded)          printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
+            slant)            printf '%s' "$POWERKIT_SEP_SLANT_LEFT" ;;
+            slantup|slant-up) printf '%s' "$POWERKIT_SEP_SLANT_UP_LEFT" ;;
+            flame)            printf '%s' "$POWERKIT_SEP_FLAME_LEFT" ;;
+            pixel)            printf '%s' "$POWERKIT_SEP_PIXEL_LEFT" ;;
+            honeycomb)        printf '%s' "$POWERKIT_SEP_HONEYCOMB_LEFT" ;;
+            trapezoid)        printf '%s' "$POWERKIT_SEP_TRAPEZOID_LEFT" ;;
+            none)             printf '' ;;
+            *)                printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
         esac
     else
         case "$style" in
-            normal)    printf '%s' "$POWERKIT_SEP_SOLID_RIGHT" ;;
-            rounded)   printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
-            flame)     printf '%s' "$POWERKIT_SEP_FLAME_RIGHT" ;;
-            pixel)     printf '%s' "$POWERKIT_SEP_PIXEL_RIGHT" ;;
-            honeycomb) printf '%s' "$POWERKIT_SEP_HONEYCOMB_RIGHT" ;;
-            none)      printf '' ;;
-            *)         printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
+            normal)           printf '%s' "$POWERKIT_SEP_SOLID_RIGHT" ;;
+            rounded)          printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
+            slant)            printf '%s' "$POWERKIT_SEP_SLANT_RIGHT" ;;
+            slantup|slant-up) printf '%s' "$POWERKIT_SEP_SLANT_UP_RIGHT" ;;
+            flame)            printf '%s' "$POWERKIT_SEP_FLAME_RIGHT" ;;
+            pixel)            printf '%s' "$POWERKIT_SEP_PIXEL_RIGHT" ;;
+            honeycomb)        printf '%s' "$POWERKIT_SEP_HONEYCOMB_RIGHT" ;;
+            trapezoid)        printf '%s' "$POWERKIT_SEP_TRAPEZOID_RIGHT" ;;
+            none)             printf '' ;;
+            *)                printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
         esac
     fi
 }
@@ -339,14 +345,14 @@ build_plugin_transition() {
 
 # List all available separator styles
 list_separator_styles() {
-    printf 'normal rounded flame pixel honeycomb none\n'
+    printf '%s\n' "$POWERKIT_SEPARATOR_STYLES"
 }
 
 # Check if separator style is valid
 is_valid_separator_style() {
     local style="$1"
     case "$style" in
-        normal|rounded|flame|pixel|honeycomb|none) return 0 ;;
+        normal|rounded|slant|slantup|slant-up|trapezoid|flame|pixel|honeycomb|none) return 0 ;;
         *) return 1 ;;
     esac
 }

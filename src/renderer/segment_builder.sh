@@ -354,7 +354,20 @@ render_plugins() {
     # Check if plugin spacing is enabled
     local use_spacing
     use_spacing=$(has_plugin_spacing && echo "true" || echo "false")
-    local spacing_bg="default"
+
+    # Spacing colors for plugin separators
+    # In transparent mode: use theme's "background" (terminal background)
+    # In normal mode: use statusbar-bg
+    local spacing_bg spacing_fg
+    if [[ "$transparent" == "true" ]]; then
+        spacing_bg="default"
+        spacing_fg=$(resolve_color "background")
+    else
+        local resolved_statusbar_bg
+        resolved_statusbar_bg=$(resolve_color "statusbar-bg")
+        spacing_bg="$resolved_statusbar_bg"
+        spacing_fg="$resolved_statusbar_bg"
+    fi
 
     # First pass: collect visible plugins to know total count (for is_last detection)
     local visible_plugins=()
@@ -402,6 +415,10 @@ render_plugins() {
     local prev_bg="$status_bg"
     local plugin_idx=0
 
+    # NOTE: Entry edge separator for CENTER side is handled by render_plugin_segment
+    # for the first plugin (is_first=1) via get_initial_separator().
+    # We don't add it here to avoid duplication.
+
     for plugin_name in "${visible_plugins[@]}"; do
         local plugin_data="${visible_data[$plugin_idx]}"
         local icon content state health
@@ -412,15 +429,11 @@ render_plugins() {
 
         # Add spacing between plugins if enabled (not before first plugin)
         if [[ "$use_spacing" == "true" && $is_first -eq 0 ]]; then
-            local spacing_sep spacing_fg
+            local spacing_sep
             spacing_sep=$(get_closing_separator_for_side "$side")
 
-            if [[ "$transparent" == "true" ]]; then
-                spacing_fg=$(resolve_color "background")
-            else
-                spacing_fg=$(resolve_color "surface")
-            fi
-
+            # spacing_fg is defined at the top with the actual statusbar-bg color
+            # (not "default" which gives terminal's white text color)
             if [[ "$side" == "left" ]]; then
                 output+=" #[fg=${prev_bg},bg=${spacing_bg}]${spacing_sep}#[bg=${spacing_bg}]#[none]"
             else
@@ -442,9 +455,11 @@ render_plugins() {
         ((plugin_idx++))
     done
 
-    # Add closing edge separator after last plugin when on left side
-    # This creates the transition from plugins to the gap before windows/session
-    if [[ "$side" == "left" && $total_plugins -gt 0 ]]; then
+    # Add closing edge separator after last plugin when on LEFT or CENTER side
+    # - LEFT: exit separator pointing right (▶)
+    # - CENTER: exit separator pointing right (▶) - center handles both edges
+    # - RIGHT: no exit separator (next element handles entry)
+    if [[ ("$side" == "left" || "$side" == "center") && $total_plugins -gt 0 ]]; then
         local edge_sep
         edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
         # Right-pointing (▶): fg=source (last plugin content), bg=destination (statusbar)

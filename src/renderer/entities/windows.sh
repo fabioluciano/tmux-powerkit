@@ -76,57 +76,88 @@ _windows_get_colors() {
 
 # Get common window format settings
 # Usage: _windows_get_common_settings "side"
-# Sets: _W_TRANSPARENT, _W_SPACING_BG, _W_STATUS_BG, _W_SEP_CHAR
+# Sets: _W_TRANSPARENT, _W_SPACING_BG, _W_SPACING_FG, _W_STATUS_BG, _W_SEP_CHAR, _W_EDGE_SEP_CHAR
+# Note: "center" behaves like "left" for separator direction (right-pointing ▶)
 _windows_get_common_settings() {
     local side="$1"
 
     _W_TRANSPARENT=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+    # Always resolve the actual statusbar-bg color for use in fg
+    # (because fg=default gives terminal's default TEXT color, not background)
+    local resolved_statusbar_bg
+    resolved_statusbar_bg=$(resolve_color "statusbar-bg")
+
     if [[ "$_W_TRANSPARENT" == "true" ]]; then
-        _W_SPACING_BG="default"
+        _W_SPACING_BG="default"           # bg=default works (terminal background)
+        _W_SPACING_FG="$resolved_statusbar_bg"  # fg needs actual color (not "default" which is white)
         _W_STATUS_BG="default"
     else
-        _W_SPACING_BG=$(resolve_color "statusbar-bg")
-        _W_STATUS_BG="$_W_SPACING_BG"
+        _W_SPACING_BG="$resolved_statusbar_bg"
+        _W_SPACING_FG="$resolved_statusbar_bg"
+        _W_STATUS_BG="$resolved_statusbar_bg"
     fi
 
-    if [[ "$side" == "left" ]]; then
+    # "center" uses same separator direction as "left" (right-pointing ▶)
+    if [[ "$side" == "left" || "$side" == "center" ]]; then
         _W_SEP_CHAR=$(get_right_separator)
+        _W_EDGE_SEP_CHAR=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
     else
         _W_SEP_CHAR=$(get_left_separator)
+        _W_EDGE_SEP_CHAR=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
     fi
 }
 
 # Build window-to-window separator
 # Usage: _windows_build_separator "side" "index_bg" "previous_bg"
+# Note: "center" behaves like "left" for separator direction
+# Note: Edge separators are handled by the compositor, not here
+# Note: First window gets edge separator from compositor, not here
 _windows_build_separator() {
     local side="$1" index_bg="$2" previous_bg="$3"
 
     if has_window_spacing; then
-        local sep_fg="$_W_SPACING_BG"
-        [[ "$_W_TRANSPARENT" == "true" ]] && sep_fg=$(resolve_color "background")
-        if [[ "$side" == "left" ]]; then
-            printf '#[fg=%s,bg=%s]%s' "$sep_fg" "$index_bg" "$_W_SEP_CHAR"
+        # With spacing: transition FROM spacing gap TO window
+        # First window edge separator is handled by compositor
+        # Only add entry separator for windows 2+ (from gap after previous window)
+        local spacing_fg transparent_mode
+        transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+
+        if [[ "$transparent_mode" == "true" ]]; then
+            spacing_fg=$(resolve_color "background")
         else
-            printf '#[fg=%s,bg=%s]%s' "$index_bg" "$sep_fg" "$_W_SEP_CHAR"
+            spacing_fg=$(resolve_color "statusbar-bg")
+        fi
+
+        # Skip first window - compositor handles edge separator
+        local not_first='#{?#{!=:#{window_index},1},'
+        if [[ "$side" == "left" || "$side" == "center" ]]; then
+            # Left side ▶: gap → window
+            # ▶: fg=gap (left), bg=window (right)
+            printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$spacing_fg" "$index_bg" "$_W_SEP_CHAR"
+        else
+            # Right side ◀: gap → window
+            # ◀: fg=window (right), bg=gap (left)
+            printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$index_bg" "$spacing_fg" "$_W_SEP_CHAR"
         fi
     else
-        if [[ "$side" == "left" ]]; then
+        # For all sides, first window doesn't need edge separator (handled by compositor)
+        # Only add inter-window separators (window 2+)
+        if [[ "$side" == "left" || "$side" == "center" ]]; then
             printf '#{?#{!=:#{window_index},1},#[fg=%s#,bg=%s]%s,}' "$previous_bg" "$index_bg" "$_W_SEP_CHAR"
         else
-            local edge_sep
-            edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
-            printf '#{?#{==:#{window_index},1},#[fg=%s#,bg=%s]%s,#[fg=%s#,bg=%s]%s}' \
-                "$index_bg" "$_W_STATUS_BG" "$edge_sep" "$index_bg" "$previous_bg" "$_W_SEP_CHAR"
+            # Right side: separator points left (◀)
+            printf '#{?#{!=:#{window_index},1},#[fg=%s#,bg=%s]%s,}' "$index_bg" "$previous_bg" "$_W_SEP_CHAR"
         fi
     fi
 }
 
 # Build index-to-content separator
 # Usage: _windows_build_index_sep "side" "index_bg" "content_bg"
+# Note: "center" behaves like "left" for separator direction
 _windows_build_index_sep() {
     local side="$1" index_bg="$2" content_bg="$3"
 
-    if [[ "$side" == "left" ]]; then
+    if [[ "$side" == "left" || "$side" == "center" ]]; then
         printf '#[fg=%s,bg=%s]%s' "$index_bg" "$content_bg" "$_W_SEP_CHAR"
     else
         printf '#[fg=%s,bg=%s]%s' "$content_bg" "$index_bg" "$_W_SEP_CHAR"
@@ -135,15 +166,42 @@ _windows_build_index_sep() {
 
 # Build spacing separator (if enabled)
 # Usage: _windows_build_spacing "side" "content_bg"
+# Note: "center" behaves like "left" for separator direction
+# Note: Only handles inter-window exit separators
+#       Edge separators are handled by the compositor
 _windows_build_spacing() {
     local side="$1" content_bg="$2"
 
     has_window_spacing || return
 
-    if [[ "$side" == "left" ]]; then
-        printf '#[fg=%s,bg=%s]%s#[bg=%s]' "$content_bg" "$_W_SPACING_BG" "$_W_SEP_CHAR" "$_W_SPACING_BG"
+    # For fg in powerline glyphs, use the appropriate background color
+    # In transparent mode: use theme's "background" (terminal background)
+    # In normal mode: use statusbar-bg
+    local spacing_fg transparent_mode
+    transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+
+    if [[ "$transparent_mode" == "true" ]]; then
+        spacing_fg=$(resolve_color "background")
     else
-        printf '#[fg=%s,bg=%s]%s#[bg=%s]' "$_W_SPACING_BG" "$content_bg" "$_W_SEP_CHAR" "$_W_SPACING_BG"
+        spacing_fg=$(resolve_color "statusbar-bg")
+    fi
+
+    # Exit separator: window → gap (between windows only)
+    # Skip for LAST window (edge separator handled by compositor)
+    local not_last_cond='#{?#{!=:#{window_index},#{session_windows}},'
+
+    if [[ "$side" == "left" || "$side" == "center" ]]; then
+        # Left side ▶: window → gap
+        # ▶: fg=window (left), bg=gap (right)
+        printf '%s#[fg=%s#,bg=%s]%s,}' \
+            "$not_last_cond" \
+            "$content_bg" "$spacing_fg" "$_W_SEP_CHAR"
+    else
+        # Right side ◀: window → gap
+        # ◀: fg=gap (right), bg=window (left)
+        printf '%s#[fg=%s#,bg=%s]%s,}' \
+            "$not_last_cond" \
+            "$spacing_fg" "$content_bg" "$_W_SEP_CHAR"
     fi
 }
 

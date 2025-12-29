@@ -63,7 +63,7 @@ plugin_declare_options() {
     declare_option "icon_critical" "icon" "" "Icon when critical (empty = use default)"
 
     # Thresholds (higher = worse)
-    declare_option "warning_threshold" "number" "70" "Warning threshold percentage"
+    declare_option "warning_threshold" "number" "80" "Warning threshold percentage"
     declare_option "critical_threshold" "number" "90" "Critical threshold percentage"
 
     # Note: show_only_on_threshold is auto-injected globally

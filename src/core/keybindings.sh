@@ -36,6 +36,9 @@ declare -gA POWERKIT_CORE_KEYBINDINGS=(
     # Cache clear - special command (no helper file)
     [cache_clear]="command:@powerkit_cache_clear_key:C-d:::::"
 
+    # Reload tmux config - special command (no helper file)
+    [reload_config]="command:@powerkit_reload_config_key:r:::::"
+
     # Options viewer - popup
     [options_viewer]="popup:@powerkit_show_options_key:C-e:@powerkit_show_options_width:80%:@powerkit_show_options_height:60%:options_viewer.sh:"
 
@@ -196,8 +199,13 @@ _setup_command_keybinding() {
         cache_clear)
             local cache_dir
             cache_dir="$(get_cache_dir)"
-            local cmd="rm -rf '${cache_dir:?}'/* 2>/dev/null; tmux refresh-client -S; tmux display-message 'PowerKit cache cleared!'"
+            local cmd="rm -rf '${cache_dir:?}'/* 2>/dev/null; tmux refresh-client -S; POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && load_powerkit_theme && toast \"PowerKit cache cleared!\" \"info\"'"
             pk_bind_smart "$key" "$cmd" -s "core:cache_clear"
+            ;;
+        reload_config)
+            # Reload tmux config - tries common config paths, shows info-styled toast
+            local cmd="if [ -f ~/.config/tmux/tmux.conf ]; then tmux source-file ~/.config/tmux/tmux.conf; elif [ -f ~/.tmux.conf ]; then tmux source-file ~/.tmux.conf; fi; POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && load_powerkit_theme && toast \"TMUX configuration reloaded!\" \"info\"'"
+            pk_bind_smart "$key" "$cmd" -s "core:reload_config"
             ;;
         *)
             log_warn "keybindings" "Unknown command keybinding: $name"

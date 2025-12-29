@@ -11,19 +11,119 @@ set -uo pipefail
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 export POWERKIT_ROOT
 
-. "${POWERKIT_ROOT}/src/core/bootstrap.sh"
-load_powerkit_theme
-cache_reset_cycle
-. "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
-# Reset per-cycle caches for separator characters (performance optimization)
-separator_reset_cache 2>/dev/null || true
+# =============================================================================
+# Rendered Output Cache (uses cache.sh functions)
+# =============================================================================
+# Cache the final rendered output for instant return.
+# This prevents tmux "not ready" messages on session start.
+# Uses the standard cache system so cache_clear_all cleans these too.
 
-# Determine plugins side from status order
-# If side is passed as argument, use it; otherwise detect from order
+# Source bootstrap (auto-loads core + utils with source_guard)
+. "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+
+# Load theme and separator (for loading placeholder)
+load_powerkit_theme
+. "${POWERKIT_ROOT}/src/renderer/separator.sh"
+
+# Cache key for rendered output
+_render_cache_key() {
+    local side="${1:-right}"
+    printf 'rendered_%s' "$side"
+}
+
+# TTL for render cache (matches status-interval)
+_RENDER_CACHE_TTL=5
+
+# Check if render is already in progress (uses cache for lock)
+_is_render_in_progress() {
+    # Lock is valid for 30 seconds max
+    cache_valid "render_lock" 30
+}
+
+# Show loading placeholder with animated spinner
+# Usage: _show_loading "side"
+_show_loading() {
+    local side="${1:-right}"
+
+    # Spinner frames (Nerd Fonts)
+    local -a spinner=(
+        $'\Uee06'
+        $'\Uee07'
+        $'\Uee08'
+        $'\Uee09'
+        $'\Uee0a'
+        $'\Uee0b'
+    )
+
+    # Pick frame based on current second (pseudo-animation)
+    local frame_idx=$(( $(date +%s) % 6 ))
+    local icon="${spinner[$frame_idx]}"
+
+    # Get colors from theme
+    local bg fg status_bg
+    bg=$(get_color "info-base")
+    fg=$(get_color "info-base-darkest")
+    status_bg=$(get_color "statusbar-bg")
+
+    local output=""
+
+    # Entry separator based on side
+    if [[ "$side" == "right" || "$side" == "center" ]]; then
+        # Left-pointing (◀) entry separator
+        local entry_sep
+        entry_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+        output+="#[fg=${bg},bg=${status_bg}]${entry_sep}"
+    fi
+
+    # Content
+    output+="#[fg=${fg},bg=${bg},bold] ${icon} Loading"
+
+    # Exit separator based on side
+    if [[ "$side" == "left" || "$side" == "center" ]]; then
+        # Right-pointing (▶) exit separator
+        local exit_sep
+        exit_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+        output+="#[fg=${bg},bg=${status_bg}]${exit_sep}"
+    fi
+
+    output+="#[none]"
+    printf '%s' "$output"
+}
+
+# Render in background and cache output
+_render_background() {
+    local side="$1"
+
+    bash -c '
+        POWERKIT_ROOT="$1"
+        side="$2"
+        export POWERKIT_ROOT
+
+        # Cleanup lock on exit
+        trap ". \"${POWERKIT_ROOT}/src/core/cache.sh\"; cache_clear \"render_lock\"" EXIT
+
+        # Source and render
+        . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+        load_powerkit_theme
+        cache_reset_cycle
+        . "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
+        separator_reset_cache 2>/dev/null || true
+
+        # Render and cache using cache_set
+        output=$(render_plugins "$side")
+        cache_set "rendered_${side}" "$output"
+    ' _ "$POWERKIT_ROOT" "$side" &>/dev/null &
+    disown
+}
+
+# =============================================================================
+# Main Execution
+# =============================================================================
+
+# Determine side
 side="${1:-}"
 if [[ -z "$side" ]]; then
     status_order=$(get_tmux_option "@powerkit_status_order" "${POWERKIT_DEFAULT_STATUS_ORDER}")
-    # If plugins come first in the order, they're on the left side
     if [[ "$status_order" == plugins,* ]]; then
         side="left"
     else
@@ -31,4 +131,36 @@ if [[ -z "$side" ]]; then
     fi
 fi
 
-render_plugins "$side"
+# Cache key for this side
+cache_key=$(_render_cache_key "$side")
+
+# Fast path: return fresh cached render immediately
+cached_render=$(cache_get "$cache_key" "$_RENDER_CACHE_TTL" 2>/dev/null) || cached_render=""
+if [[ -n "$cached_render" ]]; then
+    printf '%s' "$cached_render"
+    exit 0
+fi
+
+# Check if background render is already in progress
+if _is_render_in_progress; then
+    # Return stale cache if exists, otherwise loading
+    stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
+    if [[ -n "$stale_render" ]]; then
+        printf '%s' "$stale_render"
+    else
+        _show_loading "$side"
+    fi
+    exit 0
+fi
+
+# Start background render (set lock using cache)
+cache_set "render_lock" "1"
+_render_background "$side"
+
+# Return stale cache if exists, otherwise loading
+stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
+if [[ -n "$stale_render" ]]; then
+    printf '%s' "$stale_render"
+else
+    _show_loading "$side"
+fi
