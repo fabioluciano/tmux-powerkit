@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.5.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.4.0...v5.5.0) (2025-12-30)
+
+### Features
+
+* implement macOS native binary download system with interactive prompt ([#148](https://github.com/fabioluciano/tmux-powerkit/issues/148)) ([1c79677](https://github.com/fabioluciano/tmux-powerkit/commit/1c796779c2ef01b77b391dddda46696bf83b9d61))
+
 ## [5.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.3.0...v5.4.0) (2025-12-30)
 
 ### Features
