@@ -1,3 +1,32 @@
 .github/agents
 .claude
 .vscode
+# Build artifacts
+dist/
+bin/macos/powerkit-brightness
+bin/macos/powerkit-nowplaying
+bin/macos/powerkit-temperature
+bin/macos/powerkit-gpu
+bin/macos/powerkit-microphone
+
+# Node
+node_modules/
+package-lock.json
+
+# macOS
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Temporary files
+*.tmp
+*.bak
+*~

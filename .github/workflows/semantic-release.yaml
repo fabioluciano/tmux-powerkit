@@ -1,26 +1,82 @@
-name: semantic-release
+name: Semantic Release
+
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
 jobs:
   release:
-    name: Release
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: macos-13
+            arch: x86_64
+            suffix: darwin-amd64
+          - os: macos-14
+            arch: arm64
+            suffix: darwin-arm64
+    
+    runs-on: ${{ matrix.os }}
+    
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: false
+          persist-credentials: false
+
+      - name: Validate Build Environment
+        run: |
+          echo "=== Build Environment ==="
+          echo "OS: $(sw_vers -productName) $(sw_vers -productVersion)"
+          echo "Architecture: $(uname -m)"
+          echo "Xcode: $(xcodebuild -version | head -n 1)"
+          echo "Clang: $(clang --version | head -n 1)"
+
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
-      - name: Install dependencies
-        run: npm install semantic-release @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/github @semantic-release/git
-      - name: Release
+          node-version: 'lts/*'
+
+      - name: Install Semantic Release
+        run: |
+          npm install -g semantic-release@23 \
+            @semantic-release/changelog@6 \
+            @semantic-release/git@10 \
+            @semantic-release/github@10 \
+            @semantic-release/exec@6
+
+      - name: Semantic Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: GITHUB_TOKEN=${GITHUB_TOKEN} npx semantic-release
+          BUILD_SUFFIX: ${{ matrix.suffix }}
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: semantic-release --dry-run
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## 🔨 Build Summary - ${{ matrix.suffix }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Architecture:** ${{ matrix.suffix }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Runner:** ${{ matrix.os }}" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "dist" ]; then
+            echo "### 📦 Generated Artifacts" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| File | Size |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+            cd dist
+            for file in *-${{ matrix.suffix }}*; do
+              if [ -f "$file" ]; then
+                size=$(du -h "$file" | cut -f1)
+                echo "| \`$file\` | $size |" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          fi

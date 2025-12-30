@@ -1,24 +1,82 @@
 {
   "branches": ["main"],
   "plugins": [
-    "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits"
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits"
+      }
+    ],
     [
       "@semantic-release/changelog",
       {
-        "changelogFile": "CHANGELOG.md"
+        "changelogFile": "CHANGELOG.md",
+        "changelogTitle": "# Changelog\n\nAll notable changes to tmux-powerkit will be documented in this file."
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "prepareCmd": "NEXT_RELEASE_VERSION=${nextRelease.version} sh scripts/build.sh ${options.env.BUILD_SUFFIX}",
+        "publishCmd": "echo '✓ Build ${nextRelease.version} completed for ${options.env.BUILD_SUFFIX}'"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "assets": [
+          {
+            "path": "dist/powerkit-brightness-${process.env.BUILD_SUFFIX}",
+            "label": "🔆 powerkit-brightness for ${process.env.BUILD_SUFFIX}",
+            "name": "powerkit-brightness-${process.env.BUILD_SUFFIX}"
+          },
+          {
+            "path": "dist/powerkit-nowplaying-${process.env.BUILD_SUFFIX}",
+            "label": "🎵 powerkit-nowplaying for ${process.env.BUILD_SUFFIX}",
+            "name": "powerkit-nowplaying-${process.env.BUILD_SUFFIX}"
+          },
+          {
+            "path": "dist/powerkit-temperature-${process.env.BUILD_SUFFIX}",
+            "label": "🌡️ powerkit-temperature for ${process.env.BUILD_SUFFIX}",
+            "name": "powerkit-temperature-${process.env.BUILD_SUFFIX}"
+          },
+          {
+            "path": "dist/powerkit-gpu-${process.env.BUILD_SUFFIX}",
+            "label": "🎮 powerkit-gpu for ${process.env.BUILD_SUFFIX}",
+            "name": "powerkit-gpu-${process.env.BUILD_SUFFIX}"
+          },
+          {
+            "path": "dist/powerkit-microphone-${process.env.BUILD_SUFFIX}",
+            "label": "🎤 powerkit-microphone for ${process.env.BUILD_SUFFIX}",
+            "name": "powerkit-microphone-${process.env.BUILD_SUFFIX}"
+          },
+          {
+            "path": "dist/SHA256SUMS-${process.env.BUILD_SUFFIX}.txt",
+            "label": "✓ Checksums (SHA256) for ${process.env.BUILD_SUFFIX}",
+            "name": "SHA256SUMS-${process.env.BUILD_SUFFIX}.txt"
+          },
+          {
+            "path": "dist/BUILD-INFO-${process.env.BUILD_SUFFIX}.txt",
+            "label": "ℹ️ Build Information for ${process.env.BUILD_SUFFIX}",
+            "name": "BUILD-INFO-${process.env.BUILD_SUFFIX}.txt"
+          }
+        ],
+        "successComment": false,
+        "failComment": false
       }
     ],
     [
       "@semantic-release/git",
       {
-        "assets": ["CHANGELOG.md"]
+        "assets": ["CHANGELOG.md"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
       }
-    ],
-    ["@semantic-release/github", {
-      "successComment": false,
-      "failComment": false,
-    }]
+    ]
   ]
 }
-
