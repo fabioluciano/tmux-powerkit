@@ -142,8 +142,7 @@ static SensorInfo allSensors[] = {
     // Ambient
     {"TA0P", "Ambient"},
     {"TW0P", "WiFi"},
-    {NULL, NULL}
-};
+    {NULL, NULL}};
 
 // =============================================================================
 // SMC Helper functions
@@ -159,10 +158,7 @@ static UInt32 _strtoul(const char *str, int size, int base) {
 
 static void _ultostr(char *str, UInt32 val) {
     str[0] = '\0';
-    sprintf(str, "%c%c%c%c",
-            (unsigned int)val >> 24,
-            (unsigned int)val >> 16,
-            (unsigned int)val >> 8,
+    sprintf(str, "%c%c%c%c", (unsigned int)val >> 24, (unsigned int)val >> 16, (unsigned int)val >> 8,
             (unsigned int)val);
 }
 
@@ -199,8 +195,8 @@ static kern_return_t SMCCall(int index, SMCKeyData_t *inputStructure, SMCKeyData
     size_t structureInputSize = sizeof(SMCKeyData_t);
     size_t structureOutputSize = sizeof(SMCKeyData_t);
 
-    return IOConnectCallStructMethod(g_conn, index, inputStructure, structureInputSize,
-                                      outputStructure, &structureOutputSize);
+    return IOConnectCallStructMethod(g_conn, index, inputStructure, structureInputSize, outputStructure,
+                                     &structureOutputSize);
 }
 
 static kern_return_t SMCReadKey(const char *key, SMCVal_t *val) {

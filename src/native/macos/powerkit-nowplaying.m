@@ -19,8 +19,8 @@
 //         -o powerkit-nowplaying powerkit-nowplaying.m
 // =============================================================================
 
-#import <Foundation/Foundation.h>
 #import <AppKit/AppKit.h>
+#import <Foundation/Foundation.h>
 #import <ScriptingBridge/ScriptingBridge.h>
 
 // Unit Separator (ASCII 31) - non-printable field delimiter
@@ -28,7 +28,8 @@
 
 // Sanitize string: replace control characters and newlines
 NSString *sanitize(NSString *str) {
-    if (!str) return @"";
+    if (!str)
+        return @"";
     // Remove any Unit Separator that might be in the string
     str = [str stringByReplacingOccurrencesOfString:@"\x1F" withString:@" "];
     str = [str stringByReplacingOccurrencesOfString:@"\n" withString:@" "];
@@ -55,42 +56,45 @@ NSDictionary *getSpotifyInfo(void) {
 
     @try {
         id spotify = [SBApplication applicationWithBundleIdentifier:@"com.spotify.client"];
-        if (!spotify) return nil;
+        if (!spotify)
+            return nil;
 
         // Get player state
         NSString *playerState = [spotify performSelector:@selector(playerState)];
-        if (!playerState) return nil;
+        if (!playerState)
+            return nil;
 
         // Convert state enum to string
         NSString *state;
-        long stateValue = (long)playerState;  // It's actually an enum
-        if (stateValue == 'kPSP') {  // playing
+        long stateValue = (long)playerState; // It's actually an enum
+        if (stateValue == 'kPSP') {          // playing
             state = @"playing";
-        } else if (stateValue == 'kPSp') {  // paused
+        } else if (stateValue == 'kPSp') { // paused
             state = @"paused";
         } else {
-            return nil;  // stopped or unknown
+            return nil; // stopped or unknown
         }
 
         // Get current track
         id track = [spotify performSelector:@selector(currentTrack)];
-        if (!track) return nil;
+        if (!track)
+            return nil;
 
         NSString *artist = [track performSelector:@selector(artist)];
         NSString *title = [track performSelector:@selector(name)];
         NSString *album = [track performSelector:@selector(album)];
 
-        if (!title || [title length] == 0) return nil;
+        if (!title || [title length] == 0)
+            return nil;
 
         return @{
-            @"state": state,
-            @"artist": sanitize(artist) ?: @"",
-            @"title": sanitize(title) ?: @"",
-            @"album": sanitize(album) ?: @"",
-            @"app": @"Spotify"
+            @"state" : state,
+            @"artist" : sanitize(artist) ?: @"",
+            @"title" : sanitize(title) ?: @"",
+            @"album" : sanitize(album) ?: @"",
+            @"app" : @"Spotify"
         };
-    }
-    @catch (NSException *e) {
+    } @catch (NSException *e) {
         return nil;
     }
 }
@@ -103,18 +107,20 @@ NSDictionary *getMusicInfo(void) {
 
     @try {
         id music = [SBApplication applicationWithBundleIdentifier:@"com.apple.Music"];
-        if (!music) return nil;
+        if (!music)
+            return nil;
 
         // Get player state
         id playerState = [music performSelector:@selector(playerState)];
-        if (!playerState) return nil;
+        if (!playerState)
+            return nil;
 
         // Convert state enum to string
         NSString *state;
         long stateValue = (long)playerState;
-        if (stateValue == 'kPSP') {  // playing
+        if (stateValue == 'kPSP') { // playing
             state = @"playing";
-        } else if (stateValue == 'kPSp') {  // paused
+        } else if (stateValue == 'kPSp') { // paused
             state = @"paused";
         } else {
             return nil;
@@ -122,28 +128,29 @@ NSDictionary *getMusicInfo(void) {
 
         // Get current track
         id track = [music performSelector:@selector(currentTrack)];
-        if (!track) return nil;
+        if (!track)
+            return nil;
 
         NSString *artist = [track performSelector:@selector(artist)];
         NSString *title = [track performSelector:@selector(name)];
         NSString *album = [track performSelector:@selector(album)];
 
-        if (!title || [title length] == 0) return nil;
+        if (!title || [title length] == 0)
+            return nil;
 
         return @{
-            @"state": state,
-            @"artist": sanitize(artist) ?: @"",
-            @"title": sanitize(title) ?: @"",
-            @"album": sanitize(album) ?: @"",
-            @"app": @"Music"
+            @"state" : state,
+            @"artist" : sanitize(artist) ?: @"",
+            @"title" : sanitize(title) ?: @"",
+            @"album" : sanitize(album) ?: @"",
+            @"app" : @"Music"
         };
-    }
-    @catch (NSException *e) {
+    } @catch (NSException *e) {
         return nil;
     }
 }
 
-int main(int argc, const char * argv[]) {
+int main(int argc, const char *argv[]) {
     @autoreleasepool {
         NSDictionary *info = nil;
 
@@ -161,11 +168,8 @@ int main(int argc, const char * argv[]) {
         }
 
         // Output: state\x1Fartist\x1Ftitle\x1Falbum\x1Fapp
-        printf("%s" FIELD_SEP "%s" FIELD_SEP "%s" FIELD_SEP "%s" FIELD_SEP "%s\n",
-               [info[@"state"] UTF8String],
-               [info[@"artist"] UTF8String],
-               [info[@"title"] UTF8String],
-               [info[@"album"] UTF8String],
+        printf("%s" FIELD_SEP "%s" FIELD_SEP "%s" FIELD_SEP "%s" FIELD_SEP "%s\n", [info[@"state"] UTF8String],
+               [info[@"artist"] UTF8String], [info[@"title"] UTF8String], [info[@"album"] UTF8String],
                [info[@"app"] UTF8String]);
 
         return 0;

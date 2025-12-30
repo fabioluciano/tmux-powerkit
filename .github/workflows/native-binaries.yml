@@ -24,50 +24,29 @@ jobs:
       - name: Install clang-format
         run: brew install clang-format
 
-      - name: Check and fix formatting
+      - name: Check formatting
         working-directory: src/native/macos
         run: |
           echo "Checking Objective-C formatting..."
-          NEEDS_FORMAT=0
+          FAILED=0
 
           for file in *.m; do
             if ! clang-format --dry-run --Werror "$file" 2>/dev/null; then
-              echo "⚠️  $file needs formatting - fixing..."
-              clang-format -i "$file"
-              NEEDS_FORMAT=1
+              echo "❌ $file needs formatting"
+              FAILED=1
             else
               echo "✓ $file"
             fi
           done
 
-          if [[ $NEEDS_FORMAT -eq 1 ]]; then
+          if [[ $FAILED -eq 1 ]]; then
             echo ""
-            echo "Files were auto-formatted."
+            echo "To fix formatting locally, run:"
+            echo "  brew install clang-format"
+            echo "  cd src/native/macos && clang-format -i *.m"
+            exit 1
           fi
           echo "✓ All files properly formatted"
-
-      - name: Check for formatting changes
-        id: format-check
-        run: |
-          if [[ -n "$(git status --porcelain src/native/macos/*.m)" ]]; then
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "⚠️  Formatting changes detected"
-            git diff --stat src/native/macos/*.m
-          else
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-            echo "✓ No formatting changes needed"
-          fi
-
-      - name: Commit formatting changes
-        if: steps.format-check.outputs.has_changes == 'true' && github.event_name == 'push'
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add src/native/macos/*.m
-          git commit -m "style: auto-format Objective-C files
-
-          🤖 Generated with [Claude Code](https://claude.com/claude-code)"
-          git push
 
       - name: Static analysis with clang
         working-directory: src/native/macos

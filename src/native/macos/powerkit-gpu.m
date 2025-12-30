@@ -82,15 +82,13 @@ enum {
 };
 
 // GPU temperature sensor keys
-static const char *gpuTempKeys[] = {
-    "Tg0f",  // Apple Silicon GPU Cluster
-    "Tg0j",  // Apple Silicon GPU Core
-    "TG0P",  // Intel GPU Proximity
-    "TG0D",  // Intel GPU Die
-    "TCGc",  // Intel GPU PECI
-    "TCGC",  // Intel GPU Cluster
-    NULL
-};
+static const char *gpuTempKeys[] = {"Tg0f", // Apple Silicon GPU Cluster
+                                    "Tg0j", // Apple Silicon GPU Core
+                                    "TG0P", // Intel GPU Proximity
+                                    "TG0D", // Intel GPU Die
+                                    "TCGc", // Intel GPU PECI
+                                    "TCGC", // Intel GPU Cluster
+                                    NULL};
 
 // =============================================================================
 // SMC Helper functions
@@ -106,10 +104,7 @@ static UInt32 _strtoul(const char *str, int size, int base) {
 
 static void _ultostr(char *str, UInt32 val) {
     str[0] = '\0';
-    sprintf(str, "%c%c%c%c",
-            (unsigned int)val >> 24,
-            (unsigned int)val >> 16,
-            (unsigned int)val >> 8,
+    sprintf(str, "%c%c%c%c", (unsigned int)val >> 24, (unsigned int)val >> 16, (unsigned int)val >> 8,
             (unsigned int)val);
 }
 
@@ -146,8 +141,8 @@ static kern_return_t SMCCall(int index, SMCKeyData_t *inputStructure, SMCKeyData
     size_t structureInputSize = sizeof(SMCKeyData_t);
     size_t structureOutputSize = sizeof(SMCKeyData_t);
 
-    return IOConnectCallStructMethod(g_conn, index, inputStructure, structureInputSize,
-                                      outputStructure, &structureOutputSize);
+    return IOConnectCallStructMethod(g_conn, index, inputStructure, structureInputSize, outputStructure,
+                                     &structureOutputSize);
 }
 
 static kern_return_t SMCReadKey(const char *key, SMCVal_t *val) {
@@ -249,11 +244,7 @@ static int getGPUUsageAndMemory(int *usage, int64_t *memUsedBytes, int64_t *memT
     io_iterator_t iterator;
     CFMutableDictionaryRef matchDict = IOServiceMatching("IOAccelerator");
 
-    kern_return_t result = IOServiceGetMatchingServices(
-        kIOMainPortDefault,
-        matchDict,
-        &iterator
-    );
+    kern_return_t result = IOServiceGetMatchingServices(kIOMainPortDefault, matchDict, &iterator);
 
     if (result != kIOReturnSuccess) {
         return 0;
@@ -265,12 +256,8 @@ static int getGPUUsageAndMemory(int *usage, int64_t *memUsedBytes, int64_t *memT
     while ((service = IOIteratorNext(iterator)) != 0) {
         CFMutableDictionaryRef properties = NULL;
 
-        result = IORegistryEntryCreateCFProperties(
-            service,
-            &properties,
-            kCFAllocatorDefault,
-            kIORegistryIterateRecursively
-        );
+        result =
+            IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, kIORegistryIterateRecursively);
 
         if (result == kIOReturnSuccess && properties != NULL) {
             // Get PerformanceStatistics
@@ -342,7 +329,8 @@ static int getGPUUsageAndMemory(int *usage, int64_t *memUsedBytes, int64_t *memT
 
         IOObjectRelease(service);
 
-        if (found) break;  // Use first GPU with valid data
+        if (found)
+            break; // Use first GPU with valid data
     }
 
     IOObjectRelease(iterator);
@@ -360,11 +348,8 @@ static void listGPUs(void) {
     printf("%-40s %s\n", "----", "----");
 
     io_iterator_t iterator;
-    kern_return_t result = IOServiceGetMatchingServices(
-        kIOMainPortDefault,
-        IOServiceMatching("IOAccelerator"),
-        &iterator
-    );
+    kern_return_t result =
+        IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching("IOAccelerator"), &iterator);
 
     if (result != kIOReturnSuccess) {
         printf("No GPUs found\n");
@@ -377,12 +362,7 @@ static void listGPUs(void) {
     while ((service = IOIteratorNext(iterator)) != 0) {
         CFMutableDictionaryRef properties = NULL;
 
-        result = IORegistryEntryCreateCFProperties(
-            service,
-            &properties,
-            kCFAllocatorDefault,
-            0
-        );
+        result = IORegistryEntryCreateCFProperties(service, &properties, kCFAllocatorDefault, 0);
 
         if (result == kIOReturnSuccess && properties != NULL) {
             // Get GPU name
@@ -530,10 +510,7 @@ int main(int argc, const char *argv[]) {
         // Output based on mode
         if (showAll) {
             // Format: usage\x1FmemUsedMB\x1FmemTotalMB\x1Ftemp
-            printf("%d\x1F%lld\x1F%lld\x1F%.0f\n",
-                   usage >= 0 ? usage : 0,
-                   memUsedMB,
-                   memTotalMB,
+            printf("%d\x1F%lld\x1F%lld\x1F%.0f\n", usage >= 0 ? usage : 0, memUsedMB, memTotalMB,
                    temp > 0 ? temp : 0.0);
             return 0;
         }

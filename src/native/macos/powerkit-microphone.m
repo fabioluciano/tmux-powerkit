@@ -17,12 +17,13 @@
 // Returns exit code 1 if no input device available.
 //
 // Compile:
-//   clang -framework Foundation -framework CoreAudio -framework AudioToolbox -o powerkit-microphone powerkit-microphone.m
+//   clang -framework Foundation -framework CoreAudio -framework AudioToolbox -o powerkit-microphone
+//   powerkit-microphone.m
 // =============================================================================
 
-#import <Foundation/Foundation.h>
-#import <CoreAudio/CoreAudio.h>
 #import <AudioToolbox/AudioToolbox.h>
+#import <CoreAudio/CoreAudio.h>
+#import <Foundation/Foundation.h>
 
 // =============================================================================
 // Helper Functions
@@ -33,20 +34,11 @@ static AudioDeviceID getDefaultInputDevice(void) {
     AudioDeviceID deviceID = kAudioObjectUnknown;
     UInt32 dataSize = sizeof(deviceID);
 
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioHardwarePropertyDefaultInputDevice,
-        kAudioObjectPropertyScopeGlobal,
-        kAudioObjectPropertyElementMain
-    };
+    AudioObjectPropertyAddress propertyAddress = {kAudioHardwarePropertyDefaultInputDevice,
+                                                  kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
 
-    OSStatus status = AudioObjectGetPropertyData(
-        kAudioObjectSystemObject,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize,
-        &deviceID
-    );
+    OSStatus status =
+        AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &dataSize, &deviceID);
 
     if (status != noErr) {
         return kAudioObjectUnknown;
@@ -65,32 +57,15 @@ static BOOL isInputDeviceRunning(AudioDeviceID deviceID) {
     UInt32 dataSize = sizeof(isRunning);
 
     // Check if device is running somewhere (any app using it)
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioDevicePropertyDeviceIsRunningSomewhere,
-        kAudioObjectPropertyScopeInput,
-        kAudioObjectPropertyElementMain
-    };
+    AudioObjectPropertyAddress propertyAddress = {kAudioDevicePropertyDeviceIsRunningSomewhere,
+                                                  kAudioObjectPropertyScopeInput, kAudioObjectPropertyElementMain};
 
-    OSStatus status = AudioObjectGetPropertyData(
-        deviceID,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize,
-        &isRunning
-    );
+    OSStatus status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, NULL, &dataSize, &isRunning);
 
     if (status != noErr) {
         // Fallback: check if device is running at all
         propertyAddress.mSelector = kAudioDevicePropertyDeviceIsRunning;
-        status = AudioObjectGetPropertyData(
-            deviceID,
-            &propertyAddress,
-            0,
-            NULL,
-            &dataSize,
-            &isRunning
-        );
+        status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, NULL, &dataSize, &isRunning);
     }
 
     return (status == noErr && isRunning != 0);
@@ -105,11 +80,8 @@ static BOOL isInputMuted(AudioDeviceID deviceID) {
     UInt32 muted = 0;
     UInt32 dataSize = sizeof(muted);
 
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioDevicePropertyMute,
-        kAudioObjectPropertyScopeInput,
-        kAudioObjectPropertyElementMain
-    };
+    AudioObjectPropertyAddress propertyAddress = {kAudioDevicePropertyMute, kAudioObjectPropertyScopeInput,
+                                                  kAudioObjectPropertyElementMain};
 
     // First check if property exists
     if (!AudioObjectHasProperty(deviceID, &propertyAddress)) {
@@ -120,14 +92,7 @@ static BOOL isInputMuted(AudioDeviceID deviceID) {
         }
     }
 
-    OSStatus status = AudioObjectGetPropertyData(
-        deviceID,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize,
-        &muted
-    );
+    OSStatus status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, NULL, &dataSize, &muted);
 
     return (status == noErr && muted != 0);
 }
@@ -142,11 +107,8 @@ static Float32 getInputVolume(AudioDeviceID deviceID) {
     UInt32 dataSize = sizeof(volume);
 
     // Try to get volume from input scope
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioDevicePropertyVolumeScalar,
-        kAudioObjectPropertyScopeInput,
-        kAudioObjectPropertyElementMain
-    };
+    AudioObjectPropertyAddress propertyAddress = {kAudioDevicePropertyVolumeScalar, kAudioObjectPropertyScopeInput,
+                                                  kAudioObjectPropertyElementMain};
 
     // Check if property exists on main element
     if (!AudioObjectHasProperty(deviceID, &propertyAddress)) {
@@ -157,14 +119,7 @@ static Float32 getInputVolume(AudioDeviceID deviceID) {
         }
     }
 
-    OSStatus status = AudioObjectGetPropertyData(
-        deviceID,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize,
-        &volume
-    );
+    OSStatus status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, NULL, &dataSize, &volume);
 
     if (status != noErr) {
         return -1.0f;
@@ -182,20 +137,10 @@ static NSString *getDeviceName(AudioDeviceID deviceID) {
     CFStringRef deviceName = NULL;
     UInt32 dataSize = sizeof(deviceName);
 
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioDevicePropertyDeviceNameCFString,
-        kAudioObjectPropertyScopeGlobal,
-        kAudioObjectPropertyElementMain
-    };
+    AudioObjectPropertyAddress propertyAddress = {kAudioDevicePropertyDeviceNameCFString,
+                                                  kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMain};
 
-    OSStatus status = AudioObjectGetPropertyData(
-        deviceID,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize,
-        &deviceName
-    );
+    OSStatus status = AudioObjectGetPropertyData(deviceID, &propertyAddress, 0, NULL, &dataSize, &deviceName);
 
     if (status != noErr || deviceName == NULL) {
         return @"Unknown";
@@ -207,20 +152,11 @@ static NSString *getDeviceName(AudioDeviceID deviceID) {
 
 // List all input devices
 static void listInputDevices(void) {
-    AudioObjectPropertyAddress propertyAddress = {
-        kAudioHardwarePropertyDevices,
-        kAudioObjectPropertyScopeGlobal,
-        kAudioObjectPropertyElementMain
-    };
+    AudioObjectPropertyAddress propertyAddress = {kAudioHardwarePropertyDevices, kAudioObjectPropertyScopeGlobal,
+                                                  kAudioObjectPropertyElementMain};
 
     UInt32 dataSize = 0;
-    OSStatus status = AudioObjectGetPropertyDataSize(
-        kAudioObjectSystemObject,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize
-    );
+    OSStatus status = AudioObjectGetPropertyDataSize(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &dataSize);
 
     if (status != noErr) {
         printf("No audio devices found\n");
@@ -230,14 +166,7 @@ static void listInputDevices(void) {
     UInt32 deviceCount = dataSize / sizeof(AudioDeviceID);
     AudioDeviceID *deviceIDs = (AudioDeviceID *)malloc(dataSize);
 
-    status = AudioObjectGetPropertyData(
-        kAudioObjectSystemObject,
-        &propertyAddress,
-        0,
-        NULL,
-        &dataSize,
-        deviceIDs
-    );
+    status = AudioObjectGetPropertyData(kAudioObjectSystemObject, &propertyAddress, 0, NULL, &dataSize, deviceIDs);
 
     if (status != noErr) {
         free(deviceIDs);
@@ -255,34 +184,18 @@ static void listInputDevices(void) {
         AudioDeviceID deviceID = deviceIDs[i];
 
         // Check if this device has input capabilities
-        AudioObjectPropertyAddress inputAddress = {
-            kAudioDevicePropertyStreamConfiguration,
-            kAudioObjectPropertyScopeInput,
-            kAudioObjectPropertyElementMain
-        };
+        AudioObjectPropertyAddress inputAddress = {kAudioDevicePropertyStreamConfiguration,
+                                                   kAudioObjectPropertyScopeInput, kAudioObjectPropertyElementMain};
 
         UInt32 configSize = 0;
-        status = AudioObjectGetPropertyDataSize(
-            deviceID,
-            &inputAddress,
-            0,
-            NULL,
-            &configSize
-        );
+        status = AudioObjectGetPropertyDataSize(deviceID, &inputAddress, 0, NULL, &configSize);
 
         if (status != noErr || configSize == 0) {
-            continue;  // No input streams
+            continue; // No input streams
         }
 
         AudioBufferList *bufferList = (AudioBufferList *)malloc(configSize);
-        status = AudioObjectGetPropertyData(
-            deviceID,
-            &inputAddress,
-            0,
-            NULL,
-            &configSize,
-            bufferList
-        );
+        status = AudioObjectGetPropertyData(deviceID, &inputAddress, 0, NULL, &configSize, bufferList);
 
         BOOL hasInput = NO;
         if (status == noErr) {
@@ -309,11 +222,10 @@ static void listInputDevices(void) {
         const char *mutedStr = isMuted ? "Yes" : "No";
 
         if (volume >= 0) {
-            printf("%-40s %-10s %-10s %d%%%s\n",
-                   [name UTF8String], runningStr, mutedStr, (int)(volume * 100), defaultMarker);
+            printf("%-40s %-10s %-10s %d%%%s\n", [name UTF8String], runningStr, mutedStr, (int)(volume * 100),
+                   defaultMarker);
         } else {
-            printf("%-40s %-10s %-10s N/A%s\n",
-                   [name UTF8String], runningStr, mutedStr, defaultMarker);
+            printf("%-40s %-10s %-10s N/A%s\n", [name UTF8String], runningStr, mutedStr, defaultMarker);
         }
     }
 
@@ -388,7 +300,9 @@ int main(int argc, const char *argv[]) {
 
         if (inputDevice == kAudioObjectUnknown) {
             if (showAll) {
-                printf("inactive\x1F" "unmuted\x1F" "0\n");
+                printf("inactive\x1F"
+                       "unmuted\x1F"
+                       "0\n");
             } else if (showActive) {
                 printf("inactive\n");
             } else if (showMute) {
@@ -410,7 +324,10 @@ int main(int argc, const char *argv[]) {
 
         // Output based on mode
         if (showAll) {
-            printf("%s\x1F" "%s\x1F" "%d\n", activeStr, muteStr, volumePercent);
+            printf("%s\x1F"
+                   "%s\x1F"
+                   "%d\n",
+                   activeStr, muteStr, volumePercent);
         } else if (showActive) {
             printf("%s\n", activeStr);
         } else if (showMute) {
