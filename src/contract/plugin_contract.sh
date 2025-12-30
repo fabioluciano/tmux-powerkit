@@ -78,6 +78,26 @@
 #   - network: "wifi", "ethernet", "vpn"
 #   - kubernetes: "production", "staging", "development"
 #
+#
+# STALE INDICATOR (Lifecycle-managed)
+# -----------------------------------
+# The lifecycle automatically tracks data freshness. When plugin_collect()
+# fails (returns non-zero), the lifecycle preserves previous cache and marks
+# the output as "stale". This triggers visual indication (darker colors).
+#
+# How it works:
+#   1. plugin_collect() returns 1 on failure (e.g., API timeout)
+#   2. Lifecycle preserves existing cached data
+#   3. Output is marked with stale=1 (5th field in lifecycle output)
+#   4. Renderer applies -darker color variant for visual feedback
+#
+# Plugin implementation for stale-while-revalidate:
+#   plugin_collect() {
+#       local result
+#       result=$(fetch_api_data) || return 1  # Return 1 on failure
+#       plugin_data_set "value" "$result"
+#   }
+#
 # =============================================================================
 #
 # 3. API REFERENCE
@@ -129,6 +149,10 @@ source_guard "contract_plugin" && return 0
 
 # Note: All core and utils modules are loaded by bootstrap.sh
 # This contract only defines the plugin interface specification
+
+# Load binary manager for macOS native binaries (optional, only used by macOS plugins)
+# Provides: require_macos_binary()
+. "${POWERKIT_ROOT}/src/core/binary_manager.sh"
 
 # =============================================================================
 # State and Health Constants

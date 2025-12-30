@@ -309,10 +309,6 @@ declare -gA THEME_COLORS=(
     [message-bg]="#1a1b26"
     [message-fg]="#c0caf5"
 
-    # Additional
-    [accent]="#bb9af7"
-    [border]="#3b4261"
-)
 
 # =============================================================================
 # Theme Metadata

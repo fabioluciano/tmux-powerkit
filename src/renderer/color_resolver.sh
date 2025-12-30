@@ -3,6 +3,22 @@
 # PowerKit Renderer: Color Resolver
 # Description: Resolves state/health to actual colors from theme
 # =============================================================================
+#
+# This module is responsible for mapping plugin state/health to actual colors.
+# It supports visual indication of stale data through color variants.
+#
+# KEY FUNCTIONS:
+#   resolve_color()             - Resolve color name to hex value
+#   resolve_plugin_colors_full()- Resolve plugin colors (supports stale indicator)
+#   resolve_session_colors()    - Resolve session colors by mode
+#   resolve_window_colors()     - Resolve window colors by state
+#   resolve_background()        - Resolve status bar background
+#
+# STALE INDICATOR:
+#   When stale=1, applies @powerkit_stale_color_variant (default: -darker) to
+#   background colors, providing visual feedback that cached data is displayed.
+#
+# =============================================================================
 
 # Source guard
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -55,23 +71,73 @@ resolve_color() {
 # Plugin Color Resolution
 # =============================================================================
 
-# Resolve colors for a plugin based on state and health
-# Usage: resolve_plugin_colors "state" "health" "context"
+# Resolve colors for a plugin based on state, health, and stale status
+# Usage: resolve_plugin_colors_full "state" "health" "context" "stale"
 # Returns: "content_bg content_fg icon_bg icon_fg" (space-separated)
 #
 # NOTE: Context is passed but NOT used for color decisions.
 # Per plugin contract, the plugin is responsible for setting its own health
 # based on any context (e.g., charging). The renderer only uses state and health.
+#
+# Stale indicator: When stale=1, applies @powerkit_stale_color_variant (default: -darker)
+# to all colors, providing visual feedback that data is cached/outdated.
 resolve_plugin_colors_full() {
     local state="$1"
     local health="$2"
     # shellcheck disable=SC2034 # Kept for API compatibility
     local context="$3"
+    local stale="${4:-0}"
 
     local content_bg content_fg icon_bg icon_fg
 
-    # Get base colors from palette (only uses state and health)
-    read -r content_bg content_fg icon_bg icon_fg <<< "$(get_plugin_colors "$state" "$health")"
+    # When stale, we need to apply -darker variant to background colors
+    # We do this by getting the color NAME, applying variant, then resolving to hex
+    if [[ "$stale" == "1" ]]; then
+        local variant
+        variant=$(get_tmux_option "@powerkit_stale_color_variant" "${POWERKIT_DEFAULT_STALE_COLOR_VARIANT:--darker}")
+        local base_color="${_HEALTH_COLORS[$health]:-ok-base}"
+
+        # Apply stale variant to background colors
+        # content_bg: base-color → base-color-darker
+        # icon_bg: base-color-lighter → base-color-darker (not lighter-darker)
+        local content_bg_name="${base_color}${variant}"
+        local icon_bg_name="${base_color}${variant}"
+
+        # Resolve to hex
+        content_bg=$(get_color "$content_bg_name")
+        icon_bg=$(get_color "$icon_bg_name")
+
+        # Foreground colors stay the same for readability
+        case "$health" in
+            ok)
+                content_fg=$(get_color "white")
+                icon_fg=$(get_color "white")
+                ;;
+            *)
+                content_fg=$(get_color "${base_color}-darkest")
+                icon_fg=$(get_color "${base_color}-darkest")
+                ;;
+        esac
+
+        # Handle inactive/failed states
+        case "$state" in
+            inactive)
+                content_bg=$(get_color "disabled-base${variant}")
+                content_fg=$(get_color "white")
+                icon_bg=$(get_color "disabled-base${variant}")
+                icon_fg=$(get_color "white")
+                ;;
+            failed)
+                content_bg=$(get_color "error-base${variant}")
+                content_fg=$(get_color "error-base-darkest")
+                icon_bg=$(get_color "error-base${variant}")
+                icon_fg=$(get_color "error-base-darkest")
+                ;;
+        esac
+    else
+        # Fresh data: use standard color resolution
+        read -r content_bg content_fg icon_bg icon_fg <<< "$(get_plugin_colors "$state" "$health")"
+    fi
 
     printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
 }

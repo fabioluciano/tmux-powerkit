@@ -42,7 +42,9 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     if is_macos; then
-        # macOS uses native helper or ioreg (always available)
+        # macOS: require native binary (downloaded on-demand from releases)
+        # Falls back to ioreg if binary not available, so don't fail here
+        require_macos_binary "powerkit-brightness" "brightness" || true
         return 0
     else
         # Linux - any of these work
@@ -162,7 +164,7 @@ _get_brightness_macos() {
     # Output format: <display_id>:<type>:<brightness>
     # type: builtin or external
     # brightness: 0-100 or -1 if not available
-    local helper="${POWERKIT_ROOT}/bin/macos/powerkit-brightness"
+    local helper="${POWERKIT_ROOT}/bin/powerkit-brightness"
     if [[ -x "$helper" ]]; then
         local helper_output
         helper_output=$("$helper" 2>/dev/null)

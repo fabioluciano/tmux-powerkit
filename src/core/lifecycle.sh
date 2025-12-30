@@ -470,9 +470,11 @@ _spawn_plugin_refresh() {
         # Get content
         content=$(plugin_render)
 
-        # Build and save output
+        # Build and save output (format: icon<US>content<US>state<US>health<US>stale)
+        # stale=0 means fresh data
         _delim=$'"'"'\x1f'"'"'
-        output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
+        stale="0"
+        output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}${_delim}${stale}"
 
         cache_set "plugin_${name}_data" "$output"
 
@@ -529,9 +531,11 @@ _do_plugin_refresh() {
     local content
     content=$(plugin_render)
 
-    # Build and save output (format: icon<US>content<US>state<US>health)
+    # Build and save output (format: icon<US>content<US>state<US>health<US>stale)
+    # stale=0 means fresh data
     local _delim=$'\x1f'
-    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
+    local stale="0"
+    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}${_delim}${stale}"
 
     cache_set "plugin_${name}_data" "$output"
 
@@ -563,7 +567,32 @@ _collect_plugin_sync() {
 
     # Collect data
     plugin_data_clear
-    plugin_collect
+    if ! plugin_collect; then
+        # Collection failed - try to return existing cache (stale is better than nothing)
+        # Uses _DEFAULT_CACHE_TTL_DAY (24h) as max fallback window
+        local existing_cache
+        existing_cache=$(cache_get "$cache_key" "${_DEFAULT_CACHE_TTL_DAY:-86400}" 2>/dev/null)
+        if [[ -n "$existing_cache" && "$existing_cache" != "HIDDEN" ]]; then
+            # Touch cache file to prevent repeated collection attempts
+            # This extends the stale window, reducing API hammering on failures
+            local cache_file="${_CACHE_DIR}/${cache_key}"
+            [[ -f "$cache_file" ]] && touch "$cache_file"
+            # Mark as stale by updating the 5th field (or appending if missing)
+            local _delim=$'\x1f'
+            if [[ "$existing_cache" == *"${_delim}"*"${_delim}"*"${_delim}"*"${_delim}"* ]]; then
+                # Already has 5 fields, replace last with "1"
+                existing_cache="${existing_cache%${_delim}*}${_delim}1"
+            else
+                # Only 4 fields, append stale=1
+                existing_cache="${existing_cache}${_delim}1"
+            fi
+            printf '%s' "$existing_cache"
+            return 0
+        fi
+        # No valid cache - return HIDDEN (but don't cache HIDDEN on failure)
+        printf 'HIDDEN'
+        return 1
+    fi
 
     # Get state
     local state
@@ -590,9 +619,11 @@ _collect_plugin_sync() {
     local content
     content=$(plugin_render)
 
-    # Build output (format: icon<US>content<US>state<US>health)
+    # Build output (format: icon<US>content<US>state<US>health<US>stale)
+    # stale=0 means fresh data
     local _delim=$'\x1f'
-    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}"
+    local stale="0"
+    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}${_delim}${stale}"
 
     # Cache and return
     cache_set "$cache_key" "$output"
@@ -606,17 +637,33 @@ _collect_plugin_sync() {
 # Collect all data needed for rendering a plugin
 # Uses cache when available, collects fresh data when needed
 # Implements Stale-While-Revalidate pattern for non-blocking updates
+#
 # Usage: collect_plugin_render_data "plugin_name"
-# Returns: "icon<US>content<US>state<US>health" or "HIDDEN" if not visible
-#          (US = Unit Separator, ASCII 31, to avoid conflicts with | in content)
+#
+# OUTPUT FORMAT (5 fields, Unit Separator delimited):
+#   "icon<US>content<US>state<US>health<US>stale"
+#   - icon: Plugin icon character
+#   - content: Rendered text from plugin_render()
+#   - state: inactive|active|degraded|failed
+#   - health: ok|good|info|warning|error
+#   - stale: 0=fresh data, 1=cached/stale data
+#   - Returns "HIDDEN" if plugin not visible
+#
+# STALE-WHILE-REVALIDATE PATTERN:
+#   Cache State        | Age              | Behavior                    | stale
+#   -------------------|------------------|-----------------------------|---------
+#   FRESH              | age ≤ TTL        | Return cache immediately    | 0
+#   STALE              | TTL < age ≤ TTL×3| Return cache + bg refresh   | 1
+#   VERY OLD           | age > TTL×3      | Synchronous collection      | 0
+#   MISSING            | no cache         | Synchronous collection      | 0
+#   COLLECTION FAILED  | any              | Return previous cache       | 1
+#
+# VISUAL INDICATION:
+#   When stale=1, renderer applies @powerkit_stale_color_variant (default: -darker)
+#   to background colors, providing visual feedback that cached data is displayed.
+#
 # NOTE: Colors are NOT resolved here - that's the renderer's responsibility
 #       per the contract separation (lifecycle = data, renderer = UI)
-#
-# Cache states:
-#   FRESH (age <= TTL): Return cache immediately
-#   STALE (TTL < age <= TTL*multiplier): Return cache + spawn background refresh
-#   VERY OLD (age > TTL*multiplier): Synchronous collection (blocking)
-#   MISSING: Synchronous collection (blocking)
 collect_plugin_render_data() {
     local name="$1"
     local plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
@@ -676,9 +723,20 @@ collect_plugin_render_data() {
     stale_multiplier="${POWERKIT_DEFAULT_STALE_MULTIPLIER:-3}"
     local stale_limit=$((ttl * stale_multiplier))
 
-    # STALE: TTL < age <= TTL*multiplier → return stale + background refresh
-    if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" ]]; then
+    # STALE WINDOW: TTL < age <= TTL*multiplier → return cache + background refresh
+    # Skip if cached_data is "HIDDEN" (not valid plugin data)
+    #
+    # IMPORTANT: Do NOT mark as stale=1 here. Natural cache aging is normal behavior.
+    # The stale indicator (darker colors) should ONLY appear when there's an actual
+    # problem (API failure, collection error). This is handled in _collect_plugin_sync
+    # when plugin_collect() returns non-zero.
+    #
+    # This ensures plugins don't constantly appear "stale" just because their cache
+    # is slightly older than TTL - which would happen with TTL close to status-interval.
+    if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" && "$cached_data" != "HIDDEN" ]]; then
         _spawn_plugin_refresh "$name"
+        # Return cached data AS-IS (preserve existing stale flag)
+        # If data was previously marked stale due to failure, it stays stale until fresh collection succeeds
         printf '%s' "$cached_data"
         return 0
     fi

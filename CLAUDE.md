@@ -218,6 +218,10 @@ PLUGIN_CONTENT_TYPES=("static" "dynamic")
 PLUGIN_PRESENCE=("always" "conditional")
 # - always: Always show plugin regardless of state
 # - conditional: Hide plugin when state is "inactive"
+
+# Stale indicator (controls visual dimming)
+# - stale=0: Fresh data (normal colors)
+# - stale=1: Cached data being displayed (colors use -darker variant)
 ```
 
 ### Health Precedence
@@ -243,20 +247,24 @@ get_health_level() {
 ### Data Flow
 
 ```text
-Plugin                          Renderer
-  │                                │
-  ├─ plugin_collect()              │
-  │    └─ plugin_data_set()        │
-  │                                │
-  ├─ plugin_get_state() ──────────►│
-  ├─ plugin_get_health() ─────────►│─► resolve_plugin_colors()
-  ├─ plugin_get_context() ────────►│
-  │                                │
-  ├─ plugin_render() ─────────────►│─► render_plugin_segment()
-  ├─ plugin_get_icon() ───────────►│
-  │                                │
-  └─ Returns: DATA only            └─► Returns: Formatted tmux string
+Plugin                          Lifecycle                       Renderer
+  │                                │                                │
+  ├─ plugin_collect()              │                                │
+  │    └─ plugin_data_set()        │                                │
+  │                                │                                │
+  ├─ plugin_get_state() ──────────►│                                │
+  ├─ plugin_get_health() ─────────►├── stale=0|1 ─────────────────►│─► resolve_plugin_colors_full()
+  ├─ plugin_get_context() ────────►│   (from cache state)           │
+  │                                │                                │
+  ├─ plugin_render() ─────────────►│──────────────────────────────►│─► render_plugin_segment()
+  ├─ plugin_get_icon() ───────────►│                                │
+  │                                │                                │
+  └─ Returns: DATA only            └─ Returns: 5-field output       └─► Returns: Formatted tmux string
 ```
+
+**Lifecycle Output Format**: `icon<US>content<US>state<US>health<US>stale`
+- Delimiter: `\x1f` (Unit Separator)
+- `stale`: 0=fresh, 1=cached data (triggers `-darker` color variant)
 
 ## Datastore API
 
@@ -288,6 +296,40 @@ cache_clear_all                 # Clear all cache
 - In-memory cache per render cycle (avoids disk reads)
 - Cached timestamp per cycle (single `date +%s` call)
 - Cache location: `$XDG_CACHE_HOME/tmux-powerkit/data` or `~/.cache/tmux-powerkit/data`
+
+### Stale-While-Revalidate (Lazy Loading)
+
+The lifecycle implements a stale-while-revalidate pattern for plugin data:
+
+| Cache State | Age | Behavior | Visual |
+|-------------|-----|----------|--------|
+| **FRESH** | ≤ TTL | Return cached data immediately | Normal colors |
+| **STALE** | TTL < age ≤ TTL×3 | Return cached + background refresh | `-darker` variant |
+| **VERY OLD** | > TTL×3 | Synchronous (blocking) refresh | Normal after refresh |
+
+**Configuration** (in `tmux.conf`):
+
+```bash
+set -g @powerkit_lazy_loading "true"           # Enable stale-while-revalidate
+set -g @powerkit_stale_multiplier "3"          # Max age = TTL × multiplier
+set -g @powerkit_stale_color_variant "-darker" # Color variant for stale data
+```
+
+**Plugin Implementation**:
+
+Plugins return `1` from `plugin_collect()` when data collection fails. The lifecycle preserves the previous cache and marks the output as stale:
+
+```bash
+plugin_collect() {
+    local result
+    result=$(fetch_api_data) || return 1  # Let lifecycle handle stale
+    plugin_data_set "value" "$result"
+}
+```
+
+**Visual Indication**:
+
+When `stale=1`, the renderer applies `@powerkit_stale_color_variant` (default: `-darker`) to background colors, providing visual feedback that cached data is being displayed.
 
 ## Options API
 

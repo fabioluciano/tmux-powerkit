@@ -3,11 +3,13 @@
 .vscode
 # Build artifacts
 dist/
-bin/macos/powerkit-brightness
-bin/macos/powerkit-nowplaying
-bin/macos/powerkit-temperature
-bin/macos/powerkit-gpu
-bin/macos/powerkit-microphone
+
+# macOS native binaries (downloaded from GitHub Releases)
+bin/powerkit-brightness
+bin/powerkit-nowplaying
+bin/powerkit-temperature
+bin/powerkit-gpu
+bin/powerkit-microphone
 
 # Node
 node_modules/

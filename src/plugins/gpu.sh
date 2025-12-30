@@ -29,11 +29,10 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    # macOS: powerkit-gpu binary (bundled)
+    # macOS: powerkit-gpu binary (downloaded on-demand from releases)
     if is_macos; then
-        local powerkit_gpu="${POWERKIT_ROOT}/bin/macos/powerkit-gpu"
-        [[ -x "$powerkit_gpu" ]] && return 0
-        return 1
+        require_macos_binary "powerkit-gpu" "gpu" || return 1
+        return 0
     fi
 
     # Linux: NVIDIA
@@ -225,7 +224,7 @@ plugin_collect() {
     local gpu_type=""
 
     if is_macos; then
-        local powerkit_gpu="${POWERKIT_ROOT}/bin/macos/powerkit-gpu"
+        local powerkit_gpu="${POWERKIT_ROOT}/bin/powerkit-gpu"
 
         if [[ -x "$powerkit_gpu" ]]; then
             # Get usage

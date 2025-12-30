@@ -90,6 +90,19 @@ POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"
 # =============================================================================
 # LAZY LOADING (Stale-While-Revalidate)
 # =============================================================================
+#
+# The stale-while-revalidate pattern provides fast UI response while keeping
+# data fresh in the background. When plugin data is "stale" (older than TTL
+# but within the stale window), the cached data is shown immediately with
+# visual indication while fresh data is fetched in background.
+#
+# Cache State Flow:
+#   FRESH (age ≤ TTL)           → Return cache, stale=0 (normal colors)
+#   STALE (TTL < age ≤ TTL×M)   → Return cache + bg refresh, stale=1 (darker colors)
+#   VERY OLD (age > TTL×M)      → Synchronous refresh (blocking), stale=0
+#   COLLECTION FAILED           → Return previous cache, stale=1 (darker colors)
+#
+# Where M = POWERKIT_DEFAULT_STALE_MULTIPLIER
 
 # Enable lazy loading for plugin data collection
 # When enabled, stale cache data is returned immediately while fresh data is fetched in background
@@ -99,6 +112,11 @@ POWERKIT_DEFAULT_LAZY_LOADING="true"
 # Example: TTL=300s, multiplier=3 → data up to 900s old can be returned while refreshing
 # After TTL×multiplier, synchronous (blocking) refresh is forced
 POWERKIT_DEFAULT_STALE_MULTIPLIER="3"
+
+# Stale indicator: color variant suffix applied when displaying stale (cached) data
+# Applied to background colors (content_bg and icon_bg) via resolve_plugin_colors_full()
+# Options: -darker, -darkest, -lighter, -lightest (must match theme color variants)
+POWERKIT_DEFAULT_STALE_COLOR_VARIANT="-darkest"
 
 # =============================================================================
 # SEPARATORS

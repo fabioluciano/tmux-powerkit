@@ -510,10 +510,6 @@ declare -A THEME_COLORS=(
     [info-base]="#7dcfff"
     [warning-base]="#e0af68"
     [error-base]="#f7768e"
-
-    # Additional
-    [accent]="#bb9af7"
-    [border]="#3b4261"
 )
 ```
 

@@ -255,14 +255,14 @@ _fetch_weather() {
     local encoded_format
     encoded_format=$(printf '%s' "$fetch_format" | sed 's/%/%25/g; s/ /%20/g; s/|/%7C/g')
 
-    local url="https://wttr.in"
+    local url="http://wttr.in"
     [[ -n "$encoded_location" ]] && url+="/$encoded_location"
     url+="?format=${encoded_format}&${units}"
     [[ -n "$language" ]] && url+="&lang=$language"
 
-    # Fetch with timeout and error handling (10s timeout for wttr.in)
+    # Fetch with timeout (5s connect, 10s max - wttr.in can be slow)
     local result
-    result=$(safe_curl "$url" 10 -L) || return 1
+    result=$(safe_curl "$url" 5 -L) || return 1
 
     # Return only if we got valid data (not error messages)
     if [[ -n "$result" && ! "$result" =~ ^(Unknown|Error|Sorry) ]]; then
@@ -286,7 +286,9 @@ plugin_collect() {
     local result
     result=$(_fetch_weather)
 
-    [[ -z "$result" ]] && return
+    # API failed - return error to let lifecycle handle stale-while-revalidate
+    # The lifecycle will preserve the previous cache if within stale window
+    [[ -z "$result" ]] && return 1
 
     local weather symbol
 

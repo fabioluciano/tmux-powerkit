@@ -24,7 +24,8 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     if is_macos; then
-        [[ -x "${POWERKIT_ROOT}/bin/macos/powerkit-nowplaying" ]] || return 1
+        # macOS: require native binary (downloaded on-demand from releases)
+        require_macos_binary "powerkit-nowplaying" "nowplaying" || return 1
     else
         require_cmd "playerctl" || return 1
     fi
@@ -141,7 +142,7 @@ declare -A _PLAYER_ICONS=(
 
 # macOS: Native binary using ScriptingBridge for Spotify/Music
 _get_nowplaying_macos() {
-    local binary="${POWERKIT_ROOT}/bin/macos/powerkit-nowplaying"
+    local binary="${POWERKIT_ROOT}/bin/powerkit-nowplaying"
     [[ -x "$binary" ]] || return 1
 
     local output
@@ -245,6 +246,15 @@ plugin_render() {
     title=$(plugin_data_get "title")
     album=$(plugin_data_get "album")
     app=$(plugin_data_get "app")
+
+    # Escape & in values before substitution
+    # In bash parameter expansion replacement, & means "the matched pattern"
+    # So "Day & Night" replacing %title% becomes "Day %title% Night"
+    # We escape & as \& to make it literal
+    artist="${artist//&/\\&}"
+    title="${title//&/\\&}"
+    album="${album//&/\\&}"
+    app="${app//&/\\&}"
 
     # Replace placeholders in format
     local result="$format"

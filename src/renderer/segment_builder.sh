@@ -3,6 +3,25 @@
 # PowerKit Renderer: Segment Builder
 # Description: Builds status bar segments using template system
 # =============================================================================
+#
+# This module builds formatted tmux status bar segments from plugin data.
+# It handles color resolution, separators, and stale data indication.
+#
+# KEY FUNCTIONS:
+#   render_plugins()            - Main entry point for powerkit-render
+#   render_plugin_segment()     - Render a single plugin segment
+#   build_segment()             - Build segment from template
+#
+# PLUGIN DATA FORMAT (from lifecycle):
+#   "icon<US>content<US>state<US>health<US>stale"
+#   - 5 fields separated by Unit Separator (\x1f)
+#   - stale field: "0"=fresh, "1"=cached data (triggers darker colors)
+#
+# STALE INDICATOR:
+#   When parsing plugin data, the stale field is passed to resolve_plugin_colors_full()
+#   which applies @powerkit_stale_color_variant to background colors.
+#
+# =============================================================================
 
 # Source guard
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -388,9 +407,10 @@ render_plugins() {
         [[ -z "$plugin_data" ]] && continue
         [[ "$plugin_data" == "HIDDEN" ]] && continue
 
-        # Parse data: icon|content|state|health (4 fields from lifecycle)
-        local icon content state health
-        IFS=$'\x1f' read -r icon content state health <<< "$plugin_data"
+        # Parse data: icon|content|state|health|stale (5 fields from lifecycle)
+        local icon content state health stale
+        IFS=$'\x1f' read -r icon content state health stale <<< "$plugin_data"
+        stale="${stale:-0}"  # Default for backward compatibility
 
         # Use explicit plugin option accessor (no global context)
         local show_only_on_threshold
@@ -421,8 +441,9 @@ render_plugins() {
 
     for plugin_name in "${visible_plugins[@]}"; do
         local plugin_data="${visible_data[$plugin_idx]}"
-        local icon content state health
-        IFS=$'\x1f' read -r icon content state health <<< "$plugin_data"
+        local icon content state health stale
+        IFS=$'\x1f' read -r icon content state health stale <<< "$plugin_data"
+        stale="${stale:-0}"  # Default for backward compatibility
 
         local is_first=$(( plugin_idx == 0 ? 1 : 0 ))
         local is_last=$(( plugin_idx == total_plugins - 1 ? 1 : 0 ))
@@ -443,8 +464,9 @@ render_plugins() {
         fi
 
         # Resolve colors (RENDERER responsibility - per contract separation)
+        # Pass stale flag to apply -darker variant for stale data indication
         local content_bg content_fg icon_bg icon_fg
-        read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "")"
+        read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "" "$stale")"
 
         # Render segment (pass is_first, is_last and side for correct separator styling)
         local segment

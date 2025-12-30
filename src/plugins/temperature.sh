@@ -44,8 +44,11 @@ plugin_get_metadata() {
 plugin_check_dependencies() {
     if is_linux; then
         require_cmd "sensors" 1  # Optional, can use sysfs
+    elif is_macos; then
+        # macOS: prefer native binary (downloaded on-demand from releases)
+        # Falls back to osx-cpu-temp/smctemp/iStats if binary not available
+        require_macos_binary "powerkit-temperature" "temperature" || true
     fi
-    # macOS: powerkit-temperature binary is bundled, no external deps needed
     return 0
 }
 
@@ -228,7 +231,7 @@ _get_temp_linux() {
 _get_temp_macos() {
     local source="$1"
     local temp
-    local powerkit_temp="${POWERKIT_ROOT}/bin/macos/powerkit-temperature"
+    local powerkit_temp="${POWERKIT_ROOT}/bin/powerkit-temperature"
 
     # Try powerkit-temperature first (works on Apple Silicon and Intel)
     if [[ -x "$powerkit_temp" ]]; then

@@ -1,12 +1,22 @@
 #!/bin/bash
+# =============================================================================
+# PowerKit: Build Script for macOS Native Binaries
+# Description: Build macOS binaries for release (called by semantic-release)
+# Source: src/native/macos/ -> dist/
+# =============================================================================
 
 set -e
 
 SUFFIX=$1
 VERSION=${NEXT_RELEASE_VERSION:-"dev"}
-COMMIT_SHA=$(git rev-parse --short HEAD)
+COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 NATIVE_ARCH=$(uname -m)
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+SRC_DIR="${ROOT_DIR}/src/native/macos"
+DIST_DIR="${ROOT_DIR}/dist"
 
 echo "========================================="
 echo "Building tmux-powerkit helpers"
@@ -15,6 +25,8 @@ echo "Commit: $COMMIT_SHA"
 echo "Target: $SUFFIX"
 echo "Native Architecture: $NATIVE_ARCH"
 echo "Date: $BUILD_DATE"
+echo "Source: $SRC_DIR"
+echo "Output: $DIST_DIR"
 echo "========================================="
 
 # Validate we're on macOS
@@ -26,6 +38,12 @@ fi
 # Validate clang is available
 if ! command -v clang &> /dev/null; then
   echo "❌ Error: clang compiler not found"
+  exit 1
+fi
+
+# Validate source directory exists
+if [[ ! -d "$SRC_DIR" ]]; then
+  echo "❌ Error: Source directory not found: $SRC_DIR"
   exit 1
 fi
 
@@ -43,7 +61,7 @@ fi
 echo "Target architecture: $TARGET_ARCH"
 
 # Build native helpers
-cd bin/macos
+cd "$SRC_DIR"
 
 echo ""
 echo "=== Cleaning previous builds ==="
@@ -62,16 +80,19 @@ echo "=== Verifying builds ==="
 VERIFICATION_FAILED=0
 
 for binary in powerkit-*; do
+  # Skip source files
+  [[ "$binary" == *.m ]] && continue
+
   if [ ! -f "$binary" ]; then
     echo "❌ Binary not found: $binary"
     VERIFICATION_FAILED=1
     continue
   fi
-  
+
   echo ""
   echo "File: $binary"
   ls -lh "$binary"
-  
+
   # Verify architecture
   if lipo -info "$binary" 2>/dev/null | grep -q "$TARGET_ARCH"; then
     echo "✓ Architecture verified: $TARGET_ARCH"
@@ -89,20 +110,24 @@ if [ $VERIFICATION_FAILED -eq 1 ]; then
 fi
 
 # Create dist directory
-mkdir -p ../../dist
+mkdir -p "$DIST_DIR"
 
 # Copy binaries with suffix
 echo ""
 echo "=== Copying binaries to dist ==="
 for binary in powerkit-*; do
+  # Skip source files
+  [[ "$binary" == *.m ]] && continue
+  [[ ! -x "$binary" ]] && continue
+
   TARGET_NAME="${binary}-${SUFFIX}"
-  cp "$binary" "../../dist/${TARGET_NAME}"
-  chmod +x "../../dist/${TARGET_NAME}"
+  cp "$binary" "${DIST_DIR}/${TARGET_NAME}"
+  chmod +x "${DIST_DIR}/${TARGET_NAME}"
   echo "✓ Copied: ${binary} -> dist/${TARGET_NAME}"
 done
 
 # Generate checksums
-cd ../../dist
+cd "$DIST_DIR"
 echo ""
 echo "=== Generating checksums ==="
 shasum -a 256 *-${SUFFIX} > "SHA256SUMS-${SUFFIX}.txt"
@@ -121,12 +146,12 @@ Target Arch:      ${TARGET_ARCH}
 Native Arch:      ${NATIVE_ARCH}
 Build Date:       ${BUILD_DATE}
 Builder:          GitHub Actions
-macOS Version:    $(sw_vers -productVersion)
-Xcode Version:    $(xcodebuild -version | head -n 1 | cut -d' ' -f2)
-Clang Version:    $(clang --version | head -n 1 | sed 's/.*version //' | cut -d' ' -f1)
+macOS Version:    $(sw_vers -productVersion 2>/dev/null || echo "N/A")
+Xcode Version:    $(xcodebuild -version 2>/dev/null | head -n 1 | cut -d' ' -f2 || echo "N/A")
+Clang Version:    $(clang --version 2>/dev/null | head -n 1 | sed 's/.*version //' | cut -d' ' -f1 || echo "N/A")
 
 Binaries Included:
-$(ls -1 *-${SUFFIX} | grep -v '.txt$' | while read file; do
+$(ls -1 *-${SUFFIX} 2>/dev/null | grep -v '.txt$' | while read file; do
   size=$(du -h "$file" | cut -f1)
   echo "  - $file ($size)"
 done)

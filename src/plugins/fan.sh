@@ -162,7 +162,8 @@ _get_all_fans_hwmon() {
             local rpm
             rpm=$(cat "$fan_file" 2>/dev/null | tr -d '[:space:]')
             [[ -z "$rpm" || ! "$rpm" =~ ^[0-9]+$ ]] && continue
-            if [[ "$filter_idle" == "true" && "$rpm" -eq 0 ]]; then
+            # Filter idle fans (0 RPM) when filter_idle is true
+            if [[ "$filter_idle" == "true" ]] && (( rpm == 0 )); then
                 continue
             fi
             fans+=("$rpm")
@@ -304,8 +305,12 @@ plugin_collect() {
         [[ "$selection" == "all" ]] && filter_idle="false"
 
         all_rpms=$(_get_all_fans_hwmon "$filter_idle")
+
+        # No fans found - plugin will be inactive
+        [[ -z "$all_rpms" ]] && return 0
+
         # Store max RPM for health calculation (highest speed = most stressed)
-        rpm=$(printf '%s\n' "$all_rpms" | sort -rn | head -1)
+        rpm=$(echo "$all_rpms" | sort -rn | head -1 | tr -d '[:space:]')
         rpm="${rpm:-0}"
         plugin_data_set "all_rpms" "$all_rpms"
     else
@@ -315,9 +320,9 @@ plugin_collect() {
     fi
 
     # No active fans - plugin will be inactive
-    [[ "${rpm:-0}" -eq 0 ]] && return 0
+    (( rpm == 0 )) && return 0
 
-    plugin_data_set "rpm" "${rpm:-0}"
+    plugin_data_set "rpm" "$rpm"
 }
 
 # =============================================================================

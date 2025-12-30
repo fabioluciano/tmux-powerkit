@@ -42,9 +42,9 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     if is_macos; then
-        local powerkit_mic="${POWERKIT_ROOT}/bin/macos/powerkit-microphone"
-        [[ -x "$powerkit_mic" ]] && return 0
-        return 1
+        # macOS: require native binary (downloaded on-demand from releases)
+        require_macos_binary "powerkit-microphone" "microphone" || return 1
+        return 0
     fi
     if is_linux; then
         require_any_cmd "pactl" "amixer" 1  # Optional
@@ -109,7 +109,7 @@ plugin_get_icon() {
 # =============================================================================
 
 _detect_macos_status() {
-    local powerkit_mic="${POWERKIT_ROOT}/bin/macos/powerkit-microphone"
+    local powerkit_mic="${POWERKIT_ROOT}/bin/powerkit-microphone"
     [[ ! -x "$powerkit_mic" ]] && return 1
 
     local output

@@ -1,0 +1,11 @@
+# macOS native binaries are downloaded from GitHub Releases to this directory.
+# The source code is in src/native/macos/
+#
+# Binaries downloaded:
+#   - powerkit-brightness
+#   - powerkit-gpu
+#   - powerkit-microphone
+#   - powerkit-nowplaying
+#   - powerkit-temperature
+#
+# Binaries are downloaded on-demand when plugins that require them are activated.
