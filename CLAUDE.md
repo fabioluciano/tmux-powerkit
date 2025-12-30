@@ -263,6 +263,7 @@ Plugin                          Lifecycle                       Renderer
 ```
 
 **Lifecycle Output Format**: `icon<US>content<US>state<US>health<US>stale`
+
 - Delimiter: `\x1f` (Unit Separator)
 - `stale`: 0=fresh, 1=cached data (triggers `-darker` color variant)
 

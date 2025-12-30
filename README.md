@@ -2,16 +2,16 @@
 
 # ⚡ PowerKit
 
-### *The Ultimate tmux Status Bar Framework*
+## The Ultimate tmux Status Bar Framework
 
-**42 Plugins • 13 Themes • Infinite Possibilities**
+42 Plugins • 13 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/fabioluciano/tmux-powerkit/plugin-tests.yml?branch=main&style=for-the-badge&label=tests&logo=github-actions&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/actions)
 [![Stars](https://img.shields.io/github/stars/fabioluciano/tmux-powerkit?style=for-the-badge&logo=starship&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/stargazers)
 
-*Transform your tmux status bar into a powerful, beautiful, and intelligent command center*
+Transform your tmux status bar into a powerful, beautiful, and intelligent command center
 
 [**Getting Started**](#-quick-start) • [**Plugins**](#-plugins) • [**Themes**](#-themes) • [**Documentation**](../../wiki)
 
@@ -26,18 +26,22 @@
 <td width="50%">
 
 ### 🎨 **Beautiful by Default**
+
 Choose from **13 carefully crafted themes** with **27 variants** including Catppuccin, Dracula, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
 
 ### ⚡ **Blazingly Fast**
+
 Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, and optimized background rendering ensure minimal overhead even with dozens of plugins active. Returns stale data immediately while refreshing in background - never blocks on slow API calls or external commands.
 
 </td>
 <td width="50%">
 
 ### 🧩 **Truly Modular**
+
 **42 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
 
 ### 🔧 **Extensible Architecture**
+
 Contract-based plugin system with strict separation of concerns. Create your own plugins, themes, and helpers with ease.
 
 </td>
@@ -433,6 +437,7 @@ set -g @powerkit_stale_multiplier "3"
 ```
 
 **How it works:**
+
 - Fresh data (within TTL): Returns cached data immediately
 - Stale data (within TTL × multiplier): Returns stale data immediately, refreshes in background
 - Too old data (beyond TTL × multiplier): Blocks and refreshes synchronously
@@ -666,7 +671,7 @@ See [LICENSE](LICENSE) for full details.
 
 ### Made with ❤️ by [@fabioluciano](https://github.com/fabioluciano)
 
-**If PowerKit improves your tmux experience, please consider starring the repo! ⭐**
+If PowerKit improves your tmux experience, please consider starring the repo! ⭐
 
 [⬆ Back to Top](#-powerkit)
 

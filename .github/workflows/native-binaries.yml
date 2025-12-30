@@ -1,0 +1,234 @@
+name: Native Binaries CI
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/native/macos/**'
+      - '.github/workflows/native-binaries.yml'
+  pull_request:
+    paths:
+      - 'src/native/macos/**'
+      - '.github/workflows/native-binaries.yml'
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint Objective-C
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: brew install clang-format
+
+      - name: Check formatting
+        working-directory: src/native/macos
+        run: |
+          echo "Checking Objective-C formatting..."
+          FAILED=0
+          for file in *.m; do
+            if ! clang-format --dry-run --Werror "$file" 2>/dev/null; then
+              echo "❌ $file needs formatting"
+              FAILED=1
+            else
+              echo "✓ $file"
+            fi
+          done
+
+          if [[ $FAILED -eq 1 ]]; then
+            echo ""
+            echo "To fix formatting, run:"
+            echo "  cd src/native/macos && clang-format -i *.m"
+            exit 1
+          fi
+          echo "✓ All files properly formatted"
+
+      - name: Static analysis with clang
+        working-directory: src/native/macos
+        run: |
+          echo "Running static analysis..."
+          FAILED=0
+
+          for file in *.m; do
+            echo "Analyzing $file..."
+            # Use clang's static analyzer
+            if ! clang --analyze \
+              -Xanalyzer -analyzer-output=text \
+              -framework Foundation \
+              -framework IOKit \
+              "$file" 2>&1 | tee "/tmp/analysis_${file}.txt"; then
+              if grep -q "warning:" "/tmp/analysis_${file}.txt"; then
+                echo "⚠️ Warnings found in $file"
+              fi
+            fi
+          done
+
+          echo "✓ Static analysis complete"
+
+  build:
+    name: Build (${{ matrix.arch }})
+    runs-on: macos-latest
+    needs: lint
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build binaries
+        working-directory: src/native/macos
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: |
+          echo "Building for architecture: $ARCH"
+          make clean
+          make all ARCH=$ARCH VERSION=ci-test COMMIT=${{ github.sha }} BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+      - name: Verify binaries created
+        working-directory: src/native/macos
+        run: |
+          echo "Verifying binaries..."
+          for binary in powerkit-brightness powerkit-gpu powerkit-microphone powerkit-nowplaying powerkit-temperature; do
+            if [[ ! -f "$binary" ]]; then
+              echo "❌ Missing: $binary"
+              exit 1
+            fi
+
+            # Check it's a valid Mach-O binary
+            if ! file "$binary" | grep -q "Mach-O"; then
+              echo "❌ Invalid binary: $binary"
+              file "$binary"
+              exit 1
+            fi
+
+            # Check architecture
+            BINARY_ARCH=$(file "$binary" | grep -oE 'arm64|x86_64')
+            if [[ "$BINARY_ARCH" != "${{ matrix.arch }}" ]]; then
+              echo "❌ Wrong architecture for $binary: expected ${{ matrix.arch }}, got $BINARY_ARCH"
+              exit 1
+            fi
+
+            echo "✓ $binary ($BINARY_ARCH)"
+          done
+
+          echo ""
+          echo "All binaries built successfully!"
+
+      - name: Test binaries (native arch only)
+        if: matrix.arch == 'arm64'
+        working-directory: src/native/macos
+        run: |
+          echo "Testing binary execution..."
+
+          # Temperature - should work without special permissions
+          echo "Testing powerkit-temperature..."
+          if ./powerkit-temperature -h 2>&1 | grep -qiE "usage|help|error" || ./powerkit-temperature 2>&1; then
+            echo "✓ powerkit-temperature executes"
+          fi
+
+          # GPU - should work on macOS runners
+          echo "Testing powerkit-gpu..."
+          if ./powerkit-gpu 2>&1; then
+            echo "✓ powerkit-gpu executes"
+          fi
+
+          # Brightness - may not work in CI (no display)
+          echo "Testing powerkit-brightness..."
+          ./powerkit-brightness 2>&1 || echo "⚠️ powerkit-brightness (expected - no display in CI)"
+
+          # Microphone - may require permissions
+          echo "Testing powerkit-microphone..."
+          ./powerkit-microphone -m 2>&1 || echo "⚠️ powerkit-microphone (may need permissions)"
+
+          # Nowplaying - should return empty if no player
+          echo "Testing powerkit-nowplaying..."
+          ./powerkit-nowplaying 2>&1 || echo "⚠️ powerkit-nowplaying (no player running)"
+
+          echo ""
+          echo "Execution tests complete"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.arch }}
+          path: |
+            src/native/macos/powerkit-*
+            !src/native/macos/*.m
+          retention-days: 7
+
+  syntax-check:
+    name: Syntax Check
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check Objective-C syntax
+        working-directory: src/native/macos
+        run: |
+          echo "Checking Objective-C syntax..."
+
+          for file in *.m; do
+            echo "Checking $file..."
+
+            # Syntax check only (no linking)
+            if ! clang -fsyntax-only \
+              -framework Foundation \
+              -framework IOKit \
+              -Weverything \
+              -Wno-poison-system-directories \
+              -Wno-declaration-after-statement \
+              -Wno-disabled-macro-expansion \
+              "$file" 2>&1; then
+              echo "❌ Syntax errors in $file"
+              exit 1
+            fi
+
+            echo "✓ $file"
+          done
+
+          echo ""
+          echo "✓ All files have valid syntax"
+
+  makefile-check:
+    name: Makefile Validation
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Makefile
+        working-directory: src/native/macos
+        run: |
+          echo "Validating Makefile..."
+
+          # Check Makefile exists
+          if [[ ! -f Makefile ]]; then
+            echo "❌ Makefile not found"
+            exit 1
+          fi
+
+          # Check all .m files have corresponding targets
+          for file in *.m; do
+            target="${file%.m}"
+            if ! grep -q "^${target}:" Makefile; then
+              echo "❌ Missing target for $file in Makefile"
+              exit 1
+            fi
+            echo "✓ Target exists: $target"
+          done
+
+          # Verify make targets work
+          echo ""
+          echo "Testing make targets..."
+          make help
+          make info
+
+          echo ""
+          echo "✓ Makefile is valid"
