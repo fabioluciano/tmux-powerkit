@@ -6,11 +6,15 @@ on:
       - main
     paths:
       - 'src/**'
+      - 'bin/**'
+      - 'scripts/**'
       - 'tests/**'
       - '.github/workflows/plugin-tests.yml'
   pull_request:
     paths:
       - 'src/**'
+      - 'bin/**'
+      - 'scripts/**'
       - 'tests/**'
   workflow_dispatch:
 
@@ -55,7 +59,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          for f in src/**/*.sh bin/* tests/*.sh; do
+          for f in src/**/*.sh bin/* scripts/*.sh tests/*.sh; do
             [[ -f "$f" ]] || continue
             echo "Testing syntax: $f"
             bash -n "$f"

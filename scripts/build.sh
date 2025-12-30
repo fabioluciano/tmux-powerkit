@@ -151,7 +151,8 @@ Xcode Version:    $(xcodebuild -version 2>/dev/null | head -n 1 | cut -d' ' -f2 
 Clang Version:    $(clang --version 2>/dev/null | head -n 1 | sed 's/.*version //' | cut -d' ' -f1 || echo "N/A")
 
 Binaries Included:
-$(ls -1 *-${SUFFIX} 2>/dev/null | grep -v '.txt$' | while read file; do
+$(for file in *-"${SUFFIX}"; do
+  [[ -f "$file" && "$file" != *.txt ]] || continue
   size=$(du -h "$file" | cut -f1)
   echo "  - $file ($size)"
 done)

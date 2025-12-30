@@ -429,7 +429,7 @@ binary_clear_all_decisions             # Clear all
 
 When binaries are missing, a popup appears via `tmux display-popup`:
 
-```
+```text
 ╔════════════════════════════════════════════════════════════════════╗
 ║                 PowerKit - Binary Download                          ║
 ╚════════════════════════════════════════════════════════════════════╝

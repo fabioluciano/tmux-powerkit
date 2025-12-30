@@ -40,7 +40,9 @@ DIRS=(
     "$POWERKIT_ROOT/src/plugins"
     "$POWERKIT_ROOT/src/helpers"
     "$POWERKIT_ROOT/src/themes"
+    "$POWERKIT_ROOT/src/native"
     "$POWERKIT_ROOT/bin"
+    "$POWERKIT_ROOT/scripts"
     "$POWERKIT_ROOT/tests"
 )
 
