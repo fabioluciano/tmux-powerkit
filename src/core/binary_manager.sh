@@ -20,6 +20,13 @@ source_guard "binary_manager" && return 0
 POWERKIT_GITHUB_REPO="fabioluciano/tmux-powerkit"
 _BINARY_DIR="${POWERKIT_ROOT}/bin"
 
+# Track missing binaries during initialization
+declare -ga _MISSING_BINARIES=()
+declare -gA _MISSING_BINARY_PLUGINS=()
+
+# File to persist missing binaries across subshells (stable name)
+_MISSING_BINARIES_FILE="/tmp/powerkit_missing_binaries"
+
 # =============================================================================
 # Internal Functions
 # =============================================================================
@@ -95,26 +102,90 @@ _binary_decision_set() {
     cache_set "binary_decision_${binary}" "$decision"
 }
 
-# Prompt user for download confirmation
-# Usage: _binary_prompt_download "binary_name" "plugin_name"
-# Returns: 0 if user confirms, 1 if user declines
-_binary_prompt_download() {
+# Track a missing binary for batch prompt
+# Usage: _track_missing_binary "binary_name" "plugin_name"
+_track_missing_binary() {
     local binary="$1"
     local plugin="$2"
 
-    local message
-    message="O plugin \"${plugin}\" requer o binário \"${binary}\" que não está instalado.
+    # Avoid duplicates in memory
+    local b
+    for b in "${_MISSING_BINARIES[@]}"; do
+        [[ "$b" == "$binary" ]] && return 0
+    done
 
-⚠️  Sem este binário, o plugin NÃO funcionará no macOS.
+    _MISSING_BINARIES+=("$binary")
+    _MISSING_BINARY_PLUGINS["$binary"]="$plugin"
 
-O código fonte está disponível em:
-https://github.com/${POWERKIT_GITHUB_REPO}/tree/main/src/native/macos
+    # Also write to file for persistence across subshells
+    # Check if already in file
+    if [[ -f "$_MISSING_BINARIES_FILE" ]] && grep -q "^${binary}:" "$_MISSING_BINARIES_FILE" 2>/dev/null; then
+        return 0
+    fi
+    echo "${binary}:${plugin}" >> "$_MISSING_BINARIES_FILE"
 
-Deseja baixar o binário agora?"
+    log_debug "binary_manager" "Tracked missing binary: $binary for plugin $plugin"
+}
 
-    ui_confirm "$message" \
-        --affirmative "Sim, baixar" \
-        --negative "Não, desativar plugin"
+# Get list of missing binaries (space-separated)
+# Usage: binary_get_missing
+binary_get_missing() {
+    printf '%s\n' "${_MISSING_BINARIES[@]}"
+}
+
+# Check if there are missing binaries
+# Usage: binary_has_missing
+binary_has_missing() {
+    [[ ${#_MISSING_BINARIES[@]} -gt 0 ]]
+}
+
+# Show combined popup for all missing binaries
+# Usage: binary_prompt_missing
+# Called after all plugins are initialized
+binary_prompt_missing() {
+    local pending_file="/tmp/powerkit_binary_pending_all"
+
+    # Check if popup is already pending
+    if [[ -f "$pending_file" ]]; then
+        return 0
+    fi
+
+    # Read from file (persisted across subshells)
+    if [[ ! -f "$_MISSING_BINARIES_FILE" || ! -s "$_MISSING_BINARIES_FILE" ]]; then
+        return 0
+    fi
+
+    # Build binary list from file
+    local binary_list=""
+    local count=0
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        binary_list+="${line} "
+        ((count++))
+    done < "$_MISSING_BINARIES_FILE"
+    binary_list="${binary_list% }"  # Remove trailing space
+
+    [[ $count -eq 0 ]] && return 0
+
+    # Mark as pending
+    echo "1" > "$pending_file"
+
+    log_info "binary_manager" "Prompting for ${count} missing binaries"
+
+    # Write command to temp file for execution
+    local cmd_file="/tmp/powerkit_popup_cmd"
+    cat > "$cmd_file" << EOF
+#!/usr/bin/env bash
+tmux display-popup -E -w 60% -h 70% -T ' PowerKit - Binary Download ' \
+    '${POWERKIT_ROOT}/bin/powerkit-binary-prompt' '${binary_list}'
+rm -f '${pending_file}'
+rm -f '${_MISSING_BINARIES_FILE}'
+rm -f '${cmd_file}'
+EOF
+    chmod +x "$cmd_file"
+
+    # Execute via tmux run-shell in background
+    tmux run-shell -b "'$cmd_file'"
 }
 
 # Download and install binary
@@ -150,7 +221,7 @@ binary_download() {
     mv "$temp_file" "${_BINARY_DIR}/${binary}"
 
     log_info "binary_manager" "Installed ${binary} to ${_BINARY_DIR}"
-    toast "Binário ${binary} instalado com sucesso" "success"
+    toast "Binary ${binary} installed successfully" "success"
     return 0
 }
 
@@ -190,19 +261,10 @@ require_macos_binary() {
             ;;
     esac
 
-    # No cached decision - prompt user
-    if _binary_prompt_download "$binary" "$plugin"; then
-        _binary_decision_set "$binary" "yes"
-        if binary_download "$binary"; then
-            return 0
-        fi
-        toast "Falha ao baixar ${binary}" "error"
-        return 1
-    else
-        _binary_decision_set "$binary" "no"
-        log_info "binary_manager" "User declined download of ${binary} for plugin ${plugin}"
-        return 1
-    fi
+    # No cached decision - track for batch prompt later
+    # Decision will be saved by powerkit-binary-prompt after user interaction
+    _track_missing_binary "$binary" "$plugin"
+    return 1
 }
 
 # Clear cached decision for a binary (allow re-prompting)

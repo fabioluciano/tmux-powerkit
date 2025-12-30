@@ -488,6 +488,11 @@ render_plugins() {
         output+="#[fg=${prev_bg},bg=${status_bg}]${edge_sep}#[none]"
     fi
 
+    # After all plugins processed, show popup for any missing binaries
+    if declare -F binary_prompt_missing &>/dev/null; then
+        binary_prompt_missing
+    fi
+
     printf '%s' "$output"
 }
 

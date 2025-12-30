@@ -150,6 +150,11 @@ initialize_plugins() {
             _PLUGIN_STATES["$name"]="init_failed"
         fi
     done
+
+    # After all plugins are initialized, show prompt for any missing binaries
+    if declare -F binary_prompt_missing &>/dev/null; then
+        binary_prompt_missing
+    fi
 }
 
 # Initialize a single plugin
@@ -556,6 +561,16 @@ _collect_plugin_sync() {
     # Source plugin
     # shellcheck disable=SC1090
     . "$plugin_file"
+
+    # Check dependencies (calls require_macos_binary for macOS plugins)
+    if declare -F plugin_check_dependencies &>/dev/null; then
+        if ! plugin_check_dependencies; then
+            # Dependencies not met - return HIDDEN and cache it
+            cache_set "$cache_key" "HIDDEN"
+            printf 'HIDDEN'
+            return 0
+        fi
+    fi
 
     # Declare options
     declare -F plugin_declare_options &>/dev/null && plugin_declare_options

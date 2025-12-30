@@ -95,7 +95,8 @@ tmux-powerkit/
 ├── bin/
 │   ├── powerkit-render             # Status-right renderer entry point
 │   ├── powerkit-plugin             # Single plugin executor
-│   └── powerkit-icon               # Icon resolver
+│   ├── powerkit-icon               # Icon resolver
+│   └── powerkit-binary-prompt      # Interactive macOS binary download prompt
 ├── src/
 │   ├── core/                       # Core Framework
 │   │   ├── bootstrap.sh            # Entry point, module loading
@@ -108,7 +109,8 @@ tmux-powerkit/
 │   │   ├── defaults.sh             # Default values and constants
 │   │   ├── theme_loader.sh         # Theme loading
 │   │   ├── color_generator.sh      # Generates variants (-lighter/-darker)
-│   │   └── color_palette.sh        # State/health → semantic color mapping
+│   │   ├── color_palette.sh        # State/health → semantic color mapping
+│   │   └── binary_manager.sh       # macOS native binary download manager
 │   ├── utils/                      # Utility Functions
 │   │   ├── platform.sh             # OS/distro detection
 │   │   ├── strings.sh              # String manipulation
@@ -138,16 +140,17 @@ The bootstrap system loads modules in strict dependency order:
 
 ```bash
 # Module loading order (critical - do not reorder)
-1. guard.sh        # Source guard (must be first)
-2. defaults.sh     # Default values (no deps except guard)
-3. logger.sh       # Logging system
-4. datastore.sh    # Plugin data API (depends on logger)
-5. options.sh      # Tmux options batch loader (depends on logger)
-6. cache.sh        # TTL-based cache (depends on logger)
-7. color_generator.sh  # Color variants (depends on logger)
-8. color_palette.sh    # State/health colors (depends on color_generator)
-9. theme_loader.sh     # Theme loading (depends on color_generator, options, cache)
-10. lifecycle.sh       # Plugin lifecycle (depends on all above)
+1. guard.sh           # Source guard (must be first)
+2. defaults.sh        # Default values (no deps except guard)
+3. logger.sh          # Logging system
+4. datastore.sh       # Plugin data API (depends on logger)
+5. options.sh         # Tmux options batch loader (depends on logger)
+6. cache.sh           # TTL-based cache (depends on logger)
+7. color_generator.sh # Color variants (depends on logger)
+8. color_palette.sh   # State/health colors (depends on color_generator)
+9. theme_loader.sh    # Theme loading (depends on color_generator, options, cache)
+10. lifecycle.sh      # Plugin lifecycle (depends on all above)
+11. binary_manager.sh # macOS binary download (depends on cache, logger, platform)
 ```
 
 ### Bootstrap Functions
@@ -371,6 +374,93 @@ check_dependencies "curl" "jq" || return 1
 ```bash
 # has_cmd does NOT track dependencies - use for runtime decisions
 has_cmd "fzf" && use_fzf_feature
+```
+
+## macOS Native Binary System
+
+Some plugins require native macOS binaries for hardware access (GPU, temperature, microphone, etc.). These binaries are **not included in the repository** - they are downloaded on-demand from GitHub releases.
+
+### Affected Plugins
+
+| Plugin | Binary | Purpose |
+|--------|--------|---------|
+| `gpu` | `powerkit-gpu` | GPU usage via IOKit |
+| `temperature` | `powerkit-temperature` | CPU temp via SMC |
+| `microphone` | `powerkit-microphone` | Mic mute state |
+| `nowplaying` | `powerkit-nowplaying` | Current track info |
+| `brightness` | `powerkit-brightness` | Screen brightness |
+
+### How It Works
+
+1. Plugin calls `require_macos_binary "binary_name" "plugin_name"` in `plugin_check_dependencies()`
+2. If binary doesn't exist in `${POWERKIT_ROOT}/bin/`, it's tracked for batch prompt
+3. After all plugins are collected, `binary_prompt_missing()` shows a single popup listing all missing binaries
+4. User chooses: download all, select individually, or skip
+5. Decision is cached for 24h (skip won't re-prompt until cache expires)
+
+### Plugin Usage
+
+```bash
+plugin_check_dependencies() {
+    # Check for native macOS binary (downloaded on-demand)
+    require_macos_binary "powerkit-gpu" "gpu" || return 1
+    return 0
+}
+```
+
+### Binary Manager API
+
+```bash
+# Check if binary exists
+binary_exists "powerkit-gpu"           # Returns: 0 if exists and executable
+
+# Require binary (tracks for prompt if missing)
+require_macos_binary "binary" "plugin" # Returns: 0 if available, 1 if not
+
+# Download binary from GitHub releases
+binary_download "powerkit-gpu"         # Returns: 0 on success
+
+# Clear user decisions (allow re-prompting)
+binary_clear_decision "powerkit-gpu"   # Clear single
+binary_clear_all_decisions             # Clear all
+```
+
+### User Interaction
+
+When binaries are missing, a popup appears via `tmux display-popup`:
+
+```
+╔════════════════════════════════════════════════════════════════════╗
+║                 PowerKit - Binary Download                          ║
+╚════════════════════════════════════════════════════════════════════╝
+
+The following plugins require native macOS binaries that are not
+installed:
+
+  • powerkit-gpu                (plugin: gpu)
+  • powerkit-temperature        (plugin: temperature)
+
+Download all binaries? [Y]es / [N]o / [S]elect:
+```
+
+### Binary Source Code
+
+Native binaries are compiled from Swift source in `src/native/macos/`. Users can build manually if they prefer not to download pre-compiled binaries.
+
+### Troubleshooting
+
+```bash
+# Clear all binary decisions (force re-prompt)
+rm -f ~/.cache/tmux-powerkit/data/binary_decision_*
+
+# Clear tracking files
+rm -f /tmp/powerkit_missing_binaries /tmp/powerkit_binary_pending_all
+
+# Remove binaries to force re-download
+rm -f ~/.config/tmux/plugins/tmux-powerkit/bin/powerkit-{gpu,temperature,microphone,nowplaying,brightness}
+
+# Reload tmux
+tmux source ~/.tmux.conf
 ```
 
 ## Utility Libraries
@@ -938,11 +1028,13 @@ plugin_get_icon() {
 | File | Purpose |
 |------|---------|
 | `bin/powerkit-render` | Main entry point for status-right |
+| `bin/powerkit-binary-prompt` | Interactive macOS binary download prompt |
 | `src/core/bootstrap.sh` | Module loading and initialization |
 | `src/core/lifecycle.sh` | Plugin lifecycle orchestration |
 | `src/core/defaults.sh` | All default values and constants |
 | `src/core/cache.sh` | TTL-based caching with memory optimization |
 | `src/core/color_generator.sh` | Color variant generation |
+| `src/core/binary_manager.sh` | macOS native binary download manager |
 | `src/contract/plugin_contract.sh` | Plugin interface + helpers |
 | `src/renderer/segment_builder.sh` | Builds formatted segments |
 | `src/renderer/separator.sh` | Powerline separator management |
@@ -960,6 +1052,17 @@ plugin_get_icon() {
 - Batch tmux option loading in single call
 
 ## Recent Improvements (December 2025)
+
+### macOS Binary On-Demand Download System
+
+Removed native macOS binaries from git repository. They are now downloaded on-demand from GitHub releases:
+
+- **Binaries removed**: `powerkit-gpu`, `powerkit-temperature`, `powerkit-microphone`, `powerkit-nowplaying`, `powerkit-brightness`
+- **New module**: `src/core/binary_manager.sh` manages binary downloads
+- **New script**: `bin/powerkit-binary-prompt` provides interactive download UI
+- **Batch prompting**: Single popup lists all missing binaries (not one per plugin)
+- **User decision caching**: Decisions are cached for 24h
+- **Graceful degradation**: Plugins return `inactive` state if binary unavailable
 
 ### Health System Enhancement
 

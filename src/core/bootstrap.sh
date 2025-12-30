@@ -48,7 +48,10 @@ _load_core_modules() {
     # 10. Theme Loader (depends on color_generator, options, cache)
     . "${POWERKIT_ROOT}/src/core/theme_loader.sh"
 
-    # 11. Lifecycle (depends on all above)
+    # 11. Binary Manager (depends on cache, logger, platform)
+    . "${POWERKIT_ROOT}/src/core/binary_manager.sh"
+
+    # 12. Lifecycle (depends on all above)
     . "${POWERKIT_ROOT}/src/core/lifecycle.sh"
 
     log_debug "bootstrap" "Core modules loaded"

@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# =============================================================================
+# PowerKit Binary Download Prompt
+# Description: Interactive prompt for downloading macOS native binaries
+# Usage: powerkit-binary-prompt <binary:plugin> [binary:plugin ...]
+# =============================================================================
+
+set -uo pipefail
+
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export POWERKIT_ROOT
+
+# Source bootstrap for all core modules (includes binary_manager.sh, ui_backend.sh)
+. "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+powerkit_bootstrap_minimal
+load_powerkit_theme
+
+# =============================================================================
+# Functions
+# =============================================================================
+
+# Interactive wrapper around binary_download from binary_manager.sh
+_download_binary_interactive() {
+    local binary="$1"
+
+    printf "  Downloading %s... " "$binary"
+
+    if binary_download "$binary" 2>/dev/null; then
+        echo "OK"
+        return 0
+    else
+        echo "FAILED"
+        return 1
+    fi
+}
+
+# Display styled header using ui_style if available
+_show_header() {
+    local backend
+    backend=$(ui_get_backend)
+
+    if [[ "$backend" == "gum" ]]; then
+        ui_style --bold --border "rounded" --padding "1 2" --foreground "#7aa2f7" \
+            "PowerKit - Binary Download"
+    else
+        echo "========================================================================"
+        echo "                 PowerKit - Binary Download                             "
+        echo "========================================================================"
+    fi
+    echo ""
+}
+
+# Display list of missing binaries
+_show_missing_list() {
+    local -n binaries_ref=$1
+    local -n plugins_ref=$2
+
+    echo "The following plugins require native macOS binaries that are not"
+    echo "installed:"
+    echo ""
+
+    for binary in "${binaries_ref[@]}"; do
+        local plugin="${plugins_ref[$binary]}"
+        printf "  - %-25s (plugin: %s)\n" "$binary" "$plugin"
+    done
+
+    echo ""
+    echo "Without these binaries, the plugins will NOT work on macOS."
+    echo ""
+    echo "Source code is available at:"
+    echo "https://github.com/${POWERKIT_GITHUB_REPO}/tree/main/src/native/macos"
+    echo ""
+    echo "------------------------------------------------------------------------"
+    echo ""
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+
+# Parse arguments - format: "binary:plugin binary:plugin ..."
+# Handle both: separate args OR single arg with space-separated entries
+declare -a BINARIES=()
+declare -A PLUGINS=()
+
+# If single arg with spaces, split it
+if [[ $# -eq 1 && "$1" == *" "* ]]; then
+    # shellcheck disable=SC2206
+    args=($1)
+else
+    args=("$@")
+fi
+
+for arg in "${args[@]}"; do
+    if [[ "$arg" == *:* ]]; then
+        binary="${arg%%:*}"
+        plugin="${arg#*:}"
+        BINARIES+=("$binary")
+        PLUGINS["$binary"]="$plugin"
+    fi
+done
+
+if [[ ${#BINARIES[@]} -eq 0 ]]; then
+    echo "Usage: powerkit-binary-prompt <binary:plugin> [binary:plugin ...]"
+    exit 1
+fi
+
+# Clear screen and show header
+clear
+_show_header
+_show_missing_list BINARIES PLUGINS
+
+# Get user choice using ui_choose or basic prompt
+download_list=()
+backend=$(ui_get_backend)
+
+if [[ "$backend" == "gum" ]]; then
+    # Use gum choose for better UI
+    choice=$(ui_choose -h "Download binaries?" "Yes (download all)" "Select individually" "No (skip)")
+
+    case "$choice" in
+        "Yes (download all)")
+            download_list=("${BINARIES[@]}")
+            ;;
+        "Select individually")
+            echo ""
+            echo "Select binaries to download:"
+            for binary in "${BINARIES[@]}"; do
+                if ui_confirm "Download $binary?"; then
+                    download_list+=("$binary")
+                else
+                    cache_set "binary_decision_${binary}" "no"
+                fi
+            done
+            ;;
+        *)
+            # User declined
+            for binary in "${BINARIES[@]}"; do
+                cache_set "binary_decision_${binary}" "no"
+            done
+            echo ""
+            echo "No binaries will be downloaded. Plugins will remain disabled."
+            echo ""
+            echo "To re-enable later, run:"
+            echo "  ${POWERKIT_ROOT}/bin/powerkit-binary-prompt ${args[*]}"
+            echo ""
+            read -rp "Press Enter to close..." _
+            exit 0
+            ;;
+    esac
+else
+    # Basic prompt
+    read -rp "Download all binaries? [Y]es / [N]o / [S]elect: " response
+
+    case "$response" in
+        [Yy]|[Yy]es|"")
+            download_list=("${BINARIES[@]}")
+            ;;
+        [Ss]|[Ss]elect)
+            echo ""
+            echo "Select binaries to download (y/n for each):"
+            for binary in "${BINARIES[@]}"; do
+                read -rp "  Download $binary? [y/n]: " sel
+                if [[ "$sel" =~ ^[Yy] ]]; then
+                    download_list+=("$binary")
+                else
+                    cache_set "binary_decision_${binary}" "no"
+                fi
+            done
+            ;;
+        *)
+            # Store negative decision for all
+            for binary in "${BINARIES[@]}"; do
+                cache_set "binary_decision_${binary}" "no"
+            done
+            echo ""
+            echo "No binaries will be downloaded. Plugins will remain disabled."
+            echo ""
+            echo "To re-enable later, run:"
+            echo "  ${POWERKIT_ROOT}/bin/powerkit-binary-prompt ${args[*]}"
+            echo ""
+            read -rp "Press Enter to close..." _
+            exit 0
+            ;;
+    esac
+fi
+
+# Download selected binaries
+if [[ ${#download_list[@]} -gt 0 ]]; then
+    echo ""
+    echo "Downloading binaries..."
+    echo ""
+
+    success_count=0
+    fail_count=0
+
+    for binary in "${download_list[@]}"; do
+        if _download_binary_interactive "$binary"; then
+            cache_set "binary_decision_${binary}" "yes"
+            ((success_count++))
+        else
+            ((fail_count++))
+        fi
+    done
+
+    echo ""
+    echo "------------------------------------------------------------------------"
+    echo ""
+
+    if [[ $fail_count -eq 0 ]]; then
+        echo "All binaries installed successfully!"
+        toast "All ${success_count} binaries installed" "success"
+    else
+        echo "Downloaded: $success_count | Failed: $fail_count"
+        if [[ $fail_count -gt 0 ]]; then
+            toast "Downloaded ${success_count}, failed ${fail_count}" "warning"
+        fi
+    fi
+
+    echo ""
+    read -rp "Press Enter to close..." _
+
+    # Refresh tmux to pick up the new binaries
+    tmux refresh-client -S 2>/dev/null || true
+else
+    echo ""
+    echo "No binaries selected for download."
+    echo ""
+    read -rp "Press Enter to close..." _
+fi
