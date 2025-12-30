@@ -214,14 +214,17 @@ jobs:
             exit 1
           fi
 
-          # Check all .m files have corresponding targets
+          # Check all .m files can be built (use make -n to dry-run)
           for file in *.m; do
             target="${file%.m}"
-            if ! grep -q "^${target}:" Makefile; then
-              echo "❌ Missing target for $file in Makefile"
+            echo "Checking target: $target"
+
+            # Try to dry-run the target
+            if ! make -n "$target" >/dev/null 2>&1; then
+              echo "❌ Cannot build target: $target"
               exit 1
             fi
-            echo "✓ Target exists: $target"
+            echo "✓ Target buildable: $target"
           done
 
           # Verify make targets work
