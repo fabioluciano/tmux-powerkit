@@ -23,8 +23,8 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "NEXT_RELEASE_VERSION=${nextRelease.version} sh scripts/build.sh ${options.env.BUILD_SUFFIX}",
-        "publishCmd": "echo '✓ Build ${nextRelease.version} completed for ${options.env.BUILD_SUFFIX}'"
+        "prepareCmd": "NEXT_RELEASE_VERSION=${nextRelease.version} sh scripts/build.sh $BUILD_SUFFIX",
+        "publishCmd": "echo '✓ Build ${nextRelease.version} completed for $BUILD_SUFFIX'"
       }
     ],
     [
