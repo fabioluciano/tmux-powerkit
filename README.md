@@ -13,7 +13,7 @@
 
 Transform your tmux status bar into a powerful, beautiful, and intelligent command center
 
-[**Getting Started**](#-quick-start) • [**Plugins**](#-plugins) • [**Themes**](#-themes) • [**Documentation**](../../wiki)
+[**Getting Started**](#-quick-start) • [**Plugins**](#-plugins) • [**Themes**](#-themes) • [**Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki)
 
 </div>
 
@@ -234,7 +234,7 @@ set -g @powerkit_theme "dracula"
 set -g @powerkit_theme_variant "dark"
 ```
 
-**See all themes:** [Themes Documentation](../../wiki/Themes)
+**See all themes:** [Themes Documentation](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes)
 
 ---
 
@@ -390,7 +390,7 @@ This architecture ensures:
 - ✅ Rendering is consistent across all plugins
 - ✅ Easy to extend without breaking existing code
 
-**Learn more:** [Architecture Documentation](../../wiki/Architecture)
+**Learn more:** [Architecture Documentation](https://github.com/fabioluciano/tmux-powerkit/wiki/Architecture)
 
 ---
 
@@ -487,7 +487,7 @@ plugin_get_icon() {
 }
 ```
 
-**Learn more:** [Developing Plugins](../../wiki/DevelopingPlugins)
+**Learn more:** [Developing Plugins](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins)
 
 ---
 
@@ -520,7 +520,7 @@ declare -A THEME_COLORS=(
 
 The system automatically generates **6 color variants** (light/lighter/lightest/dark/darker/darkest) for each base color!
 
-**Learn more:** [Developing Themes](../../wiki/DevelopingThemes)
+**Learn more:** [Developing Themes](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes)
 
 ---
 
@@ -528,16 +528,16 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 
 | Resource | Description |
 |----------|-------------|
-| [**Installation Guide**](../../wiki/Installation) | Detailed setup instructions |
-| [**Quick Start**](../../wiki/Quick-Start) | Get started in 5 minutes |
-| [**Configuration Reference**](../../wiki/Configuration) | All configuration options explained |
+| [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
+| [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
+| [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
 | [**Options Template**](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/powerkit-options.conf) | Complete tmux.conf with all options |
-| [**Plugin Documentation**](../../wiki/Home#plugins-42-available) | Detailed docs for all 42 plugins |
-| [**Theme Gallery**](../../wiki/Themes) | Preview all themes and variants |
-| [**Developing Plugins**](../../wiki/DevelopingPlugins) | Create your own plugins |
-| [**Developing Themes**](../../wiki/DevelopingThemes) | Create custom themes |
-| [**Architecture**](../../wiki/Architecture) | Understanding the contract system |
-| [**API Reference**](../../wiki/API-Reference) | Core APIs and utilities |
+| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-42-available) | Detailed docs for all 42 plugins |
+| [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
+| [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
+| [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |
+| [**Architecture**](https://github.com/fabioluciano/tmux-powerkit/wiki/Architecture) | Understanding the contract system |
+| [**API Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/API-Reference) | Core APIs and utilities |
 
 ---
 
@@ -634,7 +634,7 @@ POWERKIT_ROOT="$(pwd)" ./bin/powerkit-render
 POWERKIT_ROOT="$(pwd)" ./bin/powerkit-plugin battery
 ```
 
-**See:** [Development Guide](../../wiki/DevelopingPlugins)
+**See:** [Development Guide](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins)
 
 ---
 
@@ -661,8 +661,7 @@ See [LICENSE](LICENSE) for full details.
 ## 📬 Support & Community
 
 - 🐛 **Bug Reports:** [GitHub Issues](https://github.com/fabioluciano/tmux-powerkit/issues)
-- 💬 **Discussions:** [GitHub Discussions](https://github.com/fabioluciano/tmux-powerkit/discussions)
-- 📖 **Documentation:** [Wiki](../../wiki)
+- 📖 **Documentation:** [Wiki](https://github.com/fabioluciano/tmux-powerkit/wiki)
 - ⭐ **Show Support:** Star this repository!
 
 ---
