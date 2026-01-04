@@ -6,34 +6,65 @@
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#f0f0f0"
-    [statusbar-fg]="#2e3440"
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#fafafa"               # base
 
-    # Session (pink = signature pastel accent)
-    [session-bg]="#d87a9e"        # pastel pink (darker for light bg)
-    [session-fg]="#fafafa"
-    [session-prefix-bg]="#c4b891" # pastel cream
-    [session-copy-bg]="#6a9ec5"   # pastel blue (darker for light bg)
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#f0f0f0"             # surface
+    [statusbar-fg]="#2e3440"             # text
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#b086d0"  # pastel purple
-    [window-inactive-base]="#d8d8d8"
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#d87a9e"               # pastel pink (signature)
+    [session-fg]="#fafafa"               # base
+    [session-prefix-bg]="#c4b891"        # pastel cream
+    [session-copy-bg]="#6a9ec5"          # pastel blue
+    [session-search-bg]="#c4a050"        # pastel yellow
+    [session-command-bg]="#b086d0"       # pastel purple
 
-    # Pane Borders
-    [pane-border-active]="#d87a9e"  # pastel pink
-    [pane-border-inactive]="#d8d8d8"
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#b086d0"       # pastel purple (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#a0a0a0"
-    [good-base]="#6a9e4f"         # pastel green (darker) ✓
-    [info-base]="#6a9ec5"         # pastel blue ✓
-    [warning-base]="#c4a050"      # pastel yellow (darker) ✓
-    [error-base]="#b35f73"        # pastel red ✓
-    [disabled-base]="#c0c0c0"
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#d8d8d8"     # muted
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#f0f0f0"
-    [message-fg]="#2e3440"
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#6a9ec5"         # pastel blue
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#d87a9e"       # pastel pink
+    [pane-border-inactive]="#d8d8d8"     # muted
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#a0a0a0"                  # neutral
+    [good-base]="#6a9e4f"                # pastel green
+    [info-base]="#6a9ec5"                # pastel blue
+    [warning-base]="#c4a050"             # pastel yellow
+    [error-base]="#b35f73"               # pastel red
+    [disabled-base]="#c0c0c0"            # muted
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#f0f0f0"               # surface
+    [message-fg]="#2e3440"               # text
 )

@@ -6,34 +6,65 @@
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#e0dfd9"
-    [statusbar-fg]="#3b3d4a"
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#f5f4f0"               # base
 
-    # Session
-    [session-bg]="#6a8c4f"
-    [session-fg]="#f5f4f0"
-    [session-prefix-bg]="#9a7d4d"
-    [session-copy-bg]="#4a8fa8"
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#e0dfd9"             # surface
+    [statusbar-fg]="#3b3d4a"             # text
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#9b7fc9"
-    [window-inactive-base]="#d4d3cc"
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#6a8c4f"               # green (signature)
+    [session-fg]="#f5f4f0"               # base
+    [session-prefix-bg]="#9a7d4d"        # brown/cream
+    [session-copy-bg]="#4a8fa8"          # blue
+    [session-search-bg]="#9a7d4d"        # brown/cream
+    [session-command-bg]="#9b7fc9"       # purple
 
-    # Pane Borders
-    [pane-border-active]="#9b7fc9"
-    [pane-border-inactive]="#d4d3cc"
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#9b7fc9"       # purple (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#6d7187"
-    [good-base]="#6a8c4f"
-    [info-base]="#4a8fa8"
-    [warning-base]="#9a7d4d"
-    [error-base]="#c94d66"
-    [disabled-base]="#8a8fb5"
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#d4d3cc"     # muted
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#e0dfd9"
-    [message-fg]="#3b3d4a"
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#4a8fa8"         # blue
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#9b7fc9"       # purple
+    [pane-border-inactive]="#d4d3cc"     # muted
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#6d7187"                  # neutral
+    [good-base]="#6a8c4f"                # green
+    [info-base]="#4a8fa8"                # blue
+    [warning-base]="#9a7d4d"             # brown/yellow
+    [error-base]="#c94d66"               # red
+    [disabled-base]="#8a8fb5"            # muted
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#e0dfd9"               # surface
+    [message-fg]="#3b3d4a"               # text
 )

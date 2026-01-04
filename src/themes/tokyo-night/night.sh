@@ -78,6 +78,3 @@ declare -gA THEME_COLORS=(
     [message-bg]="#292e42"               # Message background
     [message-fg]="#c0caf5"               # Message text color
 )
-
-# Export for PowerKit
-export THEME_COLORS

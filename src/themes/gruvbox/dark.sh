@@ -1,40 +1,70 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Theme: Gruvbox
-# Variant: Dark
+# Theme: Gruvbox - Dark Variant
 # Description: Retro groove color scheme - dark variant
 # Source: https://github.com/morhetz/gruvbox
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#3c3836"      # bg1
-    [statusbar-fg]="#ebdbb2"      # fg1
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#282828"               # bg0
 
-    # Session (orange = warm Gruvbox signature)
-    [session-bg]="#fe8019"        # orange bright
-    [session-fg]="#282828"        # bg0
-    [session-prefix-bg]="#fabd2f" # yellow bright
-    [session-copy-bg]="#83a598"   # blue bright
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#3c3836"             # bg1
+    [statusbar-fg]="#ebdbb2"             # fg1
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#d79921"  # yellow
-    [window-inactive-base]="#504945" # bg2
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#fe8019"               # Orange bright (warm Gruvbox signature)
+    [session-fg]="#282828"               # bg0
+    [session-prefix-bg]="#fabd2f"        # Yellow bright
+    [session-copy-bg]="#83a598"          # Blue bright
+    [session-search-bg]="#fabd2f"        # Yellow bright
+    [session-command-bg]="#d3869b"       # Purple bright
 
-    # Pane Borders
-    [pane-border-active]="#fe8019"  # orange bright
-    [pane-border-inactive]="#504945" # bg2
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#d79921"       # Yellow (distinctive warm)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#504945"           # bg2
-    [good-base]="#b8bb26"         # green bright ✓
-    [info-base]="#83a598"         # blue bright ✓
-    [warning-base]="#fabd2f"      # yellow bright ✓
-    [error-base]="#fb4934"        # red bright ✓
-    [disabled-base]="#665c54"     # bg3
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#504945"     # bg2
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#3c3836"        # bg1
-    [message-fg]="#ebdbb2"        # fg1
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#83a598"         # Blue bright
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#fe8019"       # Orange bright
+    [pane-border-inactive]="#504945"     # bg2
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#665c54"                  # bg3 (distinct from statusbar)
+    [good-base]="#b8bb26"                # Green bright
+    [info-base]="#83a598"                # Blue bright
+    [warning-base]="#fabd2f"             # Yellow bright
+    [error-base]="#fb4934"               # Red bright
+    [disabled-base]="#665c54"            # bg3
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#3c3836"               # bg1
+    [message-fg]="#ebdbb2"               # fg1
 )

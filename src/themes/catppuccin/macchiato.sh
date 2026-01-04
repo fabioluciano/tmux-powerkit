@@ -1,40 +1,70 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Theme: Catppuccin
-# Variant: Macchiato
+# Theme: Catppuccin - Macchiato Variant
 # Description: Soothing pastel theme - dark variant
 # Source: https://github.com/catppuccin/catppuccin
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#363a4f"      # surface0
-    [statusbar-fg]="#cad3f5"      # text
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#24273a"               # base
 
-    # Session (mauve = signature Catppuccin color)
-    [session-bg]="#c6a0f6"        # mauve
-    [session-fg]="#24273a"        # base
-    [session-prefix-bg]="#f5a97f" # peach
-    [session-copy-bg]="#7dc4e4"   # sapphire
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#363a4f"             # surface0
+    [statusbar-fg]="#cad3f5"             # text
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#f5bde6"  # pink
-    [window-inactive-base]="#494d64" # surface1
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#c6a0f6"               # mauve (signature Catppuccin)
+    [session-fg]="#24273a"               # base
+    [session-prefix-bg]="#f5a97f"        # peach
+    [session-copy-bg]="#7dc4e4"          # sapphire
+    [session-search-bg]="#eed49f"        # yellow
+    [session-command-bg]="#f5bde6"       # pink
 
-    # Pane Borders
-    [pane-border-active]="#c6a0f6"  # mauve
-    [pane-border-inactive]="#494d64" # surface1
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#f5bde6"       # pink (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#363a4f"           # surface0
-    [good-base]="#a6da95"         # green ✓
-    [info-base]="#8aadf4"         # blue ✓
-    [warning-base]="#eed49f"      # yellow ✓
-    [error-base]="#ed8796"        # red ✓
-    [disabled-base]="#6e738d"     # overlay0
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#494d64"     # surface1
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#363a4f"        # surface0
-    [message-fg]="#cad3f5"        # text
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#7dc4e4"         # sapphire
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#c6a0f6"       # mauve
+    [pane-border-inactive]="#494d64"     # surface1
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#494d64"                  # surface1 (distinct from statusbar-bg)
+    [good-base]="#a6da95"                # green
+    [info-base]="#8aadf4"                # blue
+    [warning-base]="#eed49f"             # yellow
+    [error-base]="#ed8796"               # red
+    [disabled-base]="#6e738d"            # overlay0
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#363a4f"               # surface0
+    [message-fg]="#cad3f5"               # text
 )

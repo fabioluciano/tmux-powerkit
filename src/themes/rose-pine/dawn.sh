@@ -7,34 +7,65 @@
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#f2e9e1"      # overlay
-    [statusbar-fg]="#575279"      # text (approximation)
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#faf4ed"               # base
 
-    # Session (iris = signature Rose Pine purple)
-    [session-bg]="#907aa9"        # iris
-    [session-fg]="#faf4ed"        # base
-    [session-prefix-bg]="#ea9d34" # gold
-    [session-copy-bg]="#286983"   # pine
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#f2e9e1"             # overlay
+    [statusbar-fg]="#575279"             # text
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#d7827e"  # rose
-    [window-inactive-base]="#dfdad9" # surface (approximation)
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#907aa9"               # iris (signature Rose Pine)
+    [session-fg]="#faf4ed"               # base
+    [session-prefix-bg]="#ea9d34"        # gold
+    [session-copy-bg]="#286983"          # pine
+    [session-search-bg]="#ea9d34"        # gold
+    [session-command-bg]="#d7827e"       # rose
 
-    # Pane Borders
-    [pane-border-active]="#907aa9"  # iris
-    [pane-border-inactive]="#dfdad9" # surface
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#d7827e"       # rose (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#797593"           # subtle
-    [good-base]="#56949f"         # foam ✓
-    [info-base]="#286983"         # pine (blue) ✓
-    [warning-base]="#ea9d34"      # gold (yellow) ✓
-    [error-base]="#b4637a"        # love (red) ✓
-    [disabled-base]="#9893a5"     # muted
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#dfdad9"     # surface
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#f2e9e1"        # overlay
-    [message-fg]="#575279"        # text
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#56949f"         # foam
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#907aa9"       # iris
+    [pane-border-inactive]="#dfdad9"     # surface
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#797593"                  # subtle
+    [good-base]="#56949f"                # foam
+    [info-base]="#286983"                # pine
+    [warning-base]="#ea9d34"             # gold
+    [error-base]="#b4637a"               # love
+    [disabled-base]="#9893a5"            # muted
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#f2e9e1"               # overlay
+    [message-fg]="#575279"               # text
 )

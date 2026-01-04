@@ -7,34 +7,65 @@
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#eaeef2"      # canvas subtle
-    [statusbar-fg]="#24292f"      # fg default
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#ffffff"               # canvas default
 
-    # Session (blue = signature GitHub accent)
-    [session-bg]="#0969da"        # accent blue
-    [session-fg]="#ffffff"        # white
-    [session-prefix-bg]="#9a6700" # attention yellow
-    [session-copy-bg]="#8250df"   # done purple
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#eaeef2"             # canvas subtle
+    [statusbar-fg]="#24292f"             # fg default
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#8250df"  # done purple
-    [window-inactive-base]="#d0d7de" # canvas inset
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#0969da"               # accent blue (signature GitHub)
+    [session-fg]="#ffffff"               # white
+    [session-prefix-bg]="#9a6700"        # attention yellow
+    [session-copy-bg]="#8250df"          # done purple
+    [session-search-bg]="#9a6700"        # attention yellow
+    [session-command-bg]="#bf3989"       # pink
 
-    # Pane Borders
-    [pane-border-active]="#0969da"  # accent blue
-    [pane-border-inactive]="#d0d7de" # canvas inset
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#8250df"       # done purple (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#57606a"           # fg muted
-    [good-base]="#1a7f37"         # success green ✓
-    [info-base]="#0969da"         # accent blue ✓
-    [warning-base]="#9a6700"      # attention yellow ✓
-    [error-base]="#cf222e"        # danger red ✓
-    [disabled-base]="#8c959f"     # muted
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#d0d7de"     # canvas inset
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#eaeef2"        # canvas subtle
-    [message-fg]="#24292f"        # fg default
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#1a7f37"         # success green
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#0969da"       # accent blue
+    [pane-border-inactive]="#d0d7de"     # canvas inset
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#57606a"                  # fg muted
+    [good-base]="#1a7f37"                # success green
+    [info-base]="#0969da"                # accent blue
+    [warning-base]="#9a6700"             # attention yellow
+    [error-base]="#cf222e"               # danger red
+    [disabled-base]="#8c959f"            # muted
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#eaeef2"               # canvas subtle
+    [message-fg]="#24292f"               # fg default
 )

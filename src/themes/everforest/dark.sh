@@ -7,34 +7,65 @@
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#343f44"      # bg1
-    [statusbar-fg]="#d3c6aa"      # fg
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#2d353b"               # bg0
 
-    # Session (green = signature Everforest color)
-    [session-bg]="#a7c080"        # green
-    [session-fg]="#2d353b"        # bg0
-    [session-prefix-bg]="#e69875" # orange
-    [session-copy-bg]="#7fbbb3"   # blue
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#343f44"             # bg1
+    [statusbar-fg]="#d3c6aa"             # fg
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#d699b6"  # purple
-    [window-inactive-base]="#3d484d" # bg2
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#a7c080"               # green (signature Everforest)
+    [session-fg]="#2d353b"               # bg0
+    [session-prefix-bg]="#e69875"        # orange
+    [session-copy-bg]="#7fbbb3"          # blue
+    [session-search-bg]="#dbbc7f"        # yellow
+    [session-command-bg]="#d699b6"       # purple
 
-    # Pane Borders
-    [pane-border-active]="#a7c080"  # green
-    [pane-border-inactive]="#3d484d" # bg2
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#d699b6"       # purple (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#475258"           # bg3
-    [good-base]="#a7c080"         # green ✓
-    [info-base]="#7fbbb3"         # blue ✓
-    [warning-base]="#dbbc7f"      # yellow ✓
-    [error-base]="#e67e80"        # red ✓
-    [disabled-base]="#7a8478"     # grey0
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#3d484d"     # bg2
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#343f44"        # bg1
-    [message-fg]="#d3c6aa"        # fg
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#7fbbb3"         # blue
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#a7c080"       # green
+    [pane-border-inactive]="#3d484d"     # bg2
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#475258"                  # bg3
+    [good-base]="#a7c080"                # green
+    [info-base]="#7fbbb3"                # blue
+    [warning-base]="#dbbc7f"             # yellow
+    [error-base]="#e67e80"               # red
+    [disabled-base]="#7a8478"            # grey0
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#343f44"               # bg1
+    [message-fg]="#d3c6aa"               # fg
 )
