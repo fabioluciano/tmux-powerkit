@@ -7,34 +7,65 @@
 # =============================================================================
 
 declare -gA THEME_COLORS=(
-    # Status Bar
-    [statusbar-bg]="#161b22"      # canvas subtle
-    [statusbar-fg]="#e6edf3"      # fg default
+    # =========================================================================
+    # CORE (terminal background - used for transparent mode separators)
+    # =========================================================================
+    [background]="#0d1117"               # canvas default
 
-    # Session (blue = signature GitHub accent)
-    [session-bg]="#58a6ff"        # accent blue
-    [session-fg]="#0d1117"        # canvas default
-    [session-prefix-bg]="#d29922" # attention yellow
-    [session-copy-bg]="#a371f7"   # done purple
+    # =========================================================================
+    # STATUS BAR
+    # =========================================================================
+    [statusbar-bg]="#161b22"             # canvas subtle
+    [statusbar-fg]="#e6edf3"             # fg default
 
-    # Windows (base colors - variants auto-generated)
-    [window-active-base]="#a371f7"  # done purple
-    [window-inactive-base]="#30363d" # canvas overlay
+    # =========================================================================
+    # SESSION (status-left)
+    # =========================================================================
+    [session-bg]="#58a6ff"               # accent blue (signature GitHub)
+    [session-fg]="#0d1117"               # canvas default
+    [session-prefix-bg]="#d29922"        # attention yellow
+    [session-copy-bg]="#a371f7"          # done purple
+    [session-search-bg]="#d29922"        # attention yellow
+    [session-command-bg]="#f778ba"       # pink
 
-    # Pane Borders
-    [pane-border-active]="#58a6ff"  # accent blue
-    [pane-border-inactive]="#30363d" # canvas overlay
+    # =========================================================================
+    # WINDOW (active)
+    # =========================================================================
+    [window-active-base]="#a371f7"       # done purple (distinctive)
+    [window-active-style]="bold"
 
-    # Health States (base colors - variants auto-generated)
-    [ok-base]="#30363d"           # canvas overlay
-    [good-base]="#3fb950"         # success green ✓
-    [info-base]="#58a6ff"         # accent blue ✓
-    [warning-base]="#d29922"      # attention yellow ✓
-    [error-base]="#f85149"        # danger red ✓
-    [disabled-base]="#6e7681"     # muted
+    # =========================================================================
+    # WINDOW (inactive)
+    # =========================================================================
+    [window-inactive-base]="#30363d"     # canvas overlay
+    [window-inactive-style]="none"
 
-    # Messages
-    [message-bg]="#161b22"        # canvas subtle
-    [message-fg]="#e6edf3"        # fg default
+    # =========================================================================
+    # WINDOW STATE (activity, bell, zoomed)
+    # =========================================================================
+    [window-activity-style]="italics"
+    [window-bell-style]="bold"
+    [window-zoomed-bg]="#3fb950"         # success green
 
+    # =========================================================================
+    # PANE
+    # =========================================================================
+    [pane-border-active]="#58a6ff"       # accent blue
+    [pane-border-inactive]="#30363d"     # canvas overlay
+
+    # =========================================================================
+    # STATUS COLORS (health/state-based for plugins)
+    # =========================================================================
+    [ok-base]="#21262d"                  # canvas inset
+    [good-base]="#3fb950"                # success green
+    [info-base]="#58a6ff"                # accent blue
+    [warning-base]="#d29922"             # attention yellow
+    [error-base]="#f85149"               # danger red
+    [disabled-base]="#6e7681"            # muted
+
+    # =========================================================================
+    # MESSAGE COLORS
+    # =========================================================================
+    [message-bg]="#161b22"               # canvas subtle
+    [message-fg]="#e6edf3"               # fg default
 )
