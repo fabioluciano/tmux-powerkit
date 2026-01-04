@@ -2,7 +2,7 @@
 
 # ⚡ PowerKit
 
-![](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/images/tmux-powerkit-session-plugins-windows.png)
+![PowerKit Status Bar Preview](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/images/tmux-powerkit-session-plugins-windows.png)
 
 ## The Ultimate tmux Status Bar Framework
 

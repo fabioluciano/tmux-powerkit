@@ -235,6 +235,7 @@ WINDOW_DEFAULT_ICON=$'\uf120'
 # - circle: Numbers in filled circles
 # - circle_outline: Numbers in outlined circles
 
+# shellcheck disable=SC2034
 declare -gra WINDOW_INDEX_STYLES=(
     "text"
     "numeric"
@@ -348,6 +349,7 @@ declare -grA WINDOW_INDEX_ICONS_CIRCLE_OUTLINE=(
 )
 
 # Legacy alias for backwards compatibility
+# shellcheck disable=SC2034
 declare -grA WINDOW_INDEX_ICON_MAP=(
     [0]=$'\U000f0b39'    [1]=$'\U000f0b3a'    [2]=$'\U000f0b3b'
     [3]=$'\U000f0b3c'    [4]=$'\U000f0b3d'    [5]=$'\U000f0b3e'
