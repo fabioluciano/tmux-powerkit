@@ -25,10 +25,13 @@ export POWERKIT_ROOT
 load_powerkit_theme
 . "${POWERKIT_ROOT}/src/renderer/separator.sh"
 
-# Cache key for rendered output
+# Cache key for rendered output (includes theme to invalidate on theme change)
 _render_cache_key() {
     local side="${1:-right}"
-    printf 'rendered_%s' "$side"
+    local theme variant
+    theme=$(get_tmux_option "@powerkit_theme" "${POWERKIT_DEFAULT_THEME}")
+    variant=$(get_tmux_option "@powerkit_theme_variant" "${POWERKIT_DEFAULT_THEME_VARIANT}")
+    printf 'rendered_%s__%s__%s' "$side" "$theme" "$variant"
 }
 
 # TTL for render cache (matches status-interval)
@@ -93,10 +96,12 @@ _show_loading() {
 # Render in background and cache output
 _render_background() {
     local side="$1"
+    local cache_key="$2"
 
     bash -c '
         POWERKIT_ROOT="$1"
         side="$2"
+        cache_key="$3"
         export POWERKIT_ROOT
 
         # Cleanup lock on exit
@@ -109,10 +114,10 @@ _render_background() {
         . "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
         separator_reset_cache 2>/dev/null || true
 
-        # Render and cache using cache_set
+        # Render and cache using cache_set (cache_key includes theme for invalidation)
         output=$(render_plugins "$side")
-        cache_set "rendered_${side}" "$output"
-    ' _ "$POWERKIT_ROOT" "$side" &>/dev/null &
+        cache_set "$cache_key" "$output"
+    ' _ "$POWERKIT_ROOT" "$side" "$cache_key" &>/dev/null &
     disown
 }
 
@@ -155,7 +160,7 @@ fi
 
 # Start background render (set lock using cache)
 cache_set "render_lock" "1"
-_render_background "$side"
+_render_background "$side" "$cache_key"
 
 # Return stale cache if exists, otherwise loading
 stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""

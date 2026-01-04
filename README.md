@@ -6,7 +6,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-42 Plugins • 13 Themes • Infinite Possibilities
+42 Plugins • 32 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -29,7 +29,7 @@ Transform your tmux status bar into a powerful, beautiful, and intelligent comma
 
 ### 🎨 **Beautiful by Default**
 
-Choose from **13 carefully crafted themes** with **27 variants** including Catppuccin, Dracula, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
+Choose from **32 carefully crafted themes** with **56 variants** including Catppuccin, Dracula, Monokai, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
 
 ### ⚡ **Blazingly Fast**
 
@@ -72,6 +72,22 @@ run '~/.tmux/plugins/tpm/tpm'
 ```
 
 Then press `prefix + I` to install.
+
+### Manual Installation
+
+For faster download (~1.5 MB), use shallow clone:
+
+```bash
+git clone --depth 1 https://github.com/fabioluciano/tmux-powerkit.git ~/.tmux/plugins/tmux-powerkit
+```
+
+Add to `~/.tmux.conf`:
+
+```bash
+run-shell ~/.tmux/plugins/tmux-powerkit/tmux-powerkit.tmux
+```
+
+> See [Installation Guide](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) for more options (tarball, full clone).
 
 ### Your First Customization
 
@@ -184,7 +200,7 @@ Track your investments:
 
 ## 🎨 Themes
 
-PowerKit comes with **13 beautiful themes** and **27 variants**, each carefully designed for optimal readability and aesthetics.
+PowerKit comes with **32 beautiful themes** and **56 variants**, each carefully designed for optimal readability and aesthetics.
 
 ### Popular Themes
 
@@ -200,18 +216,18 @@ PowerKit comes with **13 beautiful themes** and **27 variants**, each carefully 
 <td align="center"><strong>Rose Pine</strong><br/>main • moon • dawn</td>
 </tr>
 <tr>
-<td align="center"><strong>Everforest</strong><br/>dark • light</td>
+<td align="center"><strong>Material</strong><br/>default • ocean • palenight • lighter</td>
 <td align="center"><strong>Solarized</strong><br/>dark • light</td>
 <td align="center"><strong>GitHub</strong><br/>dark • light</td>
 </tr>
 <tr>
-<td align="center"><strong>OneDark</strong><br/>dark</td>
-<td align="center"><strong>Kanagawa</strong><br/>dragon • lotus</td>
-<td align="center"><strong>Kiribyte</strong><br/>dark • light</td>
+<td align="center"><strong>Ayu</strong><br/>dark • mirage • light</td>
+<td align="center"><strong>Night Owl</strong><br/>default • light</td>
+<td align="center"><strong>Moonlight</strong><br/>default</td>
 </tr>
 </table>
 
-Plus **Pastel** theme with dark and light variants!
+Plus **Monokai**, **Cobalt2**, **SynthWave '84**, **Horizon**, **Iceberg**, **Snazzy**, **Spacegray**, **Molokai**, **Vesper**, **Poimandres**, **Flexoki**, **Slack**, and more!
 
 ### Theme Features
 
