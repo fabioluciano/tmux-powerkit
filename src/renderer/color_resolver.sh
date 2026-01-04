@@ -107,31 +107,20 @@ resolve_plugin_colors_full() {
         content_bg=$(get_color "$content_bg_name")
         icon_bg=$(get_color "$icon_bg_name")
 
-        # Foreground colors stay the same for readability
-        case "$health" in
-            ok)
-                content_fg=$(get_color "white")
-                icon_fg=$(get_color "white")
-                ;;
-            *)
-                content_fg=$(get_color "${base_color}-darkest")
-                icon_fg=$(get_color "${base_color}-darkest")
-                ;;
-        esac
+        # Stale data: use white foreground for contrast on darkened backgrounds
+        # Since background is already darkened via variant, white provides best readability
+        content_fg=$(get_color "white")
+        icon_fg=$(get_color "white")
 
-        # Handle inactive/failed states
+        # Handle inactive/failed states (still use darkened backgrounds)
         case "$state" in
             inactive)
                 content_bg=$(get_color "disabled-base${variant}")
-                content_fg=$(get_color "white")
                 icon_bg=$(get_color "disabled-base${variant}")
-                icon_fg=$(get_color "white")
                 ;;
             failed)
                 content_bg=$(get_color "error-base${variant}")
-                content_fg=$(get_color "error-base-darkest")
                 icon_bg=$(get_color "error-base${variant}")
-                icon_fg=$(get_color "error-base-darkest")
                 ;;
         esac
     else

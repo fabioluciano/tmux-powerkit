@@ -47,10 +47,16 @@ build_status_style() {
 # Returns: color value
 build_pane_border_format() {
     local type="${1:-inactive}"
-
     local fg_color
 
-    if [[ "$type" == "active" ]]; then
+    # Check if unified border color is enabled
+    local unified
+    unified=$(get_tmux_option '@powerkit_pane_border_unified' "${POWERKIT_DEFAULT_PANE_BORDER_UNIFIED}")
+
+    if [[ "$unified" == "true" ]]; then
+        # Use single color for both active and inactive
+        fg_color=$(resolve_color "$(get_tmux_option '@powerkit_pane_border_color' "${POWERKIT_DEFAULT_PANE_BORDER_COLOR}")")
+    elif [[ "$type" == "active" ]]; then
         fg_color=$(resolve_color "$(get_tmux_option '@powerkit_active_pane_border_color' "${POWERKIT_DEFAULT_ACTIVE_PANE_BORDER_COLOR}")")
     else
         fg_color=$(resolve_color "$(get_tmux_option '@powerkit_inactive_pane_border_color' "${POWERKIT_DEFAULT_INACTIVE_PANE_BORDER_COLOR}")")

@@ -79,6 +79,48 @@ configure_panes() {
     border_lines=$(get_tmux_option "@powerkit_pane_border_lines" "${POWERKIT_DEFAULT_PANE_BORDER_LINES}")
     tmux set-option -g pane-border-lines "$border_lines" 2>/dev/null || true
 
+    # Pane border status (off, top, bottom)
+    local border_status
+    border_status=$(get_tmux_option "@powerkit_pane_border_status" "${POWERKIT_DEFAULT_PANE_BORDER_STATUS}")
+    tmux set-option -g pane-border-status "$border_status" 2>/dev/null || true
+
+    # Pane border format (when status is enabled)
+    if [[ "$border_status" != "off" ]]; then
+        local border_format active_fg inactive_fg status_bg
+        border_format=$(get_tmux_option "@powerkit_pane_border_format" "${POWERKIT_DEFAULT_PANE_BORDER_FORMAT}")
+
+        # Get theme colors
+        active_fg=$(resolve_color "pane-border-active")
+        inactive_fg=$(resolve_color "pane-border-inactive")
+        status_bg=$(get_tmux_option "@powerkit_pane_border_status_bg" "${POWERKIT_DEFAULT_PANE_BORDER_STATUS_BG}")
+
+        # Replace placeholders with tmux variables using sed for reliable substitution
+        # Basic placeholders
+        border_format=$(printf '%s' "$border_format" | sed \
+            -e 's/{index}/#{pane_index}/g' \
+            -e 's/{title}/#{pane_title}/g' \
+            -e 's/{command}/#{pane_current_command}/g' \
+            -e 's/{path}/#{pane_current_path}/g' \
+            -e 's/{basename}/#{b:pane_current_path}/g' \
+            -e 's/{active}/#{?pane_active,▶,}/g')
+
+        # Build format with conditional colors and styles
+        # Active pane: bold text, active color
+        # Inactive pane: normal text, inactive color
+        local final_format bg_style=""
+
+        # Apply background if specified and not "none"
+        if [[ -n "$status_bg" && "$status_bg" != "none" ]]; then
+            local resolved_bg
+            resolved_bg=$(resolve_color "$status_bg")
+            bg_style="#[bg=${resolved_bg}]"
+        fi
+
+        final_format="${bg_style}#{?pane_active,#[fg=${active_fg}]#[bold],#[fg=${inactive_fg}]} ${border_format} #[default]"
+
+        tmux set-option -g pane-border-format "$final_format"
+    fi
+
     log_debug "renderer" "Panes configured"
 }
 
