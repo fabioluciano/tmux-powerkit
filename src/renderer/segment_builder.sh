@@ -391,6 +391,7 @@ render_plugins() {
     # First pass: collect visible plugins to know total count (for is_last detection)
     local visible_plugins=()
     local visible_data=()
+    local visible_is_external=()
     local plugin_name
     for plugin_name in "${plugin_names[@]}"; do
         # Trim whitespace
@@ -398,33 +399,46 @@ render_plugins() {
         plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"
         [[ -z "$plugin_name" ]] && continue
 
-        # Skip external plugins for now (TODO: implement)
-        [[ "$plugin_name" == external\(* ]] && continue
+        local plugin_data=""
+        local is_external=0
 
-        # Collect plugin data (lifecycle handles data + caching)
-        local plugin_data
-        plugin_data=$(collect_plugin_render_data "$plugin_name") || continue
-        [[ -z "$plugin_data" ]] && continue
-        [[ "$plugin_data" == "HIDDEN" ]] && continue
+        # Handle external plugins
+        if [[ "$plugin_name" == external\(* ]]; then
+            is_external=1
+            # Generate a hash-like ID from the spec for caching
+            local ext_id
+            ext_id=$(printf '%s' "$plugin_name" | cksum | cut -d' ' -f1)
+            plugin_data=$(collect_external_plugin_render_data "$ext_id" "$plugin_name") || continue
+            [[ -z "$plugin_data" ]] && continue
+        else
+            # Regular plugin - collect via lifecycle
+            plugin_data=$(collect_plugin_render_data "$plugin_name") || continue
+            [[ -z "$plugin_data" ]] && continue
+            [[ "$plugin_data" == "HIDDEN" ]] && continue
+        fi
 
         # Parse data: icon|content|state|health|stale (5 fields from lifecycle)
+        # External plugins have 2 extra fields: accent|accent_icon
         local icon content state health stale
-        IFS=$'\x1f' read -r icon content state health stale <<< "$plugin_data"
+        IFS=$'\x1f' read -r icon content state health stale _ _ <<< "$plugin_data"
         stale="${stale:-0}"  # Default for backward compatibility
 
-        # Use explicit plugin option accessor (no global context)
-        local show_only_on_threshold
-        show_only_on_threshold=$(get_named_plugin_option "$plugin_name" "show_only_on_threshold" 2>/dev/null || echo "false")
-        local health_level=0
-        health_level=$(get_health_level "$health")
-        log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
-        if [[ "$show_only_on_threshold" == "true" && "$health_level" -lt 1 ]]; then
-            log_debug "segment_builder" "plugin=$plugin_name ocultado pelo filtro show_only_on_threshold (health_level=$health_level)"
-            continue
+        # Use explicit plugin option accessor (no global context) - skip for external
+        if [[ $is_external -eq 0 ]]; then
+            local show_only_on_threshold
+            show_only_on_threshold=$(get_named_plugin_option "$plugin_name" "show_only_on_threshold" 2>/dev/null || echo "false")
+            local health_level=0
+            health_level=$(get_health_level "$health")
+            log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
+            if [[ "$show_only_on_threshold" == "true" && "$health_level" -lt 1 ]]; then
+                log_debug "segment_builder" "plugin=$plugin_name ocultado pelo filtro show_only_on_threshold (health_level=$health_level)"
+                continue
+            fi
         fi
 
         visible_plugins+=("$plugin_name")
         visible_data+=("$plugin_data")
+        visible_is_external+=("$is_external")
     done
 
     local total_plugins=${#visible_plugins[@]}
@@ -441,8 +455,9 @@ render_plugins() {
 
     for plugin_name in "${visible_plugins[@]}"; do
         local plugin_data="${visible_data[$plugin_idx]}"
-        local icon content state health stale
-        IFS=$'\x1f' read -r icon content state health stale <<< "$plugin_data"
+        local is_external="${visible_is_external[$plugin_idx]}"
+        local icon content state health stale accent accent_icon
+        IFS=$'\x1f' read -r icon content state health stale accent accent_icon <<< "$plugin_data"
         stale="${stale:-0}"  # Default for backward compatibility
 
         local is_first=$(( plugin_idx == 0 ? 1 : 0 ))
@@ -464,9 +479,20 @@ render_plugins() {
         fi
 
         # Resolve colors (RENDERER responsibility - per contract separation)
-        # Pass stale flag to apply -darker variant for stale data indication
         local content_bg content_fg icon_bg icon_fg
-        read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "" "$stale")"
+
+        if [[ "$is_external" == "1" && -n "$accent" ]]; then
+            # External plugin: use specified accent colors
+            content_bg=$(resolve_color "${accent:-ok-base}")
+            icon_bg=$(resolve_color "${accent_icon:-${accent:-ok-base}-lighter}")
+            # Calculate contrasting foreground
+            content_fg=$(resolve_color "${accent:-ok-base}-darkest")
+            icon_fg=$(resolve_color "${accent_icon:-${accent:-ok-base}}-darkest")
+        else
+            # Regular plugin: resolve via state/health
+            # Pass stale flag to apply -darker variant for stale data indication
+            read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "" "$stale")"
+        fi
 
         # Render segment (pass is_first, is_last and side for correct separator styling)
         local segment

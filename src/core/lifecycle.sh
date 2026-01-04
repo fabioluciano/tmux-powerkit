@@ -761,6 +761,95 @@ collect_plugin_render_data() {
 }
 
 # =============================================================================
+# External Plugin Data Collection
+# =============================================================================
+
+# Collect render data for external plugin
+# Returns data in same format as regular plugins: icon<US>content<US>state<US>health<US>stale
+# Also returns accent colors via global variables for renderer to use
+#
+# Usage: collect_external_plugin_render_data "external_id" "spec"
+# Sets: _EXTERNAL_ACCENT, _EXTERNAL_ACCENT_ICON (global vars for renderer)
+collect_external_plugin_render_data() {
+    local id="$1"
+    local spec="$2"
+
+    # Parse external plugin format: external("icon"|"content"|"accent"|"accent_icon"|"ttl")
+    local icon="" content="" accent="" accent_icon="" ttl=""
+
+    if [[ "$spec" =~ external\(\"([^\"]*)\"\|\"([^\"]*)\"\|\"([^\"]*)\"\|\"([^\"]*)\"\|\"([^\"]*)\"\) ]]; then
+        icon="${BASH_REMATCH[1]}"
+        content="${BASH_REMATCH[2]}"
+        accent="${BASH_REMATCH[3]:-ok-base}"
+        accent_icon="${BASH_REMATCH[4]:-ok-base-lighter}"
+        ttl="${BASH_REMATCH[5]:-60}"
+    else
+        log_warn "lifecycle" "Invalid external plugin format: $spec"
+        return 1
+    fi
+
+    # Cache key for this external plugin
+    local cache_key="external_${id}_data"
+    local cache_file="${_CACHE_DIR}/${cache_key}"
+
+    # Check cache
+    local cache_age=-1
+    local cached_data=""
+    if [[ -f "$cache_file" ]]; then
+        local now mtime
+        now=$(_get_now)
+        mtime=$(_file_mtime "$cache_file")
+        cache_age=$((now - mtime))
+        cached_data=$(< "$cache_file")
+    fi
+
+    # Return cached if fresh
+    if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
+        # Extract accent info from cache (stored as extra fields)
+        printf '%s' "$cached_data"
+        return 0
+    fi
+
+    # Execute content command if it looks like a command
+    local output=""
+    if [[ "$content" == *'$('* || "$content" == *'#('* ]]; then
+        # Command substitution - execute it
+        local cmd="${content}"
+        # Convert #(...) to $(...) for eval
+        cmd="${cmd//#\(/\$(}"
+        output=$(eval "printf '%s' \"$cmd\"" 2>/dev/null || printf '%s' "$content")
+    else
+        output="$content"
+    fi
+
+    # Build output in standard format: icon<US>content<US>state<US>health<US>stale<US>accent<US>accent_icon
+    # We add accent and accent_icon as extra fields for external plugins
+    local _delim=$'\x1f'
+    local result="${icon}${_delim}${output}${_delim}active${_delim}ok${_delim}0${_delim}${accent}${_delim}${accent_icon}"
+
+    # Cache the result
+    printf '%s' "$result" > "$cache_file"
+
+    printf '%s' "$result"
+}
+
+# Find external plugin ID by spec string
+# Since external plugins are registered with unique IDs, we need to find the ID
+# Usage: find_external_plugin_id "external(...)"
+find_external_plugin_id() {
+    local spec="$1"
+    local name
+    for name in "${!_PLUGINS[@]}"; do
+        [[ "$name" == external_* ]] || continue
+        [[ "${_PLUGINS[$name]}" == "$spec" ]] && {
+            printf '%s' "$name"
+            return 0
+        }
+    done
+    return 1
+}
+
+# =============================================================================
 # Full Lifecycle Run
 # =============================================================================
 
