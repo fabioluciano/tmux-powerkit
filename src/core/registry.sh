@@ -222,11 +222,32 @@ declare -grA WINDOW_ICON_MAP=(
 # Default window icon (when command not in map)
 WINDOW_DEFAULT_ICON=$'\uf120'
 
-# Window index icon map (index number -> icon)
-# Nerd Font numeric icons (nf-md-numeric_X)
-# Used for displaying window index as icons instead of numbers
-# Only single digits 0-9; composite numbers are built dynamically
-declare -grA WINDOW_INDEX_ICON_MAP=(
+# =============================================================================
+# WINDOW INDEX ICON STYLES
+# =============================================================================
+# Available styles: text, numeric, box, box_outline, box_multiple, box_multiple_outline, circle, circle_outline
+# - text: Plain numbers (1, 2, 3...)
+# - numeric: Nerd Font numeric icons (󰬹, 󰬺, 󰬻...)
+# - box: Numbers in filled boxes (󰎡, 󰎤, 󰎧...)
+# - box_outline: Numbers in outlined boxes (󰎣, 󰎦, 󰎩...)
+# - box_multiple: Numbers in multiple filled boxes (󰼎, 󰼏, 󰼐...)
+# - box_multiple_outline: Numbers in multiple outlined boxes (󰎢, 󰎥, 󰎨...)
+# - circle: Numbers in filled circles
+# - circle_outline: Numbers in outlined circles
+
+declare -gra WINDOW_INDEX_STYLES=(
+    "text"
+    "numeric"
+    "box"
+    "box_outline"
+    "box_multiple"
+    "box_multiple_outline"
+    "circle"
+    "circle_outline"
+)
+
+# Style: numeric (nf-md-numeric_X)
+declare -grA WINDOW_INDEX_ICONS_NUMERIC=(
     [0]=$'\U000f0b39'    # nf-md-numeric_0
     [1]=$'\U000f0b3a'    # nf-md-numeric_1
     [2]=$'\U000f0b3b'    # nf-md-numeric_2
@@ -239,7 +260,102 @@ declare -grA WINDOW_INDEX_ICON_MAP=(
     [9]=$'\U000f0b42'    # nf-md-numeric_9
 )
 
-# Fallback icon for window indices > 10
+# Style: box (nf-md-numeric_X_box) - filled boxes
+declare -grA WINDOW_INDEX_ICONS_BOX=(
+    [0]=$'\U000f03a1'    # nf-md-numeric_0_box
+    [1]=$'\U000f03a4'    # nf-md-numeric_1_box
+    [2]=$'\U000f03a7'    # nf-md-numeric_2_box
+    [3]=$'\U000f03aa'    # nf-md-numeric_3_box
+    [4]=$'\U000f03ad'    # nf-md-numeric_4_box
+    [5]=$'\U000f03b1'    # nf-md-numeric_5_box
+    [6]=$'\U000f03b3'    # nf-md-numeric_6_box
+    [7]=$'\U000f03b6'    # nf-md-numeric_7_box
+    [8]=$'\U000f03b9'    # nf-md-numeric_8_box
+    [9]=$'\U000f03bc'    # nf-md-numeric_9_box
+)
+
+# Style: box_outline (nf-md-numeric_X_box_outline) - outlined boxes
+declare -grA WINDOW_INDEX_ICONS_BOX_OUTLINE=(
+    [0]=$'\U000f03a3'    # nf-md-numeric_0_box_outline
+    [1]=$'\U000f03a6'    # nf-md-numeric_1_box_outline
+    [2]=$'\U000f03a9'    # nf-md-numeric_2_box_outline
+    [3]=$'\U000f03ac'    # nf-md-numeric_3_box_outline
+    [4]=$'\U000f03ae'    # nf-md-numeric_4_box_outline
+    [5]=$'\U000f03b0'    # nf-md-numeric_5_box_outline
+    [6]=$'\U000f03b5'    # nf-md-numeric_6_box_outline
+    [7]=$'\U000f03b8'    # nf-md-numeric_7_box_outline
+    [8]=$'\U000f03bb'    # nf-md-numeric_8_box_outline
+    [9]=$'\U000f03be'    # nf-md-numeric_9_box_outline
+)
+
+# Style: box_multiple (nf-md-numeric_X_box_multiple) - multiple filled boxes
+# Sequential +1 pattern
+declare -grA WINDOW_INDEX_ICONS_BOX_MULTIPLE=(
+    [0]=$'\U000f0f0e'    # nf-md-numeric_0_box_multiple
+    [1]=$'\U000f0f0f'    # nf-md-numeric_1_box_multiple
+    [2]=$'\U000f0f10'    # nf-md-numeric_2_box_multiple
+    [3]=$'\U000f0f11'    # nf-md-numeric_3_box_multiple
+    [4]=$'\U000f0f12'    # nf-md-numeric_4_box_multiple
+    [5]=$'\U000f0f13'    # nf-md-numeric_5_box_multiple
+    [6]=$'\U000f0f14'    # nf-md-numeric_6_box_multiple
+    [7]=$'\U000f0f15'    # nf-md-numeric_7_box_multiple
+    [8]=$'\U000f0f16'    # nf-md-numeric_8_box_multiple
+    [9]=$'\U000f0f17'    # nf-md-numeric_9_box_multiple
+)
+
+# Style: box_multiple_outline (nf-md-numeric_X_box_multiple_outline) - multiple outlined boxes
+declare -grA WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE=(
+    [0]=$'\U000f03a2'    # nf-md-numeric_0_box_multiple_outline
+    [1]=$'\U000f03a5'    # nf-md-numeric_1_box_multiple_outline
+    [2]=$'\U000f03a8'    # nf-md-numeric_2_box_multiple_outline
+    [3]=$'\U000f03ab'    # nf-md-numeric_3_box_multiple_outline
+    [4]=$'\U000f03b2'    # nf-md-numeric_4_box_multiple_outline
+    [5]=$'\U000f03af'    # nf-md-numeric_5_box_multiple_outline
+    [6]=$'\U000f03b4'    # nf-md-numeric_6_box_multiple_outline
+    [7]=$'\U000f03b7'    # nf-md-numeric_7_box_multiple_outline
+    [8]=$'\U000f03ba'    # nf-md-numeric_8_box_multiple_outline
+    [9]=$'\U000f03bd'    # nf-md-numeric_9_box_multiple_outline
+)
+
+# Style: circle (nf-md-numeric_X_circle) - filled circles
+# Icons are interleaved with circle_outline (+2 pattern)
+declare -grA WINDOW_INDEX_ICONS_CIRCLE=(
+    [0]=$'\U000f0c9e'    # nf-md-numeric_0_circle
+    [1]=$'\U000f0ca0'    # nf-md-numeric_1_circle
+    [2]=$'\U000f0ca2'    # nf-md-numeric_2_circle
+    [3]=$'\U000f0ca4'    # nf-md-numeric_3_circle
+    [4]=$'\U000f0ca6'    # nf-md-numeric_4_circle
+    [5]=$'\U000f0ca8'    # nf-md-numeric_5_circle
+    [6]=$'\U000f0caa'    # nf-md-numeric_6_circle
+    [7]=$'\U000f0cac'    # nf-md-numeric_7_circle
+    [8]=$'\U000f0cae'    # nf-md-numeric_8_circle
+    [9]=$'\U000f0cb0'    # nf-md-numeric_9_circle
+)
+
+# Style: circle_outline (nf-md-numeric_X_circle_outline) - outlined circles
+# Icons are interleaved with circle (+2 pattern)
+declare -grA WINDOW_INDEX_ICONS_CIRCLE_OUTLINE=(
+    [0]=$'\U000f0c9f'    # nf-md-numeric_0_circle_outline
+    [1]=$'\U000f0ca1'    # nf-md-numeric_1_circle_outline
+    [2]=$'\U000f0ca3'    # nf-md-numeric_2_circle_outline
+    [3]=$'\U000f0ca5'    # nf-md-numeric_3_circle_outline
+    [4]=$'\U000f0ca7'    # nf-md-numeric_4_circle_outline
+    [5]=$'\U000f0ca9'    # nf-md-numeric_5_circle_outline
+    [6]=$'\U000f0cab'    # nf-md-numeric_6_circle_outline
+    [7]=$'\U000f0cad'    # nf-md-numeric_7_circle_outline
+    [8]=$'\U000f0caf'    # nf-md-numeric_8_circle_outline
+    [9]=$'\U000f0cb1'    # nf-md-numeric_9_circle_outline
+)
+
+# Legacy alias for backwards compatibility
+declare -grA WINDOW_INDEX_ICON_MAP=(
+    [0]=$'\U000f0b39'    [1]=$'\U000f0b3a'    [2]=$'\U000f0b3b'
+    [3]=$'\U000f0b3c'    [4]=$'\U000f0b3d'    [5]=$'\U000f0b3e'
+    [6]=$'\U000f0b3f'    [7]=$'\U000f0b40'    [8]=$'\U000f0b41'
+    [9]=$'\U000f0b42'
+)
+
+# Fallback icon for window indices > 9
 WINDOW_INDEX_FALLBACK_ICON=$'\uf120'  # Terminal icon as fallback
 
 # =============================================================================
@@ -330,18 +446,77 @@ get_window_icon() {
     echo "${WINDOW_ICON_MAP[$command]:-$WINDOW_DEFAULT_ICON}"
 }
 
-# Get window index icon (numeric icon for 1-10, fallback for others)
-# Usage: icon=$(get_window_index_icon "1")
+# Get window index icon based on style
+# Usage: icon=$(get_window_index_icon "1" "box")
+# Styles: text, numeric, box, box_outline, box_multiple, box_multiple_outline, circle, circle_outline
 get_window_index_icon() {
     local index="$1"
-    echo "${WINDOW_INDEX_ICON_MAP[$index]:-$WINDOW_INDEX_FALLBACK_ICON}"
+    local style="${2:-numeric}"
+
+    # For "text" style, return the index as-is
+    [[ "$style" == "text" ]] && { echo "$index"; return; }
+
+    # For multi-digit indices, build icon digit by digit
+    if (( index > 9 )); then
+        local result=""
+        local digit
+        while [[ -n "$index" ]]; do
+            digit="${index:0:1}"
+            index="${index:1}"
+            result+="$(get_window_index_icon "$digit" "$style")"
+        done
+        echo "$result"
+        return
+    fi
+
+    # Single digit - get from appropriate map
+    local icon
+    case "$style" in
+        numeric)
+            icon="${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}"
+            ;;
+        box)
+            icon="${WINDOW_INDEX_ICONS_BOX[$index]:-}"
+            ;;
+        box_outline)
+            icon="${WINDOW_INDEX_ICONS_BOX_OUTLINE[$index]:-}"
+            ;;
+        box_multiple)
+            icon="${WINDOW_INDEX_ICONS_BOX_MULTIPLE[$index]:-}"
+            ;;
+        box_multiple_outline)
+            icon="${WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE[$index]:-}"
+            ;;
+        circle)
+            icon="${WINDOW_INDEX_ICONS_CIRCLE[$index]:-}"
+            ;;
+        circle_outline)
+            icon="${WINDOW_INDEX_ICONS_CIRCLE_OUTLINE[$index]:-}"
+            ;;
+        *)
+            icon="${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}"
+            ;;
+    esac
+
+    echo "${icon:-$WINDOW_INDEX_FALLBACK_ICON}"
 }
 
-# Check if window index has an icon
-# Usage: has_window_index_icon "5" && echo "Has icon"
+# Check if window index has an icon for given style
+# Usage: has_window_index_icon "5" "box" && echo "Has icon"
 has_window_index_icon() {
     local index="$1"
-    [[ -n "${WINDOW_INDEX_ICON_MAP[$index]:-}" ]]
+    local style="${2:-numeric}"
+
+    [[ "$style" == "text" ]] && return 0
+
+    case "$style" in
+        numeric)         [[ -n "${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}" ]] ;;
+        box)             [[ -n "${WINDOW_INDEX_ICONS_BOX[$index]:-}" ]] ;;
+        box_outline)     [[ -n "${WINDOW_INDEX_ICONS_BOX_OUTLINE[$index]:-}" ]] ;;
+        box_multiple)    [[ -n "${WINDOW_INDEX_ICONS_BOX_MULTIPLE[$index]:-}" ]] ;;
+        box_multiple_outline) [[ -n "${WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE[$index]:-}" ]] ;;
+        *)               [[ -n "${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}" ]] ;;
+    esac
 }
 
 # Check if window icon exists for command

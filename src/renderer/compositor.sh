@@ -271,9 +271,10 @@ _get_windows_format_left_centered() {
     # === EXIT EDGE SEPARATOR ===
     # From last window's bg to statusbar-bg
     # ▶: fg = origin (last window), bg = destination (gap)
+    # Last window index = base-index + session_windows - 1
     if [[ -n "$sep_char" ]]; then
         local last_bg
-        last_bg="#{?#{==:#{active_window_index},#{session_windows}},${active_bg},${inactive_bg}}"
+        last_bg="#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},${active_bg},${inactive_bg}}"
         fmt+="#[fg=${last_bg},bg=${status_bg}]${sep_char}"
     fi
 
@@ -339,11 +340,12 @@ _get_windows_format_right_centered() {
     # === ENTRY EDGE SEPARATOR ===
     # Left-pointing (◀) for right element - per rule: right element edge points LEFT
     # ◀: fg = destination (first window index), bg = origin (gap)
+    # Use #{base-index} to support both base-index=0 and base-index=1
     local entry_sep_char
     entry_sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg
-        first_index_bg="#{?#{==:#{active_window_index},1},${active_index_bg},${inactive_index_bg}}"
+        first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
         fmt+="#[fg=${first_index_bg},bg=${status_bg}]${entry_sep_char}"
     fi
 
@@ -402,11 +404,12 @@ _get_windows_format_centered() {
     # === ENTRY EDGE SEPARATOR ===
     # Left-pointing (◀) for entry - receiving from left gap
     # ◀: fg = destination (first window index), bg = origin (gap)
+    # Use #{base-index} to support both base-index=0 and base-index=1
     local entry_sep_char
     entry_sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg
-        first_index_bg="#{?#{==:#{active_window_index},1},${active_index_bg},${inactive_index_bg}}"
+        first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
         fmt+="#[fg=${first_index_bg},bg=${status_bg}]${entry_sep_char}"
     fi
 
@@ -436,11 +439,12 @@ _get_windows_format_centered() {
     # === EXIT EDGE SEPARATOR ===
     # Right-pointing (▶) for exit - pushing to right gap
     # ▶: fg = origin (last window), bg = destination (gap)
+    # Last window index = base-index + session_windows - 1
     local exit_sep_char
     exit_sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
     if [[ -n "$exit_sep_char" ]]; then
         local last_bg
-        last_bg="#{?#{==:#{active_window_index},#{session_windows}},${active_bg},${inactive_bg}}"
+        last_bg="#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},${active_bg},${inactive_bg}}"
         fmt+="#[fg=${last_bg},bg=${status_bg}]${exit_sep_char}"
     fi
 
@@ -475,9 +479,9 @@ _build_left_edge_separator() {
     inactive_bg=$(resolve_color "window-inactive-base")
 
     # Conditional: if last window is active, use active_bg; else use inactive_bg
-    # #{session_windows} gives the number of windows (== last window index for 1-based indexing)
+    # Last window index = base-index + session_windows - 1
     local last_bg
-    last_bg="#{?#{==:#{active_window_index},#{session_windows}},${active_bg},${inactive_bg}}"
+    last_bg="#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},${active_bg},${inactive_bg}}"
 
     # Build separator: fg=last_element_bg (origin), bg=status_bg (destination)
     printf '#[fg=%s,bg=%s]%s' "$last_bg" "$status_bg" "$sep_char"
@@ -508,8 +512,9 @@ _build_windows_exit_separator() {
     inactive_bg=$(resolve_color "window-inactive-base")
 
     # Conditional: if last window is active, use active_bg; else use inactive_bg
+    # Last window index = base-index + session_windows - 1
     local last_bg
-    last_bg="#{?#{==:#{active_window_index},#{session_windows}},${active_bg},${inactive_bg}}"
+    last_bg="#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},${active_bg},${inactive_bg}}"
 
     # Powerline convention: fg = origin, bg = destination
     # For window → gap: fg = window, bg = gap

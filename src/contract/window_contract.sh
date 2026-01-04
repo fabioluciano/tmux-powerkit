@@ -175,30 +175,22 @@ window_state_indicators() {
 # Window Index Icon Resolution
 # =============================================================================
 
-# Build tmux conditional format for index-based numeric icons
-# Uses WINDOW_INDEX_ICON_MAP from registry.sh
-# Returns: nested conditional that maps #{window_index} to numeric icons
-# For indices 1-9: single icon; 10+: composite icons (e.g., 1+0 for 10)
+# Build tmux conditional format for index-based icons
+# Uses get_window_index_icon from registry.sh
+# Returns: nested conditional that maps #{window_index} to styled icons/text
+# Supports: text, numeric, box, box_outline, box_multiple, box_multiple_outline
 window_get_index_icon_format() {
+    local style="${1:-numeric}"
     local fallback='#{window_index}'
-
-    # Build nested conditional format
     local format="$fallback"
-    local index icon
 
-    # Build composite icons for 10-99 (two digits)
-    for index in {99..10}; do
-        local tens=$((index / 10))
-        local ones=$((index % 10))
-        local tens_icon="${WINDOW_INDEX_ICON_MAP[$tens]}"
-        local ones_icon="${WINDOW_INDEX_ICON_MAP[$ones]}"
-        icon="${tens_icon}${ones_icon}"
-        format="#{?#{==:#{window_index},$index},$icon,$format}"
-    done
+    # For text style, just return the plain index
+    [[ "$style" == "text" ]] && { printf '%s' "$fallback"; return; }
 
-    # Single digit icons 1-9
-    for index in 9 8 7 6 5 4 3 2 1; do
-        icon="${WINDOW_INDEX_ICON_MAP[$index]}"
+    # Generate icons for indices 0-49 (descending order for correct conditional evaluation)
+    for index in {49..0}; do
+        local icon
+        icon="$(get_window_index_icon "$index" "$style")"
         format="#{?#{==:#{window_index},$index},$icon,$format}"
     done
 
@@ -206,16 +198,16 @@ window_get_index_icon_format() {
 }
 
 # Get window index format based on settings
-# If @powerkit_window_index_icons is true, returns icon format
-# Otherwise returns plain #{window_index}
+# Uses @powerkit_window_index_style to determine display format
+# Values: text, numeric, box, box_outline, box_multiple, box_multiple_outline
 window_get_index_display() {
-    local use_icons
-    use_icons=$(get_tmux_option "@powerkit_window_index_icons" "${POWERKIT_DEFAULT_WINDOW_INDEX_ICONS:-false}")
+    local style
+    style=$(get_tmux_option "@powerkit_window_index_style" "${POWERKIT_DEFAULT_WINDOW_INDEX_STYLE:-text}")
 
-    if [[ "$use_icons" == "true" ]]; then
-        window_get_index_icon_format
-    else
+    if [[ "$style" == "text" ]]; then
         printf '#{window_index}'
+    else
+        window_get_index_icon_format "$style"
     fi
 }
 

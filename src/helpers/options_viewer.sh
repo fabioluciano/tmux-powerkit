@@ -78,11 +78,13 @@ declare -a THEME_OPTIONS=(
     "@powerkit_window_default_icon||icon|Default window icon"
     "@powerkit_active_window_title|#W|tmux format|Active window title format"
     "@powerkit_inactive_window_title|#W|tmux format|Inactive window title format"
-    "@powerkit_window_index_icons|false|true,false|Use numeric icons for index"
+    "@powerkit_window_index_style|text|text,numeric,box,box_outline,box_multiple,box_multiple_outline,circle,circle_outline|Window index display style"
     # Pane
     "@powerkit_pane_border_lines|single|single,double,heavy,simple,number|Pane border style"
     "@powerkit_active_pane_border_color|pane-border-active|color|Active pane border color"
     "@powerkit_inactive_pane_border_color|pane-border-inactive|color|Inactive pane border color"
+    "@powerkit_pane_border_status|off|off,top,bottom|Pane border status position"
+    "@powerkit_pane_border_format|{index}: {title}|string|Pane border format ({index},{title},{command},{path})"
     # Clock
     "@powerkit_clock_style|24|12,24|Clock format"
     # Keybindings

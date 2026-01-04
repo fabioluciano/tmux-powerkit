@@ -129,7 +129,8 @@ _windows_build_separator() {
         fi
 
         # Skip first window - compositor handles edge separator
-        local not_first='#{?#{!=:#{window_index},1},'
+        # Use #{base-index} to support both base-index=0 and base-index=1
+        local not_first='#{?#{!=:#{window_index},#{base-index}},'
         if [[ "$side" == "left" || "$side" == "center" ]]; then
             # Left side ▶: gap → window
             # ▶: fg=gap (left), bg=window (right)
@@ -142,11 +143,12 @@ _windows_build_separator() {
     else
         # For all sides, first window doesn't need edge separator (handled by compositor)
         # Only add inter-window separators (window 2+)
+        # Use #{base-index} to support both base-index=0 and base-index=1
         if [[ "$side" == "left" || "$side" == "center" ]]; then
-            printf '#{?#{!=:#{window_index},1},#[fg=%s#,bg=%s]%s,}' "$previous_bg" "$index_bg" "$_W_SEP_CHAR"
+            printf '#{?#{!=:#{window_index},#{base-index}},#[fg=%s#,bg=%s]%s,}' "$previous_bg" "$index_bg" "$_W_SEP_CHAR"
         else
             # Right side: separator points left (◀)
-            printf '#{?#{!=:#{window_index},1},#[fg=%s#,bg=%s]%s,}' "$index_bg" "$previous_bg" "$_W_SEP_CHAR"
+            printf '#{?#{!=:#{window_index},#{base-index}},#[fg=%s#,bg=%s]%s,}' "$index_bg" "$previous_bg" "$_W_SEP_CHAR"
         fi
     fi
 }
@@ -188,7 +190,8 @@ _windows_build_spacing() {
 
     # Exit separator: window → gap (between windows only)
     # Skip for LAST window (edge separator handled by compositor)
-    local not_last_cond='#{?#{!=:#{window_index},#{session_windows}},'
+    # Last window index = base-index + session_windows - 1
+    local not_last_cond='#{?#{!=:#{window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},'
 
     if [[ "$side" == "left" || "$side" == "center" ]]; then
         # Left side ▶: window → gap
@@ -310,8 +313,9 @@ windows_get_first_bg() {
     active_index_bg=$(resolve_color "window-active-base-light")
     inactive_index_bg=$(resolve_color "window-inactive-base-light")
 
-    # If window 1 is active, use active color; else use inactive
-    printf '#{?#{==:#{active_window_index},1},%s,%s}' "$active_index_bg" "$inactive_index_bg"
+    # If first window (base-index) is active, use active color; else use inactive
+    # Use #{base-index} to support both base-index=0 and base-index=1
+    printf '#{?#{==:#{active_window_index},#{base-index}},%s,%s}' "$active_index_bg" "$inactive_index_bg"
 }
 
 # Get the background color of the last window (for outgoing separator)
@@ -322,8 +326,8 @@ windows_get_last_bg() {
     inactive_content_bg=$(resolve_color "window-inactive-base")
 
     # If last window is active, use active color; else use inactive
-    # #{session_windows} gives the number of windows (== last window index for 1-based)
-    printf '#{?#{==:#{active_window_index},#{session_windows}},%s,%s}' "$active_content_bg" "$inactive_content_bg"
+    # Last window index = base-index + session_windows - 1
+    printf '#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},%s,%s}' "$active_content_bg" "$inactive_content_bg"
 }
 
 # Configure window formats in tmux
