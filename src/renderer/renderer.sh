@@ -181,6 +181,52 @@ configure_modes() {
 }
 
 # =============================================================================
+# Popup and Menu Configuration
+# =============================================================================
+
+# Configure popup and menu styles
+configure_popups_and_menus() {
+    log_debug "renderer" "Configuring popups and menus"
+
+    # Popup style
+    local popup_style
+    popup_style=$(build_popup_style)
+    tmux set-option -g popup-style "$popup_style"
+
+    # Popup border style
+    local popup_border_style
+    popup_border_style=$(build_popup_border_style)
+    tmux set-option -g popup-border-style "$popup_border_style"
+
+    # Popup border lines
+    local popup_border_lines
+    popup_border_lines=$(get_tmux_option "@powerkit_popup_border_lines" "${POWERKIT_DEFAULT_POPUP_BORDER_LINES}")
+    tmux set-option -g popup-border-lines "$popup_border_lines" 2>/dev/null || true
+
+    # Menu style
+    local menu_style
+    menu_style=$(build_menu_style)
+    tmux set-option -g menu-style "$menu_style"
+
+    # Menu selected style
+    local menu_selected_style
+    menu_selected_style=$(build_menu_selected_style)
+    tmux set-option -g menu-selected-style "$menu_selected_style"
+
+    # Menu border style
+    local menu_border_style
+    menu_border_style=$(build_menu_border_style)
+    tmux set-option -g menu-border-style "$menu_border_style"
+
+    # Menu border lines
+    local menu_border_lines
+    menu_border_lines=$(get_tmux_option "@powerkit_menu_border_lines" "${POWERKIT_DEFAULT_MENU_BORDER_LINES}")
+    tmux set-option -g menu-border-lines "$menu_border_lines" 2>/dev/null || true
+
+    log_debug "renderer" "Popups and menus configured"
+}
+
+# =============================================================================
 # Full Render
 # =============================================================================
 
@@ -199,6 +245,7 @@ render_all() {
     configure_messages
     configure_clock
     configure_modes
+    configure_popups_and_menus
 
     log_info "renderer" "Full render complete"
 }

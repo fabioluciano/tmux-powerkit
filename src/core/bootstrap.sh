@@ -145,6 +145,71 @@ powerkit_bootstrap() {
     log_info "bootstrap" "PowerKit bootstrap complete"
 }
 
+# Extract plugin names from a plugins string that may contain group() syntax
+# Usage: _extract_plugin_names "plugin1,group(p2,p3),plugin4" -> "plugin1 p2 p3 plugin4"
+_extract_plugin_names() {
+    local input="$1"
+    local result=""
+    local len=${#input}
+    local pos=0
+    local current_plugin=""
+
+    while [[ $pos -lt $len ]]; do
+        local char="${input:$pos:1}"
+
+        # Skip whitespace
+        if [[ "$char" =~ [[:space:]] ]]; then
+            ((pos++))
+            continue
+        fi
+
+        # Check for group(...) syntax
+        if [[ "${input:$pos:6}" == "group(" ]]; then
+            pos=$((pos + 6))
+            # Find matching closing parenthesis
+            local paren_depth=1
+            while [[ $pos -lt $len && $paren_depth -gt 0 ]]; do
+                char="${input:$pos:1}"
+                if [[ "$char" == "(" ]]; then
+                    ((paren_depth++))
+                elif [[ "$char" == ")" ]]; then
+                    ((paren_depth--))
+                elif [[ "$char" == "," && $paren_depth -eq 1 ]]; then
+                    # Separator inside group - output current plugin
+                    [[ -n "$current_plugin" ]] && result+="$current_plugin "
+                    current_plugin=""
+                    ((pos++))
+                    continue
+                elif [[ $paren_depth -gt 0 ]]; then
+                    current_plugin+="$char"
+                fi
+                ((pos++))
+            done
+            # Output last plugin from group
+            [[ -n "$current_plugin" ]] && result+="$current_plugin "
+            current_plugin=""
+            continue
+        fi
+
+        # Check for comma (separator between top-level items)
+        if [[ "$char" == "," ]]; then
+            [[ -n "$current_plugin" ]] && result+="$current_plugin "
+            current_plugin=""
+            ((pos++))
+            continue
+        fi
+
+        # Regular character - add to current plugin name
+        current_plugin+="$char"
+        ((pos++))
+    done
+
+    # Output any remaining plugin
+    [[ -n "$current_plugin" ]] && result+="$current_plugin "
+
+    printf '%s' "$result"
+}
+
 # Setup keybindings for all plugins
 # Usage: _setup_plugin_keybindings "plugin1,plugin2,..."
 _setup_plugin_keybindings() {
@@ -154,13 +219,16 @@ _setup_plugin_keybindings() {
     # NOTE: Core modules and utilities are already loaded by _load_core_modules() and _load_utils_modules()
     # No need to re-source them here
 
+    # Extract plugin names (handles group() syntax)
+    local plugin_names
+    plugin_names=$(_extract_plugin_names "$plugins_str")
+
     # Get conflict action setting
     local conflict_action
     conflict_action=$(get_tmux_option "@powerkit_keybinding_conflict_action" "${POWERKIT_DEFAULT_KEYBINDING_CONFLICT_ACTION}")
 
-    local IFS=','
     local plugin_name plugin_file
-    for plugin_name in $plugins_str; do
+    for plugin_name in $plugin_names; do
         # Trim whitespace
         plugin_name="${plugin_name#"${plugin_name%%[![:space:]]*}"}"
         plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"

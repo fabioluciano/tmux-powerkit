@@ -67,4 +67,16 @@ declare -gA THEME_COLORS=(
     # =========================================================================
     [message-bg]="#434c5e"               # nord2
     [message-fg]="#eceff4"               # nord6
+
+    # =========================================================================
+    # POPUP & MENU
+    # =========================================================================
+    [popup-bg]="#434c5e"                 # Popup background
+    [popup-fg]="#eceff4"                 # Popup foreground
+    [popup-border]="#88c0d0"             # Popup border
+    [menu-bg]="#434c5e"                  # Menu background
+    [menu-fg]="#eceff4"                  # Menu foreground
+    [menu-selected-bg]="#88c0d0"         # Menu selected background
+    [menu-selected-fg]="#2e3440"         # Menu selected foreground
+    [menu-border]="#88c0d0"              # Menu border
 )

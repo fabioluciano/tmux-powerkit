@@ -68,4 +68,16 @@ declare -gA THEME_COLORS=(
     # =========================================================================
     [message-bg]="#0d1017"               # surface
     [message-fg]="#bfbdb6"               # text
+
+    # =========================================================================
+    # POPUP & MENU
+    # =========================================================================
+    [popup-bg]="#0d1017"                 # Popup background
+    [popup-fg]="#bfbdb6"                 # Popup foreground
+    [popup-border]="#ffb454"             # Popup border
+    [menu-bg]="#0d1017"                  # Menu background
+    [menu-fg]="#bfbdb6"                  # Menu foreground
+    [menu-selected-bg]="#ffb454"         # Menu selected background
+    [menu-selected-fg]="#0b0e14"         # Menu selected foreground
+    [menu-border]="#ffb454"              # Menu border
 )

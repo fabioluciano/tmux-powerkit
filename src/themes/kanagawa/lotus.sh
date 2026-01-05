@@ -68,4 +68,16 @@ declare -gA THEME_COLORS=(
     # =========================================================================
     [message-bg]="#e4d794"               # lotusWhite5
     [message-fg]="#545464"               # lotusInk1
+
+    # =========================================================================
+    # POPUP & MENU
+    # =========================================================================
+    [popup-bg]="#e4d794"                 # Popup background
+    [popup-fg]="#545464"                 # Popup foreground
+    [popup-border]="#b35b79"             # Popup border
+    [menu-bg]="#e4d794"                  # Menu background
+    [menu-fg]="#545464"                  # Menu foreground
+    [menu-selected-bg]="#b35b79"         # Menu selected background
+    [menu-selected-fg]="#f2ecbc"         # Menu selected foreground
+    [menu-border]="#b35b79"              # Menu border
 )

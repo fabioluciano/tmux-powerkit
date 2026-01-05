@@ -56,7 +56,7 @@ plugin_declare_options() {
 
     # Keybindings
     declare_option "keybinding_issues" "string" "" "Keybinding for issue selector"
-    declare_option "popup_width" "string" "80%" "Popup width"
+    declare_option "popup_width" "string" "60%" "Popup width"
     declare_option "popup_height" "string" "80%" "Popup height"
 
     # Cache

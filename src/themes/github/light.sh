@@ -68,4 +68,16 @@ declare -gA THEME_COLORS=(
     # =========================================================================
     [message-bg]="#eaeef2"               # canvas subtle
     [message-fg]="#24292f"               # fg default
+
+    # =========================================================================
+    # POPUP & MENU
+    # =========================================================================
+    [popup-bg]="#eaeef2"                 # Popup background
+    [popup-fg]="#24292f"                 # Popup foreground
+    [popup-border]="#0969da"             # Popup border
+    [menu-bg]="#eaeef2"                  # Menu background
+    [menu-fg]="#24292f"                  # Menu foreground
+    [menu-selected-bg]="#0969da"         # Menu selected background
+    [menu-selected-fg]="#ffffff"         # Menu selected foreground
+    [menu-border]="#0969da"              # Menu border
 )

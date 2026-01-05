@@ -199,6 +199,18 @@ declare -gra THEME_OPTIONAL_COLORS=(
     # Search
     "search-match-bg"
     "search-match-fg"
+
+    # Popup
+    "popup-bg"
+    "popup-fg"
+    "popup-border"
+
+    # Menu
+    "menu-bg"
+    "menu-fg"
+    "menu-selected-bg"
+    "menu-selected-fg"
+    "menu-border"
 )
 
 # =============================================================================

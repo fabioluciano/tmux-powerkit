@@ -77,6 +77,18 @@ declare -gA THEME_COLORS=(
     # =========================================================================
     [message-bg]="#403e41"               # Message background
     [message-fg]="#fcfcfa"               # Message text color
+
+    # =========================================================================
+    # POPUP & MENU
+    # =========================================================================
+    [popup-bg]="#403e41"                 # Popup background
+    [popup-fg]="#fcfcfa"                 # Popup foreground
+    [popup-border]="#ff6188"             # Popup border
+    [menu-bg]="#403e41"                  # Menu background
+    [menu-fg]="#fcfcfa"                  # Menu foreground
+    [menu-selected-bg]="#a9dc76"         # Menu selected background
+    [menu-selected-fg]="#2d2a2e"         # Menu selected foreground
+    [menu-border]="#ff6188"              # Menu border
 )
 
 # Export for PowerKit

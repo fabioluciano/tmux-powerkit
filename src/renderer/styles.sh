@@ -134,3 +134,69 @@ build_mode_style() {
 
     printf 'fg=%s,bg=%s' "$fg" "$bg"
 }
+
+# =============================================================================
+# Popup Styles
+# =============================================================================
+
+# Build popup style (background and foreground)
+# Usage: build_popup_style
+# Returns: "fg=COLOR,bg=COLOR"
+build_popup_style() {
+    local bg fg
+
+    bg=$(resolve_color "popup-bg")
+    fg=$(resolve_color "popup-fg")
+
+    printf 'fg=%s,bg=%s' "$fg" "$bg"
+}
+
+# Build popup border style
+# Usage: build_popup_border_style
+# Returns: "fg=COLOR"
+build_popup_border_style() {
+    local border_color
+
+    border_color=$(resolve_color "popup-border")
+
+    printf 'fg=%s' "$border_color"
+}
+
+# =============================================================================
+# Menu Styles
+# =============================================================================
+
+# Build menu style (background and foreground)
+# Usage: build_menu_style
+# Returns: "fg=COLOR,bg=COLOR"
+build_menu_style() {
+    local bg fg
+
+    bg=$(resolve_color "menu-bg")
+    fg=$(resolve_color "menu-fg")
+
+    printf 'fg=%s,bg=%s' "$fg" "$bg"
+}
+
+# Build menu selected item style
+# Usage: build_menu_selected_style
+# Returns: "fg=COLOR,bg=COLOR"
+build_menu_selected_style() {
+    local bg fg
+
+    bg=$(resolve_color "menu-selected-bg")
+    fg=$(resolve_color "menu-selected-fg")
+
+    printf 'fg=%s,bg=%s' "$fg" "$bg"
+}
+
+# Build menu border style
+# Usage: build_menu_border_style
+# Returns: "fg=COLOR"
+build_menu_border_style() {
+    local border_color
+
+    border_color=$(resolve_color "menu-border")
+
+    printf 'fg=%s' "$border_color"
+}

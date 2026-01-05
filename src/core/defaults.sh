@@ -419,6 +419,17 @@ POWERKIT_DEFAULT_PANE_BORDER_STATUS_BG="none"
 POWERKIT_DEFAULT_PANE_BORDER_FORMAT="{active} {command}"
 
 # =============================================================================
+# POPUP & MENU CONFIGURATION
+# =============================================================================
+# @powerkit_popup_border_lines - Popup border line style
+# Values: "single", "rounded", "double", "heavy", "simple", "padded", "none"
+POWERKIT_DEFAULT_POPUP_BORDER_LINES="rounded"
+
+# @powerkit_menu_border_lines - Menu border line style
+# Values: "single", "rounded", "double", "heavy", "simple", "padded", "none"
+POWERKIT_DEFAULT_MENU_BORDER_LINES="rounded"
+
+# =============================================================================
 # CLOCK CONFIGURATION
 # =============================================================================
 # @powerkit_clock_style - tmux clock mode format
