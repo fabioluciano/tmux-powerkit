@@ -337,6 +337,116 @@ render_plugin_segment() {
 }
 
 # =============================================================================
+# Plugin Group Parsing
+# =============================================================================
+
+# Parse plugin list and extract groups
+# Populates global arrays:
+#   _PARSED_PLUGINS[]     - Plugin names in order
+#   _PLUGIN_GROUP_ID[]    - Group ID for each plugin (0 = no group)
+#   _GROUP_COLORS[]       - Resolved colors for each group ID
+# Usage: _parse_plugin_list "plugins_str"
+_parse_plugin_list() {
+    local plugins_str="$1"
+
+    _PARSED_PLUGINS=()
+    _PLUGIN_GROUP_ID=()
+    _GROUP_COLORS=()
+
+    # Get group color palette
+    local group_colors_str
+    group_colors_str=$(get_tmux_option "@powerkit_plugin_group_colors" "${POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS}")
+    local -a color_palette
+    IFS=',' read -ra color_palette <<< "$group_colors_str"
+
+    local group_counter=0
+    local current_pos=0
+    local len=${#plugins_str}
+
+    while [[ $current_pos -lt $len ]]; do
+        # Skip whitespace
+        while [[ $current_pos -lt $len && "${plugins_str:$current_pos:1}" =~ [[:space:]] ]]; do
+            ((current_pos++))
+        done
+        [[ $current_pos -ge $len ]] && break
+
+        # Check for group(...) syntax
+        if [[ "${plugins_str:$current_pos:6}" == "group(" ]]; then
+            ((group_counter++))
+            current_pos=$((current_pos + 6))
+
+            # Assign color from palette (cycle if more groups than colors)
+            local color_idx=$(( (group_counter - 1) % ${#color_palette[@]} ))
+            _GROUP_COLORS[$group_counter]=$(resolve_color "${color_palette[$color_idx]}")
+
+            # Find matching closing parenthesis
+            local paren_depth=1
+            local group_start=$current_pos
+            while [[ $current_pos -lt $len && $paren_depth -gt 0 ]]; do
+                local char="${plugins_str:$current_pos:1}"
+                [[ "$char" == "(" ]] && ((paren_depth++))
+                [[ "$char" == ")" ]] && ((paren_depth--))
+                [[ $paren_depth -gt 0 ]] && ((current_pos++))
+            done
+
+            # Extract group content (plugins inside group())
+            local group_content="${plugins_str:$group_start:$((current_pos - group_start))}"
+            ((current_pos++))  # Skip closing )
+
+            # Parse plugins inside group
+            local -a group_plugins
+            IFS=',' read -ra group_plugins <<< "$group_content"
+            for plugin in "${group_plugins[@]}"; do
+                # Trim whitespace
+                plugin="${plugin#"${plugin%%[![:space:]]*}"}"
+                plugin="${plugin%"${plugin##*[![:space:]]}"}"
+                [[ -n "$plugin" ]] && {
+                    _PARSED_PLUGINS+=("$plugin")
+                    _PLUGIN_GROUP_ID+=("$group_counter")
+                }
+            done
+        # Check for external(...) syntax
+        elif [[ "${plugins_str:$current_pos:9}" == "external(" ]]; then
+            local ext_start=$current_pos
+            current_pos=$((current_pos + 9))
+
+            # Find matching closing parenthesis
+            local paren_depth=1
+            while [[ $current_pos -lt $len && $paren_depth -gt 0 ]]; do
+                local char="${plugins_str:$current_pos:1}"
+                [[ "$char" == "(" ]] && ((paren_depth++))
+                [[ "$char" == ")" ]] && ((paren_depth--))
+                ((current_pos++))
+            done
+
+            local ext_plugin="${plugins_str:$ext_start:$((current_pos - ext_start))}"
+            _PARSED_PLUGINS+=("$ext_plugin")
+            _PLUGIN_GROUP_ID+=("0")
+        else
+            # Regular plugin name - find end (comma or end of string)
+            local name_start=$current_pos
+            while [[ $current_pos -lt $len && "${plugins_str:$current_pos:1}" != "," ]]; do
+                ((current_pos++))
+            done
+
+            local plugin="${plugins_str:$name_start:$((current_pos - name_start))}"
+            # Trim whitespace
+            plugin="${plugin#"${plugin%%[![:space:]]*}"}"
+            plugin="${plugin%"${plugin##*[![:space:]]}"}"
+            [[ -n "$plugin" ]] && {
+                _PARSED_PLUGINS+=("$plugin")
+                _PLUGIN_GROUP_ID+=("0")
+            }
+        fi
+
+        # Skip comma separator
+        if [[ $current_pos -lt $len && "${plugins_str:$current_pos:1}" == "," ]]; then
+            ((current_pos++))
+        fi
+    done
+}
+
+# =============================================================================
 # Plugin List Rendering (main entry point for powerkit-render)
 # =============================================================================
 
@@ -366,9 +476,9 @@ render_plugins() {
     plugins_str=$(get_tmux_option "@powerkit_plugins" "${POWERKIT_DEFAULT_PLUGINS}")
     [[ -z "$plugins_str" ]] && return 0
 
-    # Parse plugin list
-    local plugin_names
-    IFS=',' read -ra plugin_names <<< "$plugins_str"
+    # Parse plugin list with group support
+    _parse_plugin_list "$plugins_str"
+    local -a plugin_names=("${_PARSED_PLUGINS[@]}")
 
     # Check if plugin spacing is enabled
     local use_spacing
@@ -392,8 +502,13 @@ render_plugins() {
     local visible_plugins=()
     local visible_data=()
     local visible_is_external=()
+    local visible_group_id=()
     local plugin_name
+    local plugin_idx=0
     for plugin_name in "${plugin_names[@]}"; do
+        local current_group_id="${_PLUGIN_GROUP_ID[$plugin_idx]:-0}"
+        ((plugin_idx++))
+
         # Trim whitespace
         plugin_name="${plugin_name#"${plugin_name%%[![:space:]]*}"}"
         plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"
@@ -439,6 +554,7 @@ render_plugins() {
         visible_plugins+=("$plugin_name")
         visible_data+=("$plugin_data")
         visible_is_external+=("$is_external")
+        visible_group_id+=("$current_group_id")
     done
 
     local total_plugins=${#visible_plugins[@]}
@@ -447,36 +563,60 @@ render_plugins() {
     # Second pass: render plugins
     local output=""
     local prev_bg="$status_bg"
-    local plugin_idx=0
+    local render_idx=0
+    local prev_group_id=0
 
     # NOTE: Entry edge separator for CENTER side is handled by render_plugin_segment
     # for the first plugin (is_first=1) via get_initial_separator().
     # We don't add it here to avoid duplication.
 
     for plugin_name in "${visible_plugins[@]}"; do
-        local plugin_data="${visible_data[$plugin_idx]}"
-        local is_external="${visible_is_external[$plugin_idx]}"
+        local plugin_data="${visible_data[$render_idx]}"
+        local is_external="${visible_is_external[$render_idx]}"
+        local current_group_id="${visible_group_id[$render_idx]}"
         local icon content state health stale accent accent_icon
         IFS=$'\x1f' read -r icon content state health stale accent accent_icon <<< "$plugin_data"
         stale="${stale:-0}"  # Default for backward compatibility
 
-        local is_first=$(( plugin_idx == 0 ? 1 : 0 ))
-        local is_last=$(( plugin_idx == total_plugins - 1 ? 1 : 0 ))
+        local is_first=$(( render_idx == 0 ? 1 : 0 ))
+        local is_last=$(( render_idx == total_plugins - 1 ? 1 : 0 ))
+
+        # Determine spacing/separator behavior based on groups
+        # - Same group (non-zero): use group color as separator background (no gap)
+        # - Different groups: use statusbar background (creates visual gap)
+        local current_spacing_bg="$spacing_bg"
+        local current_spacing_fg="$spacing_fg"
+        local same_group=0
+
+        if [[ $current_group_id -gt 0 && $current_group_id -eq $prev_group_id ]]; then
+            # Same group: use group color for continuous background
+            same_group=1
+            current_spacing_bg="${_GROUP_COLORS[$current_group_id]}"
+            current_spacing_fg="${_GROUP_COLORS[$current_group_id]}"
+        fi
 
         # Add spacing between plugins if enabled (not before first plugin)
-        if [[ "$use_spacing" == "true" && $is_first -eq 0 ]]; then
+        # Skip spacing for plugins in the same group (they appear connected)
+        if [[ "$use_spacing" == "true" && $is_first -eq 0 && $same_group -eq 0 ]]; then
             local spacing_sep
             spacing_sep=$(get_closing_separator_for_side "$side")
 
             # spacing_fg is defined at the top with the actual statusbar-bg color
             # (not "default" which gives terminal's white text color)
             if [[ "$side" == "left" ]]; then
-                output+=" #[fg=${prev_bg},bg=${spacing_bg}]${spacing_sep}#[bg=${spacing_bg}]#[none]"
+                output+=" #[fg=${prev_bg},bg=${current_spacing_bg}]${spacing_sep}#[bg=${current_spacing_bg}]#[none]"
             else
-                output+=" #[fg=${spacing_fg},bg=${prev_bg}]${spacing_sep}#[bg=${spacing_bg}]#[none]"
+                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[bg=${current_spacing_bg}]#[none]"
             fi
-            prev_bg="$spacing_bg"
+            prev_bg="$current_spacing_bg"
+        # For same group without global spacing, still need to update prev_bg context
+        elif [[ $same_group -eq 1 && $is_first -eq 0 ]]; then
+            # Plugins in same group connect directly without gap
+            # prev_bg already set from previous plugin's content_bg
+            :
         fi
+
+        prev_group_id="$current_group_id"
 
         # Resolve colors (RENDERER responsibility - per contract separation)
         local content_bg content_fg icon_bg icon_fg
@@ -500,7 +640,7 @@ render_plugins() {
 
         output+="$segment"
         prev_bg="$content_bg"
-        ((plugin_idx++))
+        ((render_idx++))
     done
 
     # Add closing edge separator after last plugin when on LEFT or CENTER side

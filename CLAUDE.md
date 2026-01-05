@@ -675,10 +675,6 @@ declare -A THEME_COLORS=(
     # Messages
     [message-bg]="#1a1b26"
     [message-fg]="#c0caf5"
-
-    # Additional
-    [accent]="#bb9af7"
-    [border]="#3b4261"
 )
 ```
 
@@ -698,7 +694,7 @@ The system auto-generates 6 variants per base color:
 **Colors with variants** (defined in defaults.sh):
 
 ```bash
-POWERKIT_COLORS_WITH_VARIANTS="window-active-base window-inactive-base ok-base info-base warning-base error-base disabled-base accent border"
+POWERKIT_COLORS_WITH_VARIANTS="window-active-base window-inactive-base ok-base good-base info-base warning-base error-base disabled-base"
 ```
 
 ### Color Resolution
@@ -742,10 +738,28 @@ POWERKIT_DEFAULT_THEME="tokyo-night"
 POWERKIT_DEFAULT_THEME_VARIANT="night"
 POWERKIT_DEFAULT_TRANSPARENT="false"
 POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
+POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
 POWERKIT_DEFAULT_STATUS_INTERVAL="5"
 POWERKIT_DEFAULT_BAR_LAYOUT="single"                      # single or double (2 status lines)
 POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"           # Element rendering order
 ```
+
+### Plugin Groups
+
+Use `group(...)` syntax to visually group related plugins with a shared background color:
+
+```bash
+# Group related plugins
+set -g @powerkit_plugins "group(cpu,memory,loadavg),group(git,github),datetime"
+```
+
+Groups are assigned colors from `@powerkit_plugin_group_colors` palette in order:
+- Group 1: `info-base-darker` (blue)
+- Group 2: `window-active-base-darker` (purple/accent)
+- Group 3: `ok-base-darker` (green)
+- Group 4: `warning-base-darker` (yellow)
+- Group 5: `error-base-darker` (red)
+- Group 6: `disabled-base` (gray)
 
 ### Status Bar Layouts
 
@@ -1630,7 +1644,7 @@ list_deprecated_plugin_functions
 
 The Theme Contract (`src/contract/theme_contract.sh`) defines theme requirements:
 
-### Required Colors (22)
+### Required Colors (20)
 
 | Category | Colors |
 |----------|--------|
@@ -1640,7 +1654,6 @@ The Theme Contract (`src/contract/theme_contract.sh`) defines theme requirements
 | Pane Borders | `pane-border-active`, `pane-border-inactive` |
 | Health States | `ok-base`, `good-base`, `info-base`, `warning-base`, `error-base`, `disabled-base` |
 | Messages | `message-bg`, `message-fg` |
-| Additional | `accent`, `border` |
 
 ### Optional Colors
 

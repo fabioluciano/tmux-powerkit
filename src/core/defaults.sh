@@ -139,7 +139,32 @@ POWERKIT_DEFAULT_TRANSPARENT="false"
 #     crypto, stocks
 #   Services:
 #     cloudstatus, packages, bluetooth, hostname
+#
+# Plugin Groups:
+#   Use group(...) syntax to visually group plugins with a shared background:
+#     group(cpu,memory)           - Groups plugins with automatic group color
+#     group(git,github,gitlab)    - Another group with next color from palette
+#
+#   Example with groups:
+#     set -g @powerkit_plugins "group(cpu,memory),group(git,github),datetime"
+#
+#   Groups are colored automatically using @powerkit_plugin_group_colors palette.
+#   Each group gets the next color from the palette in order.
 POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
+
+# @powerkit_plugin_group_colors - Color palette for plugin groups
+# Comma-separated list of theme colors or hex values
+# Groups are assigned colors in order from this palette
+# Colors are applied to the background between plugins in the same group
+# Values: theme color names (with -darker variant) or hex colors
+# Default palette uses theme colors for visual harmony:
+#   info-base-darker          - Blue tones (network, info plugins)
+#   window-active-base-darker - Purple tones (development plugins)
+#   ok-base-darker            - Green tones (status, success plugins)
+#   warning-base-darker       - Yellow tones (alert plugins)
+#   error-base-darker         - Red tones (critical plugins)
+#   disabled-base             - Gray tones (neutral plugins)
+POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
 
 # =============================================================================
 # STATUS BAR CONFIGURATION
@@ -301,6 +326,16 @@ POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON=$'\U0000f489'   # nf-oct-terminal
 
 # @powerkit_zoomed_window_icon - Icon indicator for zoomed pane
 POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON=$'\U0000f531'     # nf-mdi-fullscreen
+
+# @powerkit_window_activity_icon - Icon for windows with activity
+# Shown when monitor-activity is on and activity is detected
+POWERKIT_DEFAULT_WINDOW_ACTIVITY_ICON=$'\U000f006e'   # nf-md-bell_ring
+
+# @powerkit_window_bell_icon - Icon for windows with bell alert
+POWERKIT_DEFAULT_WINDOW_BELL_ICON=$'\U000f009a'       # nf-md-bell_alert
+
+# @powerkit_window_marked_icon - Icon for marked windows (M flag)
+POWERKIT_DEFAULT_WINDOW_MARKED_ICON=$'\U000f0306'     # nf-md-bookmark
 
 # @powerkit_pane_synchronized_icon - Icon for synchronized panes
 POWERKIT_DEFAULT_PANE_SYNCHRONIZED_ICON=$'\U00002735'

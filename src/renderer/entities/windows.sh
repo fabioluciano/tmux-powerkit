@@ -227,17 +227,24 @@ _windows_build_format() {
     previous_bg="#{?#{==:#{e|-:#{window_index},1},#{active_window_index}},${active_content_bg},${content_bg}}"
 
     # Window icons and title
-    local window_icon window_title zoomed_icon
+    local window_icon window_title zoomed_icon activity_icon bell_icon marked_icon
     window_icon=$(get_tmux_option "@powerkit_inactive_window_icon" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON}")
     window_title=$(get_tmux_option "@powerkit_inactive_window_title" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_TITLE}")
     zoomed_icon=$(get_tmux_option "@powerkit_zoomed_window_icon" "${POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON}")
+    activity_icon=$(get_tmux_option "@powerkit_window_activity_icon" "${POWERKIT_DEFAULT_WINDOW_ACTIVITY_ICON}")
+    bell_icon=$(get_tmux_option "@powerkit_window_bell_icon" "${POWERKIT_DEFAULT_WINDOW_BELL_ICON}")
+    marked_icon=$(get_tmux_option "@powerkit_window_marked_icon" "${POWERKIT_DEFAULT_WINDOW_MARKED_ICON}")
+
+    # Icon priority: zoomed > activity > bell > marked > normal
+    local icon_conditional
+    icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_activity_flag,${activity_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}}}"
 
     local format=""
     format+="#[range=window|#{window_id}]"
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
     format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display) "
     format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
-    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] #{?window_zoomed_flag,${zoomed_icon},${window_icon}} ${window_title} "
+    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} "
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
 
@@ -262,18 +269,24 @@ _windows_build_current_format() {
     previous_bg=$(resolve_color "window-inactive-base")
 
     # Window icons and title
-    local window_icon window_title zoomed_icon pane_sync_icon
+    local window_icon window_title zoomed_icon pane_sync_icon marked_icon
     window_icon=$(get_tmux_option "@powerkit_active_window_icon" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_ICON}")
     window_title=$(get_tmux_option "@powerkit_active_window_title" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_TITLE}")
     zoomed_icon=$(get_tmux_option "@powerkit_zoomed_window_icon" "${POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON}")
+    marked_icon=$(get_tmux_option "@powerkit_window_marked_icon" "${POWERKIT_DEFAULT_WINDOW_MARKED_ICON}")
     pane_sync_icon=$(get_tmux_option "@powerkit_pane_synchronized_icon" "${POWERKIT_DEFAULT_PANE_SYNCHRONIZED_ICON}")
+
+    # Icon priority for active window: zoomed > marked > normal
+    # Note: activity/bell are not shown for active window (you're already looking at it)
+    local icon_conditional
+    icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}"
 
     local format=""
     format+="#[range=window|#{window_id}]"
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
     format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display) "
     format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
-    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] #{?window_zoomed_flag,${zoomed_icon},${window_icon}} ${window_title} #{?pane_synchronized,${pane_sync_icon},}"
+    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} #{?pane_synchronized,${pane_sync_icon},}"
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
 
