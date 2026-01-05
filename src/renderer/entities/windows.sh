@@ -131,11 +131,15 @@ _windows_build_separator() {
         # Skip first window - compositor handles edge separator
         # Use #{base-index} to support both base-index=0 and base-index=1
         local not_first='#{?#{!=:#{window_index},#{base-index}},'
-        if [[ "$side" == "left" || "$side" == "center" ]]; then
+        if [[ "$side" == "left" ]]; then
             # Left side ▶: gap → window
             # ▶: fg=gap (left), bg=window (right)
+            printf '#[fg=%s#,bg=%s]%s' "$spacing_fg" "$index_bg" "$_W_SEP_CHAR"
+        elif [[ "$side" == "center" ]]; then
+            # Center side ▶: gap → window
+            # ▶: fg=gap (left), bg=window (right)
             printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$spacing_fg" "$index_bg" "$_W_SEP_CHAR"
-        else
+        elif [[ "$side" == "right" ]]; then
             # Right side ◀: gap → window
             # ◀: fg=window (right), bg=gap (left)
             printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$index_bg" "$spacing_fg" "$_W_SEP_CHAR"
