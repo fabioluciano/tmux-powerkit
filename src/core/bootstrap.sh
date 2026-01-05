@@ -128,6 +128,11 @@ powerkit_bootstrap() {
     # Load theme
     load_powerkit_theme
 
+    # Setup pane flash effect (if enabled)
+    if declare -F pane_flash_setup &>/dev/null; then
+        pane_flash_setup
+    fi
+
     # Get plugins list for keybinding conflict detection
     local plugins_str
     plugins_str=$(get_tmux_option "@powerkit_plugins" "${POWERKIT_DEFAULT_PLUGINS}")

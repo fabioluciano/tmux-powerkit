@@ -771,6 +771,25 @@ collect_plugin_render_data() {
 
     # FRESH: age <= TTL → return cache immediately
     if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
+        # Quick check: if cached data is not "HIDDEN", verify presence hasn't changed to "hidden"
+        # This handles cases where configuration explicitly sets presence=hidden
+        # We DON'T check state here because it depends on collected data
+        if [[ "$cached_data" != "HIDDEN" ]]; then
+            # shellcheck disable=SC1090
+            . "$plugin_file"
+            declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+            
+            local presence
+            presence=$(plugin_get_presence 2>/dev/null || echo "always")
+            
+            # Only hide if presence is explicitly "hidden" (not conditional)
+            # Conditional plugins need their data to determine state
+            if [[ "$presence" == "hidden" ]]; then
+                printf 'HIDDEN'
+                return 0
+            fi
+        fi
+        
         printf '%s' "$cached_data"
         return 0
     fi
@@ -791,6 +810,24 @@ collect_plugin_render_data() {
     # This ensures plugins don't constantly appear "stale" just because their cache
     # is slightly older than TTL - which would happen with TTL close to status-interval.
     if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" && "$cached_data" != "HIDDEN" ]]; then
+        # VISIBILITY CHECK: Before returning stale cache, verify presence hasn't changed to "hidden"
+        # This prevents plugins with display_mode=off from appearing momentarily
+        # We DON'T check state here because it depends on collected data
+        # shellcheck disable=SC1090
+        . "$plugin_file"
+        declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+        
+        local presence
+        presence=$(plugin_get_presence 2>/dev/null || echo "always")
+        
+        # Only hide if presence is explicitly "hidden" (not conditional)
+        # Conditional plugins need fresh data collection to determine state
+        if [[ "$presence" == "hidden" ]]; then
+            _spawn_plugin_refresh "$name"
+            printf 'HIDDEN'
+            return 0
+        fi
+        
         _spawn_plugin_refresh "$name"
         # Return cached data AS-IS (preserve existing stale flag)
         # If data was previously marked stale due to failure, it stays stale until fresh collection succeeds
