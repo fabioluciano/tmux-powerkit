@@ -566,7 +566,7 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 
 A fully documented configuration file with **all available options** is maintained at:
 
-```
+```text
 wiki/assets/powerkit-options.conf
 ```
 

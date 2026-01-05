@@ -199,15 +199,18 @@ plugin_should_be_active()    # Quick context check for conditional plugins
 For conditional plugins that depend on **external context** (e.g., current directory, active pane), implement this function to perform a fast check before cached data is returned. This ensures the plugin disappears immediately when switching contexts, rather than showing stale data.
 
 **When to implement:**
+
 - Plugin visibility depends on current pane/window context (not just collected data)
 - Examples: `git` (depends on PWD being a git repo), `terraform` (depends on .tf files in PWD)
 
 **Requirements:**
+
 - MUST be fast (runs on every render when cache is valid)
 - MUST NOT call `plugin_data_set()` or modify state
 - Returns 0 if should be active, 1 if should be inactive
 
 **Example (git plugin):**
+
 ```bash
 plugin_should_be_active() {
     local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
