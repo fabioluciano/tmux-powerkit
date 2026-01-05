@@ -45,8 +45,8 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 _get_current_theme() {
     local theme variant cached
 
-    # First try to read from persistent cache
-    cached=$(cache_get "$THEME_CACHE_KEY" 0) || true
+    # First try to read from persistent cache (TTL=31536000 = 1 year, effectively permanent)
+    cached=$(cache_get "$THEME_CACHE_KEY" 31536000) || true
     if [[ -n "$cached" ]]; then
         echo "$cached"
         return
@@ -88,13 +88,10 @@ _apply_theme() {
     fi
 
     # Save current theme to persistent cache (survives kill-server)
-    local _cache_base_dir
-    _cache_base_dir="$(dirname "$(get_cache_dir)")"
-    [[ -d "$_cache_base_dir" ]] || mkdir -p "$_cache_base_dir"
-    printf '%s' "$theme/$variant" > "${_cache_base_dir}/${THEME_CACHE_KEY}"
+    cache_set "$THEME_CACHE_KEY" "$theme/$variant"
 
     # Clear plugin caches (but not theme cache)
-    find "$_cache_base_dir" -maxdepth 1 -type f -name "*.cache" ! -name "${THEME_CACHE_KEY}*" -delete 2>/dev/null || true
+    cache_clear_prefix "plugin_"
 
     # Immediate refresh to clear old content
     tmux refresh-client -S

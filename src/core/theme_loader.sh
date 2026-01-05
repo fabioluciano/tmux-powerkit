@@ -20,7 +20,7 @@ source_guard "theme_loader" && return 0
 # =============================================================================
 
 _THEMES_DIR="${POWERKIT_ROOT}/src/themes"
-_THEME_CACHE_FILE="$(dirname "$(get_cache_dir)")/current_theme"
+_THEME_CACHE_KEY="current_theme"
 
 # Current loaded theme
 declare -g _CURRENT_THEME=""
@@ -45,12 +45,11 @@ _expand_path() {
     printf '%s' "$path"
 }
 
-# Load theme from cache file
+# Load theme from cache (uses cache API)
 _load_cached_theme() {
-    [[ ! -f "$_THEME_CACHE_FILE" ]] && return 1
-
     local cached
-    cached=$(cat "$_THEME_CACHE_FILE" 2>/dev/null)
+    # TTL=31536000 (1 year) - effectively permanent
+    cached=$(cache_get "$_THEME_CACHE_KEY" 31536000) || return 1
     [[ -z "$cached" ]] && return 1
 
     # Parse theme/variant format
@@ -63,13 +62,9 @@ _load_cached_theme() {
     return 1
 }
 
-# Save current theme to cache
+# Save current theme to cache (uses cache API)
 _save_theme_cache() {
-    local dir
-    dir=$(dirname "$_THEME_CACHE_FILE")
-    [[ -d "$dir" ]] || mkdir -p "$dir"
-
-    printf '%s/%s' "$_CURRENT_THEME" "$_CURRENT_VARIANT" > "$_THEME_CACHE_FILE"
+    cache_set "$_THEME_CACHE_KEY" "${_CURRENT_THEME}/${_CURRENT_VARIANT}"
 }
 
 # Get theme file path

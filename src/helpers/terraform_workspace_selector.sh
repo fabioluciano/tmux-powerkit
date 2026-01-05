@@ -69,8 +69,14 @@ get_pane_path() {
     echo "$path"
 }
 
-# Alias to shared function from filesystem.sh (loaded by helper_init)
-is_tf_directory() { is_terraform_directory "$1"; }
+# Check if directory is a Terraform/Terragrunt directory
+is_tf_directory() {
+    local path="$1"
+    [[ -d "${path}/.terraform" ]] && return 0
+    ls "${path}"/*.tf &>/dev/null 2>&1 && return 0
+    ls "${path}"/terragrunt*.hcl &>/dev/null 2>&1 && return 0
+    return 1
+}
 
 # =============================================================================
 # Workspace Selection

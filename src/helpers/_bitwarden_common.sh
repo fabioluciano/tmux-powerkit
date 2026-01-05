@@ -37,7 +37,8 @@ fi
 # Constants
 # =============================================================================
 
-BITWARDEN_PLUGIN_STATUS_CACHE="$(dirname "$(get_cache_dir)")/data/plugin_bitwarden_data"
+# Cache key for bitwarden plugin data (used with cache API)
+BITWARDEN_PLUGIN_CACHE_KEY="plugin_bitwarden_data"
 
 # ANSI colors from defaults.sh
 _BW_BOLD="${POWERKIT_ANSI_BOLD}"
@@ -136,7 +137,7 @@ is_bitwarden_cache_valid() {
 
 # Invalidate plugin status cache to trigger status bar refresh
 invalidate_bitwarden_plugin_cache() {
-    rm -f "$BITWARDEN_PLUGIN_STATUS_CACHE" 2>/dev/null || true
+    cache_clear "$BITWARDEN_PLUGIN_CACHE_KEY"
     tmux refresh-client -S 2>/dev/null || true
 }
 

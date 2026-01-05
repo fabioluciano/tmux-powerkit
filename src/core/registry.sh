@@ -528,34 +528,6 @@ has_window_icon() {
     [[ -n "${WINDOW_ICON_MAP[$command]:-}" ]]
 }
 
-# Get description for plugin state
-# Usage: desc=$(get_plugin_state_description "inactive")
-get_plugin_state_description() {
-    local state="$1"
-    echo "${PLUGIN_STATE_DESCRIPTIONS[$state]:-Unknown state}"
-}
-
-# Get description for session mode
-# Usage: desc=$(get_session_mode_description "copy")
-get_session_mode_description() {
-    local mode="$1"
-    echo "${SESSION_MODE_DESCRIPTIONS[$mode]:-Unknown mode}"
-}
-
-# Get description for health level
-# Usage: desc=$(get_health_description "warning")
-get_health_description() {
-    local health="$1"
-    echo "${HEALTH_DESCRIPTIONS[$health]:-Unknown health level}"
-}
-
-# Get description for helper type
-# Usage: desc=$(get_helper_type_description "popup")
-get_helper_type_description() {
-    local type="$1"
-    echo "${HELPER_TYPE_DESCRIPTIONS[$type]:-Unknown helper type}"
-}
-
 # =============================================================================
 # Validation Functions (using registry data)
 # =============================================================================
@@ -564,30 +536,10 @@ get_helper_type_description() {
 # For more complex validation, use src/utils/validation.sh
 
 # Check if plugin state is valid
-is_valid_plugin_state() {
+is_valid_state() {
     local state="$1"
     local valid
     for valid in "${PLUGIN_STATES[@]}"; do
-        [[ "$state" == "$valid" ]] && return 0
-    done
-    return 1
-}
-
-# Check if session mode is valid
-is_valid_session_mode() {
-    local mode="$1"
-    local valid
-    for valid in "${SESSION_MODES[@]}"; do
-        [[ "$mode" == "$valid" ]] && return 0
-    done
-    return 1
-}
-
-# Check if window state is valid
-is_valid_window_state() {
-    local state="$1"
-    local valid
-    for valid in "${WINDOW_STATES[@]}"; do
         [[ "$state" == "$valid" ]] && return 0
     done
     return 1
@@ -599,26 +551,6 @@ is_valid_health() {
     local valid
     for valid in "${HEALTH_LEVELS[@]}"; do
         [[ "$health" == "$valid" ]] && return 0
-    done
-    return 1
-}
-
-# Check if helper type is valid
-is_valid_helper_type() {
-    local type="$1"
-    local valid
-    for valid in "${HELPER_TYPES[@]}"; do
-        [[ "$type" == "$valid" ]] && return 0
-    done
-    return 1
-}
-
-# Check if plugin state is valid
-is_valid_state() {
-    local state="$1"
-    local valid
-    for valid in "${PLUGIN_STATES[@]}"; do
-        [[ "$state" == "$valid" ]] && return 0
     done
     return 1
 }

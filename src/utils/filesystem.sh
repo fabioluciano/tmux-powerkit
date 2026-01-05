@@ -238,26 +238,3 @@ count_lines() {
     [[ -f "$file" ]] && wc -l < "$file" 2>/dev/null | tr -d ' '
 }
 
-# =============================================================================
-# Project Type Detection
-# =============================================================================
-
-# Check if directory is a Terraform/Terragrunt directory
-# Usage: is_terraform_directory "/path/to/dir" && echo "is terraform"
-# Detects: .terraform/, *.tf, terragrunt*.hcl
-is_terraform_directory() {
-    local path="$1"
-    [[ -d "${path}/.terraform" ]] && return 0
-    ls "${path}"/*.tf &>/dev/null 2>&1 && return 0
-    ls "${path}"/terragrunt*.hcl &>/dev/null 2>&1 && return 0
-    return 1
-}
-
-# Check if directory has pending Terraform changes
-# Usage: has_terraform_pending_changes "/path/to/dir" && echo "has pending"
-has_terraform_pending_changes() {
-    local path="$1"
-    [[ -f "${path}/tfplan" ]] && return 0
-    [[ -f "${path}/.terraform/tfplan" ]] && return 0
-    return 1
-}

@@ -187,12 +187,26 @@ _detect_tool() {
 }
 
 # =============================================================================
-# Directory Detection (uses shared functions from filesystem.sh)
+# Directory Detection
 # =============================================================================
 
-# Aliases to shared functions for backward compatibility
-_is_tf_directory() { is_terraform_directory "$1"; }
-_has_pending_changes() { has_terraform_pending_changes "$1"; }
+# Check if directory is a Terraform/Terragrunt directory
+# Detects: .terraform/, *.tf, terragrunt*.hcl
+_is_tf_directory() {
+    local path="$1"
+    [[ -d "${path}/.terraform" ]] && return 0
+    ls "${path}"/*.tf &>/dev/null 2>&1 && return 0
+    ls "${path}"/terragrunt*.hcl &>/dev/null 2>&1 && return 0
+    return 1
+}
+
+# Check if directory has pending Terraform changes
+_has_pending_changes() {
+    local path="$1"
+    [[ -f "${path}/tfplan" ]] && return 0
+    [[ -f "${path}/.terraform/tfplan" ]] && return 0
+    return 1
+}
 
 # =============================================================================
 # Main Logic

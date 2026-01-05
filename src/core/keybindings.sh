@@ -197,9 +197,7 @@ _setup_command_keybinding() {
 
     case "$name" in
         cache_clear)
-            local cache_dir
-            cache_dir="$(get_cache_dir)"
-            local cmd="rm -rf '${cache_dir:?}'/* 2>/dev/null; tmux refresh-client -S; POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && load_powerkit_theme && toast \"PowerKit cache cleared!\" \"info\"'"
+            local cmd="POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && powerkit_bootstrap_minimal && cache_clear_all && load_powerkit_theme && toast \"PowerKit cache cleared!\" \"info\"'; tmux refresh-client -S"
             pk_bind_smart "$key" "$cmd" -s "core:cache_clear"
             ;;
         reload_config)

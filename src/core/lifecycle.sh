@@ -134,6 +134,45 @@ _validate_plugin() {
 }
 
 # =============================================================================
+# Debug Validation (LSP - Liskov Substitution Principle)
+# =============================================================================
+# When POWERKIT_DEBUG=true, validate that plugins return valid values
+# for state, health, content_type, and presence.
+
+# Validate plugin contract return values in debug mode
+# Usage: _debug_validate_contract_values plugin_name state health content_type presence
+_debug_validate_contract_values() {
+    # Skip validation if not in debug mode
+    [[ "${POWERKIT_DEBUG:-}" != "true" ]] && return 0
+
+    local name="$1"
+    local state="$2"
+    local health="$3"
+    local content_type="$4"
+    local presence="$5"
+
+    # Validate state
+    if ! is_valid_state "$state"; then
+        log_warn "lifecycle" "Plugin '$name' returned invalid state: '$state' (expected: inactive, active, degraded, failed)"
+    fi
+
+    # Validate health
+    if ! is_valid_health "$health"; then
+        log_warn "lifecycle" "Plugin '$name' returned invalid health: '$health' (expected: ok, good, info, warning, error)"
+    fi
+
+    # Validate content_type
+    if ! is_valid_content_type "$content_type"; then
+        log_warn "lifecycle" "Plugin '$name' returned invalid content_type: '$content_type' (expected: static, dynamic)"
+    fi
+
+    # Validate presence
+    if ! is_valid_presence "$presence"; then
+        log_warn "lifecycle" "Plugin '$name' returned invalid presence: '$presence' (expected: always, conditional)"
+    fi
+}
+
+# =============================================================================
 # Plugin Initialization
 # =============================================================================
 
@@ -286,6 +325,9 @@ _resolve_plugin() {
     else
         health="ok"
     fi
+
+    # Debug validation: check contract compliance
+    _debug_validate_contract_values "$name" "$state" "$health" "$content_type" "$presence"
 
     # Get context if available
     if declare -F plugin_get_context &>/dev/null; then
@@ -790,22 +832,11 @@ collect_external_plugin_render_data() {
 
     # Cache key for this external plugin
     local cache_key="external_${id}_data"
-    local cache_file="${_CACHE_DIR}/${cache_key}"
 
-    # Check cache
-    local cache_age=-1
+    # Check cache - try to get cached data within TTL
     local cached_data=""
-    if [[ -f "$cache_file" ]]; then
-        local now mtime
-        now=$(_get_now)
-        mtime=$(_file_mtime "$cache_file")
-        cache_age=$((now - mtime))
-        cached_data=$(< "$cache_file")
-    fi
-
-    # Return cached if fresh
-    if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
-        # Extract accent info from cache (stored as extra fields)
+    if cached_data=$(cache_get "$cache_key" "$ttl"); then
+        # Cache hit - return cached data
         printf '%s' "$cached_data"
         return 0
     fi
@@ -827,8 +858,8 @@ collect_external_plugin_render_data() {
     local _delim=$'\x1f'
     local result="${icon}${_delim}${output}${_delim}active${_delim}ok${_delim}0${_delim}${accent}${_delim}${accent_icon}"
 
-    # Cache the result
-    printf '%s' "$result" > "$cache_file"
+    # Cache the result using cache API
+    cache_set "$cache_key" "$result"
 
     printf '%s' "$result"
 }

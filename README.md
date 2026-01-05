@@ -4,6 +4,12 @@
 
 ![PowerKit Status Bar Preview](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/images/tmux-powerkit-session-plugins-windows.png)
 
+<sub>
+① <b>Session</b> – Current tmux session name with icon &nbsp;•&nbsp;
+② <b>Plugins</b> – Modular status indicators (system, git, datetime, etc.) &nbsp;•&nbsp;
+③ <b>Windows</b> – Window list with index icons and names
+</sub>
+
 ## The Ultimate tmux Status Bar Framework
 
 42 Plugins • 32 Themes • Infinite Possibilities

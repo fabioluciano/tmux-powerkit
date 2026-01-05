@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-# PowerKit Contract: Message
-# Description: Toast/message API for user notifications
+# MESSAGE CONTRACT
+# Toast/message API for user notifications
 # =============================================================================
 
 # Source guard

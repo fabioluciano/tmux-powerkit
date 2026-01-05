@@ -120,8 +120,7 @@ tmux-powerkit/
 │   ├── contract/                   # Contract Definitions
 │   │   ├── plugin_contract.sh      # Plugin interface + helpers
 │   │   ├── session_contract.sh     # Session interface
-│   │   ├── window_contract.sh      # Window interface
-│   │   └── validator.sh            # Contract compliance checker
+│   │   └── window_contract.sh      # Window interface
 │   ├── renderer/                   # Rendering System
 │   │   ├── segment_builder.sh      # Build status segments
 │   │   ├── separator.sh            # Powerline separators
@@ -168,22 +167,27 @@ Plugins provide **data and semantics**, NOT UI decisions.
 ### Mandatory Functions
 
 ```bash
-plugin_get_metadata()      # Set plugin metadata using metadata_set()
 plugin_collect()           # Collect data using plugin_data_set() only
-plugin_get_content_type()  # "static" | "dynamic"
-plugin_get_presence()      # "always" | "conditional"
-plugin_get_state()         # "inactive" | "active" | "degraded" | "failed"
-plugin_get_health()        # "ok" | "good" | "info" | "warning" | "error"
 plugin_render()            # TEXT ONLY - no colors, no icons, no formatting
 plugin_get_icon()          # Returns icon based on plugin's internal data
+plugin_get_state()         # "inactive" | "active" | "degraded" | "failed"
+plugin_get_health()        # "ok" | "good" | "info" | "warning" | "error"
 ```
 
-### Optional Functions
+### Functions with Defaults (override only if needed)
 
 ```bash
-plugin_check_dependencies()  # Check required commands
+plugin_get_content_type()  # Default: "dynamic" (most plugins)
+plugin_get_presence()      # Default: "conditional" (hide when inactive)
+plugin_get_context()       # Default: no-op (empty context)
+plugin_check_dependencies()# Default: return 0 (no dependencies)
+plugin_get_metadata()      # Default: no-op (id derived from filename)
+```
+
+### Optional Functions (no default)
+
+```bash
 plugin_declare_options()     # Declare configurable options
-plugin_get_context()         # Returns context flags (e.g., "charging")
 plugin_setup_keybindings()   # Setup tmux keybindings
 ```
 
@@ -1435,13 +1439,11 @@ plugin_get_health() {
 | File | Purpose |
 |------|---------|
 | `src/core/registry.sh` | Centralized constants and enums (PLUGIN_STATES, SESSION_MODES, WINDOW_ICON_MAP, HEALTH_LEVELS) |
-| `src/core/template_generator.sh` | Generate boilerplate for plugins, helpers, and themes |
 
 ### Contract Modules
 
 | File | Purpose |
 |------|---------|
-| `src/contract/plugin_validator.sh` | Plugin contract compliance checker |
 | `src/contract/theme_contract.sh` | Theme contract definition and validation |
 | `src/contract/helper_contract.sh` | Helper base contract with UI abstraction |
 
@@ -1524,41 +1526,6 @@ HELPER_TYPES=("popup" "menu" "command" "toast")
 
 ---
 
-## Template Generator
-
-The Template Generator (`src/core/template_generator.sh`) creates boilerplate code:
-
-### Available Generators
-
-```bash
-# Generate a new plugin
-generate_plugin "weather" "conditional" > src/plugins/weather.sh
-
-# Generate a helper
-generate_helper "device_selector" "popup" > src/helpers/device_selector.sh
-
-# Generate a theme
-generate_theme "my-theme" "dark" > src/themes/my-theme/dark.sh
-```
-
-### Generated Plugin Template Features
-
-- Contract-compliant structure
-- Proper POWERKIT_ROOT sourcing
-- All mandatory functions pre-defined
-- NOTE comments about what NOT to do (no accent_color)
-
-### Usage Example
-
-```bash
-# Create a new conditional plugin
-. "${POWERKIT_ROOT}/src/core/template_generator.sh"
-generate_plugin "my_plugin" "conditional" > src/plugins/my_plugin.sh
-chmod +x src/plugins/my_plugin.sh
-```
-
----
-
 ## Validation Utilities
 
 The Validation module (`src/utils/validation.sh`) provides reusable validation functions:
@@ -1597,48 +1564,6 @@ validate_path_exists "$path"
 validate_file_readable "$path"
 validate_directory_accessible "$path"
 ```
-
----
-
-## Plugin Validator
-
-The Plugin Validator (`src/contract/plugin_validator.sh`) checks contract compliance:
-
-### Usage
-
-```bash
-# Validate single plugin
-validate_plugin "src/plugins/battery.sh"
-
-# Validate all plugins
-validate_all_plugins "src/plugins"
-
-# List requirements
-list_mandatory_plugin_functions
-list_optional_plugin_functions
-list_deprecated_plugin_functions
-```
-
-### Validation Checks
-
-1. **Mandatory functions present**:
-   - `plugin_collect`
-   - `plugin_render`
-   - `plugin_get_content_type`
-   - `plugin_get_presence`
-   - `plugin_get_state`
-   - `plugin_get_health`
-   - `plugin_get_icon`
-
-2. **No deprecated functions**:
-   - `plugin_get_display_info` (legacy)
-   - `plugin_get_type` (use `plugin_get_content_type`)
-
-3. **No accent_color options** (colors come from renderer)
-
-4. **No tmux color codes** in `plugin_render()` output
-
-5. **Syntax validation** via `bash -n`
 
 ---
 

@@ -1,16 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
-#
-#  ██████╗  ██████╗ ██╗    ██╗███████╗██████╗ ██╗  ██╗██╗████████╗
-#  ██╔══██╗██╔═══██╗██║    ██║██╔════╝██╔══██╗██║ ██╔╝██║╚══██╔══╝
-#  ██████╔╝██║   ██║██║ █╗ ██║█████╗  ██████╔╝█████╔╝ ██║   ██║
-#  ██╔═══╝ ██║   ██║██║███╗██║██╔══╝  ██╔══██╗██╔═██╗ ██║   ██║
-#  ██║     ╚██████╔╝╚███╔███╔╝███████╗██║  ██║██║  ██╗██║   ██║
-#  ╚═╝      ╚═════╝  ╚══╝╚══╝ ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝
-#
-#  PLUGIN CONTRACT - Version 2.0.0
+#  PLUGIN CONTRACT
 #  Plugin contract interface and initialization
-#
 # =============================================================================
 #
 # TABLE OF CONTENTS
@@ -108,17 +99,20 @@
 #   plugin_collect()           - Collect data using plugin_data_set()
 #   plugin_render()            - Return TEXT ONLY (no colors, no icons)
 #   plugin_get_icon()          - Return the icon to display
-#   plugin_get_content_type()  - Return "static" or "dynamic"
-#   plugin_get_presence()      - Return "always" or "conditional"
 #   plugin_get_state()         - Return "inactive", "active", "degraded", "failed"
 #   plugin_get_health()        - Return "ok", "good", "info", "warning", "error"
 #
-# OPTIONAL FUNCTIONS:
+# FUNCTIONS WITH DEFAULTS (override only if needed):
 #
-#   plugin_check_dependencies()  - Check required commands/files
+#   plugin_get_content_type()  - Default: "dynamic" (most plugins)
+#   plugin_get_presence()      - Default: "conditional" (hide when inactive)
+#   plugin_get_context()       - Default: no-op (empty context)
+#   plugin_check_dependencies()- Default: return 0 (no dependencies)
+#   plugin_get_metadata()      - Default: no-op (id from filename)
+#
+# OPTIONAL FUNCTIONS (no default, implement if needed):
+#
 #   plugin_declare_options()     - Declare configurable options
-#   plugin_get_context()         - Return context flags
-#   plugin_get_metadata()        - Set metadata using metadata_set()
 #   plugin_setup_keybindings()   - Setup tmux keybindings
 #
 # DEPENDENCY HELPERS:
@@ -459,3 +453,24 @@ plugin_data_set_multi() {
         shift 2
     done
 }
+
+# =============================================================================
+# Default Implementations (ISP - Interface Segregation Principle)
+# =============================================================================
+# These defaults reduce boilerplate in simple plugins. Plugins can override
+# any of these functions by defining their own implementation.
+
+# Default content type: dynamic (most plugins fetch real-time data)
+plugin_get_content_type() { printf 'dynamic'; }
+
+# Default presence: conditional (hide when inactive)
+plugin_get_presence() { printf 'conditional'; }
+
+# Default context: empty (no additional context)
+plugin_get_context() { :; }
+
+# Default dependency check: no dependencies required
+plugin_check_dependencies() { return 0; }
+
+# Default metadata: empty (id is derived from filename by lifecycle)
+plugin_get_metadata() { :; }
