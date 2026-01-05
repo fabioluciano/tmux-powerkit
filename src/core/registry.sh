@@ -61,6 +61,7 @@ declare -gra PLUGIN_STATES=(
 )
 
 # Plugin state descriptions
+# shellcheck disable=SC2034 # Used for validation and documentation
 declare -grA PLUGIN_STATE_DESCRIPTIONS=(
     [inactive]="Plugin is not active (resource doesn't exist or is disabled)"
     [active]="Plugin is active and working normally"
@@ -94,6 +95,7 @@ declare -gra SESSION_STATES=(
 )
 
 # Valid session modes
+# shellcheck disable=SC2034 # Used for validation
 declare -gra SESSION_MODES=(
     "normal"   # Default state
     "prefix"   # After pressing prefix key (client_prefix=1)
@@ -103,6 +105,7 @@ declare -gra SESSION_MODES=(
 )
 
 # Session mode descriptions
+# shellcheck disable=SC2034 # Used for validation and documentation
 declare -grA SESSION_MODE_DESCRIPTIONS=(
     [normal]="Default tmux state"
     [prefix]="Prefix key pressed, awaiting command"
@@ -116,6 +119,7 @@ declare -grA SESSION_MODE_DESCRIPTIONS=(
 # =============================================================================
 
 # Valid window states (derived from tmux variables)
+# shellcheck disable=SC2034 # Used for validation
 declare -gra WINDOW_STATES=(
     "active"    # Current window (window_active=1)
     "inactive"  # Other windows
@@ -365,6 +369,7 @@ WINDOW_INDEX_FALLBACK_ICON=$'\uf120'  # Terminal icon as fallback
 # =============================================================================
 
 # Valid helper types
+# shellcheck disable=SC2034 # Used for validation
 declare -gra HELPER_TYPES=(
     "popup"    # Opens in display-popup -E
     "menu"     # Uses display-menu
@@ -373,6 +378,7 @@ declare -gra HELPER_TYPES=(
 )
 
 # Helper type descriptions
+# shellcheck disable=SC2034 # Used for validation and documentation
 declare -grA HELPER_TYPE_DESCRIPTIONS=(
     [popup]="Opens in tmux display-popup with interactive UI"
     [menu]="Uses native tmux display-menu"
@@ -404,6 +410,7 @@ declare -grA HEALTH_PRECEDENCE=(
 )
 
 # Health level descriptions
+# shellcheck disable=SC2034 # Used for validation and documentation
 declare -grA HEALTH_DESCRIPTIONS=(
     [ok]="Normal operation, everything is fine"
     [good]="Better than normal, positive state (e.g., unlocked, connected)"
