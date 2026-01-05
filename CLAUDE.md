@@ -739,6 +739,7 @@ POWERKIT_DEFAULT_THEME_VARIANT="night"
 POWERKIT_DEFAULT_TRANSPARENT="false"
 POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
+POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
 POWERKIT_DEFAULT_STATUS_INTERVAL="5"
 POWERKIT_DEFAULT_BAR_LAYOUT="single"                      # single or double (2 status lines)
 POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"           # Element rendering order
@@ -754,6 +755,7 @@ set -g @powerkit_plugins "group(cpu,memory,loadavg),group(git,github),datetime"
 ```
 
 Groups are assigned colors from `@powerkit_plugin_group_colors` palette in order:
+
 - Group 1: `info-base-darker` (blue)
 - Group 2: `window-active-base-darker` (purple/accent)
 - Group 3: `ok-base-darker` (green)
