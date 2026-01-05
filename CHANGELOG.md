@@ -2,6 +2,13 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.8.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.7.1...v5.8.0) (2026-01-05)
+
+### Features
+
+* Enhance plugin lifecycle validation and add pane flash effect setup ([f48c904](https://github.com/fabioluciano/tmux-powerkit/commit/f48c90444b4b2e0c6588076c448da159c04cf94e))
+* Introduce Pane Contract and Hooks Utility for enhanced pane management ([1cd13e7](https://github.com/fabioluciano/tmux-powerkit/commit/1cd13e798cd1e24f9c02ee2ac6592bd967b82764))
+
 ## [5.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.7.0...v5.7.1) (2026-01-05)
 
 ### Bug Fixes
