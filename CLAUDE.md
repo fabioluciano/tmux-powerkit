@@ -191,6 +191,28 @@ plugin_get_metadata()      # Default: no-op (id derived from filename)
 ```bash
 plugin_declare_options()     # Declare configurable options
 plugin_setup_keybindings()   # Setup tmux keybindings
+plugin_should_be_active()    # Quick context check for conditional plugins
+```
+
+#### plugin_should_be_active() - Quick Context Check
+
+For conditional plugins that depend on **external context** (e.g., current directory, active pane), implement this function to perform a fast check before cached data is returned. This ensures the plugin disappears immediately when switching contexts, rather than showing stale data.
+
+**When to implement:**
+- Plugin visibility depends on current pane/window context (not just collected data)
+- Examples: `git` (depends on PWD being a git repo), `terraform` (depends on .tf files in PWD)
+
+**Requirements:**
+- MUST be fast (runs on every render when cache is valid)
+- MUST NOT call `plugin_data_set()` or modify state
+- Returns 0 if should be active, 1 if should be inactive
+
+**Example (git plugin):**
+```bash
+plugin_should_be_active() {
+    local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    [[ -n "$path" ]] && git -C "$path" rev-parse --is-inside-work-tree &>/dev/null
+}
 ```
 
 ### Contract Rules
@@ -1431,6 +1453,28 @@ plugin_get_health() {
         connected) printf 'good' ;;      # Green - devices connected
         *)         printf 'ok' ;;
     esac
+}
+```
+
+Context-dependent conditional plugin (e.g., git, terraform):
+
+```bash
+# These plugins depend on external context (PWD) rather than just cached data.
+# Implement plugin_should_be_active() to ensure the plugin disappears immediately
+# when switching to a pane with different context.
+
+plugin_get_content_type() { printf 'dynamic'; }
+plugin_get_presence() { printf 'conditional'; }
+
+# Quick context check - called BEFORE returning cached data
+plugin_should_be_active() {
+    local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    [[ -n "$path" ]] && git -C "$path" rev-parse --is-inside-work-tree &>/dev/null
+}
+
+plugin_get_state() {
+    local branch=$(plugin_data_get "branch")
+    [[ -n "$branch" ]] && printf 'active' || printf 'inactive'
 }
 ```
 

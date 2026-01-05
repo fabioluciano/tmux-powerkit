@@ -89,6 +89,39 @@
 #       plugin_data_set "value" "$result"
 #   }
 #
+#
+# QUICK CONTEXT CHECK (Optional - for context-dependent conditional plugins)
+# --------------------------------------------------------------------------
+# Some conditional plugins depend on external context (e.g., current directory,
+# active window, etc.) rather than just cached data. For these plugins, the
+# cached data may be valid but the plugin should be hidden because the context
+# has changed.
+#
+# The optional plugin_should_be_active() function allows plugins to perform a
+# QUICK check of the current context BEFORE returning cached data. This is
+# called by the lifecycle when deciding whether to use cached data.
+#
+# When to implement:
+#   - Plugin visibility depends on current pane/window context
+#   - Plugin should disappear when switching to a different context
+#   - Examples: git (depends on PWD), kubernetes (depends on context file)
+#
+# When NOT needed:
+#   - Plugin state depends only on system-wide data (CPU, memory, battery)
+#   - Plugin is "always" presence (never hidden)
+#
+# Implementation requirements:
+#   - MUST be fast (no heavy operations - this runs on every render)
+#   - MUST NOT call plugin_data_set() or modify plugin state
+#   - SHOULD check only the minimal context needed
+#   - Returns 0 if plugin should be active, 1 if should be inactive
+#
+# Example (git plugin):
+#   plugin_should_be_active() {
+#       local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+#       git -C "$path" rev-parse --is-inside-work-tree &>/dev/null
+#   }
+#
 # =============================================================================
 #
 # 3. API REFERENCE
@@ -114,6 +147,7 @@
 #
 #   plugin_declare_options()     - Declare configurable options
 #   plugin_setup_keybindings()   - Setup tmux keybindings
+#   plugin_should_be_active()    - Quick context check (for conditional plugins)
 #
 # DEPENDENCY HELPERS:
 #

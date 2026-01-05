@@ -82,6 +82,15 @@ plugin_declare_options() {
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
+# Quick context check: verify we're in a Terraform directory
+# This is called BEFORE returning cached data to ensure the plugin
+# disappears immediately when switching to a non-Terraform directory
+plugin_should_be_active() {
+    local path
+    path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    [[ -n "$path" && -d "$path" ]] && _is_tf_directory "$path"
+}
+
 plugin_get_state() {
     local workspace=$(plugin_data_get "workspace")
     local has_pending=$(plugin_data_get "has_pending")

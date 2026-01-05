@@ -51,6 +51,15 @@ plugin_declare_options() {
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
 
+# Quick context check: verify we're in a git repository
+# This is called BEFORE returning cached data to ensure the plugin
+# disappears immediately when switching to a non-git directory
+plugin_should_be_active() {
+    local path
+    path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    [[ -n "$path" ]] && git -C "$path" rev-parse --is-inside-work-tree &>/dev/null
+}
+
 plugin_get_state() {
     local branch=$(plugin_data_get "branch")
     [[ -n "$branch" ]] && printf 'active' || printf 'inactive'
