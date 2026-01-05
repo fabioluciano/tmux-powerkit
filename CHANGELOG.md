@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.7.0...v5.7.1) (2026-01-05)
+
+### Bug Fixes
+
+* correct spacing for the first window ([bebcd13](https://github.com/fabioluciano/tmux-powerkit/commit/bebcd134a7a46b0efc8f2f675cefe81f98a88b69))
+
 ## [5.7.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.6.0...v5.7.0) (2026-01-05)
 
 ### Features
