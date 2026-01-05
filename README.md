@@ -555,13 +555,24 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 | [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
 | [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
 | [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
-| [**Options Template**](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/powerkit-options.conf) | Complete tmux.conf with all options |
 | [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-42-available) | Detailed docs for all 42 plugins |
 | [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
 | [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
 | [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |
 | [**Architecture**](https://github.com/fabioluciano/tmux-powerkit/wiki/Architecture) | Understanding the contract system |
 | [**API Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/API-Reference) | Core APIs and utilities |
+
+### 📋 Complete Options Reference
+
+A fully documented configuration file with **all available options** is maintained at:
+
+```
+wiki/assets/powerkit-options.conf
+```
+
+**[📥 Download powerkit-options.conf](https://raw.githubusercontent.com/wiki/fabioluciano/tmux-powerkit/assets/powerkit-options.conf)**
+
+Use this file as a reference or copy the options you need to your `~/.tmux.conf`. Every option includes descriptions, valid values, and defaults.
 
 ---
 

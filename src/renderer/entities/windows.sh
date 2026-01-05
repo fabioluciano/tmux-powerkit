@@ -22,6 +22,7 @@ source_guard "entity_windows" && return 0
 . "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 . "${POWERKIT_ROOT}/src/renderer/separator.sh"
 . "${POWERKIT_ROOT}/src/contract/window_contract.sh"
+. "${POWERKIT_ROOT}/src/contract/pane_contract.sh"
 
 # =============================================================================
 # Window Icon Resolution
@@ -269,12 +270,11 @@ _windows_build_current_format() {
     previous_bg=$(resolve_color "window-inactive-base")
 
     # Window icons and title
-    local window_icon window_title zoomed_icon pane_sync_icon marked_icon
+    local window_icon window_title zoomed_icon marked_icon
     window_icon=$(get_tmux_option "@powerkit_active_window_icon" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_ICON}")
     window_title=$(get_tmux_option "@powerkit_active_window_title" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_TITLE}")
     zoomed_icon=$(get_tmux_option "@powerkit_zoomed_window_icon" "${POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON}")
     marked_icon=$(get_tmux_option "@powerkit_window_marked_icon" "${POWERKIT_DEFAULT_WINDOW_MARKED_ICON}")
-    pane_sync_icon=$(get_tmux_option "@powerkit_pane_synchronized_icon" "${POWERKIT_DEFAULT_PANE_SYNCHRONIZED_ICON}")
 
     # Icon priority for active window: zoomed > marked > normal
     # Note: activity/bell are not shown for active window (you're already looking at it)
@@ -286,7 +286,7 @@ _windows_build_current_format() {
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
     format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display) "
     format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
-    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} #{?pane_synchronized,${pane_sync_icon},}"
+    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} $(pane_sync_format)"
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
 

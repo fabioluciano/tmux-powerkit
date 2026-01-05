@@ -39,45 +39,6 @@ build_status_style() {
 }
 
 # =============================================================================
-# Pane Border Styles
-# =============================================================================
-
-# Build pane border format (just the color)
-# Usage: build_pane_border_format "active|inactive"
-# Returns: color value
-build_pane_border_format() {
-    local type="${1:-inactive}"
-    local fg_color
-
-    # Check if unified border color is enabled
-    local unified
-    unified=$(get_tmux_option '@powerkit_pane_border_unified' "${POWERKIT_DEFAULT_PANE_BORDER_UNIFIED}")
-
-    if [[ "$unified" == "true" ]]; then
-        # Use single color for both active and inactive
-        fg_color=$(resolve_color "$(get_tmux_option '@powerkit_pane_border_color' "${POWERKIT_DEFAULT_PANE_BORDER_COLOR}")")
-    elif [[ "$type" == "active" ]]; then
-        fg_color=$(resolve_color "$(get_tmux_option '@powerkit_active_pane_border_color' "${POWERKIT_DEFAULT_ACTIVE_PANE_BORDER_COLOR}")")
-    else
-        fg_color=$(resolve_color "$(get_tmux_option '@powerkit_inactive_pane_border_color' "${POWERKIT_DEFAULT_INACTIVE_PANE_BORDER_COLOR}")")
-    fi
-
-    printf '%s' "$fg_color"
-}
-
-# Build pane border style
-# Usage: build_pane_border_style "active|inactive"
-# Returns: "fg=COLOR"
-build_pane_border_style() {
-    local type="${1:-inactive}"
-    local fg_color
-
-    fg_color=$(build_pane_border_format "$type")
-
-    printf 'fg=%s' "$fg_color"
-}
-
-# =============================================================================
 # Message Styles
 # =============================================================================
 

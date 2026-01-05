@@ -419,6 +419,63 @@ POWERKIT_DEFAULT_PANE_BORDER_STATUS_BG="none"
 POWERKIT_DEFAULT_PANE_BORDER_FORMAT="{active} {command}"
 
 # =============================================================================
+# PANE SCROLLBARS
+# =============================================================================
+# Scrollbars appear on the side of panes when scrolling (tmux 3.4+)
+
+# @powerkit_pane_scrollbars - Enable pane scrollbars
+# Values: "off", "modal", "on"
+# - off: No scrollbars
+# - modal: Scrollbars only visible in copy/view mode
+# - on: Scrollbars always visible
+POWERKIT_DEFAULT_PANE_SCROLLBARS="off"
+
+# @powerkit_pane_scrollbars_position - Scrollbar position
+# Values: "left", "right"
+POWERKIT_DEFAULT_PANE_SCROLLBARS_POSITION="right"
+
+# @powerkit_pane_scrollbars_style_fg - Scrollbar slider (foreground) color
+# Values: theme color name or hex color
+# The slider represents the visible portion of the pane
+POWERKIT_DEFAULT_PANE_SCROLLBARS_STYLE_FG="pane-border-active"
+
+# @powerkit_pane_scrollbars_style_bg - Scrollbar track (background) color
+# Values: theme color name or hex color
+# The track represents the total scrollable area
+POWERKIT_DEFAULT_PANE_SCROLLBARS_STYLE_BG="pane-border-inactive"
+
+# @powerkit_pane_scrollbars_width - Scrollbar width in characters
+# Values: integer (1-5 recommended)
+POWERKIT_DEFAULT_PANE_SCROLLBARS_WIDTH="1"
+
+# @powerkit_pane_scrollbars_pad - Padding between scrollbar and pane content
+# Values: integer (0-2 recommended)
+POWERKIT_DEFAULT_PANE_SCROLLBARS_PAD="0"
+
+# =============================================================================
+# PANE FLASH EFFECT
+# =============================================================================
+# Visual feedback when selecting/clicking on a pane.
+# The pane background briefly flashes a color to indicate selection.
+
+# @powerkit_pane_flash_enabled - Enable pane flash on selection
+# Values: "true", "false"
+# When enabled, the pane background flashes briefly when selected/clicked
+POWERKIT_DEFAULT_PANE_FLASH_ENABLED="false"
+
+# @powerkit_pane_flash_color - Flash background color
+# Values: theme color name (e.g., "statusbar-bg", "info-base") or hex color (#RRGGBB)
+# The color used for the flash effect background
+# Default: "statusbar-bg" (uses status bar background color from theme)
+POWERKIT_DEFAULT_PANE_FLASH_COLOR="statusbar-bg"
+
+# @powerkit_pane_flash_duration - Flash duration in milliseconds
+# Values: any positive integer (recommended: 50-200)
+# How long the flash effect lasts before resetting
+# Lower values = subtle flash, higher values = more visible
+POWERKIT_DEFAULT_PANE_FLASH_DURATION="100"
+
+# =============================================================================
 # POPUP & MENU CONFIGURATION
 # =============================================================================
 # @powerkit_popup_border_lines - Popup border line style

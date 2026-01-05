@@ -116,11 +116,13 @@ tmux-powerkit/
 │   │   ├── strings.sh              # String manipulation
 │   │   ├── numbers.sh              # Numeric utilities
 │   │   ├── filesystem.sh           # File operations
-│   │   └── clipboard.sh            # Clipboard operations
+│   │   ├── clipboard.sh            # Clipboard operations
+│   │   └── hooks.sh                # Tmux hooks management
 │   ├── contract/                   # Contract Definitions
 │   │   ├── plugin_contract.sh      # Plugin interface + helpers
 │   │   ├── session_contract.sh     # Session interface
-│   │   └── window_contract.sh      # Window interface
+│   │   ├── window_contract.sh      # Window interface
+│   │   └── pane_contract.sh        # Pane interface + flash effect
 │   ├── renderer/                   # Rendering System
 │   │   ├── segment_builder.sh      # Build status segments
 │   │   ├── separator.sh            # Powerline separators
@@ -1056,6 +1058,8 @@ plugin_get_icon() {
 | `src/core/color_generator.sh` | Color variant generation |
 | `src/core/binary_manager.sh` | macOS native binary download manager |
 | `src/contract/plugin_contract.sh` | Plugin interface + helpers |
+| `src/contract/pane_contract.sh` | Pane interface + flash effect |
+| `src/utils/hooks.sh` | Tmux hooks management |
 | `src/renderer/segment_builder.sh` | Builds formatted segments |
 | `src/renderer/separator.sh` | Powerline separator management |
 | `src/renderer/color_resolver.sh` | state/health → color resolution |
@@ -1602,6 +1606,129 @@ validate_all_themes "src/themes"
 list_required_theme_colors
 list_optional_theme_colors
 ```
+
+---
+
+## Pane Contract
+
+The Pane Contract (`src/contract/pane_contract.sh`) defines ALL pane-related functionality including visual effects, styling, and state management.
+
+### Configuration (in `tmux.conf`)
+
+```bash
+# Flash effect
+set -g @powerkit_pane_flash_enabled "true"
+set -g @powerkit_pane_flash_color "info-base"     # Theme color or hex
+set -g @powerkit_pane_flash_duration "100"        # Duration in milliseconds
+
+# Border styling
+set -g @powerkit_pane_border_lines "single"       # single, double, heavy, simple, number
+set -g @powerkit_pane_border_unified "false"      # Use single color for all borders
+set -g @powerkit_pane_border_color "pane-border-active"  # When unified=true
+set -g @powerkit_active_pane_border_color "pane-border-active"
+set -g @powerkit_inactive_pane_border_color "pane-border-inactive"
+
+# Border status
+set -g @powerkit_pane_border_status "off"         # off, top, bottom
+set -g @powerkit_pane_border_status_bg "none"     # Background color
+set -g @powerkit_pane_border_format "{active} {command}"  # Format string
+```
+
+### Border Format Placeholders
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{index}` | Pane index number |
+| `{title}` | Pane title |
+| `{command}` | Current command running |
+| `{path}` | Full current path |
+| `{basename}` | Basename of current path |
+| `{active}` | Shows "▶" only on active pane |
+
+### Pane API
+
+```bash
+# Flash Effect
+pane_flash_enable()           # Enable pane flash on selection
+pane_flash_disable()          # Disable pane flash
+pane_flash_is_enabled()       # Check if flash is enabled
+pane_flash_trigger()          # Manually trigger flash effect
+pane_flash_setup()            # Setup flash hook (called by bootstrap)
+
+# Pane State
+pane_get_state()              # Returns: "active", "inactive", or "zoomed"
+pane_is_active()              # Check if pane is active
+pane_is_zoomed()              # Check if pane is zoomed
+
+# Pane Information
+pane_get_id()                 # Get current pane ID
+pane_get_index()              # Get pane index
+pane_get_title()              # Get pane title
+pane_get_command()            # Get current command
+pane_get_path()               # Get current path
+
+# Batch Operations (efficient single tmux call)
+eval "$(pane_get_all)"        # Sets: PANE_ID, PANE_INDEX, PANE_TITLE, PANE_COMMAND, PANE_PATH, PANE_STATE
+
+# Border Styling
+pane_border_color("active")   # Get border color for type
+pane_border_style("active")   # Get style string "fg=COLOR"
+
+# Border Format
+pane_resolve_format_placeholders("{active} {command}")  # Resolve placeholders
+pane_build_border_format()    # Build complete border format with colors
+
+# Synchronized Panes
+pane_get_sync_icon()          # Get synchronized pane icon
+pane_sync_format()            # Get tmux format "#{?pane_synchronized,...}"
+
+# Configuration
+pane_configure()              # Apply ALL pane settings to tmux (called by renderer)
+```
+
+---
+
+## Hooks Utility
+
+The Hooks Utility (`src/utils/hooks.sh`) provides generic tmux hooks management.
+
+### Hook Registration
+
+```bash
+# Global hooks
+register_hook "after-select-pane" "run-shell 'echo selected'"
+unregister_hook "after-select-pane"
+
+# Local (window/pane) hooks
+register_hook_local "after-select-pane" "run-shell 'echo selected'"
+unregister_hook_local "after-select-pane"
+```
+
+### Hook Management
+
+```bash
+list_hooks                    # List all registered hooks
+has_hook "after-select-pane"  # Check if hook exists
+clear_all_hooks               # Remove all PowerKit hooks
+```
+
+### Delayed Commands
+
+```bash
+run_delayed "command" "0.1"          # Run after 0.1 seconds
+run_delayed_ms "command" "100"       # Run after 100 milliseconds
+```
+
+### Common Hooks
+
+| Hook | Trigger |
+|------|---------|
+| `after-select-pane` | After pane selection |
+| `after-select-window` | After window selection |
+| `after-resize-pane` | After pane resize |
+| `after-split-window` | After window split |
+| `pane-focus-in` | Pane gains focus |
+| `pane-focus-out` | Pane loses focus |
 
 ---
 
