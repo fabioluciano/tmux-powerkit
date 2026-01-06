@@ -688,15 +688,19 @@ render_plugins() {
         ((render_idx++))
     done
 
-    # Add closing edge separator after last plugin when on LEFT or CENTER side
-    # - LEFT: exit separator pointing right (▶)
-    # - CENTER: exit separator pointing right (▶) - center handles both edges
-    # - RIGHT: no exit separator (next element handles entry)
-    if [[ ("$side" == "left" || "$side" == "center") && $total_plugins -gt 0 ]]; then
-        local edge_sep
-        edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
-        # Right-pointing (▶): fg=source (last plugin content), bg=destination (statusbar)
-        output+="#[fg=${prev_bg},bg=${status_bg}]${edge_sep}#[none]"
+    # Add closing edge separator after last plugin
+    # Exit edge always uses right-pointing (▶) to create ")" closing cap
+    # ▶: fg=plugin content (fills shape), bg=statusbar (outside)
+    if [[ $total_plugins -gt 0 ]]; then
+        if [[ "$side" == "left" || "$side" == "center" ]]; then
+            local edge_sep
+            edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+            output+="#[fg=${prev_bg},bg=${status_bg}]${edge_sep}#[none]"
+        elif [[ "$side" == "right" ]] && should_apply_all_edges; then
+            local edge_sep
+            edge_sep=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+            output+="#[fg=${prev_bg},bg=${status_bg}]${edge_sep}#[none]"
+        fi
     fi
 
     # After all plugins processed, show popup for any missing binaries

@@ -242,8 +242,8 @@ _get_windows_format_left_centered() {
     active_bg=$(resolve_color "window-active-base")
     inactive_bg=$(resolve_color "window-inactive-base")
 
-    # Edge separator glyph (right-pointing)
-    sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+    # Edge separator glyph (right-pointing) - respects :all suffix
+    sep_char=$(get_edge_right_separator)
 
     # === WINDOWS LIST (left-aligned, no entry separator) ===
     fmt+='#[list=on align=left]'
@@ -342,7 +342,7 @@ _get_windows_format_right_centered() {
     # ◀: fg = destination (first window index), bg = origin (gap)
     # Use #{base-index} to support both base-index=0 and base-index=1
     local entry_sep_char
-    entry_sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+    entry_sep_char=$(get_edge_left_separator)
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg
         first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
@@ -371,6 +371,21 @@ _get_windows_format_right_centered() {
     fmt+='#[norange list=on default]'
     fmt+='#{?loop_last_flag,,#{window-status-separator}}'
     fmt+='}'
+
+    # === EXIT EDGE SEPARATOR (when :all suffix is enabled) ===
+    # Right-pointing (▶) for right side exit - creates ")" closing cap
+    # ▶: fg = origin (last window), bg = destination (status_bg/terminal edge)
+    if should_apply_all_edges; then
+        local exit_sep_char active_bg inactive_bg last_bg
+        exit_sep_char=$(get_edge_right_separator)
+        if [[ -n "$exit_sep_char" ]]; then
+            active_bg=$(resolve_color "window-active-base")
+            inactive_bg=$(resolve_color "window-inactive-base")
+            # Last window index = base-index + session_windows - 1
+            last_bg="#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},${active_bg},${inactive_bg}}"
+            fmt+="#[fg=${last_bg},bg=${status_bg}]${exit_sep_char}"
+        fi
+    fi
 
     fmt+='#[nolist]'
     printf '%s' "$fmt"
@@ -406,7 +421,7 @@ _get_windows_format_centered() {
     # ◀: fg = destination (first window index), bg = origin (gap)
     # Use #{base-index} to support both base-index=0 and base-index=1
     local entry_sep_char
-    entry_sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+    entry_sep_char=$(get_edge_left_separator)
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg
         first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
@@ -441,7 +456,7 @@ _get_windows_format_centered() {
     # ▶: fg = origin (last window), bg = destination (gap)
     # Last window index = base-index + session_windows - 1
     local exit_sep_char
-    exit_sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+    exit_sep_char=$(get_edge_right_separator)
     if [[ -n "$exit_sep_char" ]]; then
         local last_bg
         last_bg="#{?#{==:#{active_window_index},#{e|-:#{e|+:#{base-index},#{session_windows}},1}},${active_bg},${inactive_bg}}"
@@ -457,6 +472,7 @@ _get_windows_format_centered() {
 # Usage: _build_left_edge_separator
 # Returns: formatted edge separator string
 # NOTE: This is the compositor's responsibility - handles edge separator for all cases
+# NOTE: Uses get_edge_right_separator() which respects :all suffix
 _build_left_edge_separator() {
     local status_bg sep_char transparent
 
@@ -470,7 +486,8 @@ _build_left_edge_separator() {
     fi
 
     # Edge separator glyph (right-pointing for left side)
-    sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+    # Uses get_edge_right_separator() which uses the configured edge style
+    sep_char=$(get_edge_right_separator)
     [[ -z "$sep_char" ]] && return
 
     # Get the last window background colors (active vs inactive)
@@ -493,6 +510,7 @@ _build_left_edge_separator() {
 # Returns: formatted exit separator string
 # NOTE: This is needed when windows comes before another entity in double layout
 #       with spacing enabled, because _windows_build_spacing() skips the last window
+# NOTE: Uses get_edge_right_separator()/get_edge_left_separator() which respect :all suffix
 _build_windows_exit_separator() {
     local side="${1:-left}"
     local status_bg sep_char transparent
@@ -521,13 +539,13 @@ _build_windows_exit_separator() {
     if [[ "$side" == "left" ]]; then
         # Left side: right-pointing separator (▶)
         # ▶: fg = origin (window), bg = destination (gap)
-        sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+        sep_char=$(get_edge_right_separator)
         [[ -z "$sep_char" ]] && return
         printf '#[fg=%s,bg=%s]%s' "$last_bg" "$status_bg" "$sep_char"
     else
         # Right side: left-pointing separator (◀)
         # ◀: fg = destination (gap), bg = origin (window)
-        sep_char=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+        sep_char=$(get_edge_left_separator)
         [[ -z "$sep_char" ]] && return
         printf '#[fg=%s,bg=%s]%s' "$status_bg" "$last_bg" "$sep_char"
     fi
@@ -583,6 +601,42 @@ _build_inter_entity_separator() {
         [[ -z "$sep_char" ]] && return
         printf '#[fg=%s,bg=%s]%s' "$to_bg" "$from_bg" "$sep_char"
     fi
+}
+
+# Build rounded ENTRY separator for left-side elements
+# Creates a "(" shaped entry cap: statusbar-bg → entity-bg
+# Usage: _build_rounded_entry_separator "entity"
+# Arguments:
+#   entity - name of the entity (e.g., "session")
+# Note: Uses LEFT-pointing glyph (◀/E0B6) with entity as fg, statusbar as bg
+#       This creates the visual effect of a rounded cap on the left side
+_build_rounded_entry_separator() {
+    local entity="$1"
+    local status_bg entity_bg sep_char transparent
+
+    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+
+    if [[ "$transparent" == "true" ]]; then
+        status_bg=$(resolve_color "background")
+    else
+        status_bg=$(resolve_color "statusbar-bg")
+    fi
+
+    # Get entity's entry background
+    if type -t "${entity}_get_first_bg" &>/dev/null; then
+        entity_bg=$("${entity}_get_first_bg")
+    elif type -t "${entity}_get_bg" &>/dev/null; then
+        entity_bg=$("${entity}_get_bg")
+    else
+        entity_bg="$status_bg"
+    fi
+
+    # Left-pointing glyph (◀) creates "(" visual
+    # fg = entity (inside the curve), bg = statusbar (outside)
+    sep_char=$(get_edge_left_separator)
+    [[ -z "$sep_char" ]] && return
+
+    printf '#[fg=%s,bg=%s]%s' "$entity_bg" "$status_bg" "$sep_char"
 }
 
 # Build edge separator (first or last entity to status bar)
@@ -746,17 +800,28 @@ _apply_single_standard() {
     local window_spacing_enabled
     window_spacing_enabled=$(has_window_spacing && echo "true" || echo "false")
 
+    # Check if :all suffix is enabled for edge style
+    local apply_all_edges
+    apply_all_edges=$(should_apply_all_edges && echo "true" || echo "false")
+
     # Build status-left (entities before windows + separator to windows)
     local left_content=""
     if [[ ${#_BEFORE_WINDOWS[@]} -gt 0 ]]; then
+        local first_left="${_BEFORE_WINDOWS[0]}"
+        local last_left="${_BEFORE_WINDOWS[${#_BEFORE_WINDOWS[@]}-1]}"
+
+        # Add entry edge separator for first entity when :all suffix is enabled
+        if [[ "$apply_all_edges" == "true" ]]; then
+            left_content+=$(_build_rounded_entry_separator "$first_left")
+        fi
+
         local left_order
         left_order=$(IFS=','; echo "${_BEFORE_WINDOWS[*]}")
-        left_content=$(_compose_line "$left_order" "left")
+        left_content+=$(_compose_line "$left_order" "left")
 
-        local last_left="${_BEFORE_WINDOWS[${#_BEFORE_WINDOWS[@]}-1]}"
         if [[ "$window_spacing_enabled" == "true" ]]; then
-            # With spacing: session exits to gap with REGULAR separator (not edge)
-            # Edge separator is only used after the LAST window
+            # With spacing: session exits to gap
+            # Use edge separator if :all suffix is enabled
             local entity_bg status_bg sep_char transparent_mode
             transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
 
@@ -772,7 +837,13 @@ _apply_single_standard() {
             else
                 entity_bg=$("${last_left}_get_bg" 2>/dev/null || echo "$status_bg")
             fi
-            sep_char=$(get_right_separator)
+
+            # Use edge separator when :all suffix is enabled
+            if [[ "$apply_all_edges" == "true" ]]; then
+                sep_char=$(get_edge_right_separator)
+            else
+                sep_char=$(get_right_separator)
+            fi
             [[ -n "$sep_char" ]] && left_content+="#[fg=${entity_bg},bg=${status_bg}]${sep_char}"
         else
             left_content+=$(_build_inter_entity_separator "$last_left" "windows" "left")
@@ -899,6 +970,10 @@ _apply_single_centered() {
         windows_configure "right"
     fi
 
+    # Check if :all suffix is enabled for edge style
+    local apply_all_edges
+    apply_all_edges=$(should_apply_all_edges && echo "true" || echo "false")
+
     # Build the three sections
     local left_content="" center_content="" right_content=""
 
@@ -908,8 +983,11 @@ _apply_single_centered() {
         # Windows on left: special format WITH exit edge separator (▶)
         left_content+=$(_get_windows_format_left_centered)
     else
-        # Non-windows entity: render + exit separator (▶)
-        left_content=$(_render_entity "$left_entity" "left")
+        # Non-windows entity: entry separator (if :all suffix) + render + exit separator (▶)
+        if [[ "$apply_all_edges" == "true" ]]; then
+            left_content+=$(_build_rounded_entry_separator "$left_entity")
+        fi
+        left_content+=$(_render_entity "$left_entity" "left")
         left_content+=$(_build_edge_separator "$left_entity" "end" "left")
     fi
 
