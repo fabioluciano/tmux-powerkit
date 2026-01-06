@@ -113,6 +113,7 @@ _render_background() {
         cache_reset_cycle
         . "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
         separator_reset_cache 2>/dev/null || true
+        color_reset_cycle_cache 2>/dev/null || true
 
         # Render and cache using cache_set (cache_key includes theme for invalidation)
         output=$(render_plugins "$side")
