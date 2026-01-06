@@ -127,8 +127,7 @@ _get_network_stats() {
     prev_tx=$(cache_get "netspeed_prev_tx" "$cache_ttl")
     prev_time=$(cache_get "netspeed_prev_time" "$cache_ttl")
 
-    local curr_time
-    curr_time=$(date +%s)
+    local curr_time=$EPOCHSECONDS
 
     if [[ -n "$prev_rx" && -n "$prev_time" ]]; then
         local time_diff=$((curr_time - prev_time))

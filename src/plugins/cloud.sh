@@ -124,8 +124,7 @@ _is_aws_session_active() {
     # Method 1: Check SSO cache for valid access token
     local sso_cache_dir="$HOME/.aws/sso/cache"
     if [[ -d "$sso_cache_dir" ]]; then
-        local now
-        now=$(date +%s)
+        local now=$EPOCHSECONDS
         local cache_file has_token expires_at expires_epoch
         for cache_file in "$sso_cache_dir"/*.json; do
             [[ -f "$cache_file" ]] || continue
@@ -142,8 +141,7 @@ _is_aws_session_active() {
     # Method 2: Check credentials cache
     local cred_cache="$HOME/.aws/cli/cache"
     if [[ -d "$cred_cache" ]]; then
-        local now
-        now=$(date +%s)
+        local now=$EPOCHSECONDS
         local cache_file expiration expires_epoch
         for cache_file in "$cred_cache"/*.json; do
             [[ -f "$cache_file" ]] || continue
@@ -276,8 +274,7 @@ _is_azure_session_active() {
     # Check accessTokens.json
     local tokens="$HOME/.azure/accessTokens.json"
     if [[ -f "$tokens" ]]; then
-        local now expires expires_epoch
-        now=$(date +%s)
+        local now=$EPOCHSECONDS expires expires_epoch
         expires=$(jq -r '.[0].expiresOn // empty' "$tokens" 2>/dev/null)
         if [[ -n "$expires" ]]; then
             expires_epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$expires" +%s 2>/dev/null || \

@@ -99,7 +99,7 @@ plugin_get_icon() { get_option "icon"; }
 # =============================================================================
 
 _get_throughput_macos() {
-    local now=$(date +%s)
+    local now=$EPOCHSECONDS
     
     # Get current bytes from ioreg (all disks combined)
     local stats
@@ -153,7 +153,7 @@ _get_throughput_macos() {
 # =============================================================================
 
 _get_throughput_linux() {
-    local now=$(date +%s)
+    local now=$EPOCHSECONDS
     
     # Read from /proc/diskstats (sectors read/written)
     # Format: major minor name reads_completed reads_merged sectors_read ms_reading writes_completed writes_merged sectors_written ...
