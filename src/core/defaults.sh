@@ -70,7 +70,7 @@ _DEFAULT_TOAST_LONG="10000"           # 10 seconds
 #   monokai, moonlight, night-owl, nord, oceanic-next, onedark, pastel,
 #   poimandres, rose-pine, slack, snazzy, solarized, spacegray, synthwave,
 #   tokyo-night, vesper
-POWERKIT_DEFAULT_THEME="tokyo-night"
+POWERKIT_DEFAULT_THEME="catppuccin"
 
 # @powerkit_theme_variant - Theme variant (depends on selected theme)
 # Variants per theme:
@@ -106,7 +106,7 @@ POWERKIT_DEFAULT_THEME="tokyo-night"
 #   synthwave: 84
 #   tokyo-night: night, storm, day
 #   vesper: default
-POWERKIT_DEFAULT_THEME_VARIANT="night"
+POWERKIT_DEFAULT_THEME_VARIANT="mocha"
 
 # @powerkit_custom_theme_path - Path to custom theme file
 # When set, overrides theme/variant settings

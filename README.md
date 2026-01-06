@@ -68,8 +68,8 @@ set -g @plugin 'fabioluciano/tmux-powerkit'
 
 # Basic configuration
 set -g @powerkit_plugins "datetime,battery,cpu,memory,git,hostname"
-set -g @powerkit_theme "tokyo-night"
-set -g @powerkit_theme_variant "night"
+set -g @powerkit_theme "catppuccin"
+set -g @powerkit_theme_variant "mocha"
 
 # Initialize TPM (keep at bottom)
 run '~/.tmux/plugins/tpm/tpm'
@@ -244,8 +244,8 @@ Plus **Monokai**, **Cobalt2**, **SynthWave '84**, **Horizon**, **Iceberg**, **Sn
 
 ```bash
 # Tokyo Night - Night variant
-set -g @powerkit_theme "tokyo-night"
-set -g @powerkit_theme_variant "night"
+set -g @powerkit_theme "catppuccin"
+set -g @powerkit_theme_variant "mocha"
 
 # Catppuccin - Mocha variant
 set -g @powerkit_theme "catppuccin"

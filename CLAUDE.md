@@ -2,6 +2,23 @@
 
 This file provides guidance to Claude Code when working with this repository.
 
+## Commit Rules
+
+**CRITICAL**: When creating git commits for this repository:
+
+1. **NEVER use `Co-Authored-By`** - Do not add any co-author lines to commits
+2. **NEVER use emoji in commit messages** - Keep messages plain text
+3. Use conventional commit format: `type(scope): description`
+4. Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
+
+Example commit message:
+```
+feat(defaults): change default theme to catppuccin/mocha
+
+Catppuccin has surpassed Tokyo Night in popularity metrics.
+Mocha is the most popular variant with excellent contrast.
+```
+
 ## Migration Summary
 
 **Status**: ✅ COMPLETE - All 42 plugins migrated to contract system
@@ -765,8 +782,8 @@ get_color "warning-base"          # From color_generator
 ### Core Options
 
 ```bash
-POWERKIT_DEFAULT_THEME="tokyo-night"
-POWERKIT_DEFAULT_THEME_VARIANT="night"
+POWERKIT_DEFAULT_THEME="catppuccin"
+POWERKIT_DEFAULT_THEME_VARIANT="mocha"
 POWERKIT_DEFAULT_TRANSPARENT="false"
 POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"

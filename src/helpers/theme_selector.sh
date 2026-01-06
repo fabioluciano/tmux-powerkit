@@ -53,8 +53,8 @@ _get_current_theme() {
     fi
 
     # Fallback to tmux options
-    theme=$(get_tmux_option "@powerkit_theme" "tokyo-night")
-    variant=$(get_tmux_option "@powerkit_theme_variant" "night")
+    theme=$(get_tmux_option "@powerkit_theme" "catppuccin")
+    variant=$(get_tmux_option "@powerkit_theme_variant" "mocha")
     echo "${theme}/${variant}"
 }
 
@@ -270,7 +270,7 @@ helper_main() {
             _select_variant "${1:-}"
             ;;
         apply)
-            _apply_theme "${1:-tokyo-night}" "${2:-night}"
+            _apply_theme "${1:-catppuccin}" "${2:-mocha}"
             ;;
         current)
             _get_current_theme
