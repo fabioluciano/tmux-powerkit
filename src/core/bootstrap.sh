@@ -147,6 +147,9 @@ powerkit_bootstrap() {
     local plugins_str
     plugins_str=$(get_tmux_option "@powerkit_plugins" "${POWERKIT_DEFAULT_PLUGINS}")
 
+    # Clear previous conflict log before checking
+    _clear_conflict_log
+
     # FIRST: Check for keybinding conflicts BEFORE registering any bindings
     check_keybinding_conflicts "$plugins_str"
 

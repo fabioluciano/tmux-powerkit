@@ -21,6 +21,16 @@ source_guard "utils_keybinding" && return 0
 # Global array to track reported conflicts in this session
 declare -gA _REPORTED_CONFLICTS=()
 
+# Clear conflict log file for new session
+# Usage: _clear_conflict_log
+_clear_conflict_log() {
+    local cache_dir
+    cache_dir="$(dirname "$(get_cache_dir)")"
+    local log_file="${cache_dir}/keybinding_conflicts.log"
+    [[ -f "$log_file" ]] && rm -f "$log_file"
+    _REPORTED_CONFLICTS=()
+}
+
 # Check and log keybinding conflicts
 # Usage: _check_and_log_conflict KEY SOURCE
 _check_and_log_conflict() {
