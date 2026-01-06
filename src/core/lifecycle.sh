@@ -38,6 +38,27 @@ is_plugin_hidden_by_presence() {
     [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]
 }
 
+# Check plugin visibility using context (plugin_should_be_active)
+# Must be called AFTER plugin is sourced and options declared
+# Usage: _check_plugin_context_visibility
+# Returns: 0 if visible, 1 if hidden
+_check_plugin_context_visibility() {
+    local presence
+    presence=$(plugin_get_presence 2>/dev/null || echo "always")
+
+    # Hidden presence always hides
+    [[ "$presence" == "hidden" ]] && return 1
+
+    # For conditional plugins, check plugin_should_be_active if defined
+    if [[ "$presence" == "conditional" ]]; then
+        if declare -F plugin_should_be_active &>/dev/null; then
+            plugin_should_be_active || return 1
+        fi
+    fi
+
+    return 0
+}
+
 # =============================================================================
 # Plugin Discovery
 # =============================================================================
@@ -794,24 +815,10 @@ collect_plugin_render_data() {
             . "$plugin_file"
             declare -F plugin_declare_options &>/dev/null && plugin_declare_options
 
-            local presence
-            presence=$(plugin_get_presence 2>/dev/null || echo "always")
-
-            # Check 1: Hide if presence is explicitly "hidden"
-            if [[ "$presence" == "hidden" ]]; then
+            # Use unified visibility check
+            if ! _check_plugin_context_visibility; then
                 printf 'HIDDEN'
                 return 0
-            fi
-
-            # Check 2: For conditional plugins, verify current context via plugin_should_be_active()
-            # This handles context-dependent plugins like git (PWD changed to non-repo directory)
-            if [[ "$presence" == "conditional" ]]; then
-                if declare -F plugin_should_be_active &>/dev/null; then
-                    if ! plugin_should_be_active; then
-                        printf 'HIDDEN'
-                        return 0
-                    fi
-                fi
             fi
         fi
 
@@ -835,31 +842,16 @@ collect_plugin_render_data() {
     # This ensures plugins don't constantly appear "stale" just because their cache
     # is slightly older than TTL - which would happen with TTL close to status-interval.
     if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" && "$cached_data" != "HIDDEN" ]]; then
-        # VISIBILITY CHECK: Before returning stale cache, verify visibility conditions
+        # Source plugin for visibility check
         # shellcheck disable=SC1090
         . "$plugin_file"
         declare -F plugin_declare_options &>/dev/null && plugin_declare_options
 
-        local presence
-        presence=$(plugin_get_presence 2>/dev/null || echo "always")
-
-        # Check 1: Hide if presence is explicitly "hidden"
-        if [[ "$presence" == "hidden" ]]; then
+        # Use unified visibility check
+        if ! _check_plugin_context_visibility; then
             _spawn_plugin_refresh "$name"
             printf 'HIDDEN'
             return 0
-        fi
-
-        # Check 2: For conditional plugins, verify current context via plugin_should_be_active()
-        # This handles context-dependent plugins like git (PWD changed to non-repo directory)
-        if [[ "$presence" == "conditional" ]]; then
-            if declare -F plugin_should_be_active &>/dev/null; then
-                if ! plugin_should_be_active; then
-                    _spawn_plugin_refresh "$name"
-                    printf 'HIDDEN'
-                    return 0
-                fi
-            fi
         fi
 
         _spawn_plugin_refresh "$name"
