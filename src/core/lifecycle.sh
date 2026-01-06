@@ -43,9 +43,8 @@ discover_plugins() {
     local IFS=','
     local plugin_name
     for plugin_name in $plugins_str; do
-        # Trim whitespace
-        plugin_name="${plugin_name#"${plugin_name%%[![:space:]]*}"}"
-        plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"
+        # Trim whitespace (uses nameref - zero subshells)
+        trim_inplace plugin_name
 
         [[ -z "$plugin_name" ]] && continue
 

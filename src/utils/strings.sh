@@ -145,12 +145,28 @@ trim_right() {
     printf '%s' "${text%"${text##*[![:space:]]}"}"
 }
 
-# Trim both leading and trailing whitespace
+# Trim both leading and trailing whitespace (no subshells - pure parameter expansion)
 # Usage: trim "  hello  "  # Returns "hello"
 trim() {
     local text="$1"
-    text=$(trim_left "$text")
-    trim_right "$text"
+    # Trim leading whitespace
+    text="${text#"${text%%[![:space:]]*}"}"
+    # Trim trailing whitespace
+    printf '%s' "${text%"${text##*[![:space:]]}"}"
+}
+
+# Trim in-place using nameref (Bash 4.3+) - ZERO subshells
+# Usage: trim_inplace varname  # Modifies variable directly
+# Example:
+#   name="  hello  "
+#   trim_inplace name
+#   echo "$name"  # "hello"
+trim_inplace() {
+    local -n _trim_ref="$1"
+    # Trim leading whitespace
+    _trim_ref="${_trim_ref#"${_trim_ref%%[![:space:]]*}"}"
+    # Trim trailing whitespace
+    _trim_ref="${_trim_ref%"${_trim_ref##*[![:space:]]}"}"
 }
 
 # Collapse multiple spaces to single space

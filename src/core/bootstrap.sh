@@ -234,9 +234,8 @@ _setup_plugin_keybindings() {
 
     local plugin_name plugin_file
     for plugin_name in $plugin_names; do
-        # Trim whitespace
-        plugin_name="${plugin_name#"${plugin_name%%[![:space:]]*}"}"
-        plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"
+        # Trim whitespace (uses nameref - zero subshells)
+        trim_inplace plugin_name
 
         [[ -z "$plugin_name" ]] && continue
         # Skip external plugins (format: external("..."))

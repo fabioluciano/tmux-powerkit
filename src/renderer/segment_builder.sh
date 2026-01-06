@@ -397,9 +397,8 @@ _parse_plugin_list() {
             local -a group_plugins
             IFS=',' read -ra group_plugins <<< "$group_content"
             for plugin in "${group_plugins[@]}"; do
-                # Trim whitespace
-                plugin="${plugin#"${plugin%%[![:space:]]*}"}"
-                plugin="${plugin%"${plugin##*[![:space:]]}"}"
+                # Trim whitespace (uses nameref - zero subshells)
+                trim_inplace plugin
                 [[ -n "$plugin" ]] && {
                     _PARSED_PLUGINS+=("$plugin")
                     _PLUGIN_GROUP_ID+=("$group_counter")
@@ -430,9 +429,8 @@ _parse_plugin_list() {
             done
 
             local plugin="${plugins_str:$name_start:$((current_pos - name_start))}"
-            # Trim whitespace
-            plugin="${plugin#"${plugin%%[![:space:]]*}"}"
-            plugin="${plugin%"${plugin##*[![:space:]]}"}"
+            # Trim whitespace (uses nameref - zero subshells)
+            trim_inplace plugin
             [[ -n "$plugin" ]] && {
                 _PARSED_PLUGINS+=("$plugin")
                 _PLUGIN_GROUP_ID+=("0")
@@ -509,9 +507,8 @@ render_plugins() {
         local current_group_id="${_PLUGIN_GROUP_ID[$plugin_idx]:-0}"
         ((plugin_idx++))
 
-        # Trim whitespace
-        plugin_name="${plugin_name#"${plugin_name%%[![:space:]]*}"}"
-        plugin_name="${plugin_name%"${plugin_name##*[![:space:]]}"}"
+        # Trim whitespace (uses nameref - zero subshells)
+        trim_inplace plugin_name
         [[ -z "$plugin_name" ]] && continue
 
         local plugin_data=""
