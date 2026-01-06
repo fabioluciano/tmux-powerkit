@@ -25,6 +25,20 @@ declare -gA _PLUGINS=()
 declare -gA _PLUGIN_STATES=()
 
 # =============================================================================
+# Visibility Helpers
+# =============================================================================
+
+# Check if plugin should be hidden based on presence mode and state
+# Centralizes the visibility logic used in multiple places (DRY principle)
+# Usage: is_plugin_hidden_by_presence "presence" "state"
+# Returns: 0 if hidden, 1 if visible
+is_plugin_hidden_by_presence() {
+    local presence="$1"
+    local state="$2"
+    [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]
+}
+
+# =============================================================================
 # Plugin Discovery
 # =============================================================================
 
@@ -352,11 +366,9 @@ _resolve_plugin() {
         icon=$(get_option "icon" 2>/dev/null || echo "")
     fi
 
-    # Check visibility
+    # Check visibility using unified helper
     local visible=1
-    if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
-        visible=0
-    fi
+    is_plugin_hidden_by_presence "$presence" "$state" && visible=0
 
     # Store output
     _PLUGIN_OUTPUT["${name}:content"]="$content"
@@ -504,9 +516,9 @@ _spawn_plugin_refresh() {
         # Get state
         state=$(plugin_get_state)
 
-        # Check visibility
+        # Check visibility using unified helper
         presence=$(plugin_get_presence)
-        if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
+        if is_plugin_hidden_by_presence "$presence" "$state"; then
             cache_set "plugin_${name}_data" "HIDDEN"
             exit 0
         fi
@@ -563,10 +575,10 @@ _do_plugin_refresh() {
     local state
     state=$(plugin_get_state)
 
-    # Check visibility
+    # Check visibility using unified helper
     local presence
     presence=$(plugin_get_presence)
-    if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
+    if is_plugin_hidden_by_presence "$presence" "$state"; then
         cache_set "plugin_${name}_data" "HIDDEN"
         return 0
     fi
@@ -660,10 +672,10 @@ _collect_plugin_sync() {
     local state
     state=$(plugin_get_state)
 
-    # Check visibility
+    # Check visibility using unified helper
     local presence
     presence=$(plugin_get_presence)
-    if [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]; then
+    if is_plugin_hidden_by_presence "$presence" "$state"; then
         cache_set "$cache_key" "HIDDEN"
         printf 'HIDDEN'
         return 0
