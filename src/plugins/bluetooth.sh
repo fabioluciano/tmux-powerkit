@@ -179,7 +179,10 @@ _get_bt_macos_profiler() {
             }
         }
         END { if (dev != "") print dev "@" batteries }
-    ' | tr '\n' '|' | sed 's/|$//')
+    ')
+    # Replace newlines with | using parameter expansion, then remove trailing |
+    devices="${devices//$'\n'/|}"
+    devices="${devices%|}"
 
     [[ -n "$devices" ]] && echo "connected:$devices" || echo "on:"
 }
@@ -205,7 +208,11 @@ _get_bt_linux_bluetoothctl() {
     local devices=""
 
     # Try "devices Connected" first (newer bluetoothctl)
-    devices=$(timeout 2 bluetoothctl devices Connected 2>/dev/null | cut -d' ' -f3- | tr '\n' '|' | sed 's/|$//')
+    local raw_devices
+    raw_devices=$(timeout 2 bluetoothctl devices Connected 2>/dev/null | cut -d' ' -f3-)
+    # Replace newlines with | using parameter expansion, then remove trailing |
+    devices="${raw_devices//$'\n'/|}"
+    devices="${devices%|}"
 
     # Fallback: check each device
     if [[ -z "$devices" ]]; then
@@ -217,10 +224,10 @@ _get_bt_linux_bluetoothctl() {
             [[ -n "$name" ]] && devices+="${devices:+|}${name}@"
         done <<< "$(timeout 2 bluetoothctl devices 2>/dev/null)"
     else
-        # Add empty battery field for consistency
-        devices=$(echo "$devices" | tr '|' '\n' | while read -r n; do
-            echo "${n}@"
-        done | tr '\n' '|' | sed 's/|$//')
+        # Add empty battery field for consistency using parameter expansion
+        # devices="name1|name2|name3" -> "name1@|name2@|name3@"
+        devices="${devices//|/@|}"
+        devices="${devices}@"
     fi
 
     [[ -n "$devices" ]] && echo "connected:$devices" || echo "on:"
@@ -366,10 +373,11 @@ plugin_collect() {
     plugin_data_set "status" "$status"
     plugin_data_set "devices" "$devices"
 
-    # Count connected devices
+    # Count connected devices using parameter expansion (count | separators + 1)
     if [[ -n "$devices" && "$status" == "connected" ]]; then
-        local count
-        count=$(echo "$devices" | tr '|' '\n' | grep -c .)
+        local count sep_only
+        sep_only="${devices//[^|]/}"
+        count=$(( ${#sep_only} + 1 ))
         plugin_data_set "device_count" "$count"
         plugin_data_set "min_battery" "$(_get_min_battery "$devices")"
     else
