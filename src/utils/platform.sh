@@ -25,7 +25,9 @@ declare -g _CACHED_DISTRO=""
 # Returns: darwin, linux, freebsd, etc.
 get_os() {
     if [[ -z "$_CACHED_OS" ]]; then
-        _CACHED_OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+        local os_raw
+        os_raw=$(uname -s)
+        _CACHED_OS="${os_raw,,}"  # Bash 4.0+ lowercase
     fi
     printf '%s' "$_CACHED_OS"
 }
@@ -78,7 +80,9 @@ get_distro() {
         _CACHED_DISTRO=$(. /etc/os-release && echo "${ID:-unknown}")
     # Try lsb_release
     elif command -v lsb_release &>/dev/null; then
-        _CACHED_DISTRO=$(lsb_release -is 2>/dev/null | tr '[:upper:]' '[:lower:]')
+        local distro_raw
+        distro_raw=$(lsb_release -is 2>/dev/null)
+        _CACHED_DISTRO="${distro_raw,,}"  # Bash 4.0+ lowercase
     # Fallback to checking specific files
     elif [[ -f /etc/debian_version ]]; then
         _CACHED_DISTRO="debian"
