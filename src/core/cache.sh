@@ -26,10 +26,10 @@ declare -g _CYCLE_TIMESTAMP=0
 # =============================================================================
 
 # Get current timestamp (cached per render cycle for performance)
-# Calling date +%s is expensive - cache it for the entire render cycle
+# Uses Bash 5.0+ $EPOCHSECONDS builtin (no external process)
 _get_now() {
     if (( _CYCLE_TIMESTAMP == 0 )); then
-        _CYCLE_TIMESTAMP=$(date +%s)
+        _CYCLE_TIMESTAMP=$EPOCHSECONDS
     fi
     printf '%s' "$_CYCLE_TIMESTAMP"
 }
