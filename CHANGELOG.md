@@ -2,6 +2,17 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.8.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.8.0...v5.8.1) (2026-01-06)
+
+### Performance Improvements
+
+* **bootstrap:** optimize plugin list parsing with bash regex ([1012164](https://github.com/fabioluciano/tmux-powerkit/commit/1012164bd96fd7cda74be73447b70a965af15224))
+* **color:** add per-cycle color resolution cache ([372c8a5](https://github.com/fabioluciano/tmux-powerkit/commit/372c8a57446c6c8f3aab07442bd3778b79fb3eb8))
+* **lifecycle:** add unified render cycle cleanup function ([98339ed](https://github.com/fabioluciano/tmux-powerkit/commit/98339edc142a69b6946880099caa8c8e2ccff644))
+* **lifecycle:** use counter+hash for external plugin ID ([52cba96](https://github.com/fabioluciano/tmux-powerkit/commit/52cba964f0a0e9274984d4ff85310b48d83f44a7))
+* **segment:** replace cksum subshell with bash hash function ([63c91be](https://github.com/fabioluciano/tmux-powerkit/commit/63c91be42114e70f68ef461eeb264c6e9510d6aa))
+* **separator:** use direct cache access without subshells ([72810ad](https://github.com/fabioluciano/tmux-powerkit/commit/72810ad73e0a7d2a3a71841858337bda7d9b4cae))
+
 ## [5.8.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.7.1...v5.8.0) (2026-01-05)
 
 ### Features
