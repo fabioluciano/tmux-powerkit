@@ -157,19 +157,20 @@ _check_scdaemon_signing() {
 
     # Check if gpg-agent is in a blocked state waiting for card
     # GETINFO scd_running returns quickly if not blocked
-    local start end elapsed
-    start=$(date +%s%N)
+    # EPOCHREALTIME format: seconds.microseconds (e.g., 1704412800.123456)
+    local start_us=${EPOCHREALTIME//./}
     timeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
     local result_code=$?
-    end=$(date +%s%N)
+    local end_us=${EPOCHREALTIME//./}
 
     # If command timed out or took > 200ms, likely waiting for user
     if [[ $result_code -eq 124 ]]; then
         return 0  # Timeout = blocked waiting
     fi
 
-    elapsed=$(( (end - start) / 1000000 ))  # Convert to ms
-    [[ $elapsed -gt 200 ]] && return 0
+    # Convert elapsed from microseconds to milliseconds
+    local elapsed_ms=$(( (end_us - start_us) / 1000 ))
+    [[ $elapsed_ms -gt 200 ]] && return 0
 
     return 1
 }
