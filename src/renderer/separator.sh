@@ -45,6 +45,42 @@ separator_reset_cache() {
     _SEP_CACHE_SPACING_MODE=""
 }
 
+# Pre-populate separator cache (call early in render cycle to avoid subshell losses)
+# After calling this, use $_SEP_CACHE_LEFT, $_SEP_CACHE_RIGHT directly instead of
+# $(get_left_separator), $(get_right_separator) to avoid subshell overhead.
+# Usage: separator_ensure_cache
+separator_ensure_cache() {
+    # Ensure style is loaded first
+    [[ -z "$_SEP_CACHE_STYLE" ]] && _SEP_CACHE_STYLE=$(get_tmux_option "@powerkit_separator_style" "${POWERKIT_DEFAULT_SEPARATOR_STYLE}")
+
+    # Pre-populate all separator glyphs
+    [[ -z "$_SEP_CACHE_LEFT" ]] && _SEP_CACHE_LEFT=$(_get_separator_glyph "$_SEP_CACHE_STYLE" "left")
+    [[ -z "$_SEP_CACHE_RIGHT" ]] && _SEP_CACHE_RIGHT=$(_get_separator_glyph "$_SEP_CACHE_STYLE" "right")
+
+    # Edge style
+    [[ -z "$_SEP_CACHE_EDGE_STYLE" ]] && {
+        local style
+        style=$(get_tmux_option "@powerkit_edge_separator_style" "${POWERKIT_DEFAULT_EDGE_SEPARATOR_STYLE}")
+        [[ "$style" == "same" ]] && style="$_SEP_CACHE_STYLE"
+        _SEP_CACHE_EDGE_STYLE="$style"
+    }
+
+    [[ -z "$_SEP_CACHE_FINAL" ]] && _SEP_CACHE_FINAL=$(_get_separator_glyph "$_SEP_CACHE_EDGE_STYLE" "right")
+
+    # Initial style
+    [[ -z "$_SEP_CACHE_INITIAL_STYLE" ]] && {
+        local style
+        style=$(get_tmux_option "@powerkit_initial_separator_style" "")
+        [[ -z "$style" || "$style" == "same" ]] && style="$_SEP_CACHE_EDGE_STYLE"
+        _SEP_CACHE_INITIAL_STYLE="$style"
+    }
+
+    [[ -z "$_SEP_CACHE_INITIAL" ]] && _SEP_CACHE_INITIAL=$(_get_separator_glyph "$_SEP_CACHE_INITIAL_STYLE" "left")
+
+    # Spacing mode
+    [[ -z "$_SEP_CACHE_SPACING_MODE" ]] && _SEP_CACHE_SPACING_MODE=$(get_tmux_option "@powerkit_elements_spacing" "${POWERKIT_DEFAULT_ELEMENTS_SPACING}")
+}
+
 # Get separator style from options (cached per-cycle)
 get_separator_style() {
     if [[ -z "$_SEP_CACHE_STYLE" ]]; then
