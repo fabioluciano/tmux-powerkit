@@ -445,6 +445,78 @@ _parse_plugin_list() {
 }
 
 # =============================================================================
+# Render Helpers
+# =============================================================================
+
+# Check if plugin should be hidden by threshold filter
+# Usage: _is_hidden_by_threshold "plugin_name" "health"
+# Returns: 0 if hidden, 1 if visible
+_is_hidden_by_threshold() {
+    local plugin_name="$1"
+    local health="$2"
+
+    local show_only_on_threshold
+    show_only_on_threshold=$(get_named_plugin_option "$plugin_name" "show_only_on_threshold" 2>/dev/null || echo "false")
+
+    [[ "$show_only_on_threshold" != "true" ]] && return 1
+
+    local health_level
+    health_level=$(get_health_level "$health")
+    log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
+
+    if [[ "$health_level" -lt 1 ]]; then
+        log_debug "segment_builder" "plugin=$plugin_name hidden by show_only_on_threshold (health_level=$health_level)"
+        return 0
+    fi
+
+    return 1
+}
+
+# Build spacing separator between plugins
+# Usage: _build_spacing_separator "side" "prev_bg" "spacing_bg" "spacing_fg"
+# Outputs: tmux format string for spacing separator
+_build_spacing_separator() {
+    local side="$1"
+    local prev_bg="$2"
+    local spacing_bg="$3"
+    local spacing_fg="$4"
+
+    local spacing_sep
+    spacing_sep=$(get_closing_separator_for_side "$side")
+
+    if [[ "$side" == "left" ]]; then
+        printf ' #[fg=%s,bg=%s]%s#[bg=%s]#[none]' "$prev_bg" "$spacing_bg" "$spacing_sep" "$spacing_bg"
+    else
+        printf ' #[fg=%s,bg=%s]%s#[bg=%s]#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep" "$spacing_bg"
+    fi
+}
+
+# Resolve colors for plugin (external or regular)
+# Usage: _resolve_plugin_colors "is_external" "state" "health" "stale" "accent" "accent_icon"
+# Outputs: "content_bg content_fg icon_bg icon_fg" (space-separated)
+_resolve_plugin_colors() {
+    local is_external="$1"
+    local state="$2"
+    local health="$3"
+    local stale="$4"
+    local accent="$5"
+    local accent_icon="$6"
+
+    if [[ "$is_external" == "1" && -n "$accent" ]]; then
+        # External plugin: use specified accent colors
+        local content_bg content_fg icon_bg icon_fg
+        content_bg=$(resolve_color "${accent:-ok-base}")
+        icon_bg=$(resolve_color "${accent_icon:-${accent:-ok-base}-lighter}")
+        content_fg=$(resolve_color "${accent:-ok-base}-darkest")
+        icon_fg=$(resolve_color "${accent_icon:-${accent:-ok-base}}-darkest")
+        printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
+    else
+        # Regular plugin: resolve via state/health
+        resolve_plugin_colors_full "$state" "$health" "" "$stale"
+    fi
+}
+
+# =============================================================================
 # Plugin List Rendering (main entry point for powerkit-render)
 # =============================================================================
 
@@ -535,18 +607,8 @@ render_plugins() {
         IFS=$'\x1f' read -r icon content state health stale _ _ <<< "$plugin_data"
         stale="${stale:-0}"  # Default for backward compatibility
 
-        # Use explicit plugin option accessor (no global context) - skip for external
-        if [[ $is_external -eq 0 ]]; then
-            local show_only_on_threshold
-            show_only_on_threshold=$(get_named_plugin_option "$plugin_name" "show_only_on_threshold" 2>/dev/null || echo "false")
-            local health_level=0
-            health_level=$(get_health_level "$health")
-            log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
-            if [[ "$show_only_on_threshold" == "true" && "$health_level" -lt 1 ]]; then
-                log_debug "segment_builder" "plugin=$plugin_name ocultado pelo filtro show_only_on_threshold (health_level=$health_level)"
-                continue
-            fi
-        fi
+        # Apply threshold filter (skip for external plugins)
+        [[ $is_external -eq 0 ]] && _is_hidden_by_threshold "$plugin_name" "$health" && continue
 
         visible_plugins+=("$plugin_name")
         visible_data+=("$plugin_data")
@@ -617,19 +679,7 @@ render_plugins() {
 
         # Resolve colors (RENDERER responsibility - per contract separation)
         local content_bg content_fg icon_bg icon_fg
-
-        if [[ "$is_external" == "1" && -n "$accent" ]]; then
-            # External plugin: use specified accent colors
-            content_bg=$(resolve_color "${accent:-ok-base}")
-            icon_bg=$(resolve_color "${accent_icon:-${accent:-ok-base}-lighter}")
-            # Calculate contrasting foreground
-            content_fg=$(resolve_color "${accent:-ok-base}-darkest")
-            icon_fg=$(resolve_color "${accent_icon:-${accent:-ok-base}}-darkest")
-        else
-            # Regular plugin: resolve via state/health
-            # Pass stale flag to apply -darker variant for stale data indication
-            read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "" "$stale")"
-        fi
+        read -r content_bg content_fg icon_bg icon_fg <<< "$(_resolve_plugin_colors "$is_external" "$state" "$health" "$stale" "$accent" "$accent_icon")"
 
         # Render segment (pass is_first, is_last and side for correct separator styling)
         local segment
