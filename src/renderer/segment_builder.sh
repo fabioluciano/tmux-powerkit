@@ -517,9 +517,9 @@ render_plugins() {
         # Handle external plugins
         if [[ "$plugin_name" == external\(* ]]; then
             is_external=1
-            # Generate a hash-like ID from the spec for caching
+            # Generate a hash-like ID from the spec for caching (pure bash, no subshells)
             local ext_id
-            ext_id=$(printf '%s' "$plugin_name" | cksum | cut -d' ' -f1)
+            ext_id=$(string_hash "$plugin_name")
             plugin_data=$(collect_external_plugin_render_data "$ext_id" "$plugin_name") || continue
             [[ -z "$plugin_data" ]] && continue
         else
