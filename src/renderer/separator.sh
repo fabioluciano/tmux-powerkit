@@ -26,23 +26,29 @@ source_guard "renderer_separator" && return 0
 # Per-cycle cache for separator characters (avoids repeated tmux option lookups)
 declare -g _SEP_CACHE_STYLE=""
 declare -g _SEP_CACHE_EDGE_STYLE=""
+declare -g _SEP_CACHE_EDGE_APPLY_ALL=""
 declare -g _SEP_CACHE_INITIAL_STYLE=""
 declare -g _SEP_CACHE_LEFT=""
 declare -g _SEP_CACHE_RIGHT=""
 declare -g _SEP_CACHE_INITIAL=""
 declare -g _SEP_CACHE_FINAL=""
 declare -g _SEP_CACHE_SPACING_MODE=""
+declare -g _SEP_CACHE_EDGE_LEFT=""
+declare -g _SEP_CACHE_EDGE_RIGHT=""
 
 # Reset separator cache (call at start of each render cycle along with cache_reset_cycle)
 separator_reset_cache() {
     _SEP_CACHE_STYLE=""
     _SEP_CACHE_EDGE_STYLE=""
+    _SEP_CACHE_EDGE_APPLY_ALL=""
     _SEP_CACHE_INITIAL_STYLE=""
     _SEP_CACHE_LEFT=""
     _SEP_CACHE_RIGHT=""
     _SEP_CACHE_INITIAL=""
     _SEP_CACHE_FINAL=""
     _SEP_CACHE_SPACING_MODE=""
+    _SEP_CACHE_EDGE_LEFT=""
+    _SEP_CACHE_EDGE_RIGHT=""
 }
 
 # Pre-populate separator cache (call early in render cycle to avoid subshell losses)
@@ -57,12 +63,19 @@ separator_ensure_cache() {
     [[ -z "$_SEP_CACHE_LEFT" ]] && _SEP_CACHE_LEFT=$(_get_separator_glyph "$_SEP_CACHE_STYLE" "left")
     [[ -z "$_SEP_CACHE_RIGHT" ]] && _SEP_CACHE_RIGHT=$(_get_separator_glyph "$_SEP_CACHE_STYLE" "right")
 
-    # Edge style
+    # Edge style - parse :all suffix for apply-all-edges feature
     [[ -z "$_SEP_CACHE_EDGE_STYLE" ]] && {
-        local style
-        style=$(get_tmux_option "@powerkit_edge_separator_style" "${POWERKIT_DEFAULT_EDGE_SEPARATOR_STYLE}")
-        [[ "$style" == "same" ]] && style="$_SEP_CACHE_STYLE"
-        _SEP_CACHE_EDGE_STYLE="$style"
+        local raw_style
+        raw_style=$(get_tmux_option "@powerkit_edge_separator_style" "${POWERKIT_DEFAULT_EDGE_SEPARATOR_STYLE}")
+        # Remove :all suffix if present and cache the flag
+        if [[ "$raw_style" == *":all" ]]; then
+            _SEP_CACHE_EDGE_APPLY_ALL="true"
+            _SEP_CACHE_EDGE_STYLE="${raw_style%%:all}"
+        else
+            _SEP_CACHE_EDGE_APPLY_ALL="false"
+            _SEP_CACHE_EDGE_STYLE="$raw_style"
+        fi
+        [[ "$_SEP_CACHE_EDGE_STYLE" == "same" ]] && _SEP_CACHE_EDGE_STYLE="$_SEP_CACHE_STYLE"
     }
 
     [[ -z "$_SEP_CACHE_FINAL" ]] && _SEP_CACHE_FINAL=$(_get_separator_glyph "$_SEP_CACHE_EDGE_STYLE" "right")
@@ -79,6 +92,10 @@ separator_ensure_cache() {
 
     # Spacing mode
     [[ -z "$_SEP_CACHE_SPACING_MODE" ]] && _SEP_CACHE_SPACING_MODE=$(get_tmux_option "@powerkit_elements_spacing" "${POWERKIT_DEFAULT_ELEMENTS_SPACING}")
+
+    # Edge separator glyphs
+    [[ -z "$_SEP_CACHE_EDGE_LEFT" ]] && _SEP_CACHE_EDGE_LEFT=$(_get_separator_glyph "$_SEP_CACHE_EDGE_STYLE" "left")
+    [[ -z "$_SEP_CACHE_EDGE_RIGHT" ]] && _SEP_CACHE_EDGE_RIGHT=$(_get_separator_glyph "$_SEP_CACHE_EDGE_STYLE" "right")
 }
 
 # Get separator style from options (cached per-cycle)
@@ -90,17 +107,24 @@ get_separator_style() {
 }
 
 # Get edge separator style (boundaries: end of windows, start of plugins)
-# Returns the style to use for edge separators, or main style if "same" (cached per-cycle)
+# Returns the style to use for edge separators (without :all suffix), or main style if "same"
+# Parses :all suffix and caches the apply-all flag
+# Usage: get_edge_separator_style
 get_edge_separator_style() {
     if [[ -z "$_SEP_CACHE_EDGE_STYLE" ]]; then
-        local style
-        style=$(get_tmux_option "@powerkit_edge_separator_style" "${POWERKIT_DEFAULT_EDGE_SEPARATOR_STYLE}")
+        local raw_style
+        raw_style=$(get_tmux_option "@powerkit_edge_separator_style" "${POWERKIT_DEFAULT_EDGE_SEPARATOR_STYLE}")
 
-        if [[ "$style" == "same" ]]; then
-            _SEP_CACHE_EDGE_STYLE=$(get_separator_style)
+        # Remove :all suffix if present and cache the flag
+        if [[ "$raw_style" == *":all" ]]; then
+            _SEP_CACHE_EDGE_APPLY_ALL="true"
+            _SEP_CACHE_EDGE_STYLE="${raw_style%%:all}"
         else
-            _SEP_CACHE_EDGE_STYLE="$style"
+            _SEP_CACHE_EDGE_APPLY_ALL="false"
+            _SEP_CACHE_EDGE_STYLE="$raw_style"
         fi
+
+        [[ "$_SEP_CACHE_EDGE_STYLE" == "same" ]] && _SEP_CACHE_EDGE_STYLE=$(get_separator_style)
     fi
     printf '%s' "$_SEP_CACHE_EDGE_STYLE"
 }
@@ -224,6 +248,42 @@ has_plugin_spacing() {
     local mode
     mode=$(get_spacing_mode)
     [[ "$mode" == "both" || "$mode" == "plugins" || "$mode" == "true" ]]
+}
+
+# =============================================================================
+# Apply All Edges Configuration
+# =============================================================================
+# When edge_separator_style has :all suffix (e.g., "rounded:all"), ALL external
+# edges use the edge style:
+# - Session segment start/end
+# - First and last window edges
+# This creates a fully styled appearance at all bar boundaries.
+
+# Check if edge style should apply to ALL external edges (cached per-cycle)
+# Returns true when @powerkit_edge_separator_style has :all suffix
+# Usage: should_apply_all_edges
+should_apply_all_edges() {
+    # Ensure edge style is parsed (which also sets _SEP_CACHE_EDGE_APPLY_ALL)
+    [[ -z "$_SEP_CACHE_EDGE_APPLY_ALL" ]] && get_edge_separator_style >/dev/null
+    [[ "$_SEP_CACHE_EDGE_APPLY_ALL" == "true" ]]
+}
+
+# Get edge-style RIGHT separator (cached per-cycle)
+# Usage: get_edge_right_separator
+get_edge_right_separator() {
+    if [[ -z "$_SEP_CACHE_EDGE_RIGHT" ]]; then
+        _SEP_CACHE_EDGE_RIGHT=$(_get_separator_glyph "$(get_edge_separator_style)" "right")
+    fi
+    printf '%s' "$_SEP_CACHE_EDGE_RIGHT"
+}
+
+# Get edge-style LEFT separator (cached per-cycle)
+# Usage: get_edge_left_separator
+get_edge_left_separator() {
+    if [[ -z "$_SEP_CACHE_EDGE_LEFT" ]]; then
+        _SEP_CACHE_EDGE_LEFT=$(_get_separator_glyph "$(get_edge_separator_style)" "left")
+    fi
+    printf '%s' "$_SEP_CACHE_EDGE_LEFT"
 }
 
 # =============================================================================
