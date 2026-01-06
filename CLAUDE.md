@@ -12,7 +12,8 @@ This file provides guidance to Claude Code when working with this repository.
 4. Valid types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`
 
 Example commit message:
-```
+
+```text
 feat(defaults): change default theme to catppuccin/mocha
 
 Catppuccin has surpassed Tokyo Night in popularity metrics.
