@@ -37,7 +37,8 @@ declare -gA POWERKIT_CORE_KEYBINDINGS=(
     [cache_clear]="command:@powerkit_cache_clear_key:C-d:::::"
 
     # Reload tmux config - special command (no helper file)
-    [reload_config]="command:@powerkit_reload_config_key:r:::::"
+    # Note: Using "R" (Shift+r) to avoid conflict with choose-buffer
+    [reload_config]="command:@powerkit_reload_config_key:R:::::"
 
     # Options viewer - popup
     [options_viewer]="popup:@powerkit_show_options_key:C-e:@powerkit_show_options_width:80%:@powerkit_show_options_height:60%:options_viewer.sh:"
@@ -103,7 +104,7 @@ check_keybinding_conflicts() {
 
             # Show popup notification with conflict details
             local helpers_dir="${POWERKIT_ROOT}/src/helpers"
-            pk_popup_delayed 2 -w 80 -H 30 "bash '${helpers_dir}/keybinding_conflict_toast.sh'"
+            pk_popup_delayed 2 -w 110 -H 30 "bash '${helpers_dir}/keybinding_conflict_toast.sh'"
         fi
     else
         log_debug "keybindings" "No keybinding conflicts detected"

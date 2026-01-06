@@ -257,8 +257,14 @@ POWERKIT_DEFAULT_STALE_COLOR_VARIANT="-darkest"
 #   "none"      - No separators
 POWERKIT_DEFAULT_SEPARATOR_STYLE="normal"
 
-# @powerkit_edge_separator_style - Separator at edges (start/end of bar)
-# Values: same as separator_style, or "same" to use main separator_style
+# @powerkit_edge_separator_style - Style for external edge separators
+# Values:
+#   "same"         - Use main separator_style (no special treatment)
+#   "rounded"      - Rounded at standard edge points only
+#   "rounded:all"  - Rounded at ALL external edges (session start/end, first/last window)
+#   "flame:all"    - Flame at ALL external edges
+#   ...any style (normal, rounded, slant, flame, etc.) with optional :all suffix
+# The :all suffix applies the edge style to ALL external boundaries.
 POWERKIT_DEFAULT_EDGE_SEPARATOR_STYLE="rounded"
 
 # Powerline glyphs (using \U format for codes > 0xFF)
@@ -531,7 +537,8 @@ POWERKIT_DEFAULT_LOG_VIEWER_WIDTH="90%"
 POWERKIT_DEFAULT_LOG_VIEWER_HEIGHT="80%"
 
 # @powerkit_reload_config_key - Reload tmux configuration
-POWERKIT_DEFAULT_RELOAD_CONFIG_KEY="r"
+# Note: Using "R" (Shift+r) to avoid conflict with choose-buffer default
+POWERKIT_DEFAULT_RELOAD_CONFIG_KEY="R"
 
 # @powerkit_keybinding_conflict_action - Action when keybinding conflicts
 # Values:

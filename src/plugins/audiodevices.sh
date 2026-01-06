@@ -48,9 +48,9 @@ plugin_declare_options() {
     declare_option "input_icon" "icon" $'\U000F036C' "Input device icon"
     declare_option "output_icon" "icon" $'\U000F1120' "Output device icon"
 
-    # Keybindings
-    declare_option "keybinding_input" "key" "C-i" "Keybinding for input device selector"
-    declare_option "keybinding_output" "key" "C-o" "Keybinding for output device selector"
+    # Keybindings (using M- to avoid conflict with C-i/TPM and C-o/rotate-window)
+    declare_option "keybinding_input" "key" "M-i" "Keybinding for input device selector"
+    declare_option "keybinding_output" "key" "M-o" "Keybinding for output device selector"
 
     # Cache
     declare_option "cache_ttl" "number" "10" "Cache duration in seconds"
