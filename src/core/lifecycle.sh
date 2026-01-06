@@ -24,6 +24,9 @@ declare -gA _PLUGINS=()
 # Plugin states
 declare -gA _PLUGIN_STATES=()
 
+# External plugin counter (for unique ID generation without subshells)
+declare -g _EXTERNAL_PLUGIN_COUNTER=0
+
 # =============================================================================
 # Visibility Helpers
 # =============================================================================
@@ -135,8 +138,9 @@ _register_external_plugin() {
     local spec="$1"
     # Format: external("icon"|"content"|"accent"|"accent_icon"|"ttl")
 
-    # Generate unique ID
-    local id="external_$(date +%s%N | cut -c1-16)"
+    # Generate unique ID using counter + hash (no subshells)
+    (( ++_EXTERNAL_PLUGIN_COUNTER ))
+    local id="external_${_EXTERNAL_PLUGIN_COUNTER}_$(string_hash "$spec")"
 
     _PLUGINS["$id"]="$spec"
     _PLUGIN_STATES["$id"]="discovered"
