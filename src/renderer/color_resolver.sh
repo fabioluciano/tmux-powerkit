@@ -31,10 +31,24 @@ source_guard "renderer_color_resolver" && return 0
 . "${POWERKIT_ROOT}/src/core/theme_loader.sh"
 
 # =============================================================================
+# Per-Cycle Color Cache
+# =============================================================================
+# Colors are resolved many times during a single render cycle with the same
+# arguments. This cache stores resolved colors for the duration of one cycle.
+
+declare -gA _COLOR_CYCLE_CACHE=()
+
+# Reset color cache (call at start of each render cycle)
+# Usage: color_reset_cycle_cache
+color_reset_cycle_cache() {
+    _COLOR_CYCLE_CACHE=()
+}
+
+# =============================================================================
 # Color Resolution
 # =============================================================================
 
-# Resolve a color name to hex value
+# Resolve a color name to hex value (with per-cycle caching)
 # Usage: resolve_color "secondary"
 resolve_color() {
     local name="$1"
@@ -47,6 +61,12 @@ resolve_color() {
             ;;
     esac
 
+    # Check per-cycle cache first (fast path)
+    if [[ -n "${_COLOR_CYCLE_CACHE[$name]+x}" ]]; then
+        printf '%s' "${_COLOR_CYCLE_CACHE[$name]}"
+        return
+    fi
+
     # Ensure theme is loaded
     is_theme_loaded || load_powerkit_theme
 
@@ -55,13 +75,16 @@ resolve_color() {
     color=$(get_color "$name")
 
     if [[ -n "$color" ]]; then
+        _COLOR_CYCLE_CACHE["$name"]="$color"
         printf '%s' "$color"
     else
         # Fallback to the name itself (might be a raw hex)
         if [[ "$name" =~ ^#[0-9a-fA-F]{6}$ ]]; then
+            _COLOR_CYCLE_CACHE["$name"]="$name"
             printf '%s' "$name"
         else
             log_warn "color_resolver" "Unknown color: $name, using default"
+            _COLOR_CYCLE_CACHE["$name"]="default"
             printf 'default'
         fi
     fi
