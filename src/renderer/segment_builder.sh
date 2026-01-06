@@ -79,11 +79,10 @@ build_segment() {
 
     [[ -z "$template" ]] && template=$(get_segment_template)
 
-    # Build separator glyphs
-    local sep_left sep_right sep_internal
-    sep_left=$(get_left_separator)
-    sep_right=$(get_right_separator)
-    sep_internal=$(get_right_separator)
+    # Build separator glyphs (use pre-populated cache - no subshells)
+    local sep_left="${_SEP_CACHE_LEFT}"
+    local sep_right="${_SEP_CACHE_RIGHT}"
+    local sep_internal="${_SEP_CACHE_RIGHT}"
 
     # Build icon section
     local icon_section=""
@@ -164,8 +163,7 @@ build_plugin_segment() {
     read -r content_bg content_fg icon_bg icon_fg <<< "$(resolve_plugin_colors_full "$state" "$health" "$context")"
 
     # Get LEFT separator (◀) - plugins in status-right use left-pointing arrows
-    local sep_left
-    sep_left=$(get_left_separator)
+    local sep_left="${_SEP_CACHE_LEFT}"
 
     # Script paths for dynamic content
     local icon_runner="${POWERKIT_ROOT}/bin/powerkit-icon"
@@ -237,9 +235,8 @@ build_icon_segment() {
     # Use the appropriate fg color for the accent
     icon_fg=$(resolve_color "${accent//-bg/-fg}" 2>/dev/null || resolve_color "ok-fg")
 
-    local sep_left sep_right
-    sep_left=$(get_left_separator)
-    sep_right=$(get_right_separator)
+    local sep_left="${_SEP_CACHE_LEFT}"
+    local sep_right="${_SEP_CACHE_RIGHT}"
 
     printf '#[fg=%s,bg=%s]%s#[fg=%s,bg=%s] %s #[fg=%s,bg=%s]%s' \
         "$icon_bg" "$prev_bg" "$sep_left" \
@@ -292,10 +289,8 @@ render_plugin_segment() {
             # First plugin: add small padding from edge
             segment+="#[bg=${icon_bg}] "
         else
-            local sep_opening
-            sep_opening=$(get_right_separator)
             # Right-pointing (▶): fg=source (prev), bg=destination (icon)
-            segment+="#[fg=${prev_bg},bg=${icon_bg}]${sep_opening}#[none]"
+            segment+="#[fg=${prev_bg},bg=${icon_bg}]${_SEP_CACHE_RIGHT}#[none]"
         fi
     else
         # Right side: plugins flow right-to-left with LEFT separators (◀)
@@ -303,9 +298,9 @@ render_plugin_segment() {
         # Other plugins: normal left separator
         local sep_opening
         if [[ $is_first -eq 1 ]]; then
-            sep_opening=$(get_initial_separator)
+            sep_opening="${_SEP_CACHE_INITIAL}"
         else
-            sep_opening=$(get_left_separator)
+            sep_opening="${_SEP_CACHE_LEFT}"
         fi
         # Left-pointing (◀): fg=destination (icon), bg=source (prev)
         segment+="#[fg=${icon_bg},bg=${prev_bg}]${sep_opening}#[none]"
@@ -532,6 +527,9 @@ render_plugins() {
 
     # Source lifecycle for data collection
     . "${POWERKIT_ROOT}/src/core/lifecycle.sh"
+
+    # Pre-populate separator cache (avoids subshell loss in loops)
+    separator_ensure_cache
 
     # Determine status bar background
     local status_bg
