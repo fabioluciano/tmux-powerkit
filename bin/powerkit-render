@@ -58,8 +58,8 @@ _show_loading() {
         $'\Uee0b'
     )
 
-    # Pick frame based on current second (pseudo-animation)
-    local frame_idx=$(( $(date +%s) % 6 ))
+    # Pick frame based on current second (pseudo-animation, Bash 5.0+)
+    local frame_idx=$(( EPOCHSECONDS % 6 ))
     local icon="${spinner[$frame_idx]}"
 
     # Get colors from theme
