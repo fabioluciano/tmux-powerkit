@@ -110,10 +110,10 @@ _render_background() {
         # Source and render
         . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
         load_powerkit_theme
-        cache_reset_cycle
         . "${POWERKIT_ROOT}/src/renderer/segment_builder.sh"
-        separator_reset_cache 2>/dev/null || true
-        color_reset_cycle_cache 2>/dev/null || true
+
+        # Reset all per-cycle caches for clean state
+        reset_all_cycle_caches
 
         # Render and cache using cache_set (cache_key includes theme for invalidation)
         output=$(render_plugins "$side")

@@ -284,6 +284,12 @@ _collect_plugin() {
 # Plugin output structure
 declare -gA _PLUGIN_OUTPUT=()
 
+# Reset plugin output data (call at end of render cycle to free memory)
+# Usage: lifecycle_reset_cycle
+lifecycle_reset_cycle() {
+    _PLUGIN_OUTPUT=()
+}
+
 # Resolve plugin state/health/context
 # Usage: resolve_plugins
 resolve_plugins() {

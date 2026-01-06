@@ -40,6 +40,29 @@ cache_reset_cycle() {
     _MEMORY_CACHE=()
 }
 
+# =============================================================================
+# Unified Render Cycle Cleanup
+# =============================================================================
+# Master cleanup function that resets all per-cycle caches to free memory.
+# Call at start of render cycle to ensure fresh state.
+
+# Reset all per-cycle caches (call at start of render)
+# This is the single function to call for a clean render cycle start
+# Usage: reset_all_cycle_caches
+reset_all_cycle_caches() {
+    # Reset cache module state
+    cache_reset_cycle
+
+    # Reset color resolver cache (if loaded)
+    declare -F color_reset_cycle_cache &>/dev/null && color_reset_cycle_cache
+
+    # Reset separator cache (if loaded)
+    declare -F separator_reset_cache &>/dev/null && separator_reset_cache
+
+    # Reset lifecycle plugin output (if loaded)
+    declare -F lifecycle_reset_cycle &>/dev/null && lifecycle_reset_cycle
+}
+
 # Ensure cache directory exists
 _ensure_cache_dir() {
     [[ -d "$_CACHE_DIR" ]] || mkdir -p "$_CACHE_DIR"
