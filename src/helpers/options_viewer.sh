@@ -44,8 +44,8 @@ TPM_PLUGINS_DIR="${TMUX_PLUGIN_MANAGER_PATH:-$HOME/.tmux/plugins}"
 
 declare -a THEME_OPTIONS=(
     # Theme
-    "@powerkit_theme|tokyo-night|theme name|Theme name"
-    "@powerkit_theme_variant|night|variant name|Theme variant"
+    "@powerkit_theme|catppuccin|theme name|Theme name"
+    "@powerkit_theme_variant|mocha|variant name|Theme variant"
     "@powerkit_transparent|false|true,false|Transparent status bar"
     "@powerkit_custom_theme_path||(path)|Custom theme file path"
     # Plugins
