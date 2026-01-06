@@ -258,7 +258,7 @@ _windows_build_format() {
     local format=""
     format+="#[range=window|#{window_id}]"
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display) "
     format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} "
     format+=$(_windows_build_spacing "$side" "$content_bg")
@@ -299,7 +299,7 @@ _windows_build_current_format() {
     local format=""
     format+="#[range=window|#{window_id}]"
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display) "
     format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} $(pane_sync_format)"
     format+=$(_windows_build_spacing "$side" "$content_bg")
