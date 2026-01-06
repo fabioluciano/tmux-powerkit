@@ -577,9 +577,18 @@ Use this file as a reference or copy the options you need to your `~/.tmux.conf`
 ## 🚦 Requirements
 
 - **tmux** 3.0 or higher
-- **Bash** 4.0 or higher
+- **Bash** 5.0 or higher (5.1+ recommended for optimal performance)
 - **TPM** (Tmux Plugin Manager)
 - **Nerd Font** (recommended for icons)
+
+> **Note for macOS users:** macOS ships with Bash 3.x. Install a modern version with `brew install bash`.
+
+### Bash Version Features Used
+
+| Version | Features Used |
+|---------|--------------|
+| 5.0+ | `$EPOCHSECONDS`, `$EPOCHREALTIME`, `${var,,}`, `${var^^}` |
+| 5.1+ | `assoc_expand_once` (performance optimization) |
 
 ### Platform Support
 
