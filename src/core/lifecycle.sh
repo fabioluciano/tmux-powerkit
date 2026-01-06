@@ -59,6 +59,24 @@ _check_plugin_context_visibility() {
     return 0
 }
 
+# Get plugin icon with fallback to default option
+# Must be called AFTER plugin is sourced and options declared
+# Usage: icon=$(_get_plugin_icon)
+_get_plugin_icon() {
+    if declare -F plugin_get_icon &>/dev/null; then
+        plugin_get_icon
+    else
+        get_option "icon" 2>/dev/null || echo ""
+    fi
+}
+
+# Get plugin cache TTL with fallback to default
+# Must be called AFTER plugin is sourced and options declared
+# Usage: ttl=$(_get_plugin_cache_ttl)
+_get_plugin_cache_ttl() {
+    get_option "cache_ttl" 2>/dev/null || echo 30
+}
+
 # =============================================================================
 # Plugin Discovery
 # =============================================================================
@@ -287,7 +305,7 @@ _collect_plugin() {
     # Get cache TTL for this plugin
     _set_plugin_context "$name"
     local ttl
-    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+    ttl=$(_get_plugin_cache_ttl)
 
     # Check cache first
     if _plugin_cache_valid "$name" "$ttl"; then
@@ -380,12 +398,7 @@ _resolve_plugin() {
     content=$(plugin_render)
 
     # Get icon from plugin (plugin decides which icon to show)
-    if declare -F plugin_get_icon &>/dev/null; then
-        icon=$(plugin_get_icon)
-    else
-        # Fallback to default icon option
-        icon=$(get_option "icon" 2>/dev/null || echo "")
-    fi
+    icon=$(_get_plugin_icon)
 
     # Check visibility using unified helper
     local visible=1
@@ -549,8 +562,7 @@ _spawn_plugin_refresh() {
         declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
 
         # Get icon
-        icon=""
-        declare -F plugin_get_icon &>/dev/null && icon=$(plugin_get_icon) || icon=$(get_option "icon" 2>/dev/null || echo "")
+        icon=$(_get_plugin_icon)
 
         # Get content
         content=$(plugin_render)
@@ -564,7 +576,7 @@ _spawn_plugin_refresh() {
         cache_set "plugin_${name}_data" "$output"
 
         # Cache TTL
-        ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+        ttl=$(_get_plugin_cache_ttl)
         cache_set "plugin_${name}_ttl" "$ttl"
     ' _ "$name" "$lock_file" "$POWERKIT_ROOT" &>/dev/null &
     disown
@@ -609,8 +621,8 @@ _do_plugin_refresh() {
     declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
 
     # Get icon
-    local icon=""
-    declare -F plugin_get_icon &>/dev/null && icon=$(plugin_get_icon) || icon=$(get_option "icon" 2>/dev/null || echo "")
+    local icon
+    icon=$(_get_plugin_icon)
 
     # Get content
     local content
@@ -626,7 +638,7 @@ _do_plugin_refresh() {
 
     # Also cache TTL for future reference
     local ttl
-    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+    ttl=$(_get_plugin_cache_ttl)
     cache_set "plugin_${name}_ttl" "$ttl"
 }
 
@@ -657,7 +669,7 @@ _collect_plugin_sync() {
 
     # Get and cache TTL
     local ttl
-    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+    ttl=$(_get_plugin_cache_ttl)
     cache_set "$ttl_cache_key" "$ttl"
 
     # Collect data
@@ -707,8 +719,8 @@ _collect_plugin_sync() {
     declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
 
     # Get icon
-    local icon=""
-    declare -F plugin_get_icon &>/dev/null && icon=$(plugin_get_icon) || icon=$(get_option "icon" 2>/dev/null || echo "")
+    local icon
+    icon=$(_get_plugin_icon)
 
     # Get content
     local content
