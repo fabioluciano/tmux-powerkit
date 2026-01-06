@@ -371,6 +371,28 @@ center() {
 }
 
 # =============================================================================
+# String Hashing
+# =============================================================================
+
+# Generate a simple hash from a string (djb2 algorithm - pure bash, no subshells)
+# Usage: string_hash "some string"  # Returns numeric hash
+# Note: This is for generating unique IDs, NOT for cryptographic purposes
+string_hash() {
+    local str="$1"
+    local hash=5381
+    local i char_code
+
+    for ((i = 0; i < ${#str}; i++)); do
+        # Get ASCII code of character using printf
+        printf -v char_code '%d' "'${str:i:1}"
+        hash=$(( ((hash << 5) + hash) + char_code ))
+    done
+
+    # Return positive 32-bit integer
+    printf '%d' "$((hash & 0x7FFFFFFF))"
+}
+
+# =============================================================================
 # Format Helpers
 # =============================================================================
 
