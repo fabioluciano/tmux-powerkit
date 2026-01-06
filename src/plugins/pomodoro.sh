@@ -138,7 +138,7 @@ _load_state() {
 
 _save_state() {
     local phase="$1"
-    local start_time="${2:-$(date +%s)}"
+    local start_time="${2:-$EPOCHSECONDS}"
     local sessions="${3:-0}"
 
     cache_set "pomodoro_phase" "$phase"
@@ -191,7 +191,7 @@ plugin_collect() {
         return 0
     fi
     
-    local current_time=$(date +%s)
+    local current_time=$EPOCHSECONDS
     local duration=$(_get_duration_for_phase "$_phase")
     local elapsed=$((current_time - _start_time))
     local remaining=$((duration - elapsed))
@@ -212,7 +212,7 @@ plugin_collect() {
                     _notify "Work complete! Take a short break."
                 fi
                 
-                _save_state "$break_type" "$(date +%s)" "$_sessions"
+                _save_state "$break_type" "$EPOCHSECONDS" "$_sessions"
                 plugin_data_set "phase" "$break_type"
                 plugin_data_set "sessions" "$_sessions"
                 

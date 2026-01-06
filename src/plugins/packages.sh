@@ -132,8 +132,8 @@ _invalidate_if_upgraded() {
     [[ -z "$log_file" || ! -e "$log_file" ]] && return 0
 
     # Get log/dir modification time
-    local log_mtime current_time log_age
-    current_time=$(date +%s)
+    local log_mtime log_age
+    local current_time=$EPOCHSECONDS
     if is_macos; then
         log_mtime=$(stat -f %m "$log_file" 2>/dev/null || echo 0)
     else

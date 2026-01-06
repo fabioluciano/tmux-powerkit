@@ -46,9 +46,8 @@ plugin_collect() {
             uptime_seconds=$(awk '{printf "%d", $1}' /proc/uptime 2>/dev/null)
         elif is_macos; then
             # macOS: use sysctl to get boot time (campo 'sec')
-            local boot_time now
+            local boot_time now=$EPOCHSECONDS
             boot_time=$(sysctl -n kern.boottime | awk '{gsub(",", "", $4); print $4}')
-            now=$(date +%s)
             ((uptime_seconds=now-boot_time))
     else
         # Fallback: parse uptime output
