@@ -209,7 +209,7 @@ plugin_collect() {
     local prices_data="" changes_data=""
     for ticker in "${ticker_list[@]}"; do
         ticker=$(trim "$ticker")
-        ticker=$(echo "$ticker" | tr '[:lower:]' '[:upper:]')
+        ticker="${ticker^^}"  # Bash 4.0+ uppercase
         [[ -z "$ticker" ]] && continue
 
         local stock_data

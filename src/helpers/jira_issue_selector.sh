@@ -112,8 +112,7 @@ get_status_color() {
 # Determine if status name indicates flagged/blocked
 is_flagged_by_status() {
     local status_name="$1"
-    local lower_status
-    lower_status=$(echo "$status_name" | tr '[:upper:]' '[:lower:]')
+    local lower_status="${status_name,,}"  # Bash 4.0+ lowercase
 
     # Check for flagged-related keywords in status name
     if [[ "$lower_status" == *blocked* ]] || \

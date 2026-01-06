@@ -74,7 +74,7 @@ get_file_age() {
     mtime=$(get_file_mtime "$file")
     [[ "$mtime" == "0" ]] && { echo -1; return 1; }
 
-    now=$(date +%s)
+    local now=$EPOCHSECONDS
     echo $((now - mtime))
 }
 

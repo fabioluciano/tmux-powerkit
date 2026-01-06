@@ -186,8 +186,10 @@ _get_nowplaying_linux() {
     fi
 
     # shellcheck disable=SC2086
-    state=$(playerctl $ignore_opt status 2>/dev/null | tr '[:upper:]' '[:lower:]')
-    [[ -z "$state" ]] && return 1
+    local state_raw
+    state_raw=$(playerctl $ignore_opt status 2>/dev/null)
+    [[ -z "$state_raw" ]] && return 1
+    state="${state_raw,,}"  # Bash 4.0+ lowercase
 
     # Get all metadata in one call using format string
     # shellcheck disable=SC2086
