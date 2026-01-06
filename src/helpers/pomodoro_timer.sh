@@ -74,7 +74,7 @@ _get_sessions() {
 # Save state
 _save_state() {
     local state="$1"
-    local start_time="${2:-$(date +%s)}"
+    local start_time="${2:-$EPOCHSECONDS}"
     local sessions="${3:-$(_get_sessions)}"
     cache_set "pomodoro_phase" "$state"
     cache_set "pomodoro_start_time" "$start_time"
@@ -83,7 +83,7 @@ _save_state() {
 
 # Start work session
 _start_work() {
-    _save_state "work" "$(date +%s)" "$(_get_sessions)"
+    _save_state "work" "$EPOCHSECONDS" "$(_get_sessions)"
     toast " Work session started" "success"
     _force_status_refresh
 }
@@ -99,7 +99,7 @@ _start_break() {
         break_type="long_break"
     fi
 
-    _save_state "$break_type" "$(date +%s)" "$sessions"
+    _save_state "$break_type" "$EPOCHSECONDS" "$sessions"
     _force_status_refresh
 }
 

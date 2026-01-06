@@ -128,8 +128,7 @@ is_bitwarden_cache_valid() {
     file_mtime=$(get_file_mtime "$cache_file") || return 1
     [[ "$file_mtime" == "-1" ]] && return 1
 
-    local now age
-    now=$(date +%s)
+    local now=$EPOCHSECONDS age
     age=$((now - file_mtime))
 
     (( age < ttl ))
