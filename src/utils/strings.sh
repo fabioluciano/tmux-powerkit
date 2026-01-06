@@ -173,7 +173,11 @@ trim_inplace() {
 # Usage: collapse_spaces "hello    world"  # Returns "hello world"
 collapse_spaces() {
     local text="$1"
-    printf '%s' "$text" | tr -s ' '
+    # Pure bash: replace double spaces until none remain
+    while [[ "$text" == *"  "* ]]; do
+        text="${text//  / }"
+    done
+    printf '%s' "$text"
 }
 
 # =============================================================================
