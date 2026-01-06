@@ -13,6 +13,16 @@ export POWERKIT_ROOT
 source_guard "bootstrap" && return 0
 
 # =============================================================================
+# Bash 5.1+ Optimizations
+# =============================================================================
+
+# Enable assoc_expand_once for better associative array performance
+# Prevents double expansion of array keys in hot paths
+if ((BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 1))); then
+    shopt -s assoc_expand_once
+fi
+
+# =============================================================================
 # Module Loading Order (critical)
 # =============================================================================
 
