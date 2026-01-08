@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.10.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.9.1...v5.10.0) (2026-01-08)
+
+### Features
+
+* **icon-padding:** add dynamic icon padding system for consistent spacing ([59aad9f](https://github.com/fabioluciano/tmux-powerkit/commit/59aad9f1b0fcf0578a0e15fbaea2591e25139988))
+
 ## [5.9.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.9.0...v5.9.1) (2026-01-07)
 
 ### Bug Fixes
