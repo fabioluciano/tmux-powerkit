@@ -35,6 +35,134 @@ source_guard "renderer_segment_builder" && return 0
 . "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 
 # =============================================================================
+# Icon Padding System
+# =============================================================================
+# Dynamic padding based on icon width detection using UTF-8 codepoint decoding.
+
+# Cache for icon widths
+declare -gA _ICON_WIDTH_CACHE=()
+declare -g _ICON_TARGET_WIDTH=""
+
+# Decode UTF-8 character to Unicode codepoint using od
+# This is more reliable than printf '%d' for multi-byte characters
+# Returns: codepoint as decimal number
+_decode_utf8_codepoint() {
+    local char="$1"
+    [[ -z "$char" ]] && { printf '0'; return; }
+
+    local bytes
+    bytes=$(printf '%s' "$char" | LC_ALL=C od -An -tx1 2>/dev/null | tr -d ' \n')
+    [[ -z "$bytes" ]] && { printf '0'; return; }
+
+    local len=${#bytes}
+    len=$((len / 2))  # Each byte is 2 hex chars
+
+    local b1 b2 b3 b4 codepoint=0
+
+    case $len in
+        1) codepoint=$((16#${bytes:0:2})) ;;
+        2) b1=$((16#${bytes:0:2})); b2=$((16#${bytes:2:2}))
+           codepoint=$(( ((b1 & 0x1F) << 6) | (b2 & 0x3F) )) ;;
+        3) b1=$((16#${bytes:0:2})); b2=$((16#${bytes:2:2})); b3=$((16#${bytes:4:2}))
+           codepoint=$(( ((b1 & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F) )) ;;
+        4) b1=$((16#${bytes:0:2})); b2=$((16#${bytes:2:2})); b3=$((16#${bytes:4:2})); b4=$((16#${bytes:6:2}))
+           codepoint=$(( ((b1 & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F) )) ;;
+    esac
+
+    printf '%d' "$codepoint"
+}
+
+# Detect icon width based on Unicode codepoint
+# Returns: 1 or 2
+# Note: All Nerd Font icons (E000-FFFF and F0000-FFFFF) are treated as 2-wide
+# because they are designed to be double-width in monospace terminals.
+# Only Powerline separators (E0B0-E0CF) are truly 1-wide.
+_detect_icon_width() {
+    local icon="$1"
+
+    [[ -z "$icon" ]] && { printf '1'; return; }
+
+    # Return cached value
+    [[ -n "${_ICON_WIDTH_CACHE[$icon]:-}" ]] && { printf '%s' "${_ICON_WIDTH_CACHE[$icon]}"; return; }
+
+    local width=2  # Default to 2-wide for icons
+    local codepoint
+    codepoint=$(_decode_utf8_codepoint "$icon")
+
+    # Powerline arrows (E0B0-E0CF) - true 1-wide separators
+    if (( codepoint >= 0xE0B0 && codepoint <= 0xE0CF )); then
+        width=1
+    # ASCII range (0-127) - 1-wide
+    elif (( codepoint < 128 )); then
+        width=1
+    fi
+    # All other icons (E000-EFFF, F000-FFFF, F0000-FFFFF, emoji) are 2-wide
+
+    _ICON_WIDTH_CACHE[$icon]="$width"
+    printf '%s' "$width"
+}
+
+# Get target width for icon section
+_get_icon_target_width() {
+    [[ -n "$_ICON_TARGET_WIDTH" ]] && { printf '%s' "$_ICON_TARGET_WIDTH"; return; }
+
+    local base_padding
+    base_padding=$(get_tmux_option "@powerkit_icon_padding" "${POWERKIT_DEFAULT_ICON_PADDING:-1}")
+
+    # Target = base_padding * 2 + 2 (accommodate 2-cell icons)
+    _ICON_TARGET_WIDTH=$(( base_padding * 2 + 2 ))
+
+    printf '%s' "$_ICON_TARGET_WIDTH"
+}
+
+# Get dynamic padding for icon
+# Returns: "left:right" counts
+_get_dynamic_icon_padding() {
+    local icon="$1"
+
+    local icon_width target total left right
+    icon_width=$(_detect_icon_width "$icon")
+    target=$(_get_icon_target_width)
+
+    total=$(( target - icon_width ))
+    (( total < 0 )) && total=0
+
+    # Symmetric distribution
+    left=$(( total / 2 ))
+    right=$(( total - left ))
+
+    printf '%d:%d' "$left" "$right"
+}
+
+# Generate N spaces
+_make_padding() {
+    local count="$1"
+    local pad=""
+    for ((i=0; i<count; i++)); do pad+=" "; done
+    printf '%s' "$pad"
+}
+
+# Static padding fallback
+_get_icon_padding() {
+    local padding_level
+    padding_level=$(get_tmux_option "@powerkit_icon_padding" "${POWERKIT_DEFAULT_ICON_PADDING:-1}")
+
+    case "$padding_level" in
+        0) printf '' ;;
+        1) printf ' ' ;;
+        2) printf '  ' ;;
+        3) printf '   ' ;;
+        *) printf ' ' ;;
+    esac
+}
+
+# Reset cache
+_reset_icon_padding_cache() {
+    _ICON_WIDTH_CACHE=()
+    _ICON_TARGET_WIDTH=""
+}
+
+# =============================================================================
 # Template System
 # =============================================================================
 
@@ -84,10 +212,14 @@ build_segment() {
     local sep_right="${_SEP_CACHE_RIGHT}"
     local sep_internal="${_SEP_CACHE_RIGHT}"
 
-    # Build icon section
+    # Build icon section with dynamic padding based on icon width
     local icon_section=""
     if [[ -n "$icon" ]]; then
-        icon_section="#[fg=${icon_fg},bg=${icon_bg}] ${icon} "
+        local left_count right_count left_pad right_pad
+        IFS=':' read -r left_count right_count <<< "$(_get_dynamic_icon_padding "$icon")"
+        left_pad=$(_make_padding "$left_count")
+        right_pad=$(_make_padding "$right_count")
+        icon_section="#[fg=${icon_fg},bg=${icon_bg}]${left_pad}${icon}${right_pad}"
     fi
 
     # Build content section
@@ -286,7 +418,7 @@ render_plugin_segment() {
         # First plugin: NO opening separator (starts directly from statusbar bg)
         # Other plugins: normal right separator
         if [[ $is_first -eq 1 ]]; then
-            # First plugin: add small padding from edge
+            # First plugin: small padding from edge
             segment+="#[bg=${icon_bg}] "
         else
             # Right-pointing (▶): fg=source (prev), bg=destination (icon)
@@ -307,6 +439,7 @@ render_plugin_segment() {
     fi
 
     # Icon section (no bold - icons don't need emphasis)
+    # No left padding (separator provides visual space), only right padding
     if [[ -n "$icon" ]]; then
         segment+="#[fg=${icon_fg},bg=${icon_bg}]${icon} "
         # Internal separator between icon and content

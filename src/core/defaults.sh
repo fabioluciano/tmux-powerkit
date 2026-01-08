@@ -297,6 +297,20 @@ POWERKIT_SEPARATOR_STYLES="normal rounded slant slantup trapezoid flame pixel ho
 #   "plugins" - Spacing only between plugins
 POWERKIT_DEFAULT_ELEMENTS_SPACING="false"
 
+# @powerkit_icon_padding - Padding around plugin icons
+# Controls spacing on each side of the icon within its segment.
+# Helps normalize visual spacing for icons with different widths.
+# Values:
+#   1 - Minimal padding (1 space each side) - compact look
+#   2 - Standard padding (2 spaces each side) - default, reduces width variation
+#   3 - Wide padding (3 spaces each side) - very generous spacing
+# Tip: If icons look inconsistently spaced, try increasing this value.
+POWERKIT_DEFAULT_ICON_PADDING="1"
+
+# Figure space character (U+2007) - same width as digits in most fonts
+# Used for more consistent icon padding when standard spaces vary
+POWERKIT_FIGURE_SPACE=$'\U00002007'
+
 # =============================================================================
 # SESSION CONFIGURATION
 # =============================================================================
