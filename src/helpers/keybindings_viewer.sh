@@ -71,7 +71,7 @@ format_key() {
 
 extract_plugin_from_path() {
     local path="$1"
-    [[ "$path" =~ /plugins/([^/]+)/ ]] && printf '%s' "${BASH_REMATCH[1]}" || printf ''
+    [[ "$path" =~ /plugins/([^/\'[:space:]]+) ]] && printf '%s' "${BASH_REMATCH[1]}" || printf ''
 }
 
 print_keybindings() {
@@ -89,9 +89,9 @@ print_keybindings() {
 
         # Parse line more efficiently using bash regex
         # Format: bind-key -T prefix <key> <command...>
-        if [[ "$line" =~ ^bind-key[[:space:]]+-T[[:space:]]+prefix[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)$ ]]; then
-            local key="${BASH_REMATCH[1]}"
-            local cmd="${BASH_REMATCH[2]}"
+        if [[ "$line" =~ ^bind-key([[:space:]]+-[[:alpha:]]+)*[[:space:]]+-T[[:space:]]+prefix[[:space:]]+([^[:space:]]+)[[:space:]]+(.+)$ ]]; then
+            local key="${BASH_REMATCH[2]}"
+            local cmd="${BASH_REMATCH[3]}"
             local plugin
 
             plugin=$(extract_plugin_from_path "$cmd")
