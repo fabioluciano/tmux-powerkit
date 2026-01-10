@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.10.2](https://github.com/fabioluciano/tmux-powerkit/compare/v5.10.1...v5.10.2) (2026-01-10)
+
+### Bug Fixes
+
+* **binary_manager:** add timeout to GitHub API request and update fallback version ([a34d9b7](https://github.com/fabioluciano/tmux-powerkit/commit/a34d9b7a4f639be708536bfb6d03a6c8e9cc8d5e))
+
 ## [5.10.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.10.0...v5.10.1) (2026-01-08)
 
 ### Bug Fixes
