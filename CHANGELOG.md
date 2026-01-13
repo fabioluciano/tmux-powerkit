@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.11.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.10.3...v5.11.0) (2026-01-12)
+
+### Features
+
+* **themes:** add ethereal ([39a802a](https://github.com/fabioluciano/tmux-powerkit/commit/39a802a2dee49ed5c8d7a68ed71f7ebeabc7a92f)), closes [#060B1E](https://github.com/fabioluciano/tmux-powerkit/issues/060B1E) [#ffcead](https://github.com/fabioluciano/tmux-powerkit/issues/ffcead) [#c89dc1](https://github.com/fabioluciano/tmux-powerkit/issues/c89dc1) [#a3bfd1](https://github.com/fabioluciano/tmux-powerkit/issues/a3bfd1) [#6d7db6](https://github.com/fabioluciano/tmux-powerkit/issues/6d7db6) [#92a593](https://github.com/fabioluciano/tmux-powerkit/issues/92a593) [#7d82d9](https://github.com/fabioluciano/tmux-powerkit/issues/7d82d9) [#E9BB4F](https://github.com/fabioluciano/tmux-powerkit/issues/E9BB4F)
+
 ## [5.10.3](https://github.com/fabioluciano/tmux-powerkit/compare/v5.10.2...v5.10.3) (2026-01-10)
 
 ### Bug Fixes
