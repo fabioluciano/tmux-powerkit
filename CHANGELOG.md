@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.12.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.11.0...v5.12.0) (2026-01-13)
+
+### Features
+
+* **themes:** add osaka-jade, hackerman, matte-black, ristretto themes ([9c7a1f9](https://github.com/fabioluciano/tmux-powerkit/commit/9c7a1f9b9ca830e24e862e6c7e80ab06759c5330))
+
 ## [5.11.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.10.3...v5.11.0) (2026-01-12)
 
 ### Features
