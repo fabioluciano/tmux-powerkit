@@ -93,6 +93,58 @@ run-shell ~/.tmux/plugins/tmux-powerkit/tmux-powerkit.tmux
 
 > See [Installation Guide](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) for more options (tarball, full clone).
 
+### Nix/NixOS
+#### flake
+
+Add to `flake.nix`:
+
+```nix
+{
+  inputs.tmux-powerkit.url = "github:fabioluciano/tmux-powerkit";
+}
+```
+
+Add to `configuration.nix` or `home.nix`:
+
+```nix
+programs.tmux = {
+  enable = true;
+  plugins = [{
+    plugin = inputs.tmux-powerkit.packages.${pkgs.system}.default;
+    extraConfig = ''
+      set -g @powerkit_plugins "datetime,battery,cpu,memory,git"
+      set -g @powerkit_theme "catppuccin"
+      set -g @powerkit_theme_variant "mocha"
+    '';
+  }];
+};
+```
+
+#### non-flake install:
+
+Add to your `configuration.nix` or `home.nix`:
+
+```nix
+let
+  tmux-powerkit = pkgs.callPackage (pkgs.fetchFromGitHub {
+    owner = "fabioluciano";
+    repo = "tmux-powerkit";
+    rev = "main";  # or pin to a specific commit
+    sha256 = "";   # nix will provide correct hash on first build
+  } + "/default.nix") {};
+in {
+  programs.tmux = {
+    enable = true;
+    plugins = [ tmux-powerkit ];
+    extraConfig = ''
+      set -g @powerkit_plugins "datetime,battery,cpu,memory,git"
+      set -g @powerkit_theme "catppuccin"
+      set -g @powerkit_theme_variant "mocha"
+    '';
+  };
+}
+```
+
 ### Your First Customization
 
 ```bash
