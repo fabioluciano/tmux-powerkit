@@ -335,6 +335,9 @@ POWERKIT_DEFAULT_SESSION_PREFIX_COLOR="session-prefix-bg"
 POWERKIT_DEFAULT_SESSION_COPY_MODE_COLOR="session-copy-bg"
 POWERKIT_DEFAULT_SESSION_NORMAL_COLOR="session-bg"
 
+# @powerkit_session_show_mode - Display session mode (copy/prefix/search/command)
+POWERKIT_DEFAULT_SESSION_SHOW_MODE="false"
+
 # =============================================================================
 # WINDOW CONFIGURATION
 # =============================================================================

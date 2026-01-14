@@ -255,11 +255,17 @@ _windows_build_format() {
     local icon_conditional
     icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_activity_flag,${activity_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}}}"
 
+    # Index display with show_index conditional
+    local index_display
+    index_display=$(window_get_index_display_conditional)
+
     local format=""
     format+="#[range=window|#{window_id}]"
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
-    format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
+    # Conditionally show index section
+    if [[ -n "$index_display" ]]; then
+        format+="#{?${index_display:3},#[fg=${index_fg},bg=${index_bg}${style_attr}]${index_display} #[fg=${index_bg},bg=${content_bg}]${_W_SEP_CHAR},}"
+    fi
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} "
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
@@ -296,11 +302,17 @@ _windows_build_current_format() {
     local icon_conditional
     icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}"
 
+    # Index display with show_index conditional
+    local index_display
+    index_display=$(window_get_index_display_conditional)
+
     local format=""
     format+="#[range=window|#{window_id}]"
     format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
-    format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
+    # Conditionally show index section
+    if [[ -n "$index_display" ]]; then
+        format+="#{?${index_display:3},#[fg=${index_fg},bg=${index_bg}${style_attr}]${index_display} #[fg=${index_bg},bg=${content_bg}]${_W_SEP_CHAR},}"
+    fi
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} $(pane_sync_format)"
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"

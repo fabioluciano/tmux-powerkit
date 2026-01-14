@@ -188,6 +188,36 @@ window_get_index_icon_format() {
     printf '%s' "$format"
 }
 
+# Get tmux conditional for window index display based on show_index settings
+# Returns: Conditional that evaluates to #{window_index} display or empty string
+# Respects @powerkit_active_window_show_index and @powerkit_inactive_window_show_index
+window_get_index_display_conditional() {
+    local active_show inactive_show
+    active_show=$(get_tmux_option "@powerkit_active_window_show_index" "true")
+    inactive_show=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
+
+    # If both are false, never show index
+    if [[ "$active_show" == "false" && "$inactive_show" == "false" ]]; then
+        printf ''
+        return
+    fi
+
+    # If only active should show index
+    if [[ "$active_show" == "true" && "$inactive_show" == "false" ]]; then
+        printf '#{?window_active,#{window_index},}'
+        return
+    fi
+
+    # If only inactive should show index (unlikely but supported)
+    if [[ "$active_show" == "false" && "$inactive_show" == "true" ]]; then
+        printf '#{?window_active,,#{window_index}}'
+        return
+    fi
+
+    # Both true: always show index
+    printf '#{window_index}'
+}
+
 # Get window index format based on settings
 # Uses @powerkit_window_index_style to determine display format
 # Values: text, numeric, box, box_outline, box_multiple, box_multiple_outline

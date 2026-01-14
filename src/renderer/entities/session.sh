@@ -70,6 +70,14 @@ _session_build_bg_condition() {
     printf '#{?client_prefix,%s,#{?pane_in_mode,%s,%s}}' "$prefix_bg" "$copy_bg" "$normal_bg"
 }
 
+# Build the mode text indicator (copy/prefix/search/command)
+# Returns: tmux format string with conditional mode text
+_session_build_mode_text() {
+    # All modes with proper nesting:
+    # prefix > search > copy > command > normal (no text)
+    printf '#{?client_prefix,(prefix) ,#{?pane_in_mode,#{?search_present,(search) ,(copy) },#{?command_prompt,(command) ,}}}'
+}
+
 # =============================================================================
 # Entity Interface (Required)
 # =============================================================================
@@ -84,16 +92,22 @@ session_render() {
     # side parameter not used - session has no internal separators
     # local side="${1:-left}"
 
-    local icon_condition bg_condition text_color
+    local icon_condition bg_condition text_color mode_text show_mode
 
     icon_condition=$(_session_build_icon_condition)
     bg_condition=$(_session_build_bg_condition)
     text_color=$(resolve_color "session-fg")
+    show_mode=$(get_tmux_option "@powerkit_session_show_mode" "${POWERKIT_DEFAULT_SESSION_SHOW_MODE}")
 
-    # Session content: bold text with mode-aware background
-    # Format: [icon] [session_name]
-    # NO external separators - those are added by the compositor
-    printf '#[fg=%s,bold,bg=%s] %s #S ' "$text_color" "$bg_condition" "$icon_condition"
+    # Build mode text if enabled
+    if [[ "$show_mode" == "true" ]]; then
+        mode_text=$(_session_build_mode_text)
+        # Session content: bold text with mode text and mode-aware background
+        printf '#[fg=%s,bold,bg=%s] %s #S %s' "$text_color" "$bg_condition" "$icon_condition" "$mode_text"
+    else
+        # Session content: bold text with mode-aware background (no mode display)
+        printf '#[fg=%s,bold,bg=%s] %s #S ' "$text_color" "$bg_condition" "$icon_condition"
+    fi
 }
 
 # Get the background color of the session
