@@ -1,0 +1,73 @@
+From 9091ff3eb1a2e37a7608b34c8ec25f6f2124edb8 Mon Sep 17 00:00:00 2001
+From: dokkodo1 <callum.dokkodo@gmail.com>
+Date: Wed, 14 Jan 2026 22:27:35 +0200
+Subject: [PATCH] docs: wiki/Installation.md - added Nix/Nixos installation
+ examples
+
+---
+ Installation.md | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 49 insertions(+)
+
+diff --git a/Installation.md b/Installation.md
+index 4eccb48..b5d481d 100644
+--- a/Installation.md
++++ b/Installation.md
+@@ -73,6 +73,55 @@ Reload tmux:
+ tmux source ~/.tmux.conf
+ ```
+ 
++### Nix/NixOS
++
++Add to `flake.nix`:
++
++```nix
++{
++  inputs.tmux-powerkit.url = "github:fabioluciano/tmux-powerkit";
++}
++```
++
++Add to `configuration.nix` or `home.nix`:
++
++```nix
++programs.tmux = {
++  enable = true;
++  plugins = [{
++    plugin = inputs.tmux-powerkit.packages.${pkgs.system}.default;
++    extraConfig = ''
++      set -g @powerkit_plugins "datetime,battery,cpu,memory,git"
++      set -g @powerkit_theme "catppuccin"
++      set -g @powerkit_theme_variant "mocha"
++    '';
++  }];
++};
++```
++
++For non-flake install, add to your `configuration.nix` or `home.nix`:
++
++```nix
++let
++  tmux-powerkit = pkgs.callPackage (pkgs.fetchFromGitHub {
++    owner = "fabioluciano";
++    repo = "tmux-powerkit";
++    rev = "main";  # or pin to a specific commit
++    sha256 = "";   # nix will provide correct hash on first build
++  } + "/default.nix") {};
++in {
++  programs.tmux = {
++    enable = true;
++    plugins = [ tmux-powerkit ];
++    extraConfig = ''
++      set -g @powerkit_plugins "datetime,battery,cpu,memory,git"
++      set -g @powerkit_theme "catppuccin"
++      set -g @powerkit_theme_variant "mocha"
++    '';
++  };
++}
++```
++
+ ## Verify Installation
+ 
+ After installation, you should see the PowerKit status bar. Press `prefix + C-e` to open the options viewer and verify the configuration.
+-- 
+2.52.0
+
