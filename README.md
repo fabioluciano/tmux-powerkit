@@ -94,7 +94,6 @@ run-shell ~/.tmux/plugins/tmux-powerkit/tmux-powerkit.tmux
 > See [Installation Guide](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) for more options (tarball, full clone).
 
 ### Nix/NixOS
-#### flake
 
 Add to `flake.nix`:
 
@@ -120,9 +119,7 @@ programs.tmux = {
 };
 ```
 
-#### non-flake install:
-
-Add to your `configuration.nix` or `home.nix`:
+For non-flake install, add to your `configuration.nix` or `home.nix`:
 
 ```nix
 let
