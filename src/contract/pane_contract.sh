@@ -362,15 +362,13 @@ pane_border_color() {
 }
 
 # Build pane border style string
-# Usage: pane_border_style "active|inactive|sync"
-# Returns:
-#  "fg=COLOR" if type is "active|inactive"
-#  "#{?pane_synchronized,fg=ACTIVE_COLOR,fg=INACTIVE_COLOR}" if type is "sync"
+# Usage: pane_border_style "active|inactive"
+# Returns: "fg=COLOR"
 pane_border_style() {
     local type="${1:-inactive}"
-    if [[ "$type" =~ ^(in)?active$ ]]; then
+    if [[ "$type" == "active" ]]; then
         printf 'fg=%s' "$(pane_border_color "$type")"
-    elif [[ "$type" == "sync" ]]; then
+    elif [[ "$type" == "inactive" ]]; then
         printf '#{?pane_synchronized,fg=%s,fg=%s}' "$(pane_border_color "active")" "$(pane_border_color "inactive")"
     fi
 }
@@ -471,7 +469,7 @@ pane_configure() {
     log_debug "pane" "Configuring panes"
 
     # Border styles
-    tmux set-option -g pane-border-style "$(pane_border_style "sync")"
+    tmux set-option -g pane-border-style "$(pane_border_style "inactive")"
     tmux set-option -g pane-active-border-style "$(pane_border_style "active")"
 
     # Border lines (tmux 3.2+)
