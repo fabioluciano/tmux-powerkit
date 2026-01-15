@@ -2,6 +2,13 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.14.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.13.1...v5.14.0) (2026-01-15)
+
+### Features
+
+* Highlight all pane borders when synchronized ([5366c82](https://github.com/fabioluciano/tmux-powerkit/commit/5366c8255777e6c8641ac584b7764526ade2f44c))
+* Refine the pane border color synchronization ([fa287ed](https://github.com/fabioluciano/tmux-powerkit/commit/fa287ed26732f68d2ad13a43aa5f4506541c107c))
+
 ## [5.13.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.13.0...v5.13.1) (2026-01-15)
 
 ### Features
