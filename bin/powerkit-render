@@ -141,8 +141,9 @@ fi
 cache_key=$(_render_cache_key "$side")
 
 # Fast path: return fresh cached render immediately
-cached_render=$(cache_get "$cache_key" "$_RENDER_CACHE_TTL" 2>/dev/null) || cached_render=""
-if [[ -n "$cached_render" ]]; then
+# Note: cache can be empty when all conditional plugins are hidden
+if cache_valid "$cache_key" "$_RENDER_CACHE_TTL"; then
+    cached_render=$(cache_get "$cache_key" "$_RENDER_CACHE_TTL" 2>/dev/null) || cached_render=""
     printf '%s' "$cached_render"
     exit 0
 fi
@@ -150,8 +151,9 @@ fi
 # Check if background render is already in progress
 if _is_render_in_progress; then
     # Return stale cache if exists, otherwise loading
-    stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
-    if [[ -n "$stale_render" ]]; then
+    # Note: cache can be empty when all conditional plugins are hidden
+    if cache_valid "$cache_key" 86400; then
+        stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
         printf '%s' "$stale_render"
     else
         _show_loading "$side"
@@ -164,8 +166,9 @@ cache_set "render_lock" "1"
 _render_background "$side" "$cache_key"
 
 # Return stale cache if exists, otherwise loading
-stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
-if [[ -n "$stale_render" ]]; then
+# Note: cache can be empty when all conditional plugins are hidden
+if cache_valid "$cache_key" 86400; then
+    stale_render=$(cache_get "$cache_key" 86400 2>/dev/null) || stale_render=""
     printf '%s' "$stale_render"
 else
     _show_loading "$side"
