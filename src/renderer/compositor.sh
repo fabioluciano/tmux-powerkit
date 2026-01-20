@@ -341,12 +341,29 @@ _get_windows_format_right_centered() {
     # Left-pointing (◀) for right element - per rule: right element edge points LEFT
     # ◀: fg = destination (first window index), bg = origin (gap)
     # Use #{base-index} to support both base-index=0 and base-index=1
-    local entry_sep_char
+    # Respect @powerkit_active_window_show_index and @powerkit_inactive_window_show_index
+    local entry_sep_char show_index_active show_index_inactive
     entry_sep_char=$(get_edge_left_separator)
+    show_index_active=$(get_tmux_option "@powerkit_active_window_show_index" "true")
+    show_index_inactive=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
+    
     if [[ -n "$entry_sep_char" ]]; then
-        local first_index_bg
-        first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
-        fmt+="#[fg=${first_index_bg},bg=${status_bg}]${entry_sep_char}"
+        local first_index_bg first_content_bg first_bg
+        first_content_bg=$(resolve_color "window-inactive-base")
+        
+        # Determine which background to use based on show_index settings
+        if [[ "$show_index_active" == "false" && "$show_index_inactive" == "false" ]]; then
+            # Never show index, use content color
+            first_bg="#{?#{==:#{active_window_index},#{base-index}},$(resolve_color 'window-active-base'),${first_content_bg}}"
+        elif [[ "$show_index_active" == "true" || "$show_index_inactive" == "true" ]]; then
+            # Show index for at least one state, use index color
+            first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
+            first_bg="$first_index_bg"
+        else
+            first_bg="$first_index_bg"
+        fi
+        
+        fmt+="#[fg=${first_bg},bg=${status_bg}]${entry_sep_char}"
     fi
 
     # === WINDOWS LIST (right-aligned) ===
@@ -420,12 +437,29 @@ _get_windows_format_centered() {
     # Left-pointing (◀) for entry - receiving from left gap
     # ◀: fg = destination (first window index), bg = origin (gap)
     # Use #{base-index} to support both base-index=0 and base-index=1
-    local entry_sep_char
+    # Respect @powerkit_active_window_show_index and @powerkit_inactive_window_show_index
+    local entry_sep_char show_index_active show_index_inactive
     entry_sep_char=$(get_edge_left_separator)
+    show_index_active=$(get_tmux_option "@powerkit_active_window_show_index" "true")
+    show_index_inactive=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
+    
     if [[ -n "$entry_sep_char" ]]; then
-        local first_index_bg
-        first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
-        fmt+="#[fg=${first_index_bg},bg=${status_bg}]${entry_sep_char}"
+        local first_index_bg first_content_bg first_bg
+        first_content_bg=$(resolve_color "window-inactive-base")
+        
+        # Determine which background to use based on show_index settings
+        if [[ "$show_index_active" == "false" && "$show_index_inactive" == "false" ]]; then
+            # Never show index, use content color
+            first_bg="#{?#{==:#{active_window_index},#{base-index}},$(resolve_color 'window-active-base'),${first_content_bg}}"
+        elif [[ "$show_index_active" == "true" || "$show_index_inactive" == "true" ]]; then
+            # Show index for at least one state, use index color
+            first_index_bg="#{?#{==:#{active_window_index},#{base-index}},${active_index_bg},${inactive_index_bg}}"
+            first_bg="$first_index_bg"
+        else
+            first_bg="$first_index_bg"
+        fi
+        
+        fmt+="#[fg=${first_bg},bg=${status_bg}]${entry_sep_char}"
     fi
 
     # === WINDOWS LIST (centered) ===

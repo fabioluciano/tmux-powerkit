@@ -2,6 +2,35 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.14.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.13.1...v5.14.0) (2026-01-15)
+
+### Features
+
+* Highlight all pane borders when synchronized ([5366c82](https://github.com/fabioluciano/tmux-powerkit/commit/5366c8255777e6c8641ac584b7764526ade2f44c))
+* Refine the pane border color synchronization ([fa287ed](https://github.com/fabioluciano/tmux-powerkit/commit/fa287ed26732f68d2ad13a43aa5f4506541c107c))
+
+## [5.13.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.13.0...v5.13.1) (2026-01-15)
+
+### Features
+
+* Added Nix packaging. Supports flake and non-flake installation. ([7e5fb95](https://github.com/fabioluciano/tmux-powerkit/commit/7e5fb95c9da2c83b247b5a8eb538212f7f0d8ff5))
+
+### Bug Fixes
+
+* update window index display logic and remove deprecated function ([9d714cd](https://github.com/fabioluciano/tmux-powerkit/commit/9d714cdb9e6b47d8d184d54da7296f4a4c885864))
+
+## [5.13.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.12.0...v5.13.0) (2026-01-14)
+
+### Features
+
+* add window index visibility and session mode display options ([376c792](https://github.com/fabioluciano/tmux-powerkit/commit/376c7927868b01661c456db60a0b134080a8906d))
+
+## [5.12.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.11.0...v5.12.0) (2026-01-13)
+
+### Features
+
+* **themes:** add osaka-jade, hackerman, matte-black, ristretto themes ([9c7a1f9](https://github.com/fabioluciano/tmux-powerkit/commit/9c7a1f9b9ca830e24e862e6c7e80ab06759c5330))
+
 ## [5.11.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.10.3...v5.11.0) (2026-01-12)
 
 ### Features

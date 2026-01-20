@@ -255,11 +255,26 @@ _windows_build_format() {
     local icon_conditional
     icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_activity_flag,${activity_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}}}"
 
+    # Check if index should be shown for inactive windows
+    local show_index
+    show_index=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
+
+    # Determine the first segment background (index if shown, otherwise content)
+    local first_segment_bg
+    if [[ "$show_index" == "true" ]]; then
+        first_segment_bg="$index_bg"
+    else
+        first_segment_bg="$content_bg"
+    fi
+
     local format=""
     format+="#[range=window|#{window_id}]"
-    format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
-    format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
+    format+=$(_windows_build_separator "$side" "$first_segment_bg" "$previous_bg")
+    # Show index section only if enabled
+    if [[ "$show_index" == "true" ]]; then
+        format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+        format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
+    fi
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} "
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
@@ -296,11 +311,26 @@ _windows_build_current_format() {
     local icon_conditional
     icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}"
 
+    # Check if index should be shown for active windows
+    local show_index
+    show_index=$(get_tmux_option "@powerkit_active_window_show_index" "true")
+
+    # Determine the first segment background (index if shown, otherwise content)
+    local first_segment_bg
+    if [[ "$show_index" == "true" ]]; then
+        first_segment_bg="$index_bg"
+    else
+        first_segment_bg="$content_bg"
+    fi
+
     local format=""
     format+="#[range=window|#{window_id}]"
-    format+=$(_windows_build_separator "$side" "$index_bg" "$previous_bg")
-    format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
-    format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
+    format+=$(_windows_build_separator "$side" "$first_segment_bg" "$previous_bg")
+    # Show index section only if enabled
+    if [[ "$show_index" == "true" ]]; then
+        format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+        format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
+    fi
     format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} $(pane_sync_format)"
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"

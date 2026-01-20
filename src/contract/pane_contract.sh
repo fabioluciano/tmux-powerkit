@@ -366,7 +366,11 @@ pane_border_color() {
 # Returns: "fg=COLOR"
 pane_border_style() {
     local type="${1:-inactive}"
-    printf 'fg=%s' "$(pane_border_color "$type")"
+    if [[ "$type" == "active" ]]; then
+        printf 'fg=%s' "$(pane_border_color "$type")"
+    elif [[ "$type" == "inactive" ]]; then
+        printf '#{?pane_synchronized,fg=%s,fg=%s}' "$(pane_border_color "active")" "$(pane_border_color "inactive")"
+    fi
 }
 
 # =============================================================================
