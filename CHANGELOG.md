@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.15.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.14.0...v5.15.0) (2026-01-20)
+
+### Features
+
+* **theme:** add abyss, lagoon and starlight themes ([#174](https://github.com/fabioluciano/tmux-powerkit/issues/174)) ([8fda89c](https://github.com/fabioluciano/tmux-powerkit/commit/8fda89c7672ab6aa64935b454e6c2f1992135e58))
+
 ## [5.14.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.13.1...v5.14.0) (2026-01-15)
 
 ### Features
