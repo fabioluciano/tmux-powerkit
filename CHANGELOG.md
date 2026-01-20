@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.16.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.15.0...v5.16.0) (2026-01-20)
+
+### Features
+
+* update theme variants count to 68 and improve cache validation in powerkit-render ([#175](https://github.com/fabioluciano/tmux-powerkit/issues/175)) ([f17a09c](https://github.com/fabioluciano/tmux-powerkit/commit/f17a09c0f46ad69c2fe1d1fda200cbabad159876))
+
 ## [5.15.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.14.0...v5.15.0) (2026-01-20)
 
 ### Features
