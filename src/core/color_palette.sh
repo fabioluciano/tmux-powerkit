@@ -89,6 +89,46 @@ declare -gA _MESSAGE_COLORS=(
 )
 
 # =============================================================================
+# Contrast Utilities
+# =============================================================================
+
+# Determine whether to use light or dark text based on background luminance
+# Usage: get_contrast_variant "color-name-or-hex"
+# Returns: "darkest" for light backgrounds, "lightest" for dark backgrounds
+get_contrast_variant() {
+    local color_input="$1"
+    local hex
+
+    # If it looks like a hex color, use directly; otherwise resolve the name
+    if [[ "$color_input" == \#* ]]; then
+        hex="$color_input"
+    else
+        hex=$(get_color "$color_input")
+    fi
+    hex="${hex#\#}"
+
+    # Validate hex format (must be 6 hex digits)
+    if [[ ! "$hex" =~ ^[0-9a-fA-F]{6}$ ]]; then
+        # Cannot determine luminance; assume dark background
+        printf 'lightest'
+        return
+    fi
+
+    local r=$((16#${hex:0:2}))
+    local g=$((16#${hex:2:2}))
+    local b=$((16#${hex:4:2}))
+
+    # Perceived luminance (ITU-R BT.601)
+    local luminance=$(( (299 * r + 587 * g + 114 * b) / 1000 ))
+
+    if [[ "$luminance" -gt 128 ]]; then
+        printf 'darkest'
+    else
+        printf 'lightest'
+    fi
+}
+
+# =============================================================================
 # Public API
 # =============================================================================
 
@@ -146,19 +186,14 @@ get_plugin_colors() {
     # Icon background (lighter variant)
     icon_bg=$(get_color "${base_color}-lighter")
 
-    # Text color: OK uses white, all others use -darkest for contrast
-    case "$health" in
-        ok)
-            # OK state: white text on dark background
-            content_fg=$(get_color "white")
-            icon_fg=$(get_color "white")
-            ;;
-        *)
-            # INFO/WARNING/ERROR: use -darkest variant for better contrast
-            content_fg=$(get_color "${base_color}-darkest")
-            icon_fg=$(get_color "${base_color}-darkest")
-            ;;
-    esac
+    # Text color: choose light or dark based on background luminance
+    local fg_variant
+    fg_variant=$(get_contrast_variant "$content_bg")
+    content_fg=$(get_color "${base_color}-${fg_variant}")
+
+    local icon_fg_variant
+    icon_fg_variant=$(get_contrast_variant "$icon_bg")
+    icon_fg=$(get_color "${base_color}-${icon_fg_variant}")
 
     # If state is inactive/failed, override all colors
     case "$state" in

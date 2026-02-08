@@ -635,8 +635,26 @@ _resolve_plugin_colors() {
         local content_bg content_fg icon_bg icon_fg
         content_bg=$(resolve_color "${accent:-ok-base}")
         icon_bg=$(resolve_color "${accent_icon:-${accent:-ok-base}-lighter}")
-        content_fg=$(resolve_color "${accent:-ok-base}-darkest")
-        icon_fg=$(resolve_color "${accent_icon:-${accent:-ok-base}}-darkest")
+
+        if [[ "${accent}" == \#* ]]; then
+            # Raw hex accent: use black/white for guaranteed contrast
+            content_fg=$(get_contrast_fg "$content_bg")
+        else
+            # Theme color name: use matching variant for harmony
+            local fg_variant
+            fg_variant=$(get_contrast_variant "$content_bg")
+            content_fg=$(resolve_color "${accent}-${fg_variant}")
+        fi
+
+        local effective_icon_accent="${accent_icon:-${accent:-ok-base}}"
+        if [[ "${effective_icon_accent}" == \#* ]]; then
+            icon_fg=$(get_contrast_fg "$icon_bg")
+        else
+            local icon_fg_variant
+            icon_fg_variant=$(get_contrast_variant "$icon_bg")
+            icon_fg=$(resolve_color "${effective_icon_accent}-${icon_fg_variant}")
+        fi
+
         printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
     else
         # Regular plugin: resolve via state/health

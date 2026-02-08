@@ -60,8 +60,11 @@ _windows_get_colors() {
 
     if [[ "$state" == "active" ]]; then
         base_color="window-active-base"
-        index_fg=$(resolve_color "${base_color}-lightest")
-        content_fg=$(resolve_color "${base_color}-lightest")
+        # Choose text color based on background luminance for readability
+        local fg_variant
+        fg_variant=$(get_contrast_variant "$base_color")
+        index_fg=$(resolve_color "${base_color}-${fg_variant}")
+        content_fg=$(resolve_color "${base_color}-${fg_variant}")
     else
         base_color="window-inactive-base"
         index_fg=$(resolve_color "white")

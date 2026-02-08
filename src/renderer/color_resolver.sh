@@ -91,6 +91,23 @@ resolve_color() {
 }
 
 # =============================================================================
+# Contrast Utilities
+# =============================================================================
+
+# Get a black or white foreground color based on background luminance
+# Usage: get_contrast_fg "#fab387"
+# Returns: hex color ("#000000" for light bg, "#ffffff" for dark bg)
+get_contrast_fg() {
+    local variant
+    variant=$(get_contrast_variant "$1")
+    if [[ "$variant" == "darkest" ]]; then
+        printf '#000000'
+    else
+        printf '#ffffff'
+    fi
+}
+
+# =============================================================================
 # Plugin Color Resolution
 # =============================================================================
 
@@ -291,40 +308,3 @@ reset_style() {
     printf '#[default]'
 }
 
-# =============================================================================
-# Color Utilities
-# =============================================================================
-
-# Get contrasting text color for a background
-# Usage: get_contrast_color "#1a1b26"
-# Returns appropriate fg color based on background luminance
-get_contrast_color() {
-    local bg="$1"
-
-    # Remove # if present
-    bg="${bg#\#}"
-
-    # Default to light text (statusbar-fg is light for dark themes)
-    local light_text dark_text
-    light_text=$(resolve_color "statusbar-fg")
-    dark_text=$(resolve_color "session-fg")
-
-    # If not a valid hex, return default light text
-    [[ ! "$bg" =~ ^[0-9a-fA-F]{6}$ ]] && { printf '%s' "$light_text"; return; }
-
-    # Calculate luminance (simplified)
-    local r=$((16#${bg:0:2}))
-    local g=$((16#${bg:2:2}))
-    local b=$((16#${bg:4:2}))
-
-    # Perceived luminance formula
-    local luminance=$(( (r * 299 + g * 587 + b * 114) / 1000 ))
-
-    if (( luminance > 128 )); then
-        # Light background - use dark text
-        printf '%s' "$dark_text"
-    else
-        # Dark background - use light text
-        printf '%s' "$light_text"
-    fi
-}
