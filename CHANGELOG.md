@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.17.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.17.0...v5.17.1) (2026-02-08)
+
+### Bug Fixes
+
+* **windows:** add left padding to window tab content ([#180](https://github.com/fabioluciano/tmux-powerkit/issues/180)) ([554a6e2](https://github.com/fabioluciano/tmux-powerkit/commit/554a6e24adf58921ece8be765e8f16ff1489dce1))
+
 ## [5.17.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.16.0...v5.17.0) (2026-01-29)
 
 ### Features
