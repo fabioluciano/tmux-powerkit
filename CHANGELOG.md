@@ -2,6 +2,22 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.18.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.0...v5.18.1) (2026-02-10)
+
+### Bug Fixes
+
+* **plugins:** count iowait as idle time ([#185](https://github.com/fabioluciano/tmux-powerkit/issues/185)) ([9c5a528](https://github.com/fabioluciano/tmux-powerkit/commit/9c5a528a6a7b3d1ecebce20321ae0c071467dc21))
+
+## [5.18.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.17.1...v5.18.0) (2026-02-08)
+
+### Features
+
+* **renderer:** add luminance-based contrast for text readability ([#181](https://github.com/fabioluciano/tmux-powerkit/issues/181)) ([dbd80b1](https://github.com/fabioluciano/tmux-powerkit/commit/dbd80b1ca967eaf88f98298c6a231fe62c5d4981))
+
+### Reverts
+
+* Revert "fix(windows): add left padding to window tab content ([#180](https://github.com/fabioluciano/tmux-powerkit/issues/180))" ([#182](https://github.com/fabioluciano/tmux-powerkit/issues/182)) ([5d5ce4c](https://github.com/fabioluciano/tmux-powerkit/commit/5d5ce4c932f2be847ba66922b2bcf8f8dedcc509))
+
 ## [5.17.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.17.0...v5.17.1) (2026-02-08)
 
 ### Bug Fixes
