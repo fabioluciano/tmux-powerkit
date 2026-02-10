@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.18.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.0...v5.18.1) (2026-02-10)
+
+### Bug Fixes
+
+* **plugins:** count iowait as idle time ([#185](https://github.com/fabioluciano/tmux-powerkit/issues/185)) ([9c5a528](https://github.com/fabioluciano/tmux-powerkit/commit/9c5a528a6a7b3d1ecebce20321ae0c071467dc21))
+
 ## [5.18.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.17.1...v5.18.0) (2026-02-08)
 
 ### Features
