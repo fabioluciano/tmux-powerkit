@@ -92,7 +92,7 @@ _get_cpu_linux() {
     line=$(grep '^cpu ' /proc/stat 2>/dev/null)
     [[ -z "$line" ]] && { echo "0"; return; }
     read -ra vals <<< "${line#cpu }"
-    idle1=${vals[3]}
+    idle1=$((vals[3] + vals[4]))
     total1=0
     for v in "${vals[@]}"; do
         total1=$((total1 + v))
@@ -104,7 +104,7 @@ _get_cpu_linux() {
     # Second sample
     line=$(grep '^cpu ' /proc/stat 2>/dev/null)
     read -ra vals <<< "${line#cpu }"
-    idle2=${vals[3]}
+    idle2=$((vals[3] + vals[4]))
     total2=0
     for v in "${vals[@]}"; do
         total2=$((total2 + v))
