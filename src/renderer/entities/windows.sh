@@ -60,11 +60,8 @@ _windows_get_colors() {
 
     if [[ "$state" == "active" ]]; then
         base_color="window-active-base"
-        # Choose text color based on background luminance for readability
-        local fg_variant
-        fg_variant=$(get_contrast_variant "$base_color")
-        index_fg=$(resolve_color "${base_color}-${fg_variant}")
-        content_fg=$(resolve_color "${base_color}-${fg_variant}")
+        index_fg=$(resolve_color "${base_color}-lightest")
+        content_fg=$(resolve_color "${base_color}-lightest")
     else
         base_color="window-inactive-base"
         index_fg=$(resolve_color "white")
@@ -275,10 +272,20 @@ _windows_build_format() {
     format+=$(_windows_build_separator "$side" "$first_segment_bg" "$previous_bg")
     # Show index section only if enabled
     if [[ "$show_index" == "true" ]]; then
-        format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+        # Add left padding only when rendering from left side
+        if [[ "$side" == "left" ]]; then
+            format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display)"
+        else
+            format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+        fi
         format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
     fi
-    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} "
+    # Add left padding only when rendering from left side
+    if [[ "$side" == "left" ]]; then
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} "
+    else
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} "
+    fi
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
 
@@ -331,10 +338,20 @@ _windows_build_current_format() {
     format+=$(_windows_build_separator "$side" "$first_segment_bg" "$previous_bg")
     # Show index section only if enabled
     if [[ "$show_index" == "true" ]]; then
-        format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+        # Add left padding only when rendering from left side
+        if [[ "$side" == "left" ]]; then
+            format+="#[fg=${index_fg},bg=${index_bg}${style_attr}] $(window_get_index_display)"
+        else
+            format+="#[fg=${index_fg},bg=${index_bg}${style_attr}]$(window_get_index_display) "
+        fi
         format+=$(_windows_build_index_sep "$side" "$index_bg" "$content_bg")
     fi
-    format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} $(pane_sync_format)"
+    # Add left padding only when rendering from left side
+    if [[ "$side" == "left" ]]; then
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} $(pane_sync_format)"
+    else
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} $(pane_sync_format)"
+    fi
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
 
