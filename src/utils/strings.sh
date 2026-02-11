@@ -66,28 +66,6 @@ truncate_words() {
     printf '%s%s' "$truncated" "$ellipsis"
 }
 
-# Truncate with ellipsis in the middle
-# Usage: truncate_middle "very_long_filename.txt" 15  # Returns "very_l...me.txt"
-truncate_middle() {
-    local text="$1"
-    local max_len="$2"
-    local ellipsis="${3:-...}"
-
-    [[ "$max_len" -le 0 ]] && { printf '%s' "$text"; return; }
-
-    if [[ ${#text} -le $max_len ]]; then
-        printf '%s' "$text"
-        return
-    fi
-
-    local ellipsis_len=${#ellipsis}
-    local available=$((max_len - ellipsis_len))
-    local front=$((available / 2))
-    local back=$((available - front))
-
-    printf '%s%s%s' "${text:0:$front}" "$ellipsis" "${text: -$back}"
-}
-
 # =============================================================================
 # String Joining
 # =============================================================================
@@ -111,20 +89,6 @@ join_with_separator() {
     done
 
     printf '%s' "$result"
-}
-
-# Join non-empty items only
-# Usage: join_non_empty " " "a" "" "b"  # Returns "a b"
-join_non_empty() {
-    local separator="$1"
-    shift
-
-    local items=()
-    for item in "$@"; do
-        [[ -n "$item" ]] && items+=("$item")
-    done
-
-    join_with_separator "$separator" "${items[@]}"
 }
 
 # =============================================================================
@@ -203,20 +167,6 @@ capitalize() {
     printf '%s%s' "${text:0:1}" "${text:1}" | { read -r first rest; printf '%s%s' "${first^}" "$rest"; }
 }
 
-# Convert to title case
-# Usage: to_title "hello world"  # Returns "Hello World"
-to_title() {
-    local text="$1"
-    local result=""
-    local word
-
-    for word in $text; do
-        result+="${word^} "
-    done
-
-    printf '%s' "${result% }"  # Trim trailing space
-}
-
 # =============================================================================
 # String Search and Replace
 # =============================================================================
@@ -263,117 +213,6 @@ replace_all() {
     printf '%s' "${string//$search/$replace}"
 }
 
-# Remove all occurrences
-# Usage: remove_all "hello world" "o"  # Returns "hell wrld"
-remove_all() {
-    local string="$1"
-    local pattern="$2"
-    printf '%s' "${string//$pattern/}"
-}
-
-# =============================================================================
-# String Extraction
-# =============================================================================
-
-# Get substring
-# Usage: substring "hello world" 0 5  # Returns "hello"
-substring() {
-    local string="$1"
-    local start="$2"
-    local length="${3:-}"
-
-    if [[ -n "$length" ]]; then
-        printf '%s' "${string:$start:$length}"
-    else
-        printf '%s' "${string:$start}"
-    fi
-}
-
-# Get string length
-# Usage: str_length "hello"  # Returns "5"
-str_length() {
-    printf '%d' "${#1}"
-}
-
-# Split string by delimiter
-# Usage: IFS=',' read -ra parts <<< "$(split_string "a,b,c" ",")"
-split_string() {
-    local string="$1"
-    local delimiter="$2"
-
-    local IFS="$delimiter"
-    printf '%s\n' $string
-}
-
-# =============================================================================
-# String Validation
-# =============================================================================
-
-# Check if string is empty or whitespace only
-# Usage: is_blank "   " && echo "blank"
-is_blank() {
-    local text="$1"
-    [[ -z "${text// /}" ]]
-}
-
-# Check if string is a valid identifier (alphanumeric + underscore)
-# Usage: is_identifier "my_var" && echo "valid"
-is_identifier() {
-    local text="$1"
-    [[ "$text" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]
-}
-
-# Check if string is numeric
-# Usage: is_numeric "123" && echo "numeric"
-is_numeric() {
-    local text="$1"
-    [[ "$text" =~ ^-?[0-9]+\.?[0-9]*$ ]]
-}
-
-# =============================================================================
-# Padding
-# =============================================================================
-
-# Pad string to the right
-# Usage: pad_right "hi" 5  # Returns "hi   "
-pad_right() {
-    local text="$1"
-    local width="$2"
-    local char="${3:- }"
-
-    printf '%-*s' "$width" "$text"
-}
-
-# Pad string to the left
-# Usage: pad_left "hi" 5  # Returns "   hi"
-pad_left() {
-    local text="$1"
-    local width="$2"
-    # shellcheck disable=SC2034 # Reserved for future use with custom padding char
-    local char="${3:- }"
-
-    printf '%*s' "$width" "$text"
-}
-
-# Center string
-# Usage: center "hi" 10  # Returns "    hi    "
-center() {
-    local text="$1"
-    local width="$2"
-    local text_len=${#text}
-
-    if (( text_len >= width )); then
-        printf '%s' "$text"
-        return
-    fi
-
-    local total_padding=$((width - text_len))
-    local left_padding=$((total_padding / 2))
-    local right_padding=$((total_padding - left_padding))
-
-    printf '%*s%s%*s' "$left_padding" "" "$text" "$right_padding" ""
-}
-
 # =============================================================================
 # String Hashing
 # =============================================================================
@@ -401,53 +240,6 @@ string_hash() {
 # =============================================================================
 
 # NOTE: format_bytes is in numbers.sh - use that for byte formatting
-
-# Format seconds to human-readable duration
-# Usage: format_duration 3665  # Returns "1h 1m 5s"
-format_duration() {
-    local seconds="${1:-0}"
-    local show_seconds="${2:-true}"
-    
-    [[ -z "$seconds" || "$seconds" == "-" ]] && { echo "0s"; return; }
-    seconds=${seconds%.*}  # Remove decimal part
-    [[ "$seconds" -lt 0 ]] && seconds=0
-    
-    local days=$((seconds / 86400))
-    local hours=$(( (seconds % 86400) / 3600 ))
-    local mins=$(( (seconds % 3600) / 60 ))
-    local secs=$((seconds % 60))
-    
-    local result=""
-    [[ $days -gt 0 ]] && result="${days}d "
-    [[ $hours -gt 0 ]] && result="${result}${hours}h "
-    [[ $mins -gt 0 ]] && result="${result}${mins}m "
-    
-    if [[ "$show_seconds" == "true" ]] || [[ -z "$result" ]]; then
-        result="${result}${secs}s"
-    fi
-    
-    echo "${result% }"  # Remove trailing space
-}
-
-# Format percentage with optional precision
-# Usage: format_percentage 0.856 1  # Returns "85.6%"
-format_percentage() {
-    local value="${1:-0}"
-    local precision="${2:-0}"
-    
-    [[ -z "$value" || "$value" == "-" ]] && { echo "0%"; return; }
-    
-    # If value is already percentage (>1), use as-is, otherwise multiply by 100
-    local percent
-    if (( $(echo "$value > 1" | bc -l 2>/dev/null || echo 0) )); then
-        percent=$value
-    else
-        percent=$(awk "BEGIN {printf \"%.${precision}f\", $value * 100}")
-    fi
-    
-    printf "%.${precision}f%%" "$percent"
-}
-
 # NOTE: format_number is in numbers.sh - use that for number formatting with thousands separator
 
 # Format seconds to mm:ss timer format

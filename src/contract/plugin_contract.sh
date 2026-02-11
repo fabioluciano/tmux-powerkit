@@ -457,6 +457,95 @@ require_platform() {
 }
 
 # =============================================================================
+# Icon Selection Helpers
+# =============================================================================
+
+# Select icon based on health level
+# Usage: plugin_get_icon_by_health "$(plugin_get_health)"
+# Returns: icon_critical if error, icon_warning if warning, icon otherwise
+#
+# Example:
+#   plugin_get_icon() {
+#       plugin_get_icon_by_health "$(plugin_get_health)"
+#   }
+#
+plugin_get_icon_by_health() {
+    local health="${1:-ok}"
+    local default_icon=$(get_option "icon")
+    local warning_icon=$(get_option "icon_warning")
+    local critical_icon=$(get_option "icon_critical")
+
+    case "$health" in
+        error)
+            [[ -n "$critical_icon" ]] && { printf '%s' "$critical_icon"; return; }
+            printf '%s' "$default_icon"
+            ;;
+        warning)
+            [[ -n "$warning_icon" ]] && { printf '%s' "$warning_icon"; return; }
+            printf '%s' "$default_icon"
+            ;;
+        *)
+            printf '%s' "$default_icon"
+            ;;
+    esac
+}
+
+# Select icon based on boolean state (on/off, connected/disconnected, etc.)
+# Usage: plugin_get_icon_by_state "$is_active" "icon_on" "icon_off"
+#
+# Example:
+#   plugin_get_icon() {
+#       local muted=$(plugin_data_get "muted")
+#       plugin_get_icon_by_state "$muted" "icon_muted" "icon"
+#   }
+#
+plugin_get_icon_by_state() {
+    local state="$1"
+    local on_option="${2:-icon_on}"
+    local off_option="${3:-icon_off}"
+    local default_option="${4:-icon}"
+
+    if [[ "$state" == "1" || "$state" == "true" || "$state" == "yes" ]]; then
+        get_option "$on_option"
+    elif [[ "$state" == "0" || "$state" == "false" || "$state" == "no" ]]; then
+        get_option "$off_option"
+    else
+        get_option "$default_option"
+    fi
+}
+
+# Select icon from multiple options based on value range
+# Usage: plugin_get_icon_by_range "$percent" "20:icon_critical" "50:icon_warning" "icon"
+#
+# Example:
+#   plugin_get_icon() {
+#       local percent=$(plugin_data_get "percent")
+#       plugin_get_icon_by_range "$percent" "15:icon_critical" "30:icon_low" "icon"
+#   }
+#
+plugin_get_icon_by_range() {
+    local value="$1"
+    shift
+    local default_icon="${!#}"  # Last argument
+
+    # Process range specifications
+    for spec in "$@"; do
+        if [[ "$spec" =~ ^([0-9]+):(.+)$ ]]; then
+            local threshold="${BASH_REMATCH[1]}"
+            local icon="${BASH_REMATCH[2]}"
+
+            if (( value <= threshold )); then
+                printf '%s' "$(get_option "$icon")"
+                return
+            fi
+        fi
+    done
+
+    # Default
+    printf '%s' "$(get_option "$default_icon")"
+}
+
+# =============================================================================
 # Common Plugin Data Helpers
 # =============================================================================
 
@@ -486,6 +575,88 @@ plugin_data_set_multi() {
         plugin_data_set "$1" "$2"
         shift 2
     done
+}
+
+# =============================================================================
+# Context Generation Helpers
+# =============================================================================
+# These helpers reduce DRY violations across plugins that generate context
+# strings based on health levels or other state values.
+
+# Generate context string from health level with custom prefix
+# Usage: plugin_context_from_health "$(plugin_get_health)" "cpu"
+# Returns: cpu_error, cpu_warning, cpu_ok based on health
+#
+# Example:
+#   plugin_get_context() {
+#       plugin_context_from_health "$(plugin_get_health)" "load"
+#   }
+#   # Returns: load_error, load_warning, load_ok
+#
+plugin_context_from_health() {
+    local health="${1:-ok}"
+    local prefix="${2:-state}"
+
+    case "$health" in
+        error)   printf '%s_error' "$prefix" ;;
+        warning) printf '%s_warning' "$prefix" ;;
+        info)    printf '%s_info' "$prefix" ;;
+        good)    printf '%s_good' "$prefix" ;;
+        *)       printf '%s_ok' "$prefix" ;;
+    esac
+}
+
+# Generate context from boolean state
+# Usage: plugin_context_from_state "$is_active" "connected" "disconnected"
+#
+# Example:
+#   plugin_get_context() {
+#       local vpn_active=$(plugin_data_get "vpn_active")
+#       plugin_context_from_state "$vpn_active" "connected" "disconnected"
+#   }
+#
+plugin_context_from_state() {
+    local state="$1"
+    local on_context="$2"
+    local off_context="$3"
+
+    if [[ "$state" == "1" || "$state" == "true" || "$state" == "yes" ]]; then
+        printf '%s' "$on_context"
+    else
+        printf '%s' "$off_context"
+    fi
+}
+
+# Generate context with custom value mapping
+# Usage: plugin_context_from_value "$value" "match1:context1" "match2:context2" "default"
+#
+# Example:
+#   plugin_get_context() {
+#       local status=$(plugin_data_get "status")
+#       plugin_context_from_value "$status" \
+#           "charging:charging" \
+#           "discharging:on_battery" \
+#           "full:fully_charged" \
+#           "unknown"
+#   }
+#
+plugin_context_from_value() {
+    local value="$1"
+    shift
+    local default="${!#}"  # Last argument is default
+
+    # Try each mapping
+    for mapping in "$@"; do
+        if [[ "$mapping" =~ ^([^:]+):(.+)$ ]]; then
+            local match_value="${BASH_REMATCH[1]}"
+            local context="${BASH_REMATCH[2]}"
+
+            [[ "$value" == "$match_value" ]] && { printf '%s' "$context"; return; }
+        fi
+    done
+
+    # Default
+    printf '%s' "$default"
 }
 
 # =============================================================================

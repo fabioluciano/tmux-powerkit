@@ -134,8 +134,7 @@ tmux-powerkit/
 │   │   ├── strings.sh              # String manipulation
 │   │   ├── numbers.sh              # Numeric utilities
 │   │   ├── filesystem.sh           # File operations
-│   │   ├── clipboard.sh            # Clipboard operations
-│   │   └── hooks.sh                # Tmux hooks management
+│   │   └── clipboard.sh            # Clipboard operations
 │   ├── contract/                   # Contract Definitions
 │   │   ├── plugin_contract.sh      # Plugin interface + helpers
 │   │   ├── session_contract.sh     # Session interface
@@ -425,6 +424,187 @@ check_dependencies "curl" "jq" || return 1
 has_cmd "fzf" && use_fzf_feature
 ```
 
+## Context Generation Helpers
+
+Use in `plugin_get_context()` to eliminate DRY violations:
+
+```bash
+# Generate context from health level
+# Returns: prefix_error, prefix_warning, prefix_info, prefix_good, prefix_ok
+plugin_context_from_health "$(plugin_get_health)" "cpu_load"
+
+# Generate context from boolean state
+plugin_context_from_state "$vpn_active" "connected" "disconnected"
+
+# Generate context from value mapping
+plugin_context_from_value "$status" \
+    "charging:charging" \
+    "discharging:on_battery" \
+    "full:fully_charged" \
+    "unknown"
+```
+
+**Example (cpu.sh):**
+
+```bash
+# OLD (8 lines):
+plugin_get_context() {
+    local health
+    health=$(plugin_get_health)
+
+    case "$health" in
+        error)   printf 'critical_load' ;;
+        warning) printf 'high_load' ;;
+        *)       printf 'normal_load' ;;
+    esac
+}
+
+# NEW (2 lines):
+plugin_get_context() {
+    plugin_context_from_health "$(plugin_get_health)" "cpu_load"
+}
+# Returns: cpu_load_error, cpu_load_warning, cpu_load_ok
+```
+
+**Example (battery.sh):**
+
+```bash
+# NEW:
+plugin_get_context() {
+    local status=$(plugin_data_get "status")
+    plugin_context_from_value "$status" \
+        "charging:charging" \
+        "discharging:on_battery" \
+        "charged:fully_charged" \
+        "ac_power:ac_power" \
+        "unknown"
+}
+# Returns: charging, on_battery, fully_charged, ac_power, or unknown
+```
+
+**Benefits:**
+
+- **Saves 4-8 lines per plugin** × 15 plugins = **60-120 lines**
+- Standardized context generation patterns
+- Three helpers cover common scenarios: health-based, boolean, and value mapping
+
+## Icon Selection Helpers
+
+Use in `plugin_get_icon()` to eliminate DRY violations for health-based and state-based icon selection:
+
+```bash
+# Select icon based on health level
+# Returns: icon_critical if error, icon_warning if warning, icon otherwise
+plugin_get_icon_by_health "$(plugin_get_health)"
+
+# Select icon based on boolean state (on/off, connected/disconnected, etc.)
+plugin_get_icon_by_state "$muted" "icon_muted" "icon"
+
+# Select icon from value ranges (e.g., battery levels)
+plugin_get_icon_by_range "$percent" "15:icon_critical" "30:icon_low" "icon"
+```
+
+**Example (battery.sh):**
+
+```bash
+# OLD (31 lines):
+plugin_get_icon() {
+    local percent status health
+
+    percent=$(plugin_data_get "percent")
+    status=$(plugin_data_get "status")
+    health=$(plugin_get_health)
+
+    percent="${percent:-0}"
+
+    case "$status" in
+        charging|charged|ac_power)
+            get_option "icon_charging"
+            return
+            ;;
+    esac
+
+    # Critical battery
+    if [[ "$health" == "error" ]]; then
+        get_option "icon_critical"
+        return
+    fi
+
+    # Low battery (warning)
+    if [[ "$health" == "warning" ]]; then
+        get_option "icon_low"
+        return
+    fi
+
+    # Default icon (battery ok)
+    get_option "icon"
+}
+
+# NEW (14 lines - 55% reduction):
+plugin_get_icon() {
+    local status
+    status=$(plugin_data_get "status")
+
+    # Charging/AC power takes precedence
+    case "$status" in
+        charging|charged|ac_power)
+            get_option "icon_charging"
+            return
+            ;;
+    esac
+
+    # Use health-based icon selection (icon_critical -> icon_low -> icon)
+    plugin_get_icon_by_health "$(plugin_get_health)"
+}
+```
+
+**Example (volume.sh):**
+
+```bash
+# OLD:
+plugin_get_icon() {
+    local muted=$(plugin_data_get "muted")
+    [[ "$muted" == "1" ]] && get_option "icon_muted" || get_option "icon"
+}
+
+# NEW (clearer):
+plugin_get_icon() {
+    local muted=$(plugin_data_get "muted")
+    plugin_get_icon_by_state "$muted" "icon_muted" "icon"
+}
+```
+
+**Example (temperature.sh):**
+
+```bash
+# OLD:
+plugin_get_icon() {
+    local temp health
+    temp=$(plugin_data_get "temperature")
+    health=$(plugin_get_health)
+
+    case "$health" in
+        error)   get_option "icon_critical"; return ;;
+        warning) get_option "icon_warning"; return ;;
+        *)       get_option "icon"; return ;;
+    esac
+}
+
+# NEW:
+plugin_get_icon() {
+    plugin_get_icon_by_health "$(plugin_get_health)"
+}
+```
+
+**Benefits:**
+
+- **Saves 8-15 lines per plugin** × 12 plugins = **96-180 lines**
+- Consistent icon selection patterns across all plugins
+- Three helpers cover different scenarios:
+  - `plugin_get_icon_by_health`: Most common - maps health levels to icons
+  - `plugin_get_icon_by_state`: Boolean state (on/off, muted/unmuted)
+  - `plugin_get_icon_by_range`: Value-based thresholds (battery percentage)
+
 ## macOS Native Binary System
 
 Some plugins require native macOS binaries for hardware access (GPU, temperature, microphone, etc.). These binaries are **not included in the repository** - they are downloaded on-demand from GitHub releases.
@@ -513,6 +693,61 @@ tmux source ~/.tmux.conf
 ```
 
 ## Utility Libraries
+
+### API Utilities (`src/utils/api.sh`)
+
+Reusable API fetch helpers to eliminate duplication across API-based plugins.
+
+```bash
+# Simple API fetch with timeout
+api_fetch_url "https://api.example.com/endpoint" [timeout]
+
+# API fetch with 3 retry attempts
+api_fetch_with_retry "https://api.example.com/endpoint" [timeout]
+
+# API fetch with authorization header
+api_fetch_with_auth "https://api.example.com/endpoint" "Bearer token" [timeout]
+
+# Platform-specific API call (github, gitlab, bitbucket)
+make_api_call "url" "platform" "token" [timeout]
+
+# Validate response (check empty/error)
+api_validate_response "$response" || return 1
+
+# Check if response has error patterns
+api_has_error "$response" && handle_error
+
+# Fetch with HTTP status code
+result=$(api_fetch_with_status "url" [timeout])
+read -r status body <<<"$result"
+
+# Check if status is success (2xx)
+api_is_success "$status"
+```
+
+**Example Usage (API-based plugin)**:
+
+```bash
+plugin_collect() {
+    local token=$(get_option "token")
+    local result
+
+    # Use specialized API call with platform-specific headers
+    result=$(make_api_call "$API_URL/endpoint" "github" "$token")
+
+    # Validate response
+    api_validate_response "$result" || {
+        plugin_data_set "available" "0"
+        return 1
+    }
+
+    # Parse and store data
+    local count=$(echo "$result" | jq -r '.total_count // 0')
+    plugin_data_set "count" "$count"
+}
+```
+
+**Affected Plugins**: github, gitlab, bitbucket, jira, crypto, stocks, weather, cloudstatus, external_ip
 
 ### Platform Detection (`src/utils/platform.sh`)
 
@@ -1102,7 +1337,6 @@ plugin_get_icon() {
 | `src/core/binary_manager.sh` | macOS native binary download manager |
 | `src/contract/plugin_contract.sh` | Plugin interface + helpers |
 | `src/contract/pane_contract.sh` | Pane interface + flash effect |
-| `src/utils/hooks.sh` | Tmux hooks management |
 | `src/renderer/segment_builder.sh` | Builds formatted segments |
 | `src/renderer/separator.sh` | Powerline separator management |
 | `src/renderer/color_resolver.sh` | state/health → color resolution |
@@ -1750,50 +1984,6 @@ pane_sync_format()            # Get tmux format "#{?pane_synchronized,...}"
 # Configuration
 pane_configure()              # Apply ALL pane settings to tmux (called by renderer)
 ```
-
----
-
-## Hooks Utility
-
-The Hooks Utility (`src/utils/hooks.sh`) provides generic tmux hooks management.
-
-### Hook Registration
-
-```bash
-# Global hooks
-register_hook "after-select-pane" "run-shell 'echo selected'"
-unregister_hook "after-select-pane"
-
-# Local (window/pane) hooks
-register_hook_local "after-select-pane" "run-shell 'echo selected'"
-unregister_hook_local "after-select-pane"
-```
-
-### Hook Management
-
-```bash
-list_hooks                    # List all registered hooks
-has_hook "after-select-pane"  # Check if hook exists
-clear_all_hooks               # Remove all PowerKit hooks
-```
-
-### Delayed Commands
-
-```bash
-run_delayed "command" "0.1"          # Run after 0.1 seconds
-run_delayed_ms "command" "100"       # Run after 100 milliseconds
-```
-
-### Common Hooks
-
-| Hook | Trigger |
-|------|---------|
-| `after-select-pane` | After pane selection |
-| `after-select-window` | After window selection |
-| `after-resize-pane` | After pane resize |
-| `after-split-window` | After window split |
-| `pane-focus-in` | Pane gains focus |
-| `pane-focus-out` | Pane loses focus |
 
 ---
 

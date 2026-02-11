@@ -586,66 +586,6 @@ _spawn_plugin_refresh() {
     disown
 }
 
-# Actually perform the plugin refresh (runs in background)
-# Usage: _do_plugin_refresh "plugin_name"
-_do_plugin_refresh() {
-    local name="$1"
-    local plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
-
-    [[ ! -f "$plugin_file" ]] && return 1
-
-    # Set plugin context
-    _set_plugin_context "$name"
-
-    # Source plugin
-    # shellcheck disable=SC1090
-    . "$plugin_file"
-
-    # Declare options
-    declare -F plugin_declare_options &>/dev/null && plugin_declare_options
-
-    # Collect data
-    plugin_data_clear
-    plugin_collect || return 1
-
-    # Get state
-    local state
-    state=$(plugin_get_state)
-
-    # Check visibility using unified helper
-    local presence
-    presence=$(plugin_get_presence)
-    if is_plugin_hidden_by_presence "$presence" "$state"; then
-        cache_set "plugin_${name}_data" "HIDDEN"
-        return 0
-    fi
-
-    # Get health
-    local health="ok"
-    declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
-
-    # Get icon
-    local icon
-    icon=$(_get_plugin_icon)
-
-    # Get content
-    local content
-    content=$(plugin_render)
-
-    # Build and save output (format: icon<US>content<US>state<US>health<US>stale)
-    # stale=0 means fresh data
-    local _delim=$'\x1f'
-    local stale="0"
-    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}${_delim}${stale}"
-
-    cache_set "plugin_${name}_data" "$output"
-
-    # Also cache TTL for future reference
-    local ttl
-    ttl=$(_get_plugin_cache_ttl)
-    cache_set "plugin_${name}_ttl" "$ttl"
-}
-
 # Synchronous plugin collection (blocking)
 # Usage: _collect_plugin_sync "plugin_name" "plugin_file" "cache_key" "ttl_cache_key"
 _collect_plugin_sync() {

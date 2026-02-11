@@ -344,12 +344,20 @@ plugin_get_health() {
 # Plugin Contract: Context
 # =============================================================================
 # Context provides power state:
-#   - charging, discharging, charged, ac_power
+#   - charging, on_battery, fully_charged, ac_power
 
 plugin_get_context() {
     local status
     status=$(plugin_data_get "status")
-    [[ -n "$status" ]] && printf '%s' "$status"
+
+    # Simple case - status already contains semantic value
+    # Using plugin_context_from_value for consistency and normalization
+    plugin_context_from_value "$status" \
+        "charging:charging" \
+        "discharging:on_battery" \
+        "charged:fully_charged" \
+        "ac_power:ac_power" \
+        "unknown"
 }
 
 # =============================================================================
@@ -357,14 +365,10 @@ plugin_get_context() {
 # =============================================================================
 
 plugin_get_icon() {
-    local percent status health
-
-    percent=$(plugin_data_get "percent")
+    local status
     status=$(plugin_data_get "status")
-    health=$(plugin_get_health)
 
-    percent="${percent:-0}"
-
+    # Charging/AC power takes precedence
     case "$status" in
         charging|charged|ac_power)
             get_option "icon_charging"
@@ -372,20 +376,8 @@ plugin_get_icon() {
             ;;
     esac
 
-    # Critical battery
-    if [[ "$health" == "error" ]]; then
-        get_option "icon_critical"
-        return
-    fi
-
-    # Low battery (warning)
-    if [[ "$health" == "warning" ]]; then
-        get_option "icon_low"
-        return
-    fi
-
-    # Default icon (battery ok)
-    get_option "icon"
+    # Use health-based icon selection (icon_critical -> icon_low -> icon)
+    plugin_get_icon_by_health "$(plugin_get_health)"
 }
 
 # =============================================================================
