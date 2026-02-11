@@ -79,15 +79,12 @@ _verify_token() {
     local token="$1"
     [[ -z "$token" ]] && return 1
 
-    # Make API call to verify token is valid
-    local http_code
-    http_code=$(curl -s -w "%{http_code}" -o /dev/null \
-        -H "Authorization: Bearer ${token}" \
-        -H "Accept: application/vnd.github+json" \
-        --connect-timeout 5 \
-        "${GITHUB_API}/user" 2>/dev/null)
+    # Make API call to verify token is valid using api_fetch_with_status
+    local result status
+    result=$(api_fetch_with_status "${GITHUB_API}/user" 5)
+    read -r status _ <<<"$result"
 
-    [[ "$http_code" == "200" ]] && return 0
+    api_is_success "$status" && return 0
     return 1
 }
 
@@ -228,15 +225,16 @@ _count_issues() {
     local owner="$1"
     local repo="$2"
     local filter_user="$3"
-    
+
     local query="repo:${owner}/${repo}+type:issue+state:open"
     [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
-    
+
     local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
     local response=$(_make_github_api_call "$url")
-    
-    [[ -z "$response" ]] && { echo "0"; return 1; }
-    
+
+    # Validate response using api_validate_response
+    api_validate_response "$response" || { echo "0"; return 1; }
+
     if has_cmd jq; then
         local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
         [[ -n "$error_msg" ]] && { echo "0"; return 1; }
@@ -252,15 +250,16 @@ _count_prs() {
     local owner="$1"
     local repo="$2"
     local filter_user="$3"
-    
+
     local query="repo:${owner}/${repo}+type:pr+state:open"
     [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
-    
+
     local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
     local response=$(_make_github_api_call "$url")
-    
-    [[ -z "$response" ]] && { echo "0"; return 1; }
-    
+
+    # Validate response using api_validate_response
+    api_validate_response "$response" || { echo "0"; return 1; }
+
     if has_cmd jq; then
         local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
         [[ -n "$error_msg" ]] && { echo "0"; return 1; }

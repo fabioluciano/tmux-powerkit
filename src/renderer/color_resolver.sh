@@ -53,6 +53,17 @@ color_reset_cycle_cache() {
 resolve_color() {
     local name="$1"
 
+    # TRANSPARENCY OVERRIDE: Only status bar backgrounds become "default" in transparent mode
+    # Plugins keep their health colors (ok=green, warning=yellow, error=red)
+    if is_transparent; then
+        case "$name" in
+            statusbar-bg|message-bg|background)
+                printf 'default'
+                return 0
+                ;;
+        esac
+    fi
+
     # Handle special values
     case "$name" in
         "NONE"|"none"|"default"|"")

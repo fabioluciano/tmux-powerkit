@@ -85,19 +85,19 @@ _windows_get_common_settings() {
     _W_TRANSPARENT=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
     _W_ROUND_ALL_EDGES=$(should_apply_all_edges && echo "true" || echo "false")
 
-    # Always resolve the actual statusbar-bg color for use in fg
+    # Always get the actual statusbar-bg color for use in fg
     # (because fg=default gives terminal's default TEXT color, not background)
-    local resolved_statusbar_bg
-    resolved_statusbar_bg=$(resolve_color "statusbar-bg")
+    local statusbar_bg_color
+    statusbar_bg_color=$(get_color "statusbar-bg")
 
     if [[ "$_W_TRANSPARENT" == "true" ]]; then
         _W_SPACING_BG="default"           # bg=default works (terminal background)
-        _W_SPACING_FG="$resolved_statusbar_bg"  # fg needs actual color (not "default" which is white)
+        _W_SPACING_FG="$statusbar_bg_color"  # fg needs actual color (not "default")
         _W_STATUS_BG="default"
     else
-        _W_SPACING_BG="$resolved_statusbar_bg"
-        _W_SPACING_FG="$resolved_statusbar_bg"
-        _W_STATUS_BG="$resolved_statusbar_bg"
+        _W_SPACING_BG="$statusbar_bg_color"
+        _W_SPACING_FG="$statusbar_bg_color"
+        _W_STATUS_BG="$statusbar_bg_color"
     fi
 
     # "center" uses same separator direction as "left" (right-pointing ▶)
@@ -120,14 +120,9 @@ _windows_build_separator() {
 
     if has_window_spacing; then
         # With spacing: transition FROM spacing gap TO window
-        local spacing_fg transparent_mode
-        transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-
-        if [[ "$transparent_mode" == "true" ]]; then
-            spacing_fg=$(resolve_color "background")
-        else
-            spacing_fg=$(resolve_color "statusbar-bg")
-        fi
+        # Use statusbar-bg for spacing foreground (works in both transparent and normal modes)
+        local spacing_fg
+        spacing_fg=$(get_color "statusbar-bg")
 
         # Check for first window - use #{base-index} to support both base-index=0 and base-index=1
         local is_first='#{?#{==:#{window_index},#{base-index}},'
@@ -192,17 +187,9 @@ _windows_build_spacing() {
 
     has_window_spacing || return
 
-    # For fg in powerline glyphs, use the appropriate background color
-    # In transparent mode: use theme's "background" (terminal background)
-    # In normal mode: use statusbar-bg
-    local spacing_fg transparent_mode
-    transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-
-    if [[ "$transparent_mode" == "true" ]]; then
-        spacing_fg=$(resolve_color "background")
-    else
-        spacing_fg=$(resolve_color "statusbar-bg")
-    fi
+    # Use statusbar-bg for spacing foreground (works in both transparent and normal modes)
+    local spacing_fg
+    spacing_fg=$(get_color "statusbar-bg")
 
     # Exit separator: window → gap (between windows only)
     # Skip for LAST window (edge separator handled by compositor)

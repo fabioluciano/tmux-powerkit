@@ -32,3 +32,4 @@ package-lock.json
 *.tmp
 *.bak
 *~
+.omc

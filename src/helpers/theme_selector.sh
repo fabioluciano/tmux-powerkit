@@ -63,13 +63,6 @@ _apply_theme() {
     local theme="$1"
     local variant="$2"
 
-    # Show immediate feedback FIRST (before any heavy processing)
-    if [[ "$theme" == "custom" ]]; then
-        toast " Applying theme: custom..."
-    else
-        toast " Applying theme: $theme/$variant..."
-    fi
-
     # Update tmux options
     tmux set-option -g "@powerkit_theme" "$theme"
 

@@ -37,129 +37,41 @@ source_guard "renderer_segment_builder" && return 0
 # =============================================================================
 # Icon Padding System
 # =============================================================================
-# Dynamic padding based on icon width detection using UTF-8 codepoint decoding.
 
-# Cache for icon widths
-declare -gA _ICON_WIDTH_CACHE=()
-declare -g _ICON_TARGET_WIDTH=""
-
-# Decode UTF-8 character to Unicode codepoint using od
-# This is more reliable than printf '%d' for multi-byte characters
-# Returns: codepoint as decimal number
-_decode_utf8_codepoint() {
-    local char="$1"
-    [[ -z "$char" ]] && { printf '0'; return; }
-
-    local bytes
-    bytes=$(printf '%s' "$char" | LC_ALL=C od -An -tx1 2>/dev/null | tr -d ' \n')
-    [[ -z "$bytes" ]] && { printf '0'; return; }
-
-    local len=${#bytes}
-    len=$((len / 2))  # Each byte is 2 hex chars
-
-    local b1 b2 b3 b4 codepoint=0
-
-    case $len in
-        1) codepoint=$((16#${bytes:0:2})) ;;
-        2) b1=$((16#${bytes:0:2})); b2=$((16#${bytes:2:2}))
-           codepoint=$(( ((b1 & 0x1F) << 6) | (b2 & 0x3F) )) ;;
-        3) b1=$((16#${bytes:0:2})); b2=$((16#${bytes:2:2})); b3=$((16#${bytes:4:2}))
-           codepoint=$(( ((b1 & 0x0F) << 12) | ((b2 & 0x3F) << 6) | (b3 & 0x3F) )) ;;
-        4) b1=$((16#${bytes:0:2})); b2=$((16#${bytes:2:2})); b3=$((16#${bytes:4:2})); b4=$((16#${bytes:6:2}))
-           codepoint=$(( ((b1 & 0x07) << 18) | ((b2 & 0x3F) << 12) | ((b3 & 0x3F) << 6) | (b4 & 0x3F) )) ;;
-    esac
-
-    printf '%d' "$codepoint"
-}
-
-# Detect icon width based on Unicode codepoint
-# Returns: 1 or 2
-# Note: All Nerd Font icons (E000-FFFF and F0000-FFFFF) are treated as 2-wide
-# because they are designed to be double-width in monospace terminals.
-# Only Powerline separators (E0B0-E0CF) are truly 1-wide.
-_detect_icon_width() {
-    local icon="$1"
-
-    [[ -z "$icon" ]] && { printf '1'; return; }
-
-    # Return cached value
-    [[ -n "${_ICON_WIDTH_CACHE[$icon]:-}" ]] && { printf '%s' "${_ICON_WIDTH_CACHE[$icon]}"; return; }
-
-    local width=2  # Default to 2-wide for icons
-    local codepoint
-    codepoint=$(_decode_utf8_codepoint "$icon")
-
-    # Powerline arrows (E0B0-E0CF) - true 1-wide separators
-    if (( codepoint >= 0xE0B0 && codepoint <= 0xE0CF )); then
-        width=1
-    # ASCII range (0-127) - 1-wide
-    elif (( codepoint < 128 )); then
-        width=1
-    fi
-    # All other icons (E000-EFFF, F000-FFFF, F0000-FFFFF, emoji) are 2-wide
-
-    _ICON_WIDTH_CACHE[$icon]="$width"
-    printf '%s' "$width"
-}
-
-# Get target width for icon section
-_get_icon_target_width() {
-    [[ -n "$_ICON_TARGET_WIDTH" ]] && { printf '%s' "$_ICON_TARGET_WIDTH"; return; }
-
-    local base_padding
-    base_padding=$(get_tmux_option "@powerkit_icon_padding" "${POWERKIT_DEFAULT_ICON_PADDING:-1}")
-
-    # Target = base_padding * 2 + 2 (accommodate 2-cell icons)
-    _ICON_TARGET_WIDTH=$(( base_padding * 2 + 2 ))
-
-    printf '%s' "$_ICON_TARGET_WIDTH"
-}
-
-# Get dynamic padding for icon
-# Returns: "left:right" counts
-_get_dynamic_icon_padding() {
-    local icon="$1"
-
-    local icon_width target total left right
-    icon_width=$(_detect_icon_width "$icon")
-    target=$(_get_icon_target_width)
-
-    total=$(( target - icon_width ))
-    (( total < 0 )) && total=0
-
-    # Symmetric distribution
-    left=$(( total / 2 ))
-    right=$(( total - left ))
-
-    printf '%d:%d' "$left" "$right"
-}
-
-# Generate N spaces
-_make_padding() {
-    local count="$1"
-    local pad=""
-    for ((i=0; i<count; i++)); do pad+=" "; done
-    printf '%s' "$pad"
-}
-
-# Static padding fallback
+# Simple icon padding lookup (replaces complex UTF-8 decoding)
+# Returns: " " (space) for wide icons that need extra spacing, "" for normal icons
 _get_icon_padding() {
-    local padding_level
-    padding_level=$(get_tmux_option "@powerkit_icon_padding" "${POWERKIT_DEFAULT_ICON_PADDING:-1}")
+    local icon="$1"
 
-    case "$padding_level" in
-        0) printf '' ;;
-        1) printf ' ' ;;
-        2) printf '  ' ;;
-        3) printf '   ' ;;
-        *) printf ' ' ;;
+    # Wide icons that need extra space (emoji, special glyphs)
+    case "$icon" in
+        # Battery icons
+        🔋|⚡|🔌) echo " " ;;
+
+        # Network icons
+        📶|🌐|📡|📲) echo " " ;;
+
+        # System icons
+        💻|🖥️|⚙️|🔧) echo " " ;;
+
+        # Status icons
+        ✅|❌|⚠️|ℹ️|💡) echo " " ;;
+
+        # Media icons
+        🎵|🎬|📺|🔊) echo " " ;;
+
+        # File/folder icons
+        📁|📂|📄|📝) echo " " ;;
+
+        # People/communication
+        👤|👥|💬|📧) echo " " ;;
+
+        # Git icons
+        🔀|🔁|🔄) echo " " ;;
+
+        # Default: no extra space needed
+        *) echo "" ;;
     esac
-}
-
-# Reset cache
-_reset_icon_padding_cache() {
-    _ICON_WIDTH_CACHE=()
-    _ICON_TARGET_WIDTH=""
 }
 
 # =============================================================================
@@ -212,14 +124,12 @@ build_segment() {
     local sep_right="${_SEP_CACHE_RIGHT}"
     local sep_internal="${_SEP_CACHE_RIGHT}"
 
-    # Build icon section with dynamic padding based on icon width
+    # Build icon section with simple padding lookup
     local icon_section=""
     if [[ -n "$icon" ]]; then
-        local left_count right_count left_pad right_pad
-        IFS=':' read -r left_count right_count <<< "$(_get_dynamic_icon_padding "$icon")"
-        left_pad=$(_make_padding "$left_count")
-        right_pad=$(_make_padding "$right_count")
-        icon_section="#[fg=${icon_fg},bg=${icon_bg}]${left_pad}${icon}${right_pad}"
+        local padding
+        padding=$(_get_icon_padding "$icon")
+        icon_section="#[fg=${icon_fg},bg=${icon_bg}] ${icon}${padding}"
     fi
 
     # Build content section
@@ -601,21 +511,23 @@ _is_hidden_by_threshold() {
 }
 
 # Build spacing separator between plugins
-# Usage: _build_spacing_separator "side" "prev_bg" "spacing_bg" "spacing_fg"
+# Usage: _build_spacing_separator "side" "prev_bg" "spacing_fg"
 # Outputs: tmux format string for spacing separator
+# Note: Triangle filled with theme background color on plugin background
 _build_spacing_separator() {
     local side="$1"
     local prev_bg="$2"
-    local spacing_bg="$3"
-    local spacing_fg="$4"
+    local spacing_fg="$3"
 
     local spacing_sep
     spacing_sep=$(get_closing_separator_for_side "$side")
 
+    # Spacing separator: fg=theme_background, bg=plugin_color
+    # Triangle filled with theme background color (looks transparent)
     if [[ "$side" == "left" ]]; then
-        printf ' #[fg=%s,bg=%s]%s#[bg=%s]#[none]' "$prev_bg" "$spacing_bg" "$spacing_sep" "$spacing_bg"
+        printf ' #[fg=%s,bg=%s]%s#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep"
     else
-        printf ' #[fg=%s,bg=%s]%s#[bg=%s]#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep" "$spacing_bg"
+        printf ' #[fg=%s,bg=%s]%s#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep"
     fi
 }
 
@@ -709,7 +621,7 @@ render_plugins() {
     local spacing_bg spacing_fg
     if [[ "$transparent" == "true" ]]; then
         spacing_bg="default"
-        spacing_fg=$(resolve_color "background")
+        spacing_fg=$(get_color "statusbar-bg")  # Use statusbar-bg instead of background
     else
         local resolved_statusbar_bg
         resolved_statusbar_bg=$(resolve_color "statusbar-bg")
@@ -809,14 +721,14 @@ render_plugins() {
             local spacing_sep
             spacing_sep=$(get_closing_separator_for_side "$side")
 
-            # spacing_fg is defined at the top with the actual statusbar-bg color
-            # (not "default" which gives terminal's white text color)
+            # Spacing separator: fg=statusbar_bg, bg=plugin_color
+            # Triangle filled with statusbar background color on plugin background
             if [[ "$side" == "left" ]]; then
-                output+=" #[fg=${prev_bg},bg=${current_spacing_bg}]${spacing_sep}#[bg=${current_spacing_bg}]#[none]"
+                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[none]"
             else
-                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[bg=${current_spacing_bg}]#[none]"
+                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[none]"
             fi
-            prev_bg="$current_spacing_bg"
+            prev_bg="${current_spacing_bg}"
         # For same group without global spacing, still need to update prev_bg context
         elif [[ $same_group -eq 1 && $is_first -eq 0 ]]; then
             # Plugins in same group connect directly without gap

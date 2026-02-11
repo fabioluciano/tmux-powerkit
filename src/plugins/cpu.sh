@@ -110,12 +110,14 @@ _get_cpu_linux() {
         total2=$((total2 + v))
     done
 
-    # Calculate percentage
+    # Calculate percentage (using awk for floating point precision)
     local delta_idle=$((idle2 - idle1))
     local delta_total=$((total2 - total1))
 
     if [[ $delta_total -gt 0 ]]; then
-        local percent=$(( 100 * (delta_total - delta_idle) / delta_total ))
+        # Use awk to avoid integer truncation for low CPU values (<1%)
+        local percent=$(awk -v idle="$delta_idle" -v total="$delta_total" \
+            'BEGIN {printf "%.0f", 100 * (total - idle) / total}')
         (( percent > 100 )) && percent=100
         (( percent < 0 )) && percent=0
         printf '%d' "$percent"
@@ -137,7 +139,8 @@ _get_cpu_macos_top() {
 
     if [[ "$top_line" =~ ([0-9.]+)%\ user,?[[:space:]]*([0-9.]+)%\ sys,?[[:space:]]*([0-9.]+)%\ idle ]]; then
         idle="${BASH_REMATCH[3]}"
-        busy=$(echo "100 - $idle" | bc 2>/dev/null)
+        # Use awk instead of bc (more portable, no external dependency)
+        busy=$(awk -v i="$idle" 'BEGIN {printf "%.0f", 100 - i}')
         printf '%.0f' "${busy:-0}"
         return 0
     fi
@@ -246,17 +249,10 @@ plugin_get_health() {
 # Plugin Contract: Context
 # =============================================================================
 # Context provides load state:
-#   - normal_load, high_load, critical_load
+#   - cpu_load_error, cpu_load_warning, cpu_load_ok
 
 plugin_get_context() {
-    local health
-    health=$(plugin_get_health)
-
-    case "$health" in
-        error)   printf 'critical_load' ;;
-        warning) printf 'high_load' ;;
-        *)       printf 'normal_load' ;;
-    esac
+    plugin_context_from_health "$(plugin_get_health)" "cpu_load"
 }
 
 # =============================================================================
