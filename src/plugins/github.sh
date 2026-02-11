@@ -80,9 +80,9 @@ _verify_token() {
     [[ -z "$token" ]] && return 1
 
     # Make API call to verify token is valid using api_fetch_with_status
-    local result status body
+    local result status
     result=$(api_fetch_with_status "${GITHUB_API}/user" 5)
-    read -r status body <<<"$result"
+    read -r status _ <<<"$result"
 
     api_is_success "$status" && return 0
     return 1

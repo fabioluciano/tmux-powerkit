@@ -14,8 +14,8 @@ powerkit_bootstrap_minimal
 # CRITICAL: Clear in-memory global variables that cause fast-path to skip reload
 unset _CURRENT_THEME
 unset _CURRENT_VARIANT
-THEME_COLORS=()
-_COLOR_VARIANTS=()
+declare -gA THEME_COLORS=()
+declare -gA _COLOR_VARIANTS=()
 
 # NOW do full bootstrap (will load theme fresh from file)
 powerkit_bootstrap
