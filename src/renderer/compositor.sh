@@ -232,7 +232,8 @@ _get_windows_format_left_centered() {
     local status_bg active_bg inactive_bg sep_char transparent
 
     transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-    # In transparent mode, use "background" (terminal background)
+
+    # In transparent mode, hide edge separators
     if [[ "$transparent" == "true" ]]; then
         status_bg=$(resolve_color "background")
     else
@@ -325,7 +326,8 @@ _get_windows_format_right_centered() {
     local status_bg transparent
 
     transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-    # In transparent mode, use "background" (terminal background)
+
+    # In transparent mode, hide edge separators
     if [[ "$transparent" == "true" ]]; then
         status_bg=$(resolve_color "background")
     else
@@ -346,11 +348,11 @@ _get_windows_format_right_centered() {
     entry_sep_char=$(get_edge_left_separator)
     show_index_active=$(get_tmux_option "@powerkit_active_window_show_index" "true")
     show_index_inactive=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
-    
+
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg first_content_bg first_bg
         first_content_bg=$(resolve_color "window-inactive-base")
-        
+
         # Determine which background to use based on show_index settings
         if [[ "$show_index_active" == "false" && "$show_index_inactive" == "false" ]]; then
             # Never show index, use content color
@@ -362,7 +364,7 @@ _get_windows_format_right_centered() {
         else
             first_bg="$first_index_bg"
         fi
-        
+
         fmt+="#[fg=${first_bg},bg=${status_bg}]${entry_sep_char}"
     fi
 
@@ -417,7 +419,8 @@ _get_windows_format_centered() {
     local status_bg active_bg inactive_bg sep_char transparent
 
     transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-    # In transparent mode, use "background" (terminal background)
+
+    # In transparent mode, hide edge separators
     if [[ "$transparent" == "true" ]]; then
         status_bg=$(resolve_color "background")
     else
@@ -442,11 +445,11 @@ _get_windows_format_centered() {
     entry_sep_char=$(get_edge_left_separator)
     show_index_active=$(get_tmux_option "@powerkit_active_window_show_index" "true")
     show_index_inactive=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
-    
+
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg first_content_bg first_bg
         first_content_bg=$(resolve_color "window-inactive-base")
-        
+
         # Determine which background to use based on show_index settings
         if [[ "$show_index_active" == "false" && "$show_index_inactive" == "false" ]]; then
             # Never show index, use content color
@@ -458,7 +461,7 @@ _get_windows_format_centered() {
         else
             first_bg="$first_index_bg"
         fi
-        
+
         fmt+="#[fg=${first_bg},bg=${status_bg}]${entry_sep_char}"
     fi
 
@@ -508,16 +511,9 @@ _get_windows_format_centered() {
 # NOTE: This is the compositor's responsibility - handles edge separator for all cases
 # NOTE: Uses get_edge_right_separator() which respects :all suffix
 _build_left_edge_separator() {
-    local status_bg sep_char transparent
+    local status_bg sep_char
 
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-
-    # For status_bg in transparent mode, use "background" (terminal background)
-    if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
-    else
-        status_bg=$(resolve_color "statusbar-bg")
-    fi
+    status_bg=$(resolve_color "statusbar-bg")
 
     # Edge separator glyph (right-pointing for left side)
     # Uses get_edge_right_separator() which uses the configured edge style
@@ -547,16 +543,9 @@ _build_left_edge_separator() {
 # NOTE: Uses get_edge_right_separator()/get_edge_left_separator() which respect :all suffix
 _build_windows_exit_separator() {
     local side="${1:-left}"
-    local status_bg sep_char transparent
+    local status_bg sep_char
 
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-
-    # For gap color in transparent mode, use "background" (terminal background)
-    if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
-    else
-        status_bg=$(resolve_color "statusbar-bg")
-    fi
+    status_bg=$(resolve_color "statusbar-bg")
 
     # Get the last window background colors (active vs inactive)
     local active_bg inactive_bg
@@ -646,15 +635,9 @@ _build_inter_entity_separator() {
 #       This creates the visual effect of a rounded cap on the left side
 _build_rounded_entry_separator() {
     local entity="$1"
-    local status_bg entity_bg sep_char transparent
+    local status_bg entity_bg sep_char
 
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
-
-    if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
-    else
-        status_bg=$(resolve_color "statusbar-bg")
-    fi
+    status_bg=$(resolve_color "statusbar-bg")
 
     # Get entity's entry background
     if type -t "${entity}_get_first_bg" &>/dev/null; then
@@ -684,15 +667,9 @@ _build_edge_separator() {
     local direction="$2"
     local side="${3:-left}"
 
-    local status_bg entity_bg sep_char transparent
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+    local status_bg entity_bg sep_char
 
-    # In transparent mode, use "background" (terminal background) for gap color
-    if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
-    else
-        status_bg=$(resolve_color "statusbar-bg")
-    fi
+    status_bg=$(resolve_color "statusbar-bg")
 
     if [[ "$direction" == "start" ]]; then
         # Separator FROM statusbar TO entity (entry separator)
@@ -859,26 +836,24 @@ _apply_single_standard() {
             local entity_bg status_bg sep_char transparent_mode
             transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
 
-            # In transparent mode, use "background" (terminal bg) instead of statusbar-bg
-            if [[ "$transparent_mode" == "true" ]]; then
-                status_bg=$(resolve_color "background")
-            else
+            # In transparent mode, skip edge separator (no visual transition needed)
+            if [[ "$transparent_mode" != "true" ]]; then
                 status_bg=$(resolve_color "statusbar-bg")
-            fi
 
-            if type -t "${last_left}_get_last_bg" &>/dev/null; then
-                entity_bg=$("${last_left}_get_last_bg")
-            else
-                entity_bg=$("${last_left}_get_bg" 2>/dev/null || echo "$status_bg")
-            fi
+                if type -t "${last_left}_get_last_bg" &>/dev/null; then
+                    entity_bg=$("${last_left}_get_last_bg")
+                else
+                    entity_bg=$("${last_left}_get_bg" 2>/dev/null || echo "$status_bg")
+                fi
 
-            # Use edge separator when :all suffix is enabled
-            if [[ "$apply_all_edges" == "true" ]]; then
-                sep_char=$(get_edge_right_separator)
-            else
-                sep_char=$(get_right_separator)
+                # Use edge separator when :all suffix is enabled
+                if [[ "$apply_all_edges" == "true" ]]; then
+                    sep_char=$(get_edge_right_separator)
+                else
+                    sep_char=$(get_right_separator)
+                fi
+                [[ -n "$sep_char" ]] && left_content+="#[fg=${entity_bg},bg=${status_bg}]${sep_char}"
             fi
-            [[ -n "$sep_char" ]] && left_content+="#[fg=${entity_bg},bg=${status_bg}]${sep_char}"
         else
             left_content+=$(_build_inter_entity_separator "$last_left" "windows" "left")
         fi
@@ -959,6 +934,11 @@ _apply_single_inverted() {
         prev_entity="$entity"
         is_first=0
     done
+
+    # Add exit edge separator if last entity is windows
+    if [[ "$prev_entity" == "windows" ]]; then
+        right_content+=$(_build_windows_exit_separator "right")
+    fi
 
     # Build custom status-format[0]
     local fmt=""

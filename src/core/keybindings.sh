@@ -227,8 +227,13 @@ setup_powerkit_keybindings() {
 
     # Iterate through all configured keybindings
     for name in "${!POWERKIT_CORE_KEYBINDINGS[@]}"; do
+        # Skip theme_selector - it needs special handling (display-menu doesn't work via run-shell)
+        [[ "$name" == "theme_selector" ]] && continue
         _setup_keybinding "$name" "${POWERKIT_CORE_KEYBINDINGS[$name]}"
     done
+
+    # Setup theme selector separately (requires display-menu directly, not via run-shell)
+    setup_theme_selector_keybinding
 
     log_debug "keybindings" "Global keybindings setup complete (${#POWERKIT_CORE_KEYBINDINGS[@]} bindings)"
 }
@@ -295,7 +300,13 @@ setup_keybindings_viewer_keybinding() {
 }
 
 setup_theme_selector_keybinding() {
-    _setup_keybinding "theme_selector" "${POWERKIT_CORE_KEYBINDINGS[theme_selector]}"
+    # Use fzf popup selector (display-menu can't handle 42+ themes)
+    local key=$(get_tmux_option "@powerkit_theme_selector_key" "C-r")
+    local SELECTOR="${POWERKIT_ROOT}/src/helpers/theme_selector_fzf.sh"
+
+    # Bind to fzf popup (works with many themes)
+    tmux bind-key -T prefix "$key" display-popup -E -w 80% -h 60% "bash '$SELECTOR'"
+    log_debug "keybindings" "Theme selector (fzf) bound to: prefix + $key"
 }
 
 setup_log_viewer_keybinding() {

@@ -511,21 +511,23 @@ _is_hidden_by_threshold() {
 }
 
 # Build spacing separator between plugins
-# Usage: _build_spacing_separator "side" "prev_bg" "spacing_bg" "spacing_fg"
+# Usage: _build_spacing_separator "side" "prev_bg" "spacing_fg"
 # Outputs: tmux format string for spacing separator
+# Note: Triangle filled with theme background color on plugin background
 _build_spacing_separator() {
     local side="$1"
     local prev_bg="$2"
-    local spacing_bg="$3"
-    local spacing_fg="$4"
+    local spacing_fg="$3"
 
     local spacing_sep
     spacing_sep=$(get_closing_separator_for_side "$side")
 
+    # Spacing separator: fg=theme_background, bg=plugin_color
+    # Triangle filled with theme background color (looks transparent)
     if [[ "$side" == "left" ]]; then
-        printf ' #[fg=%s,bg=%s]%s#[bg=%s]#[none]' "$prev_bg" "$spacing_bg" "$spacing_sep" "$spacing_bg"
+        printf ' #[fg=%s,bg=%s]%s#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep"
     else
-        printf ' #[fg=%s,bg=%s]%s#[bg=%s]#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep" "$spacing_bg"
+        printf ' #[fg=%s,bg=%s]%s#[none]' "$spacing_fg" "$prev_bg" "$spacing_sep"
     fi
 }
 
@@ -619,7 +621,7 @@ render_plugins() {
     local spacing_bg spacing_fg
     if [[ "$transparent" == "true" ]]; then
         spacing_bg="default"
-        spacing_fg=$(resolve_color "background")
+        spacing_fg=$(get_color "statusbar-bg")  # Use statusbar-bg instead of background
     else
         local resolved_statusbar_bg
         resolved_statusbar_bg=$(resolve_color "statusbar-bg")
@@ -719,14 +721,14 @@ render_plugins() {
             local spacing_sep
             spacing_sep=$(get_closing_separator_for_side "$side")
 
-            # spacing_fg is defined at the top with the actual statusbar-bg color
-            # (not "default" which gives terminal's white text color)
+            # Spacing separator: fg=statusbar_bg, bg=plugin_color
+            # Triangle filled with statusbar background color on plugin background
             if [[ "$side" == "left" ]]; then
-                output+=" #[fg=${prev_bg},bg=${current_spacing_bg}]${spacing_sep}#[bg=${current_spacing_bg}]#[none]"
+                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[none]"
             else
-                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[bg=${current_spacing_bg}]#[none]"
+                output+=" #[fg=${current_spacing_fg},bg=${prev_bg}]${spacing_sep}#[none]"
             fi
-            prev_bg="$current_spacing_bg"
+            prev_bg="${current_spacing_bg}"
         # For same group without global spacing, still need to update prev_bg context
         elif [[ $same_group -eq 1 && $is_first -eq 0 ]]; then
             # Plugins in same group connect directly without gap

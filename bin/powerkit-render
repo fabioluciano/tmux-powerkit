@@ -24,6 +24,7 @@ export POWERKIT_ROOT
 # Load theme and separator (for loading placeholder)
 load_powerkit_theme
 . "${POWERKIT_ROOT}/src/renderer/separator.sh"
+. "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 
 # Cache key for rendered output (includes theme to invalidate on theme change)
 _render_cache_key() {
@@ -63,10 +64,13 @@ _show_loading() {
     local icon="${spinner[$frame_idx]}"
 
     # Get colors from theme
-    local bg fg status_bg
+    local bg fg status_bg transparent
     bg=$(get_color "info-base")
     fg=$(get_color "info-base-darkest")
-    status_bg=$(get_color "statusbar-bg")
+    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+
+    # Use resolve_color for status_bg to respect transparent mode
+    status_bg=$(resolve_color "statusbar-bg")
 
     local output=""
 

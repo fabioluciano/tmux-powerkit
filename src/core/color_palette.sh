@@ -186,6 +186,14 @@ get_plugin_colors() {
     # Icon background (lighter variant)
     icon_bg=$(get_color "${base_color}-lighter")
 
+    # Apply transparency override if enabled
+    # Check directly from cache to avoid circular dependency
+    local transparent_mode="${_TMUX_OPTIONS_CACHE['@powerkit_transparent']:-false}"
+    if [[ "$transparent_mode" == "true" ]]; then
+        content_bg="default"
+        icon_bg="default"
+    fi
+
     # Text color: choose light or dark based on background luminance
     local fg_variant
     fg_variant=$(get_contrast_variant "$content_bg")
