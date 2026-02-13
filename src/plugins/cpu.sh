@@ -69,9 +69,6 @@ plugin_declare_options() {
 
     # Display - show_only_on_threshold is auto-injected globally
 
-    # Sampling (for more accurate readings on Linux)
-    declare_option "sample_interval" "number" "0.1" "Sampling interval in seconds (Linux)"
-
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
 }
@@ -80,44 +77,54 @@ plugin_declare_options() {
 # Linux CPU Detection
 # =============================================================================
 
-# Read CPU from /proc/stat with delta sampling
+# Read CPU from /proc/stat using cross-cycle delta
+# Instead of sleeping within a single collect call (where a short interval
+# yields too few jiffies for accurate measurement), we cache the previous
+# /proc/stat snapshot and compute the delta across render cycles (~5s apart).
+# This gives hundreds of jiffies to work with, making the reading accurate.
 _get_cpu_linux() {
-    local sample_interval
-    sample_interval=$(get_option "sample_interval")
-    sample_interval="${sample_interval:-0.1}"
+    local line vals idle total v
 
-    local line vals idle1 total1 idle2 total2 v
-
-    # First sample
-    line=$(grep '^cpu ' /proc/stat 2>/dev/null)
-    [[ -z "$line" ]] && { echo "0"; return; }
+    # Read current /proc/stat - bash builtin, no subprocess overhead
+    read -r line < /proc/stat 2>/dev/null
+    [[ -z "$line" || "$line" != cpu* ]] && { echo "0"; return; }
     read -ra vals <<< "${line#cpu }"
-    idle1=$((vals[3] + vals[4]))
-    total1=0
+    idle=$((vals[3] + vals[4]))
+    total=0
     for v in "${vals[@]}"; do
-        total1=$((total1 + v))
+        total=$((total + v))
     done
 
-    # Wait for sample interval
-    sleep "$sample_interval"
+    # Get previous snapshot from cache (saved from last collect cycle)
+    local prev_idle prev_total
+    prev_idle=$(cache_get "cpu_prev_idle" "60")
+    prev_total=$(cache_get "cpu_prev_total" "60")
 
-    # Second sample
-    line=$(grep '^cpu ' /proc/stat 2>/dev/null)
-    read -ra vals <<< "${line#cpu }"
-    idle2=$((vals[3] + vals[4]))
-    total2=0
-    for v in "${vals[@]}"; do
-        total2=$((total2 + v))
-    done
+    # Save current snapshot for next cycle
+    cache_set "cpu_prev_idle" "$idle"
+    cache_set "cpu_prev_total" "$total"
 
-    # Calculate percentage (using awk for floating point precision)
-    local delta_idle=$((idle2 - idle1))
-    local delta_total=$((total2 - total1))
+    # First call: no previous snapshot, fall back to a brief delta sample
+    if [[ -z "$prev_idle" || -z "$prev_total" ]]; then
+        sleep 1
+        local prev_idle_fb=$idle prev_total_fb=$total
+        read -r line < /proc/stat 2>/dev/null
+        read -ra vals <<< "${line#cpu }"
+        idle=$((vals[3] + vals[4]))
+        total=0
+        for v in "${vals[@]}"; do
+            total=$((total + v))
+        done
+        prev_idle=$prev_idle_fb
+        prev_total=$prev_total_fb
+    fi
+
+    # Calculate percentage using pure bash arithmetic
+    local delta_idle=$((idle - prev_idle))
+    local delta_total=$((total - prev_total))
 
     if [[ $delta_total -gt 0 ]]; then
-        # Use awk to avoid integer truncation for low CPU values (<1%)
-        local percent=$(awk -v idle="$delta_idle" -v total="$delta_total" \
-            'BEGIN {printf "%.0f", 100 * (total - idle) / total}')
+        local percent=$(( (delta_total - delta_idle) * 100 / delta_total ))
         (( percent > 100 )) && percent=100
         (( percent < 0 )) && percent=0
         printf '%d' "$percent"
