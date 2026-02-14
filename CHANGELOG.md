@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.18.4](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.3...v5.18.4) (2026-02-14)
+
+### Bug Fixes
+
+* **windows:** use luminance-based contrast for window tab text ([#191](https://github.com/fabioluciano/tmux-powerkit/issues/191)) ([ebb659c](https://github.com/fabioluciano/tmux-powerkit/commit/ebb659c664767174c762ce6bacc48345f5c35670))
+
 ## [5.18.3](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.2...v5.18.3) (2026-02-14)
 
 ### Bug Fixes
