@@ -60,13 +60,14 @@ _windows_get_colors() {
 
     if [[ "$state" == "active" ]]; then
         base_color="window-active-base"
-        index_fg=$(resolve_color "${base_color}-lightest")
-        content_fg=$(resolve_color "${base_color}-lightest")
     else
         base_color="window-inactive-base"
-        index_fg=$(resolve_color "white")
-        content_fg=$(resolve_color "white")
     fi
+
+    local variant
+    variant=$(get_contrast_variant "$base_color")
+    index_fg=$(resolve_color "${base_color}-${variant}")
+    content_fg=$(resolve_color "${base_color}-${variant}")
 
     index_bg=$(resolve_color "${base_color}-light")
     content_bg=$(resolve_color "$base_color")
