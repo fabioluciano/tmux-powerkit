@@ -69,6 +69,10 @@ plugin_declare_options() {
 
     # Display - show_only_on_threshold is auto-injected globally
 
+    # Sampling (for fallback when cross-cycle data unavailable)
+    declare_option "sample_interval" "number" "0.5" "Fallback sampling interval in seconds (Linux)"
+    declare_option "max_cache_age" "number" "60" "Maximum age of cached CPU readings in seconds"
+
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
 }
@@ -95,26 +99,60 @@ _get_cpu_linux() {
         total=$((total + v))
     done
 
-    # Get previous snapshot from cache (saved from last collect cycle)
-    local prev_idle prev_total
-    prev_idle=$(cache_get "cpu_prev_idle" "60")
-    prev_total=$(cache_get "cpu_prev_total" "60")
+    # Get current timestamp (using bash built-in if available, or date)
+    local current_time="${EPOCHSECONDS:-$(date +%s)}"
+
+    # Get previous snapshot from cache (24h TTL - only invalid on reboot)
+    local prev_idle prev_total prev_timestamp
+    prev_idle=$(cache_get "cpu_prev_idle" "86400")
+    prev_total=$(cache_get "cpu_prev_total" "86400")
+    prev_timestamp=$(cache_get "cpu_prev_timestamp" "86400")
 
     # Save current snapshot for next cycle
     cache_set "cpu_prev_idle" "$idle"
     cache_set "cpu_prev_total" "$total"
+    cache_set "cpu_prev_timestamp" "$current_time"
 
-    # First call: no previous snapshot, fall back to a brief delta sample
-    if [[ -z "$prev_idle" || -z "$prev_total" ]]; then
-        sleep 1
+    # Determine if we need fallback sampling
+    local need_fallback=0
+    local max_age
+    max_age=$(get_option "max_cache_age")
+    max_age="${max_age:-60}"
+
+    # Validate previous data
+    if [[ -z "$prev_idle" || -z "$prev_total" || -z "$prev_timestamp" ]]; then
+        # First call: no previous snapshot
+        need_fallback=1
+    else
+        # Check if previous reading is too old (stale after suspend/resume)
+        local age=$((current_time - prev_timestamp))
+        if (( age > max_age )); then
+            # Previous reading too old, fall back to sampling
+            need_fallback=1
+        elif (( age < 1 )); then
+            # Readings too close together (e.g., rapid manual refresh)
+            need_fallback=1
+        fi
+    fi
+
+    # Fall back to brief delta sampling if needed
+    if (( need_fallback )); then
+        local sample_interval
+        sample_interval=$(get_option "sample_interval")
+        sample_interval="${sample_interval:-0.5}"
+
         local prev_idle_fb=$idle prev_total_fb=$total
+        sleep "$sample_interval"
+
         read -r line < /proc/stat 2>/dev/null
+        [[ -z "$line" || "$line" != cpu* ]] && { echo "0"; return; }
         read -ra vals <<< "${line#cpu }"
         idle=$((vals[3] + vals[4]))
         total=0
         for v in "${vals[@]}"; do
             total=$((total + v))
         done
+
         prev_idle=$prev_idle_fb
         prev_total=$prev_total_fb
     fi
