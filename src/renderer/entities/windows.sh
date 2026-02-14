@@ -69,7 +69,7 @@ _windows_get_colors() {
     index_fg=$(resolve_color "${base_color}-${variant}")
     content_fg=$(resolve_color "${base_color}-${variant}")
 
-    index_bg=$(resolve_color "${base_color}-light")
+    index_bg=$(resolve_color "${base_color}-lighter")
     content_bg=$(resolve_color "$base_color")
     style=$(get_window_style "$state")
 
@@ -376,8 +376,8 @@ windows_get_bg() {
 # Returns: tmux conditional for first window's index background
 windows_get_first_bg() {
     local active_index_bg inactive_index_bg
-    active_index_bg=$(resolve_color "window-active-base-light")
-    inactive_index_bg=$(resolve_color "window-inactive-base-light")
+    active_index_bg=$(resolve_color "window-active-base-lighter")
+    inactive_index_bg=$(resolve_color "window-inactive-base-lighter")
 
     # If first window (base-index) is active, use active color; else use inactive
     # Use #{base-index} to support both base-index=0 and base-index=1

@@ -336,8 +336,8 @@ _get_windows_format_right_centered() {
 
     # Index backgrounds (for entry separator - first window index)
     local active_index_bg inactive_index_bg
-    active_index_bg=$(resolve_color "window-active-base-light")
-    inactive_index_bg=$(resolve_color "window-inactive-base-light")
+    active_index_bg=$(resolve_color "window-active-base-lighter")
+    inactive_index_bg=$(resolve_color "window-inactive-base-lighter")
 
     # === ENTRY EDGE SEPARATOR ===
     # Left-pointing (◀) for right element - per rule: right element edge points LEFT
@@ -433,8 +433,8 @@ _get_windows_format_centered() {
 
     # Index backgrounds (for entry separator - first window index)
     local active_index_bg inactive_index_bg
-    active_index_bg=$(resolve_color "window-active-base-light")
-    inactive_index_bg=$(resolve_color "window-inactive-base-light")
+    active_index_bg=$(resolve_color "window-active-base-lighter")
+    inactive_index_bg=$(resolve_color "window-inactive-base-lighter")
 
     # === ENTRY EDGE SEPARATOR ===
     # Left-pointing (◀) for entry - receiving from left gap
