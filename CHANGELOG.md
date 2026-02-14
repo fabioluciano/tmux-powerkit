@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.19.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.4...v5.19.0) (2026-02-14)
+
+### Features
+
+* update window index background colors for improved visibility ([8bd5cd9](https://github.com/fabioluciano/tmux-powerkit/commit/8bd5cd94c8be065684d3e9e9bcdebf57272bd3af))
+
 ## [5.18.4](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.3...v5.18.4) (2026-02-14)
 
 ### Bug Fixes
