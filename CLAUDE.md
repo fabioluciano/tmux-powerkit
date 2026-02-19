@@ -22,11 +22,11 @@ Mocha is the most popular variant with excellent contrast.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 42 plugins migrated to contract system
+**Status**: ✅ COMPLETE - All 43 plugins migrated to contract system
 
 ### Migration Statistics
 
-- **Total Plugins**: 42
+- **Total Plugins**: 43
 - **Migration Date**: January 2025
 - **Architecture**: Contract-based plugin system with strict separation of concerns
 - **Lines of Code**: ~5,500 lines (plugins only)
@@ -59,26 +59,27 @@ Mocha is the most popular variant with excellent contrast.
 24. **loadavg** - Load average with cores (uptime)
 25. **memory** - Memory usage with thresholds (vm_stat/free)
 26. **microphone** - Mic mute status (macOS, osascript)
-27. **netspeed** - Upload/download speed (ifstat/netstat)
-28. **nowplaying** - Current music track (Music/Spotify)
-29. **packages** - Pending updates (brew/apt/yum/pacman)
-30. **ping** - Network latency with thresholds
-31. **pomodoro** - Timer with work/break phases
-32. **smartkey** - Custom environment variable display
-33. **ssh** - SSH session indicator
-34. **stocks** - Stock prices (Yahoo Finance API)
-35. **temperature** - CPU temperature (macOS, osx-cpu-temp)
-36. **terraform** - Workspace indicator
-37. **timezones** - Multi-timezone display
-38. **uptime** - System uptime
-39. **volume** - System volume (macOS, osascript)
-40. **vpn** - VPN connection status (tun/tap interfaces)
-41. **weather** - Weather from wttr.in
-42. **wifi** - WiFi SSID + signal strength
+27. **swap** - Swap memory usage (sysctl/vm_stat/proc)
+28. **netspeed** - Upload/download speed (ifstat/netstat)
+29. **nowplaying** - Current music track (Music/Spotify)
+30. **packages** - Pending updates (brew/apt/yum/pacman)
+31. **ping** - Network latency with thresholds
+32. **pomodoro** - Timer with work/break phases
+33. **smartkey** - Custom environment variable display
+34. **ssh** - SSH session indicator
+35. **stocks** - Stock prices (Yahoo Finance API)
+36. **temperature** - CPU temperature (macOS, osx-cpu-temp)
+37. **terraform** - Workspace indicator
+38. **timezones** - Multi-timezone display
+39. **uptime** - System uptime
+40. **volume** - System volume (macOS, osascript)
+41. **vpn** - VPN connection status (tun/tap interfaces)
+42. **weather** - Weather from wttr.in
+43. **wifi** - WiFi SSID + signal strength
 
 ### Plugin Categories
 
-- **System Monitoring** (12): battery, cpu, disk, fan, gpu, iops, loadavg, memory, temperature, uptime, volume, brightness
+- **System Monitoring** (13): battery, cpu, disk, fan, gpu, iops, loadavg, memory, swap, temperature, uptime, volume, brightness
 - **Network** (7): external_ip, netspeed, ping, vpn, weather, wifi, ssh
 - **Development** (8): git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud
 - **Media** (4): nowplaying, audiodevices, camera, microphone

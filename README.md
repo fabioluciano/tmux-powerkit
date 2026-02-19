@@ -10,7 +10,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-42 Plugins • 40 Themes • Infinite Possibilities
+43 Plugins • 40 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -44,7 +44,7 @@ Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, an
 
 ### 🧩 **Truly Modular**
 
-**42 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
+**43 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
 
 ### 🔧 **Extensible Architecture**
 
@@ -164,7 +164,7 @@ set -g @powerkit_transparent "true"
 
 ## 🎯 Plugins
 
-### 📊 System Monitoring (12 plugins)
+### 📊 System Monitoring (13 plugins)
 
 Monitor every aspect of your system in real-time:
 
@@ -173,6 +173,7 @@ Monitor every aspect of your system in real-time:
 | `battery` | Battery level with charge state | Shows charging status, time remaining, health indicators |
 | `cpu` | CPU usage with per-core support | Thresholds, multi-core detection, platform-specific |
 | `memory` | RAM usage and availability | Multiple formats (percentage, usage, available) |
+| `swap` | Swap memory usage | Cross-platform, threshold alerts, multiple display formats |
 | `disk` | Disk usage by mount point | Configurable thresholds, multiple drives |
 | `loadavg` | System load average | 1/5/15 minute averages, per-core normalization |
 | `temperature` | CPU temperature | macOS (osx-cpu-temp), Linux (hwmon) |
@@ -602,7 +603,7 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 | [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
 | [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
 | [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
-| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-42-available) | Detailed docs for all 42 plugins |
+| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-43-available) | Detailed docs for all 43 plugins |
 | [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
 | [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
 | [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |
