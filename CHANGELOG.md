@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.21.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.20.0...v5.21.0) (2026-02-19)
+
+### Features
+
+* update swap plugin icon to correct UTF-32 format ([ddd3be9](https://github.com/fabioluciano/tmux-powerkit/commit/ddd3be9473d3762f2480a6a30a09107d1cc14837))
+
 ## [5.20.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.19.0...v5.20.0) (2026-02-19)
 
 ### Features
