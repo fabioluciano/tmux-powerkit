@@ -38,8 +38,8 @@ plugin_declare_options() {
     # Display format
     declare_option "format" "string" "usage" "Display format (percent|usage|free)"
 
-    # Icons - Use correct UTF-32 format (4-digit for BMP)
-    declare_option "icon" "icon" $'\U0000f0cf' "Plugin icon (swap/exchange)"
+    # Icons - Use correct UTF-32 format
+    declare_option "icon" "icon" $'\U000f04e1' "Plugin icon (swap/exchange)"
 
     # Thresholds (higher = worse)
     declare_option "warning_threshold" "number" "60" "Warning threshold percentage"
