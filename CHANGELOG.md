@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.20.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.19.0...v5.20.0) (2026-02-19)
+
+### Features
+
+* add swap plugin for monitoring swap memory usage and update plugin count ([#195](https://github.com/fabioluciano/tmux-powerkit/issues/195)) ([6eada97](https://github.com/fabioluciano/tmux-powerkit/commit/6eada976c2a70683c0f890802c22f08a0e997b5e))
+
 ## [5.19.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.18.4...v5.19.0) (2026-02-14)
 
 ### Features
