@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.22.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.21.0...v5.22.0) (2026-02-20)
+
+### Features
+
+* **weather:** update plugin to use Open Meteo API and enhance configuration options ([3439b92](https://github.com/fabioluciano/tmux-powerkit/commit/3439b92af3f0cf84c3d0bd3711e7e6702fef86cf))
+
 ## [5.21.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.20.0...v5.21.0) (2026-02-19)
 
 ### Features
