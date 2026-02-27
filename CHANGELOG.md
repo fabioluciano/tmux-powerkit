@@ -247,13 +247,11 @@ All notable changes to tmux-powerkit will be documented in this file.
 
 # [5.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.1.0...v5.2.0) (2025-12-29)
 
-
 ### Features
 
 * implement lazy loading for plugin data with stale-while-revalid… ([#146](https://github.com/fabioluciano/tmux-powerkit/issues/146)) ([1d628bb](https://github.com/fabioluciano/tmux-powerkit/commit/1d628bbaf2dfcbf3aa83882bbc2c70fd0bd44857))
 
 # [5.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.0.2...v5.1.0) (2025-12-28)
-
 
 ### Features
 
@@ -261,13 +259,11 @@ All notable changes to tmux-powerkit will be documented in this file.
 
 ## [5.0.2](https://github.com/fabioluciano/tmux-powerkit/compare/v5.0.1...v5.0.2) (2025-12-27)
 
-
 ### Bug Fixes
 
 * update Options Reference link in README for direct access ([9cd35b6](https://github.com/fabioluciano/tmux-powerkit/commit/9cd35b6a07c001ab57db1162bd6925b16e6b0ec2))
 
 ## [5.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.0.0...v5.0.1) (2025-12-27)
-
 
 ### Bug Fixes
 
@@ -275,9 +271,7 @@ All notable changes to tmux-powerkit will be documented in this file.
 
 # [5.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v4.4.0...v5.0.0) (2025-12-27)
 
-
 * feat!: rewrite to v5 contract-based architecture ([#142](https://github.com/fabioluciano/tmux-powerkit/issues/142)) ([3f36b6f](https://github.com/fabioluciano/tmux-powerkit/commit/3f36b6f7ef3d91130733d785011784916a7db3f9))
-
 
 ### BREAKING CHANGES
 
@@ -285,55 +279,61 @@ All notable changes to tmux-powerkit will be documented in this file.
 and configurations must be updated to the new v5 contract system.
 
 Architecture Changes:
-- Introduce contract-based plugin system with strict separation of concerns
-- Plugins now provide data and semantics only (no UI decisions)
-- Renderer handles all visual presentation (colors, icons, formatting)
-- Themes define colors only (no logic or functions)
+
+* Introduce contract-based plugin system with strict separation of concerns
+* Plugins now provide data and semantics only (no UI decisions)
+* Renderer handles all visual presentation (colors, icons, formatting)
+* Themes define colors only (no logic or functions)
 
 New Directory Structure:
-- src/core/       Core framework (bootstrap, lifecycle, cache, options)
-- src/contract/   Contract definitions (plugin, theme, helper, session, window)
-- src/renderer/   Visual rendering (segments, separators, colors)
-- src/plugins/    All 42 plugins migrated to v5 contract
-- src/utils/      Utility functions (platform, strings, numbers, etc.)
-- src/helpers/    Interactive UI helpers
+
+* src/core/       Core framework (bootstrap, lifecycle, cache, options)
+* src/contract/   Contract definitions (plugin, theme, helper, session, window)
+* src/renderer/   Visual rendering (segments, separators, colors)
+* src/plugins/    All 42 plugins migrated to v5 contract
+* src/utils/      Utility functions (platform, strings, numbers, etc.)
+* src/helpers/    Interactive UI helpers
 
 Plugin Contract Changes:
-- Mandatory functions: plugin_collect(), plugin_render(), plugin_get_state(),
+
+* Mandatory functions: plugin_collect(), plugin_render(), plugin_get_state(),
   plugin_get_health(), plugin_get_content_type(), plugin_get_presence()
-- plugin_render() returns TEXT ONLY (no colors, no tmux formatting)
-- Health levels: ok, good, info, warning, error
-- States: inactive, active, degraded, failed
-- Removed: accent_color, plugin_get_display_info(), plugin_get_type()
+* plugin_render() returns TEXT ONLY (no colors, no tmux formatting)
+* Health levels: ok, good, info, warning, error
+* States: inactive, active, degraded, failed
+* Removed: accent_color, plugin_get_display_info(), plugin_get_type()
 
 Theme Contract Changes:
-- 22 required base colors
-- Auto-generated variants (lighter/darker) via color_generator
-- Removed all logic from theme files
-- 24-hour theme color caching
+
+* 22 required base colors
+* Auto-generated variants (lighter/darker) via color_generator
+* Removed all logic from theme files
+* 24-hour theme color caching
 
 New Features:
-- Multi-layer caching system (memory, render, operation, theme)
-- Cache-before-source optimization for performance
-- macOS native binaries for efficient metrics (temperature, gpu, microphone, nowplaying)
-- Plugin validator for contract compliance checking
-- Template generator for new plugins/helpers/themes
-- Centralized registry for constants and enums
-- Helper contract with UI backend abstraction (gum/fzf)
+
+* Multi-layer caching system (memory, render, operation, theme)
+* Cache-before-source optimization for performance
+* macOS native binaries for efficient metrics (temperature, gpu, microphone, nowplaying)
+* Plugin validator for contract compliance checking
+* Template generator for new plugins/helpers/themes
+* Centralized registry for constants and enums
+* Helper contract with UI backend abstraction (gum/fzf)
 
 Plugins:
-- All 42 plugins migrated to v5 contract
-- New plugins: crypto, stocks, iops, pomodoro
-- Renamed: network → netspeed
-- Platform-specific plugins return inactive state on unsupported platforms
+
+* All 42 plugins migrated to v5 contract
+* New plugins: crypto, stocks, iops, pomodoro
+* Renamed: network → netspeed
+* Platform-specific plugins return inactive state on unsupported platforms
 
 Breaking Configuration Changes:
-- Plugin options format: @powerkit_plugin_<name>_<option>
-- Theme format: @powerkit_theme, @powerkit_theme_variant
-- Removed: legacy plugin options, accent_color settings
+
+* Plugin options format: @powerkit_plugin_<name>_<option>
+* Theme format: @powerkit_theme, @powerkit_theme_variant
+* Removed: legacy plugin options, accent_color settings
 
 # [4.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v4.3.0...v4.4.0) (2025-12-20)
-
 
 ### Features
 
@@ -341,13 +341,11 @@ Breaking Configuration Changes:
 
 # [4.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v4.2.0...v4.3.0) (2025-12-19)
 
-
 ### Features
 
 * **external:** expand #{...} tmux variables inside $(command) and #(command) ([#139](https://github.com/fabioluciano/tmux-powerkit/issues/139)) ([672fe8d](https://github.com/fabioluciano/tmux-powerkit/commit/672fe8d0fa159742fad11e200e0c7873fec71df4))
 
 # [4.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v4.1.2...v4.2.0) (2025-12-19)
-
 
 ### Features
 
@@ -355,13 +353,11 @@ Breaking Configuration Changes:
 
 ## [4.1.2](https://github.com/fabioluciano/tmux-powerkit/compare/v4.1.1...v4.1.2) (2025-12-19)
 
-
 ### Bug Fixes
 
 * streamline cache handling and improve plugin display logic; add … ([#137](https://github.com/fabioluciano/tmux-powerkit/issues/137)) ([3f76c89](https://github.com/fabioluciano/tmux-powerkit/commit/3f76c89ec24517890323b6f101f45d8ff96e870a))
 
 ## [4.1.1](https://github.com/fabioluciano/tmux-powerkit/compare/v4.1.0...v4.1.1) (2025-12-19)
-
 
 ### Bug Fixes
 
@@ -369,13 +365,11 @@ Breaking Configuration Changes:
 
 # [4.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.4...v4.1.0) (2025-12-18)
 
-
 ### Features
 
 * Update theme color definitions and add new themes ([#135](https://github.com/fabioluciano/tmux-powerkit/issues/135)) ([f1b4a03](https://github.com/fabioluciano/tmux-powerkit/commit/f1b4a03b0aee511959936622240e9839063c7802))
 
 ## [4.0.4](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.3...v4.0.4) (2025-12-17)
-
 
 ### Bug Fixes
 
@@ -383,13 +377,11 @@ Breaking Configuration Changes:
 
 ## [4.0.3](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.2...v4.0.3) (2025-12-17)
 
-
 ### Bug Fixes
 
 * update theme colors for improved consistency across various themes ([#133](https://github.com/fabioluciano/tmux-powerkit/issues/133)) ([8b7d092](https://github.com/fabioluciano/tmux-powerkit/commit/8b7d092bdf490384a3777dfc223cc55777cea009))
 
 ## [4.0.2](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.1...v4.0.2) (2025-12-17)
-
 
 ### Bug Fixes
 
@@ -397,16 +389,13 @@ Breaking Configuration Changes:
 
 ## [4.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v4.0.0...v4.0.1) (2025-12-17)
 
-
 ### Bug Fixes
 
 * adding a missing color ([#130](https://github.com/fabioluciano/tmux-powerkit/issues/130)) ([2789c08](https://github.com/fabioluciano/tmux-powerkit/commit/2789c08b06e2a710be793213c62ceebdd8fca84b))
 
 # [4.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.9.2...v4.0.0) (2025-12-17)
 
-
 * feat!: add 7 new themes, bitwarden plugin, and reorganize keybindings ([#129](https://github.com/fabioluciano/tmux-powerkit/issues/129)) ([e8d5430](https://github.com/fabioluciano/tmux-powerkit/commit/e8d54308ae8d686f4769e5d3d9bcfe39f543a992))
-
 
 ### BREAKING CHANGES
 
@@ -459,13 +448,11 @@ Improvements:
 
 ## [3.9.2](https://github.com/fabioluciano/tmux-powerkit/compare/v3.9.1...v3.9.2) (2025-12-16)
 
-
 ### Bug Fixes
 
 * enhance cache invalidation for Homebrew package updates by checking multiple directories ([#128](https://github.com/fabioluciano/tmux-powerkit/issues/128)) ([eaf5e91](https://github.com/fabioluciano/tmux-powerkit/commit/eaf5e9105d9ef8cf7ec5851163e568ad7a3dd1e0))
 
 ## [3.9.1](https://github.com/fabioluciano/tmux-powerkit/compare/v3.9.0...v3.9.1) (2025-12-16)
-
 
 ### Bug Fixes
 
@@ -473,13 +460,11 @@ Improvements:
 
 # [3.9.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.8.3...v3.9.0) (2025-12-16)
 
-
 ### Features
 
 * enhance session colors and update keybindings for improved usability ([#125](https://github.com/fabioluciano/tmux-powerkit/issues/125)) ([e78ec89](https://github.com/fabioluciano/tmux-powerkit/commit/e78ec89d9082a47902b7fa03cee1a8cf750ec1e3))
 
 ## [3.8.3](https://github.com/fabioluciano/tmux-powerkit/compare/v3.8.2...v3.8.3) (2025-12-15)
-
 
 ### Bug Fixes
 
@@ -487,13 +472,11 @@ Improvements:
 
 ## [3.8.2](https://github.com/fabioluciano/tmux-powerkit/compare/v3.8.1...v3.8.2) (2025-12-15)
 
-
 ### Bug Fixes
 
 * update keybindings to use Alt modifier and improve toast notifications ([#119](https://github.com/fabioluciano/tmux-powerkit/issues/119)) ([f7b598f](https://github.com/fabioluciano/tmux-powerkit/commit/f7b598f2a6e494a91f8a3d08f8ab34ab10e6d408))
 
 ## [3.8.1](https://github.com/fabioluciano/tmux-powerkit/compare/v3.8.0...v3.8.1) (2025-12-15)
-
 
 ### Bug Fixes
 
@@ -501,13 +484,11 @@ Improvements:
 
 # [3.8.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.7.1...v3.8.0) (2025-12-14)
 
-
 ### Features
 
 * **github:** add github plugin ([#117](https://github.com/fabioluciano/tmux-powerkit/issues/117)) ([3907f64](https://github.com/fabioluciano/tmux-powerkit/commit/3907f648a66518d9da67eb8cf7bad837c938c3e2))
 
 ## [3.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v3.7.0...v3.7.1) (2025-12-13)
-
 
 ### Bug Fixes
 
@@ -515,13 +496,11 @@ Improvements:
 
 # [3.7.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.6.0...v3.7.0) (2025-12-12)
 
-
 ### Features
 
 * **weather:** add dynamic icon fetching and update weather format ([#112](https://github.com/fabioluciano/tmux-powerkit/issues/112)) ([0073530](https://github.com/fabioluciano/tmux-powerkit/commit/0073530f47252c4e201492f69e8e9006ce076e81))
 
 # [3.6.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.5.0...v3.6.0) (2025-12-12)
-
 
 ### Features
 
@@ -529,13 +508,11 @@ Improvements:
 
 # [3.5.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.4.0...v3.5.0) (2025-12-11)
 
-
 ### Features
 
 * Add new plugins for system monitoring and management ([#105](https://github.com/fabioluciano/tmux-powerkit/issues/105)) ([5b86642](https://github.com/fabioluciano/tmux-powerkit/commit/5b866428071c5f13c913fe90a8dca0bb2d0d1d2e))
 
 # [3.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.3.0...v3.4.0) (2025-12-11)
-
 
 ### Features
 
@@ -543,13 +520,11 @@ Improvements:
 
 # [3.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.2.0...v3.3.0) (2025-12-11)
 
-
 ### Features
 
 * **packages:** add cache invalidation for package upgrades ([#103](https://github.com/fabioluciano/tmux-powerkit/issues/103)) ([becef26](https://github.com/fabioluciano/tmux-powerkit/commit/becef26b65d9d33383fbdf59a02de80aab2c2c66))
 
 # [3.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.1.0...v3.2.0) (2025-12-10)
-
 
 ### Features
 
@@ -557,13 +532,11 @@ Improvements:
 
 # [3.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v3.0.1...v3.1.0) (2025-12-10)
 
-
 ### Features
 
 * **options_viewer:** enhance plugin option handling with default values and descriptions ([#102](https://github.com/fabioluciano/tmux-powerkit/issues/102)) ([6767de4](https://github.com/fabioluciano/tmux-powerkit/commit/6767de4e30c32321ea127d938b22a78682685d48))
 
 ## [3.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v3.0.0...v3.0.1) (2025-12-10)
-
 
 ### Bug Fixes
 
@@ -571,43 +544,46 @@ Improvements:
 
 # [3.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.16.1...v3.0.0) (2025-12-10)
 
-
 * refactor(core)!: project rename, plugin/theme system overhaul, and configuration interface update ([#100](https://github.com/fabioluciano/tmux-powerkit/issues/100)) ([984ce88](https://github.com/fabioluciano/tmux-powerkit/commit/984ce88cf7b2a75a0f4477ce9377d4d7bbf07dd2))
-
 
 ### BREAKING CHANGES
 
 * Project Renaming:
-- tmux-powerkit → tmux-powerkit
-- Main script renamed: tmux-powerkit.tmux → tmux-powerkit.tmux
-- All references, variables, and options migrated to the new name
+* tmux-powerkit → tmux-powerkit
+* Main script renamed: tmux-powerkit.tmux → tmux-powerkit.tmux
+* All references, variables, and options migrated to the new name
 
 Complete plugin system refactor:
-- Old plugin rendering and initialization pipeline removed
-- New modular system for plugin initialization, configuration, and rendering
-- Plugins now use a unified interface for options, colors, and types
-- Added new conditional display options (e.g., display_condition, display_threshold)
-- Plugins now support dynamic hiding based on state (e.g., battery 100% and charging)
+
+* Old plugin rendering and initialization pipeline removed
+* New modular system for plugin initialization, configuration, and rendering
+* Plugins now use a unified interface for options, colors, and types
+* Added new conditional display options (e.g., display_condition, display_threshold)
+* Plugins now support dynamic hiding based on state (e.g., battery 100% and charging)
 
 New semantic theme and color architecture:
-- PowerKit Theme Mapping implemented: themes now use universal semantic names (accent, warning, error, etc.)
-- Added alternative themes (e.g., kiribyte, tokyo-night)
-- Colors and styles are now resolved dynamically via utility functions
+
+* PowerKit Theme Mapping implemented: themes now use universal semantic names (accent, warning, error, etc.)
+* Added alternative themes (e.g., kiribyte, tokyo-night)
+* Colors and styles are now resolved dynamically via utility functions
 
 Major changes to tmux configuration:
-- tmux options migrated to new @powerkit_* prefix
--  New status bar layouts: support for single/double layout, separators, and final formats
-- Help and option viewer keybindings are now configurable and modular
-- Appearance, borders, messages, and status bar options now use the theme system
+
+* tmux options migrated to new @powerkit_* prefix
+* New status bar layouts: support for single/double layout, separators, and final formats
+* Help and option viewer keybindings are now configurable and modular
+* Appearance, borders, messages, and status bar options now use the theme system
 
 Documentation update and restructuring:
-- Wiki submodule updated with complete option tables for all plugins
-- Migration documentation, examples, and plugin behavior reviewed
-- ew options documented: conditional display, state-based hiding, custom thresholds
+
+* Wiki submodule updated with complete option tables for all plugins
+* Migration documentation, examples, and plugin behavior reviewed
+* ew options documented: conditional display, state-based hiding, custom thresholds
 
 Utility function removal and simplification:
-- utils.sh rewritten to follow KISS/DRY, removing old and duplicate functions
-- Color, OS detection, and tmux option getter functions are now universal and centralized
+
+* utils.sh rewritten to follow KISS/DRY, removing old and duplicate functions
+* Color, OS detection, and tmux option getter functions are now universal and centralized
 
 Impact: Full breaking change: old configurations, scripts, and themes are incompatible Users must migrate all options to the new @powerkit_* standard Old plugins, custom themes, and automations may not work without adaptation
 
@@ -615,13 +591,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 ## [2.16.1](https://github.com/fabioluciano/tmux-powerkit/compare/v2.16.0...v2.16.1) (2025-12-04)
 
-
 ### Bug Fixes
 
 * Linux distribution icons not rendering correctly ([#98](https://github.com/fabioluciano/tmux-powerkit/issues/98)) ([7cee3a8](https://github.com/fabioluciano/tmux-powerkit/commit/7cee3a87c0613c0f553862ac1f02cae5d01e5439))
 
 # [2.16.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.15.0...v2.16.0) (2025-12-04)
-
 
 ### Features
 
@@ -629,13 +603,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.15.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.14.0...v2.15.0) (2025-12-03)
 
-
 ### Features
 
 * **plugin:** rename yubikey plugin to smartkey with expanded hardwar… ([#95](https://github.com/fabioluciano/tmux-powerkit/issues/95)) ([89bd3b6](https://github.com/fabioluciano/tmux-powerkit/commit/89bd3b675c382b481e6145b467475a4060219966))
 
 # [2.14.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.13.0...v2.14.0) (2025-12-03)
-
 
 ### Features
 
@@ -643,13 +615,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.13.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.12.0...v2.13.0) (2025-12-03)
 
-
 ### Features
 
 * Enhance performance and add camera plugin ([#94](https://github.com/fabioluciano/tmux-powerkit/issues/94)) ([10c9740](https://github.com/fabioluciano/tmux-powerkit/commit/10c9740369dcd96a1d04f76638897e93c0f9731f))
 
 # [2.12.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.11.0...v2.12.0) (2025-12-02)
-
 
 ### Features
 
@@ -657,13 +627,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.11.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.10.0...v2.11.0) (2025-12-01)
 
-
 ### Features
 
 * weather plugin and enhance media management ([#92](https://github.com/fabioluciano/tmux-powerkit/issues/92)) ([11ccb0c](https://github.com/fabioluciano/tmux-powerkit/commit/11ccb0c05c4f12ee93065d3e8356714f6205f3ce))
 
 # [2.10.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.9.0...v2.10.0) (2025-12-01)
-
 
 ### Features
 
@@ -671,13 +639,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.9.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.8.0...v2.9.0) (2025-12-01)
 
-
 ### Features
 
 * enhance Bluetooth plugin to display connected devices and battery status ([ba92854](https://github.com/fabioluciano/tmux-powerkit/commit/ba92854625a9f3da3a09b8cd7e70c119e5137722))
 
 # [2.8.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.7.2...v2.8.0) (2025-11-30)
-
 
 ### Features
 
@@ -685,13 +651,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 ## [2.7.2](https://github.com/fabioluciano/tmux-powerkit/compare/v2.7.1...v2.7.2) (2025-11-30)
 
-
 ### Bug Fixes
 
 * improve memory display function by removing unused variable ([#87](https://github.com/fabioluciano/tmux-powerkit/issues/87)) ([5a909b8](https://github.com/fabioluciano/tmux-powerkit/commit/5a909b8e0413a1ee2efa8e76ce23dbaff48453cc))
 
 ## [2.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v2.7.0...v2.7.1) (2025-11-30)
-
 
 ### Bug Fixes
 
@@ -699,20 +663,17 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.7.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.6.0...v2.7.0) (2025-11-30)
 
-
 ### Features
 
 * add conditional visibility for Bluetooth plugin ([#84](https://github.com/fabioluciano/tmux-powerkit/issues/84)) ([43c312d](https://github.com/fabioluciano/tmux-powerkit/commit/43c312d249f33824a113a522bdc23e956b2d513a))
 
 # [2.6.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.5.0...v2.6.0) (2025-11-30)
 
-
 ### Features
 
 * add external IP, temperature, VPN, and WiFi plugins ([#83](https://github.com/fabioluciano/tmux-powerkit/issues/83)) ([3eb8d57](https://github.com/fabioluciano/tmux-powerkit/commit/3eb8d57d180e405b632c53bef4c8463f272d9215))
 
 # [2.5.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.4.0...v2.5.0) (2025-11-30)
-
 
 ### Features
 
@@ -724,13 +685,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.3.0...v2.4.0) (2025-11-29)
 
-
 ### Features
 
 * Implement dynamic color thresholds and conditional display for plugins ([#79](https://github.com/fabioluciano/tmux-powerkit/issues/79)) ([f3a61ad](https://github.com/fabioluciano/tmux-powerkit/commit/f3a61addaf36a7675082f709bf033a9f6ea06c93))
 
 # [2.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.2.1...v2.3.0) (2025-11-27)
-
 
 ### Features
 
@@ -738,13 +697,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 ## [2.2.1](https://github.com/fabioluciano/tmux-powerkit/compare/v2.2.0...v2.2.1) (2025-11-27)
 
-
 ### Bug Fixes
 
 * Improve CPU usage calculation on macOS by averaging over cores ([#77](https://github.com/fabioluciano/tmux-powerkit/issues/77)) ([a14aa11](https://github.com/fabioluciano/tmux-powerkit/commit/a14aa11b1a8243fab930f04fe8c5a55c7cab8448))
 
 # [2.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.1.0...v2.2.0) (2025-11-27)
-
 
 ### Features
 
@@ -752,16 +709,13 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [2.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v2.0.0...v2.1.0) (2025-11-27)
 
-
 ### Features
 
 * implement configurable cache TTL for plugins ([49aa909](https://github.com/fabioluciano/tmux-powerkit/commit/49aa909b2cca06593628be1f21bdd442d9b0c1bd))
 
 # [2.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.11.0...v2.0.0) (2025-11-27)
 
-
 * feat!: fixes and other things ([#74](https://github.com/fabioluciano/tmux-powerkit/issues/74)) ([e24e503](https://github.com/fabioluciano/tmux-powerkit/commit/e24e503c3d5fc7ca4bed727baf38ceb948242d74))
-
 
 ### BREAKING CHANGES
 
@@ -769,13 +723,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [1.11.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.10.1...v1.11.0) (2025-07-27)
 
-
 ### Features
 
 * **playerctl:** add ability to ignore players ([eef5451](https://github.com/fabioluciano/tmux-powerkit/commit/eef5451ce3e30d4681f4dbeab3ca015f7290a6bf))
 
 ## [1.10.1](https://github.com/fabioluciano/tmux-powerkit/compare/v1.10.0...v1.10.1) (2025-06-28)
-
 
 ### Bug Fixes
 
@@ -783,20 +735,17 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [1.10.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.9.0...v1.10.0) (2024-11-29)
 
-
 ### Features
 
 * **weather:** add support for overriding IP-based location ([8f2421a](https://github.com/fabioluciano/tmux-powerkit/commit/8f2421acb443ce1ab206d1d090fecb7a59efeffd))
 
 # [1.9.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.8.1...v1.9.0) (2024-10-29)
 
-
 ### Features
 
 * Allow customizing the window title string ([e064b37](https://github.com/fabioluciano/tmux-powerkit/commit/e064b37f00c6b5cd3754c6da1d4f7fbff11c225b))
 
 ## [1.8.1](https://github.com/fabioluciano/tmux-powerkit/compare/v1.8.0...v1.8.1) (2024-10-24)
-
 
 ### Bug Fixes
 
@@ -810,13 +759,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [1.8.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.7.1...v1.8.0) (2024-10-01)
 
-
 ### Features
 
 * fix [#37](https://github.com/fabioluciano/tmux-powerkit/issues/37) transparency support ([3be2aa2](https://github.com/fabioluciano/tmux-powerkit/commit/3be2aa280242941947d31a0386764e7f78b734bd))
 
 ## [1.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v1.7.0...v1.7.1) (2024-09-11)
-
 
 ### Bug Fixes
 
@@ -827,13 +774,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [1.7.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.6.0...v1.7.0) (2024-08-06)
 
-
 ### Features
 
 * added additional icons customization options ([0b686ee](https://github.com/fabioluciano/tmux-powerkit/commit/0b686ee22f02ae1ac437b06a1bf8241861b3c07b))
 
 # [1.6.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.5.2...v1.6.0) (2024-07-29)
-
 
 ### Features
 
@@ -841,13 +786,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 ## [1.5.2](https://github.com/fabioluciano/tmux-powerkit/compare/v1.5.1...v1.5.2) (2024-06-04)
 
-
 ### Bug Fixes
 
 * typos ([c698679](https://github.com/fabioluciano/tmux-powerkit/commit/c6986790a5a48d4d04da9f5c03919a70b1eb58fd))
 
 ## [1.5.1](https://github.com/fabioluciano/tmux-powerkit/compare/v1.5.0...v1.5.1) (2024-06-03)
-
 
 ### Bug Fixes
 
@@ -855,13 +798,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [1.5.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.4.1...v1.5.0) (2024-06-02)
 
-
 ### Features
 
 * add yay plugin ([6209478](https://github.com/fabioluciano/tmux-powerkit/commit/6209478e2df93d957e647a5c028ffaf2dc1c53c2))
 
 ## [1.4.1](https://github.com/fabioluciano/tmux-powerkit/compare/v1.4.0...v1.4.1) (2024-06-01)
-
 
 ### Bug Fixes
 
@@ -869,13 +810,11 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 # [1.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.3.0...v1.4.0) (2024-06-01)
 
-
 ### Features
 
 * add homebrew plugin ([31d411c](https://github.com/fabioluciano/tmux-powerkit/commit/31d411c4c4d5a131142906f2d9bdf768e81b46f7))
 
 # [1.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.2.1...v1.3.0) (2024-05-31)
-
 
 ### Features
 
@@ -883,20 +822,17 @@ This refactor prepares the project for extensibility, modularity, and standardiz
 
 ## [1.2.1](https://github.com/fabioluciano/tmux-powerkit/compare/v1.2.0...v1.2.1) (2024-05-31)
 
-
 ### Bug Fixes
 
-* fixing [@theme-plugins](https://github.com/theme-plugins) parameter for [@theme](https://github.com/theme)_plugins ([d8b0253](https://github.com/fabioluciano/tmux-powerkit/commit/d8b0253288c4b101eddeaf4c879de3c9ee65184d))
+* fixing `@theme-plugins` parameter for `@theme_plugins` ([d8b0253](https://github.com/fabioluciano/tmux-powerkit/commit/d8b0253288c4b101eddeaf4c879de3c9ee65184d))
 
 # [1.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.1.0...v1.2.0) (2024-05-31)
-
 
 ### Features
 
 * **spt-plugin:** add spotify-tui plugin ([377248d](https://github.com/fabioluciano/tmux-powerkit/commit/377248de5784ba7da3a6c912a8005d4bdc403acb))
 
 # [1.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v1.0.0...v1.1.0) (2024-05-30)
-
 
 ### Features
 
