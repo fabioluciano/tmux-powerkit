@@ -10,7 +10,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-43 Plugins • 40 Themes • Infinite Possibilities
+43 Plugins • 43 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -33,7 +33,7 @@ Transform your tmux status bar into a powerful, beautiful, and intelligent comma
 
 ### 🎨 **Beautiful by Default**
 
-Choose from **40 carefully crafted themes** with **68 variants** including Catppuccin, Dracula, Monokai, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
+Choose from **43 carefully crafted themes** with **71 variants** including Catppuccin, Dracula, Monokai, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
 
 ### ⚡ **Blazingly Fast**
 
@@ -254,7 +254,7 @@ Track your investments:
 
 ## 🎨 Themes
 
-PowerKit comes with **40 beautiful themes** and **68 variants**, each carefully designed for optimal readability and aesthetics
+PowerKit comes with **43 beautiful themes** and **71 variants**, each carefully designed for optimal readability and aesthetics
 
 ### Popular Themes
 
