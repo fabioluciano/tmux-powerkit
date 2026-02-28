@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.23.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.22.0...v5.23.0) (2026-02-28)
+
+### Features
+
+* **theme:** add white, vantablack and miasma themes ([#200](https://github.com/fabioluciano/tmux-powerkit/issues/200)) ([3edc653](https://github.com/fabioluciano/tmux-powerkit/commit/3edc6533c5ab21bb69bf538aa4d64e0b643076af))
+
 ## [5.22.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.21.0...v5.22.0) (2026-02-20)
 
 ### Features
