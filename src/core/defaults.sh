@@ -155,7 +155,9 @@ POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 # @powerkit_plugin_group_colors - Color palette for plugin groups
 # Comma-separated list of theme colors or hex values
 # Groups are assigned colors in order from this palette
-# Colors are applied to the background between plugins in the same group
+# Colors are used for separator backgrounds between plugins in the same group.
+# When @powerkit_plugin_group_coloring is enabled, these colors also override
+# plugin segment backgrounds (health is then indicated via bold text styling).
 # Values: theme color names (with -darker variant) or hex colors
 # Default palette uses theme colors for visual harmony:
 #   info-base-darker          - Blue tones (network, info plugins)
@@ -165,6 +167,13 @@ POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 #   error-base-darker         - Red tones (critical plugins)
 #   disabled-base             - Gray tones (neutral plugins)
 POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
+
+# @powerkit_plugin_group_coloring - Apply group palette colors to plugin segments
+# Values: "true", "false"
+# When false (default): groups affect separator grouping only; plugins use health-based colors
+# When true: group palette colors override health-based segment backgrounds;
+#   health is indicated through bold text styling instead
+POWERKIT_DEFAULT_PLUGIN_GROUP_COLORING="false"
 
 # =============================================================================
 # STATUS BAR CONFIGURATION

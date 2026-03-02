@@ -531,8 +531,8 @@ _build_spacing_separator() {
     fi
 }
 
-# Resolve colors for plugin (external or regular)
-# Usage: _resolve_plugin_colors "is_external" "state" "health" "stale" "accent" "accent_icon"
+# Resolve colors for plugin (external, grouped, or regular)
+# Usage: _resolve_plugin_colors "is_external" "state" "health" "stale" "accent" "accent_icon" ["group_color"]
 # Outputs: "content_bg content_fg icon_bg icon_fg" (space-separated)
 _resolve_plugin_colors() {
     local is_external="$1"
@@ -541,6 +541,7 @@ _resolve_plugin_colors() {
     local stale="$4"
     local accent="$5"
     local accent_icon="$6"
+    local group_color="${7:-}"
 
     if [[ "$is_external" == "1" && -n "$accent" ]]; then
         # External plugin: use specified accent colors
@@ -565,6 +566,55 @@ _resolve_plugin_colors() {
             local icon_fg_variant
             icon_fg_variant=$(get_contrast_variant "$icon_bg")
             icon_fg=$(resolve_color "${effective_icon_accent}-${icon_fg_variant}")
+        fi
+
+        printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
+    elif [[ -n "$group_color" ]]; then
+        # Group color override: use group color as segment background
+        # Health feedback is preserved through bold text styling (in render_plugin_segment)
+        local content_bg content_fg icon_bg icon_fg
+
+        # State overrides take precedence (inactive/failed are semantic, not visual)
+        case "$state" in
+            inactive)
+                content_bg=$(get_color "disabled-base")
+                content_fg=$(get_color "white")
+                icon_bg=$(get_color "disabled-base-lighter")
+                icon_fg=$(get_color "white")
+                printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
+                return
+                ;;
+            failed)
+                content_bg=$(get_color "error-base")
+                content_fg=$(get_color "error-base-darkest")
+                icon_bg=$(get_color "error-base-lighter")
+                icon_fg=$(get_color "error-base-darkest")
+                printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
+                return
+                ;;
+        esac
+
+        # Transparent mode: skip group color override, fall through to health-based
+        local transparent_mode="${_TMUX_OPTIONS_CACHE['@powerkit_transparent']:-false}"
+        if [[ "$transparent_mode" == "true" ]]; then
+            resolve_plugin_colors_full "$state" "$health" "" "$stale"
+            return
+        fi
+
+        # Use group color as base
+        content_bg="$group_color"
+        icon_bg=$(color_lighter "$group_color" "$_COLOR_LIGHTER_PERCENT")
+
+        # Stale: darken group color
+        if [[ "$stale" == "1" ]]; then
+            content_bg=$(color_darker "$group_color" "$_COLOR_DARKER_PERCENT")
+            icon_bg=$(color_darker "$group_color" "$_COLOR_DARKER_PERCENT")
+            content_fg=$(get_color "white")
+            icon_fg=$(get_color "white")
+        else
+            # Auto-contrast foreground
+            content_fg=$(get_contrast_fg "$content_bg")
+            icon_fg=$(get_contrast_fg "$icon_bg")
         fi
 
         printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
@@ -594,6 +644,11 @@ render_plugins() {
     # Pre-populate separator cache (avoids subshell loss in loops)
     separator_ensure_cache
 
+    # Ensure tmux options are batch-loaded in the parent shell so that
+    # direct _TMUX_OPTIONS_CACHE lookups work throughout the render path
+    # (subshell get_tmux_option calls cannot persist cache back to parent)
+    _batch_load_tmux_options
+
     # Determine status bar background
     local status_bg
     status_bg=$(resolve_background)
@@ -601,6 +656,9 @@ render_plugins() {
     local transparent
     transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
     [[ "$transparent" == "true" ]] && status_bg="default"
+
+    # Check if group coloring is enabled
+    local group_coloring="${_TMUX_OPTIONS_CACHE['@powerkit_plugin_group_coloring']:-${POWERKIT_DEFAULT_PLUGIN_GROUP_COLORING}}"
 
     # Get plugin list
     local plugins_str
@@ -739,8 +797,14 @@ render_plugins() {
         prev_group_id="$current_group_id"
 
         # Resolve colors (RENDERER responsibility - per contract separation)
+        # Pass group color only when group coloring is enabled
+        local group_color=""
+        if [[ "$group_coloring" == "true" && $current_group_id -gt 0 ]]; then
+            group_color="${_GROUP_COLORS[$current_group_id]:-}"
+        fi
+
         local content_bg content_fg icon_bg icon_fg
-        read -r content_bg content_fg icon_bg icon_fg <<< "$(_resolve_plugin_colors "$is_external" "$state" "$health" "$stale" "$accent" "$accent_icon")"
+        read -r content_bg content_fg icon_bg icon_fg <<< "$(_resolve_plugin_colors "$is_external" "$state" "$health" "$stale" "$accent" "$accent_icon" "$group_color")"
 
         # Render segment (pass is_first, is_last and side for correct separator styling)
         local segment

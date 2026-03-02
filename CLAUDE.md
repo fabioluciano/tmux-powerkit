@@ -1024,7 +1024,7 @@ POWERKIT_DEFAULT_THEME_VARIANT="mocha"
 POWERKIT_DEFAULT_TRANSPARENT="false"
 POWERKIT_DEFAULT_PLUGINS="datetime,battery,cpu,memory,hostname,git"
 POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
-POWERKIT_DEFAULT_PLUGIN_GROUP_COLORS="info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
+POWERKIT_DEFAULT_PLUGIN_GROUP_COLORING="false"
 POWERKIT_DEFAULT_STATUS_INTERVAL="5"
 POWERKIT_DEFAULT_BAR_LAYOUT="single"                      # single or double (2 status lines)
 POWERKIT_DEFAULT_STATUS_ORDER="session,plugins"           # Element rendering order
@@ -1047,6 +1047,29 @@ Groups are assigned colors from `@powerkit_plugin_group_colors` palette in order
 - Group 4: `warning-base-darker` (yellow)
 - Group 5: `error-base-darker` (red)
 - Group 6: `disabled-base` (gray)
+
+#### Group Coloring Mode
+
+By default, group colors only affect separator backgrounds between grouped plugins. Enable `@powerkit_plugin_group_coloring` to apply group palette colors to plugin segment backgrounds:
+
+```bash
+set -g @powerkit_plugin_group_coloring "true"   # Default: "false"
+```
+
+**When enabled**:
+
+- Plugin segment backgrounds use the group's palette color instead of health-based colors
+- Health feedback is preserved through **bold text styling** (warning/error states render bold)
+- Special states (`inactive`, `failed`) retain their semantic colors and are not overridden
+- Transparent mode (`@powerkit_transparent "true"`) disables group coloring, falling back to health-based colors
+- Stale data applies a darkened variant of the group color
+
+**Implementation details** (`src/renderer/segment_builder.sh`):
+
+- `_resolve_plugin_colors()` accepts an optional 7th parameter `group_color`
+- When `group_color` is set, it uses that color as `content_bg` and generates `icon_bg` via `color_lighter()`
+- Foreground colors use `get_contrast_fg()` for auto-contrast
+- `render_plugins()` reads `@powerkit_plugin_group_coloring` and passes `_GROUP_COLORS[$current_group_id]` when enabled
 
 ### Status Bar Layouts
 

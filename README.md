@@ -516,6 +516,39 @@ set -g @powerkit_stale_multiplier "3"
 
 This ensures your status bar never hangs waiting for slow API calls or network requests.
 
+### Plugin Groups
+
+Group related plugins together using the `group(...)` syntax for visual cohesion:
+
+```bash
+# Group related plugins with shared separator backgrounds
+set -g @powerkit_plugins "group(cpu,memory,loadavg),group(git,github),datetime"
+```
+
+Groups are assigned colors from the `@powerkit_plugin_group_colors` palette in order:
+
+```bash
+# Customize group color palette (comma-separated theme colors or hex values)
+set -g @powerkit_plugin_group_colors "info-base-darker,window-active-base-darker,ok-base-darker,warning-base-darker,error-base-darker,disabled-base"
+```
+
+By default, group colors only affect the separator backgrounds between plugins in the same group. Each plugin still uses its own health-based colors for the segment itself.
+
+To create a fully unified visual band where all plugins in a group share the same background color, enable group coloring:
+
+```bash
+# Apply group palette colors to plugin segment backgrounds (default: false)
+set -g @powerkit_plugin_group_coloring "true"
+```
+
+When group coloring is enabled:
+
+- Plugin segment backgrounds use the group's palette color instead of health-based colors
+- Health feedback is preserved through **bold text styling** (warning/error states render bold)
+- Special states (`inactive`, `failed`) still use their semantic colors and are not overridden
+- Transparent mode (`@powerkit_transparent "true"`) disables group coloring and falls back to health-based colors
+- Stale data applies a darkened variant of the group color, consistent with the normal stale behavior
+
 ---
 
 ## 🔧 Creating Your Own Plugin
