@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.24.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.23.1...v5.24.0) (2026-03-06)
+
+### Features
+
+* **renderer:** allow plugin groups to override segment colors ([#202](https://github.com/fabioluciano/tmux-powerkit/issues/202)) ([a5eb7a6](https://github.com/fabioluciano/tmux-powerkit/commit/a5eb7a640ddc6f7dff14c68ad5ce287455a41e77))
+
 ## [5.23.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.23.0...v5.23.1) (2026-03-06)
 
 ### Bug Fixes
