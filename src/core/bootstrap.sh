@@ -13,6 +13,22 @@ export POWERKIT_ROOT
 source_guard "bootstrap" && return 0
 
 # =============================================================================
+# PATH Safety Block
+# =============================================================================
+# When tmux spawns processes via #(...) format strings, the shell's PATH
+# may not include standard system directories. Ensure critical directories
+# are available for commands like sysctl, ifconfig, etc.
+
+for _system_dir in /usr/sbin /usr/bin /sbin /bin; do
+    case ":${PATH}:" in
+        *":${_system_dir}:"*) ;;
+        *) [[ -d "$_system_dir" ]] && PATH="${PATH}:${_system_dir}" ;;
+    esac
+done
+unset _system_dir
+export PATH
+
+# =============================================================================
 # Bash 5.1+ Optimizations
 # =============================================================================
 
