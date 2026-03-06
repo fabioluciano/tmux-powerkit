@@ -34,7 +34,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Backend selection
     declare_option "backend" "enum" "auto" "Package manager: auto, brew, yay, apt, dnf, yum, pacman"
-    declare_option "brew_options" "string" "--greedy" "Additional options for brew outdated"
+    declare_option "brew_options" "string" "" "Additional options for brew outdated (e.g., '--greedy' for all casks)"
 
     # Display options
     declare_option "show_count" "bool" "true" "Show update count"

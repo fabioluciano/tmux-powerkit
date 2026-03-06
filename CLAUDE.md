@@ -1366,6 +1366,16 @@ Removed native macOS binaries from git repository. They are now downloaded on-de
 - **User decision caching**: Decisions are cached for 24h
 - **Graceful degradation**: Plugins return `inactive` state if binary unavailable
 
+### PATH Safety Block (February 2025)
+
+Fixed critical PATH issue affecting macOS plugins that use `sysctl` command:
+
+- **Problem**: When tmux spawns processes via `#(...)` format strings, the shell's PATH may not include `/usr/sbin`, causing `sysctl` commands to fail silently
+- **Affected plugins**: memory, swap, cpu, loadavg, uptime, temperature
+- **Solution**: Added PATH safety block in [bootstrap.sh:15-29](src/core/bootstrap.sh#L15-L29) that ensures standard system directories (`/usr/sbin`, `/usr/bin`, `/sbin`, `/bin`) are always in PATH
+- **Location**: Runs immediately after source guard, before any module loading
+- **Impact**: Fixes `0M/0M` memory display and inaccurate uptime dates on macOS
+
 ### Health System Enhancement
 
 Added `good` health level for positive states:
