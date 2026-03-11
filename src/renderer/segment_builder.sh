@@ -811,7 +811,14 @@ render_plugins() {
         local segment
         segment=$(render_plugin_segment "$icon" "$content" "$state" "$health" "$icon_bg" "$icon_fg" "$content_bg" "$content_fg" "$prev_bg" "$is_first" "$is_last" "$side")
 
-        output+="$segment"
+        # Wrap with named range so mouse bindings can target individual plugins
+        # via #{mouse_status_range} == "user|<plugin_name>". External plugins are
+        # excluded because their "name" is an arbitrary spec string.
+        if [[ $is_external -eq 0 ]]; then
+            output+="#[range=user|${plugin_name}]${segment}#[norange default]"
+        else
+            output+="$segment"
+        fi
         prev_bg="$content_bg"
         ((render_idx++))
     done
