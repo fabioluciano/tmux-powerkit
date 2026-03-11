@@ -67,6 +67,7 @@
 #     pane_flash_is_enabled()       - Check if flash is enabled
 #     pane_flash_trigger()          - Manually trigger flash effect
 #     pane_flash_setup()            - Setup flash hook (called by bootstrap)
+#     sync_pane_flash_appearance()  - Sync @dark_appearance with system (macOS)
 #
 #   Pane State:
 #     pane_get_state()              - Get current pane state
@@ -135,6 +136,11 @@ pane_flash_trigger() {
     local resolved_color
     resolved_color=$(_pane_resolve_color "$color")
 
+    # If color contains tmux format strings, evaluate at trigger time
+    if [[ "$resolved_color" == *'#{'* ]]; then
+        resolved_color=$(tmux display-message -p "$resolved_color" 2>/dev/null)
+    fi
+
     # Calculate delay in seconds
     local delay_s
     delay_s=$(echo "scale=3; $duration_ms / 1000" | bc 2>/dev/null || echo "0.1")
@@ -173,6 +179,14 @@ pane_flash_disable() {
 
 # Setup the flash hook (called during bootstrap)
 # Usage: pane_flash_setup
+#
+# Stores resolved color and delay in tmux options so the hook can read
+# them at trigger time. This allows theme switches (e.g., @dark_appearance
+# toggle) to take effect without re-registering the hook.
+#
+# For tmux format strings (e.g., "#{?#{@dark_appearance},#073642,#eee8d5}"),
+# the color is stored unresolved and evaluated via `tmux display-message -p`
+# each time the hook fires.
 pane_flash_setup() {
     pane_flash_is_enabled || return 0
 
@@ -180,7 +194,7 @@ pane_flash_setup() {
     color=$(get_tmux_option "@powerkit_pane_flash_color" "${POWERKIT_DEFAULT_PANE_FLASH_COLOR:-info-base}")
     duration_ms=$(get_tmux_option "@powerkit_pane_flash_duration" "${POWERKIT_DEFAULT_PANE_FLASH_DURATION:-100}")
 
-    # Resolve color
+    # Resolve color (format strings pass through unresolved)
     local resolved_color
     resolved_color=$(_pane_resolve_color "$color")
 
@@ -188,10 +202,21 @@ pane_flash_setup() {
     local delay_s
     delay_s=$(echo "scale=3; $duration_ms / 1000" | bc 2>/dev/null || echo "0.1")
 
-    # Build the hook command
-    # The hook sets the background, then resets it after the delay
+    # Store resolved color and delay in tmux options for trigger-time lookup
+    set_tmux_option "@_powerkit_pane_flash_resolved" "$resolved_color"
+    set_tmux_option "@_powerkit_pane_flash_delay" "$delay_s"
+
+    # Build the hook command that reads options at trigger time
+    # If the resolved color contains #{, evaluate it via display-message -p
     local hook_cmd
-    hook_cmd="run-shell 'tmux set -w window-active-style \"bg=$resolved_color\"; sleep $delay_s; tmux set -w window-active-style \"\"'"
+    hook_cmd="run-shell '"
+    hook_cmd+='color=$(tmux show-option -gqv @_powerkit_pane_flash_resolved); '
+    hook_cmd+='delay=$(tmux show-option -gqv @_powerkit_pane_flash_delay); '
+    hook_cmd+='case "$color" in *\#\{*) color=$(tmux display-message -p "$color");; esac; '
+    hook_cmd+='tmux set -w window-active-style "bg=$color"; '
+    hook_cmd+='sleep "$delay"; '
+    hook_cmd+='tmux set -w window-active-style ""'
+    hook_cmd+="'"
 
     # Register the hook
     tmux set-hook -g after-select-pane "$hook_cmd" 2>/dev/null || {
@@ -207,9 +232,44 @@ pane_flash_setup() {
 # Usage: _pane_flash_teardown
 _pane_flash_teardown() {
     tmux set-hook -gu after-select-pane 2>/dev/null || true
+    # Clean up internal options
+    tmux set-option -gu "@_powerkit_pane_flash_resolved" 2>/dev/null || true
+    tmux set-option -gu "@_powerkit_pane_flash_delay" 2>/dev/null || true
     # Reset any lingering style
     tmux set -w window-active-style '' 2>/dev/null || true
     log_debug "pane" "Pane flash hook removed"
+}
+
+# Internal: Re-resolve the flash color and update the stored option
+# Useful for theme switches without re-registering the hook
+# Usage: _pane_flash_update_color
+_pane_flash_update_color() {
+    local color
+    color=$(get_tmux_option "@powerkit_pane_flash_color" "${POWERKIT_DEFAULT_PANE_FLASH_COLOR:-info-base}")
+
+    local resolved_color
+    resolved_color=$(_pane_resolve_color "$color")
+
+    set_tmux_option "@_powerkit_pane_flash_resolved" "$resolved_color"
+    log_debug "pane" "Pane flash color updated: $resolved_color"
+}
+
+# Internal: Get color from a specific theme variant
+# Usage: _get_theme_color "solarized/dark" "statusbar-bg"
+_get_theme_color() {
+    local theme_path="$1"
+    local color_name="$2"
+    local theme_file="${POWERKIT_ROOT}/src/themes/${theme_path}.sh"
+
+    [[ ! -f "$theme_file" ]] && return 1
+
+    # Extract color value from theme file using grep
+    # Pattern: [color_name]="#RRGGBB"
+    local color_value
+    color_value=$(grep -E "^\s*\[${color_name}\]=" "$theme_file" 2>/dev/null | \
+                  sed -E 's/^[^"]*"([^"]+)".*$/\1/')
+
+    [[ -n "$color_value" ]] && printf '%s' "$color_value"
 }
 
 # Internal: Resolve color from theme or return as-is
@@ -217,10 +277,47 @@ _pane_flash_teardown() {
 _pane_resolve_color() {
     local color="$1"
 
+    # If it contains tmux format strings (e.g., #{?#{@dark_appearance},...}),
+    # pass through unresolved for trigger-time evaluation
+    [[ "$color" == *'#{'* ]] && { printf '%s' "$color"; return; }
+
     # If it's already a hex color, return as-is
     [[ "$color" =~ ^#[0-9A-Fa-f]{6}$ ]] && { printf '%s' "$color"; return; }
 
-    # Try to resolve from theme
+    # Auto-generate format string for theme colors with light/dark variants
+    local theme variant
+    theme=$(get_tmux_option "@powerkit_theme" "")
+    variant=$(get_tmux_option "@powerkit_theme_variant" "")
+
+    if [[ -n "$theme" ]]; then
+        # Check if theme has both light and dark variants
+        local light_file="${POWERKIT_ROOT}/src/themes/${theme}/light.sh"
+        local dark_file="${POWERKIT_ROOT}/src/themes/${theme}/dark.sh"
+
+        if [[ -f "$light_file" && -f "$dark_file" ]]; then
+            # Get color from both variants
+            local dark_color light_color
+            dark_color=$(_get_theme_color "${theme}/dark" "$color")
+            light_color=$(_get_theme_color "${theme}/light" "$color")
+
+            # If both colors exist and are different, generate dynamic format string
+            if [[ -n "$dark_color" && -n "$light_color" ]]; then
+                if [[ "$dark_color" != "$light_color" ]]; then
+                    # Auto-generate format string: if @dark_appearance is truthy, use first color
+                    # Testing needed to determine correct mapping
+                    printf '#{?#{@dark_appearance},%s,%s}' "$dark_color" "$light_color"
+                    log_debug "pane" "Auto-generated dynamic color for '$color': dark=$dark_color, light=$light_color"
+                    return
+                else
+                    # Colors are the same in both variants, just return the static color
+                    printf '%s' "$dark_color"
+                    return
+                fi
+            fi
+        fi
+    fi
+
+    # Fallback: Try to resolve from current theme variant
     if declare -F resolve_color &>/dev/null; then
         local resolved
         resolved=$(resolve_color "$color" 2>/dev/null)
@@ -229,6 +326,41 @@ _pane_resolve_color() {
 
     # Fallback: return as-is (might be a tmux color name)
     printf '%s' "$color"
+}
+
+# Sync @dark_appearance with current system appearance
+# Usage: sync_pane_flash_appearance
+#
+# This function detects the current macOS system appearance (Dark or Light)
+# and updates the tmux @dark_appearance option if it doesn't match. This is
+# useful for terminals like Ghostty that automatically switch themes based on
+# system appearance but don't have hooks to notify tmux.
+#
+# The function is safe to call repeatedly - it only updates if there's a mismatch.
+sync_pane_flash_appearance() {
+    # platform.sh is always loaded before pane_contract.sh via bootstrap
+    local system_appearance
+    system_appearance=$(get_macos_appearance)
+
+    local current_setting
+    current_setting=$(get_tmux_option "@dark_appearance" "0")
+
+    # Only update if there's a mismatch
+    if [[ "$system_appearance" != "$current_setting" ]]; then
+        set_tmux_option "@dark_appearance" "$system_appearance"
+
+        local mode_name
+        [[ "$system_appearance" == "1" ]] && mode_name="dark" || mode_name="light"
+
+        log_info "pane" "Synced @dark_appearance: $current_setting → $system_appearance ($mode_name mode)"
+
+        # Update the resolved flash color if the function exists
+        if declare -F _pane_flash_update_color &>/dev/null; then
+            _pane_flash_update_color
+        fi
+    else
+        log_debug "pane" "@dark_appearance already in sync (system=$system_appearance)"
+    fi
 }
 
 # =============================================================================

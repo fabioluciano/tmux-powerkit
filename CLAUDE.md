@@ -1987,6 +1987,7 @@ pane_flash_disable()          # Disable pane flash
 pane_flash_is_enabled()       # Check if flash is enabled
 pane_flash_trigger()          # Manually trigger flash effect
 pane_flash_setup()            # Setup flash hook (called by bootstrap)
+sync_pane_flash_appearance()  # Sync @dark_appearance with macOS system appearance
 
 # Pane State
 pane_get_state()              # Returns: "active", "inactive", or "zoomed"
@@ -2015,9 +2016,54 @@ pane_build_border_format()    # Build complete border format with colors
 pane_get_sync_icon()          # Get synchronized pane icon
 pane_sync_format()            # Get tmux format "#{?pane_synchronized,...}"
 
+# Appearance Sync (macOS)
+sync_pane_flash_appearance()  # Sync @dark_appearance with system (called on startup)
+
 # Configuration
 pane_configure()              # Apply ALL pane settings to tmux (called by renderer)
 ```
+
+### Appearance Synchronization (Ghostty & Terminals Without Hooks)
+
+For terminals like Ghostty that automatically switch themes based on system appearance but don't provide command execution hooks, tmux-powerkit automatically detects and syncs the appearance on startup.
+
+**How it works:**
+
+1. **Auto-sync on startup**: When tmux starts or reloads, `sync_pane_flash_appearance()` detects the current macOS appearance and sets `@dark_appearance` accordingly
+2. **Format string evaluation**: The pane flash color uses a format string like `#{?#{@dark_appearance},#073642,#eee8d5}` that evaluates at trigger time
+3. **Convention**: `@dark_appearance=1` means dark mode, `@dark_appearance=0` means light mode
+
+**For Ghostty users:**
+
+Your `ghostty` config should use the native light/dark theme switching:
+
+```
+theme = dark:Builtin Solarized Dark,light:Builtin Solarized Light
+```
+
+Ghostty will automatically switch its theme when macOS appearance changes, and tmux-powerkit will sync `@dark_appearance` on the next tmux reload or startup.
+
+**Manual sync:**
+
+If you switch macOS appearance while tmux is running, you can manually sync by reloading tmux:
+
+```bash
+tmux source ~/.config/tmux/tmux.conf
+```
+
+Or call the sync function directly:
+
+```bash
+tmux run-shell 'source ~/.config/tmux/plugins/tmux-powerkit/src/contract/pane_contract.sh && sync_pane_flash_appearance'
+```
+
+**Troubleshooting:**
+
+If pane flash colors don't match your theme:
+1. Check system appearance: `defaults read -g AppleInterfaceStyle` (returns "Dark" or empty for light)
+2. Check tmux option: `tmux show-option -gqv @dark_appearance` (should be 1 for dark, 0 for light)
+3. Check resolved color: `tmux show-option -gqv @_powerkit_pane_flash_resolved`
+4. Reload tmux to force sync: `tmux source ~/.config/tmux/tmux.conf`
 
 ---
 
