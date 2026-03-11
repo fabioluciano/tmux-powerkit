@@ -285,8 +285,9 @@ _pane_resolve_color() {
     [[ "$color" =~ ^#[0-9A-Fa-f]{6}$ ]] && { printf '%s' "$color"; return; }
 
     # Auto-generate format string for theme colors with light/dark variants
-    local theme
+    local theme variant
     theme=$(get_tmux_option "@powerkit_theme" "")
+    variant=$(get_tmux_option "@powerkit_theme_variant" "")
 
     if [[ -n "$theme" ]]; then
         # Check if theme has both light and dark variants
