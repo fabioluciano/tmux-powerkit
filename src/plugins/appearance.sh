@@ -25,8 +25,13 @@
 #
 # This plugin is the tmux-side appearance watcher:
 #   - Polls system appearance each status interval via get_macos_appearance_mode()
-#   - When @dark_appearance changes, dispatches to tmux + all zsh panes via
-#     SIGUSR1, then switches @powerkit_theme/@powerkit_theme_variant to match
+#   - When @dark_appearance changes, calls macos_dispatch_appearance() which
+#     sets the tmux option and sends SIGUSR1 to all zsh panes so zac
+#     (zsh-appearance-control) can sync its internal state.
+#
+# This file doubles as a CLI tool when invoked directly:
+#   bash appearance.sh toggle
+# Used by keybindings and mouse clicks — no separate helper script needed.
 #
 # =============================================================================
 
@@ -67,54 +72,10 @@ plugin_declare_options() {
   declare_option "toggle_icon_dark"  "icon" "🌚" "Content icon: dark mode"
   declare_option "toggle_icon_light" "icon" "🌞" "Content icon: light mode"
 
-  declare_option "dark_theme"  "string" "" "Theme/variant for dark mode (e.g. catppuccin/mocha)"
-  declare_option "light_theme" "string" "" "Theme/variant for light mode (e.g. catppuccin/latte)"
-
   declare_option "keybinding_toggle" "key"  ""      "Keybinding to cycle appearance mode"
   declare_option "mouse_toggle"      "bool" "false" "Enable mouse click on the plugin segment to toggle"
 
-  declare_option "cache_ttl" "number" "3" "Cache duration in seconds"
-}
-
-# =============================================================================
-# Internal: Switch theme to match appearance
-# =============================================================================
-
-# Resolve and apply the correct theme/variant for the given dark_val ("1"|"0").
-# Priority:
-#   1. Explicit dark_theme / light_theme options (e.g. "catppuccin/mocha")
-#   2. Auto-detect: if current theme has dark.sh + light.sh, switch variant
-#   3. No-op
-_appearance_switch_theme() {
-  local dark_val="$1"
-  local dark_opt light_opt pair theme variant
-
-  dark_opt=$(get_option "dark_theme")
-  light_opt=$(get_option "light_theme")
-
-  if [[ -n "$dark_opt" && -n "$light_opt" ]]; then
-    # Explicit config — supports any theme/variant pair (e.g. catppuccin)
-    [[ "$dark_val" == "1" ]] && pair="$dark_opt" || pair="$light_opt"
-    theme="${pair%/*}"
-    variant="${pair#*/}"
-  else
-    # Auto-detect: check if current theme has standard dark.sh + light.sh
-    local current_theme themes_dir
-    current_theme=$(get_tmux_option "@powerkit_theme" "")
-    themes_dir="${POWERKIT_ROOT}/src/themes"
-
-    if [[ -n "$current_theme" && \
-          -f "${themes_dir}/${current_theme}/dark.sh" && \
-          -f "${themes_dir}/${current_theme}/light.sh" ]]; then
-      theme="$current_theme"
-      [[ "$dark_val" == "1" ]] && variant="dark" || variant="light"
-    else
-      return 0  # No-op: theme doesn't support auto light/dark switching
-    fi
-  fi
-
-  tmux set-option -gq @powerkit_theme         "$theme"   2>/dev/null || true
-  tmux set-option -gq @powerkit_theme_variant "$variant" 2>/dev/null || true
+  declare_option "cache_ttl" "number" "0" "Cache duration in seconds"
 }
 
 # =============================================================================
@@ -130,9 +91,9 @@ plugin_collect() {
   last_dark=$(get_tmux_option "@dark_appearance" "")
   if [[ "$dark_val" != "$last_dark" ]]; then
     macos_dispatch_appearance "$dark_val"
-    _appearance_switch_theme "$dark_val"
-    cache_clear_prefix "rendered_right__"
-    tmux run-shell -b "sleep 0.1 && tmux refresh-client -S" 2>/dev/null || true
+    local cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/tmux-powerkit/data"
+    rm -f "${cache_dir}"/rendered_right__* 2>/dev/null || true
+    tmux run-shell -b "sleep 0.5 && tmux refresh-client -S" 2>/dev/null || true
   fi
 
   plugin_data_set "mode" "$mode"
