@@ -2037,7 +2037,7 @@ For terminals like Ghostty that automatically switch themes based on system appe
 
 Your `ghostty` config should use the native light/dark theme switching:
 
-```
+```text
 theme = dark:Builtin Solarized Dark,light:Builtin Solarized Light
 ```
 
@@ -2060,6 +2060,7 @@ tmux run-shell 'source ~/.config/tmux/plugins/tmux-powerkit/src/contract/pane_co
 **Troubleshooting:**
 
 If pane flash colors don't match your theme:
+
 1. Check system appearance: `defaults read -g AppleInterfaceStyle` (returns "Dark" or empty for light)
 2. Check tmux option: `tmux show-option -gqv @dark_appearance` (should be 1 for dark, 0 for light)
 3. Check resolved color: `tmux show-option -gqv @_powerkit_pane_flash_resolved`
