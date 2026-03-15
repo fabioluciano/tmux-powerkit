@@ -139,7 +139,7 @@ plugin_collect() {
     _appearance_switch_theme "$dark_val"
     local cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/tmux-powerkit/data"
     rm -f "${cache_dir}"/rendered_right__* 2>/dev/null || true
-    tmux run-shell -b "sleep 0.5 && tmux refresh-client -S" 2>/dev/null || true
+    tmux run-shell -b "sleep 0.1 && tmux refresh-client -S" 2>/dev/null || true
   fi
 
   plugin_data_set "mode" "$mode"
