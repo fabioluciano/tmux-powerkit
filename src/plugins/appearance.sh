@@ -25,13 +25,13 @@
 #
 # This plugin is the tmux-side appearance watcher:
 #   - Polls system appearance each status interval via get_macos_appearance_mode()
-#   - When @dark_appearance changes, calls macos_dispatch_appearance() which
-#     sets the tmux option and sends SIGUSR1 to all zsh panes so zac
-#     (zsh-appearance-control) can sync its internal state.
+#   - When @dark_appearance changes, dispatches to tmux + all zsh panes via
+#     SIGUSR1, then switches @powerkit_theme/@powerkit_theme_variant to match
 #
-# This file doubles as a CLI tool when invoked directly:
-#   bash appearance.sh toggle
-# Used by keybindings and mouse clicks — no separate helper script needed.
+# For instant OS-driven appearance switching (no polling lag), enable the
+# launchd WatchPaths agent via the watch_plist option. The agent calls
+# appearance_toggle.sh watch when GlobalPreferences.plist changes.
+# See appearance_toggle.sh for install/uninstall details.
 #
 # =============================================================================
 
@@ -74,6 +74,8 @@ plugin_declare_options() {
 
   declare_option "dark_theme"  "string" "" "Theme/variant for dark mode (e.g. catppuccin/mocha)"
   declare_option "light_theme" "string" "" "Theme/variant for light mode (e.g. catppuccin/latte)"
+
+  declare_option "watch_plist" "bool" "false" "Install launchd agent for instant OS-driven appearance switching"
 
   declare_option "keybinding_toggle" "key"  ""      "Keybinding to cycle appearance mode"
   declare_option "mouse_toggle"      "bool" "false" "Enable mouse click on the plugin segment to toggle"
@@ -222,6 +224,17 @@ plugin_render() {
 plugin_setup_keybindings() {
   local toggle_key mouse helper
   helper="${POWERKIT_ROOT}/src/helpers/appearance_toggle.sh"
+
+  # Self-manage the launchd WatchPaths agent.
+  # install when watch_plist=true; uninstall if the plist exists but option is off.
+  local watch_plist plist_path
+  watch_plist=$(get_option "watch_plist")
+  plist_path="${HOME}/Library/LaunchAgents/com.tmux-powerkit.appearance.plist"
+  if [[ "$watch_plist" == "true" ]]; then
+    bash "$helper" install 2>/dev/null || true
+  elif [[ -f "$plist_path" ]]; then
+    bash "$helper" uninstall 2>/dev/null || true
+  fi
 
   toggle_key=$(get_option "keybinding_toggle")
   if [[ -n "$toggle_key" ]]; then
