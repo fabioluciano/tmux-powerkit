@@ -319,26 +319,19 @@ get_macos_appearance_mode() {
 
 # Dispatch an appearance change to tmux and all zsh processes
 # Usage: macos_dispatch_appearance "1"|"0"
-# Sets @dark_appearance tmux option, then signals via appearance-dispatch
-# binary (if available from zsh-appearance-control) or SIGUSR1 fallback.
+# Sets @dark_appearance tmux option and sends SIGUSR1 to all zsh panes.
 macos_dispatch_appearance() {
     local dark_val="$1"
-    local dispatch_bin="${HOME}/.config/zsh/.zcomet/repos/alberti42/zsh-appearance-control/bin/appearance-dispatch"
 
     tmux set-option -gq @dark_appearance "$dark_val" 2>/dev/null || true
 
-    if [[ -x "$dispatch_bin" ]]; then
-        "$dispatch_bin" tmux "$dark_val" 2>/dev/null || true
-    else
-        # Fallback: SIGUSR1 to every zsh pane in this tmux server
-        local pid comm
-        while IFS= read -r pid; do
-            [[ "$pid" =~ ^[0-9]+$ ]] || continue
-            comm=$(ps -p "$pid" -o comm= 2>/dev/null) || continue
-            [[ "$comm" == *zsh ]] || continue
-            kill -USR1 "$pid" 2>/dev/null || true
-        done < <(tmux list-panes -a -F '#{pane_pid}' 2>/dev/null)
-    fi
+    local pid comm
+    while IFS= read -r pid; do
+        [[ "$pid" =~ ^[0-9]+$ ]] || continue
+        comm=$(ps -p "$pid" -o comm= 2>/dev/null) || continue
+        [[ "$comm" == *zsh ]] || continue
+        kill -USR1 "$pid" 2>/dev/null || true
+    done < <(tmux list-panes -a -F '#{pane_pid}' 2>/dev/null)
 }
 
 # Cycle macOS appearance: auto → dark → light → auto
