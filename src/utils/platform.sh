@@ -253,6 +253,126 @@ is_fanless_mac() {
 }
 
 # =============================================================================
+# macOS Appearance Detection
+# =============================================================================
+
+# Cached value for macOS appearance
+declare -g _CACHED_MAC_APPEARANCE=""
+declare -g _CACHED_MAC_APPEARANCE_TIME=0
+
+# Get current macOS appearance mode
+# Usage: get_macos_appearance
+# Returns: "1" for Dark mode, "0" for Light mode
+# Note: Returns "0" (light) on non-macOS systems or if detection fails
+get_macos_appearance() {
+    # Return cached value if recent (cache for 5 seconds)
+    local now
+    now=$(date +%s 2>/dev/null || echo "0")
+    local cache_age=$((now - _CACHED_MAC_APPEARANCE_TIME))
+
+    if [[ -n "$_CACHED_MAC_APPEARANCE" ]] && (( cache_age < 5 )); then
+        printf '%s' "$_CACHED_MAC_APPEARANCE"
+        return
+    fi
+
+    # Default to light mode on non-macOS systems
+    if ! is_macos; then
+        _CACHED_MAC_APPEARANCE="0"
+        _CACHED_MAC_APPEARANCE_TIME="$now"
+        printf '%s' "$_CACHED_MAC_APPEARANCE"
+        return
+    fi
+
+    # Read macOS system appearance setting
+    local appearance
+    appearance=$(defaults read -g AppleInterfaceStyle 2>/dev/null)
+
+    if [[ "$appearance" == "Dark" ]]; then
+        _CACHED_MAC_APPEARANCE="1"
+    else
+        _CACHED_MAC_APPEARANCE="0"
+    fi
+
+    _CACHED_MAC_APPEARANCE_TIME="$now"
+    printf '%s' "$_CACHED_MAC_APPEARANCE"
+}
+
+# Get current macOS appearance as three-way mode
+# Usage: get_macos_appearance_mode
+# Returns: "auto" | "dark" | "light"
+# Note: Returns "light" on non-macOS systems
+get_macos_appearance_mode() {
+    is_macos || { printf 'light'; return; }
+
+    local auto_switch dark_style
+    auto_switch=$(defaults read -g AppleInterfaceStyleSwitchesAutomatically 2>/dev/null) || auto_switch=""
+    dark_style=$(defaults read -g AppleInterfaceStyle 2>/dev/null) || dark_style=""
+
+    if [[ "$auto_switch" == "1" ]]; then
+        printf 'auto'
+    elif [[ "$dark_style" == "Dark" ]]; then
+        printf 'dark'
+    else
+        printf 'light'
+    fi
+}
+
+# Dispatch an appearance change to tmux and all zsh processes
+# Usage: macos_dispatch_appearance "1"|"0"
+# Sets @dark_appearance tmux option and sends SIGUSR1 to all zsh panes.
+macos_dispatch_appearance() {
+    local dark_val="$1"
+
+    tmux set-option -gq @dark_appearance "$dark_val" 2>/dev/null || true
+
+    local pid comm
+    while IFS= read -r pid; do
+        [[ "$pid" =~ ^[0-9]+$ ]] || continue
+        comm=$(ps -p "$pid" -o comm= 2>/dev/null) || continue
+        [[ "$comm" == *zsh ]] || continue
+        kill -USR1 "$pid" 2>/dev/null || true
+    done < <(tmux list-panes -a -F '#{pane_pid}' 2>/dev/null)
+}
+
+# Cycle macOS appearance: auto → dark → light → auto
+# Usage: macos_cycle_appearance
+# Applies the next mode via osascript/defaults and dispatches to all processes.
+# Returns 1 on non-macOS.
+macos_cycle_appearance() {
+    is_macos || return 1
+
+    local current next dark_val dark_style
+    current=$(get_macos_appearance_mode)
+
+    case "$current" in
+        auto)  next="dark"  ;;
+        dark)  next="light" ;;
+        light) next="auto"  ;;
+        *)     next="auto"  ;;
+    esac
+
+    case "$next" in
+        dark)
+            defaults delete -g AppleInterfaceStyleSwitchesAutomatically 2>/dev/null || true
+            osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true' 2>/dev/null
+            dark_val=1
+            ;;
+        light)
+            defaults delete -g AppleInterfaceStyleSwitchesAutomatically 2>/dev/null || true
+            osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to false' 2>/dev/null
+            dark_val=0
+            ;;
+        auto)
+            defaults write -g AppleInterfaceStyleSwitchesAutomatically -bool true 2>/dev/null
+            dark_style=$(defaults read -g AppleInterfaceStyle 2>/dev/null) || dark_style=""
+            [[ "$dark_style" == "Dark" ]] && dark_val=1 || dark_val=0
+            ;;
+    esac
+
+    macos_dispatch_appearance "$dark_val"
+}
+
+# =============================================================================
 # Environment Detection
 # =============================================================================
 
