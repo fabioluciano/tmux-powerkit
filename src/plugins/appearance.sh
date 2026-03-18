@@ -99,9 +99,8 @@ _appearance_switch_theme() {
     variant="${pair#*/}"
   else
     # Auto-detect: check if current theme has standard dark.sh + light.sh
-    local current_theme current_variant themes_dir
+    local current_theme themes_dir
     current_theme=$(get_tmux_option "@powerkit_theme" "")
-    current_variant=$(get_tmux_option "@powerkit_theme_variant" "")
     themes_dir="${POWERKIT_ROOT}/src/themes"
 
     if [[ -n "$current_theme" && \
