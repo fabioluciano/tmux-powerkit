@@ -155,15 +155,32 @@ _detect_linux_mute() {
 }
 
 _detect_linux_usage() {
-    # Method 1: Check PulseAudio source outputs (most reliable)
+    # Method 1: Check PulseAudio/PipeWire source outputs
     if has_cmd pactl; then
-        pactl list short source-outputs 2>/dev/null | grep -q . && { echo "active"; return; }
+        # List source outputs with application info
+        local source_outputs
+        source_outputs=$(pactl list source-outputs 2>/dev/null)
+
+        if [[ -n "$source_outputs" ]]; then
+            # Check if there are actual applications recording (not just monitors)
+            # Filter out system processes and monitors
+            local recording_apps
+            recording_apps=$(echo "$source_outputs" | grep -E "(application\.name|State:)" |
+                            grep -B1 "State: RUNNING\|State: CORKED" |
+                            grep "application\.name" |
+                            grep -viE "(PulseAudio|PipeWire|monitor|volume|meter)")
+
+            [[ -n "$recording_apps" ]] && { echo "active"; return; }
+        fi
     fi
 
-    # Method 2: Check for processes using audio capture devices
+    # Method 2: Check for processes actively using capture devices
     if has_cmd lsof; then
         local active_capture
-        active_capture=$(lsof /dev/snd/* 2>/dev/null | grep -E "pcmC[0-9]+D[0-9]+c" | grep -cvE "(pipewire|wireplumb|pulseaudio)")
+        # Look for actual recording processes (not audio daemons)
+        active_capture=$(lsof /dev/snd/pcmC*D*c 2>/dev/null |
+                        grep -vE "(pipewire|wireplumb|pulseaudio|systemd)" |
+                        tail -n +2 | wc -l)
         [[ "${active_capture:-0}" -gt 0 ]] && { echo "active"; return; }
     fi
 
