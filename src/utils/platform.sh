@@ -259,6 +259,8 @@ is_fanless_mac() {
 # Cached value for macOS appearance
 declare -g _CACHED_MAC_APPEARANCE=""
 declare -g _CACHED_MAC_APPEARANCE_TIME=0
+declare -g _CACHED_MAC_APPEARANCE_MODE=""
+declare -g _CACHED_MAC_APPEARANCE_MODE_TIME=0
 
 # Get current macOS appearance mode
 # Usage: get_macos_appearance
@@ -266,8 +268,7 @@ declare -g _CACHED_MAC_APPEARANCE_TIME=0
 # Note: Returns "0" (light) on non-macOS systems or if detection fails
 get_macos_appearance() {
     # Return cached value if recent (cache for 5 seconds)
-    local now
-    now=$(date +%s 2>/dev/null || echo "0")
+    local now=$EPOCHSECONDS
     local cache_age=$((now - _CACHED_MAC_APPEARANCE_TIME))
 
     if [[ -n "$_CACHED_MAC_APPEARANCE" ]] && (( cache_age < 5 )); then
@@ -304,17 +305,29 @@ get_macos_appearance() {
 get_macos_appearance_mode() {
     is_macos || { printf 'light'; return; }
 
+    # Return cached value if recent (cache for 5 seconds)
+    local now=$EPOCHSECONDS
+    local cache_age=$((now - _CACHED_MAC_APPEARANCE_MODE_TIME))
+
+    if [[ -n "$_CACHED_MAC_APPEARANCE_MODE" ]] && (( cache_age < 5 )); then
+        printf '%s' "$_CACHED_MAC_APPEARANCE_MODE"
+        return
+    fi
+
     local auto_switch dark_style
     auto_switch=$(defaults read -g AppleInterfaceStyleSwitchesAutomatically 2>/dev/null) || auto_switch=""
     dark_style=$(defaults read -g AppleInterfaceStyle 2>/dev/null) || dark_style=""
 
     if [[ "$auto_switch" == "1" ]]; then
-        printf 'auto'
+        _CACHED_MAC_APPEARANCE_MODE="auto"
     elif [[ "$dark_style" == "Dark" ]]; then
-        printf 'dark'
+        _CACHED_MAC_APPEARANCE_MODE="dark"
     else
-        printf 'light'
+        _CACHED_MAC_APPEARANCE_MODE="light"
     fi
+
+    _CACHED_MAC_APPEARANCE_MODE_TIME="$now"
+    printf '%s' "$_CACHED_MAC_APPEARANCE_MODE"
 }
 
 # Dispatch an appearance change to tmux and all zsh processes
