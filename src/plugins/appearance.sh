@@ -73,7 +73,7 @@ plugin_declare_options() {
   declare_option "keybinding_toggle" "key"  ""      "Keybinding to cycle appearance mode"
   declare_option "mouse_toggle"      "bool" "false" "Enable mouse click on the plugin segment to toggle"
 
-  declare_option "cache_ttl" "number" "0" "Cache duration in seconds"
+  declare_option "cache_ttl" "number" "3" "Cache duration in seconds"
 }
 
 # =============================================================================
@@ -131,8 +131,7 @@ plugin_collect() {
   if [[ "$dark_val" != "$last_dark" ]]; then
     macos_dispatch_appearance "$dark_val"
     _appearance_switch_theme "$dark_val"
-    local cache_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/tmux-powerkit/data"
-    rm -f "${cache_dir}"/rendered_right__* 2>/dev/null || true
+    cache_clear_prefix "rendered_right__"
     tmux run-shell -b "sleep 0.1 && tmux refresh-client -S" 2>/dev/null || true
   fi
 
