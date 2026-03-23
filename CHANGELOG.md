@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.26.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.25.0...v5.26.0) (2026-03-23)
+
+### Features
+
+* **plugins:** add chezmoi plugin and update plugin counts in documentation ([#209](https://github.com/fabioluciano/tmux-powerkit/issues/209)) ([7469eef](https://github.com/fabioluciano/tmux-powerkit/commit/7469eef7848d4e853ceb65f92d0c306f17bd9a2a))
+
 ## [5.25.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.24.2...v5.25.0) (2026-03-23)
 
 ### Features
