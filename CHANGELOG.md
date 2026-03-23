@@ -2,6 +2,18 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.25.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.24.2...v5.25.0) (2026-03-23)
+
+### Features
+
+* **plugins:** Added yadm plugin ([#206](https://github.com/fabioluciano/tmux-powerkit/issues/206)) ([3872370](https://github.com/fabioluciano/tmux-powerkit/commit/38723703031346cb6e0a7b3453e06aaf018f7f73))
+
+## [5.24.2](https://github.com/fabioluciano/tmux-powerkit/compare/v5.24.1...v5.24.2) (2026-03-19)
+
+### Bug Fixes
+
+* **microphone:** enhance detection of active microphone usage on Linux ([f003aba](https://github.com/fabioluciano/tmux-powerkit/commit/f003aba67146b70503b1528528f4f8327c09b5a2))
+
 ## [5.24.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.24.0...v5.24.1) (2026-03-06)
 
 ### Bug Fixes

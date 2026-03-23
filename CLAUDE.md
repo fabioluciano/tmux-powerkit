@@ -22,11 +22,11 @@ Mocha is the most popular variant with excellent contrast.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 43 plugins migrated to contract system
+**Status**: ✅ COMPLETE - All 44 plugins migrated to contract system
 
 ### Migration Statistics
 
-- **Total Plugins**: 43
+- **Total Plugins**: 44
 - **Migration Date**: January 2025
 - **Architecture**: Contract-based plugin system with strict separation of concerns
 - **Lines of Code**: ~5,500 lines (plugins only)
@@ -76,12 +76,13 @@ Mocha is the most popular variant with excellent contrast.
 41. **vpn** - VPN connection status (tun/tap interfaces)
 42. **weather** - Weather from wttr.in
 43. **wifi** - WiFi SSID + signal strength
+44. **yadm** - yadm dotfile status: modified/untracked, ahead/behind (yadm CLI)
 
 ### Plugin Categories
 
 - **System Monitoring** (13): battery, cpu, disk, fan, gpu, iops, loadavg, memory, swap, temperature, uptime, volume, brightness
 - **Network** (7): external_ip, netspeed, ping, vpn, weather, wifi, ssh
-- **Development** (8): git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud
+- **Development** (9): git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud, yadm
 - **Media** (4): nowplaying, audiodevices, camera, microphone
 - **Productivity** (5): datetime, timezones, pomodoro, smartkey, bitwarden
 - **Financial** (2): crypto, stocks
