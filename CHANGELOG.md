@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.24.2](https://github.com/fabioluciano/tmux-powerkit/compare/v5.24.1...v5.24.2) (2026-03-19)
+
+### Bug Fixes
+
+* **microphone:** enhance detection of active microphone usage on Linux ([f003aba](https://github.com/fabioluciano/tmux-powerkit/commit/f003aba67146b70503b1528528f4f8327c09b5a2))
+
 ## [5.24.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.24.0...v5.24.1) (2026-03-06)
 
 ### Bug Fixes
