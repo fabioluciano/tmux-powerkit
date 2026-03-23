@@ -10,7 +10,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-44 Plugins • 43 Themes • Infinite Possibilities
+45 Plugins • 43 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -44,7 +44,7 @@ Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, an
 
 ### 🧩 **Truly Modular**
 
-**43 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
+**45 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
 
 ### 🔧 **Extensible Architecture**
 
@@ -637,7 +637,7 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 | [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
 | [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
 | [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
-| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-44-available) | Detailed docs for all 44 plugins |
+| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-45-available) | Detailed docs for all 45 plugins |
 | [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
 | [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
 | [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |
