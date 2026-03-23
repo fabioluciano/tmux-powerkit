@@ -123,14 +123,14 @@ POWERKIT_DEFAULT_TRANSPARENT="false"
 # PLUGIN CONFIGURATION
 # =============================================================================
 # @powerkit_plugins - Comma-separated list of plugins to enable
-# Available plugins (42 total):
+# Available plugins (44 total):
 #   System Monitoring:
-#     battery, cpu, disk, fan, gpu, iops, loadavg, memory, temperature, uptime,
+#     battery, cpu, disk, fan, gpu, iops, loadavg, memory, swap, temperature, uptime,
 #     volume, brightness
 #   Network:
 #     external_ip, netspeed, ping, vpn, weather, wifi, ssh
 #   Development:
-#     git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud
+#     chezmoi, git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud
 #   Media:
 #     nowplaying, audiodevices, camera, microphone
 #   Productivity:
