@@ -42,42 +42,42 @@ Mocha is the most popular variant with excellent contrast.
 7. **camera** - Camera usage indicator (macOS, lsof)
 8. **chezmoi** - Pending dotfile changes (chezmoi CLI)
 9. **cloud** - Cloud provider profile (AWS/Azure/GCP)
-9. **cloudstatus** - Service status monitoring (status APIs)
-10. **cpu** - CPU usage with thresholds (sysctl/top)
-11. **crypto** - Cryptocurrency prices (CoinGecko API)
-12. **datetime** - Date/time with 15 format presets
-13. **disk** - Disk usage with thresholds (df)
-14. **external_ip** - Public IP address (ipify API)
-15. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
-16. **git** - Branch + modified files status
-17. **github** - Notifications/PRs/issues (gh CLI)
-18. **gitlab** - Merge requests/todos (glab CLI)
-19. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
-20. **hostname** - System hostname
-21. **iops** - Disk I/O operations (iostat)
-22. **jira** - Assigned issues count (API)
-23. **kubernetes** - Context + namespace (kubectl)
-24. **loadavg** - Load average with cores (uptime)
-25. **memory** - Memory usage with thresholds (vm_stat/free)
-26. **microphone** - Mic mute status (macOS, osascript)
-27. **swap** - Swap memory usage (sysctl/vm_stat/proc)
-28. **netspeed** - Upload/download speed (ifstat/netstat)
-29. **nowplaying** - Current music track (Music/Spotify)
-30. **packages** - Pending updates (brew/apt/yum/pacman)
-31. **ping** - Network latency with thresholds
-32. **pomodoro** - Timer with work/break phases
-33. **smartkey** - Custom environment variable display
-34. **ssh** - SSH session indicator
-35. **stocks** - Stock prices (Yahoo Finance API)
-36. **temperature** - CPU temperature (macOS, osx-cpu-temp)
-37. **terraform** - Workspace indicator
-38. **timezones** - Multi-timezone display
-39. **uptime** - System uptime
-40. **volume** - System volume (macOS, osascript)
-41. **vpn** - VPN connection status (tun/tap interfaces)
-42. **weather** - Weather from wttr.in
-43. **wifi** - WiFi SSID + signal strength
-44. **yadm** - yadm dotfile status: modified/untracked, ahead/behind (yadm CLI)
+10. **cloudstatus** - Service status monitoring (status APIs)
+11. **cpu** - CPU usage with thresholds (sysctl/top)
+12. **crypto** - Cryptocurrency prices (CoinGecko API)
+13. **datetime** - Date/time with 15 format presets
+14. **disk** - Disk usage with thresholds (df)
+15. **external_ip** - Public IP address (ipify API)
+16. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
+17. **git** - Branch + modified files status
+18. **github** - Notifications/PRs/issues (gh CLI)
+19. **gitlab** - Merge requests/todos (glab CLI)
+20. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
+21. **hostname** - System hostname
+22. **iops** - Disk I/O operations (iostat)
+23. **jira** - Assigned issues count (API)
+24. **kubernetes** - Context + namespace (kubectl)
+25. **loadavg** - Load average with cores (uptime)
+26. **memory** - Memory usage with thresholds (vm_stat/free)
+27. **microphone** - Mic mute status (macOS, osascript)
+28. **swap** - Swap memory usage (sysctl/vm_stat/proc)
+29. **netspeed** - Upload/download speed (ifstat/netstat)
+30. **nowplaying** - Current music track (Music/Spotify)
+31. **packages** - Pending updates (brew/apt/yum/pacman)
+32. **ping** - Network latency with thresholds
+33. **pomodoro** - Timer with work/break phases
+34. **smartkey** - Custom environment variable display
+35. **ssh** - SSH session indicator
+36. **stocks** - Stock prices (Yahoo Finance API)
+37. **temperature** - CPU temperature (macOS, osx-cpu-temp)
+38. **terraform** - Workspace indicator
+39. **timezones** - Multi-timezone display
+40. **uptime** - System uptime
+41. **volume** - System volume (macOS, osascript)
+42. **vpn** - VPN connection status (tun/tap interfaces)
+43. **weather** - Weather from wttr.in
+44. **wifi** - WiFi SSID + signal strength
+45. **yadm** - yadm dotfile status: modified/untracked, ahead/behind (yadm CLI)
 
 ### Plugin Categories
 
