@@ -10,7 +10,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-43 Plugins • 43 Themes • Infinite Possibilities
+44 Plugins • 43 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -212,7 +212,7 @@ Control your media experience:
 | `microphone` | Microphone mute status | macOS (osascript) |
 | `bluetooth` | Bluetooth status + devices | macOS (blueutil), Linux (bluetoothctl) |
 
-### 💻 Development (10 plugins)
+### 💻 Development (11 plugins)
 
 Supercharge your development workflow:
 
@@ -227,6 +227,7 @@ Supercharge your development workflow:
 | `terraform` | Terraform workspace | Active workspace indicator |
 | `cloud` | Cloud provider profile | AWS/Azure/GCP active profile |
 | `cloudstatus` | Cloud service status | Service health monitoring |
+| `yadm` | yadm dotfile status | Modified/untracked dotfiles, ahead/behind counts |
 | `packages` | Pending system updates | brew, apt, yum, pacman support |
 
 ### ⏰ Productivity (5 plugins)
@@ -636,7 +637,7 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 | [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
 | [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
 | [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
-| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-43-available) | Detailed docs for all 43 plugins |
+| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-44-available) | Detailed docs for all 44 plugins |
 | [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
 | [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
 | [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |
