@@ -496,8 +496,10 @@ POWERKIT_DEFAULT_PANE_SCROLLBARS_PAD="0"
 POWERKIT_DEFAULT_PANE_FLASH_ENABLED="false"
 
 # @powerkit_pane_flash_color - Flash background color
-# Values: theme color name (e.g., "statusbar-bg", "info-base") or hex color (#RRGGBB)
-# The color used for the flash effect background
+# Values: theme color name (e.g., "statusbar-bg", "info-base"), hex color (#RRGGBB),
+#         or tmux format string (e.g., "#{?#{@dark_appearance},#073642,#eee8d5}")
+# Theme color names resolve at setup time; format strings evaluate at trigger time,
+# enabling dynamic light/dark color switching without re-bootstrap.
 # Default: "statusbar-bg" (uses status bar background color from theme)
 POWERKIT_DEFAULT_PANE_FLASH_COLOR="statusbar-bg"
 

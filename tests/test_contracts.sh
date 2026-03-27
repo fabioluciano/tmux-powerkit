@@ -252,6 +252,7 @@ if [[ -f "$CONTRACTS_DIR/pane_contract.sh" ]]; then
     declare -F pane_flash_is_enabled &>/dev/null || MISSING_FUNCS+=("pane_flash_is_enabled")
     declare -F pane_flash_enable &>/dev/null || MISSING_FUNCS+=("pane_flash_enable")
     declare -F pane_flash_disable &>/dev/null || MISSING_FUNCS+=("pane_flash_disable")
+    declare -F _pane_flash_update_color &>/dev/null || MISSING_FUNCS+=("_pane_flash_update_color")
     declare -F pane_border_color &>/dev/null || MISSING_FUNCS+=("pane_border_color")
     declare -F pane_border_style &>/dev/null || MISSING_FUNCS+=("pane_border_style")
     declare -F pane_configure &>/dev/null || MISSING_FUNCS+=("pane_configure")

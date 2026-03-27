@@ -154,6 +154,11 @@ powerkit_bootstrap() {
     # Load theme
     load_powerkit_theme
 
+    # Sync @dark_appearance with system (for Ghostty and terminals without hooks)
+    if declare -F sync_pane_flash_appearance &>/dev/null; then
+        sync_pane_flash_appearance
+    fi
+
     # Setup pane flash effect (if enabled)
     if declare -F pane_flash_setup &>/dev/null; then
         pane_flash_setup
