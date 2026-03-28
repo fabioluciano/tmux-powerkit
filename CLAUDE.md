@@ -22,45 +22,45 @@ Mocha is the most popular variant with excellent contrast.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 45 plugins migrated to contract system
+**Status**: ✅ COMPLETE - All 46 plugins migrated to contract system
 
 ### Migration Statistics
 
-- **Total Plugins**: 45
+- **Total Plugins**: 46
 - **Migration Date**: January 2025
 - **Architecture**: Contract-based plugin system with strict separation of concerns
 - **Lines of Code**: ~5,500 lines (plugins only)
 
 ### Migrated Plugins (Alphabetical)
 
-1. **audiodevices** - Audio output device (macOS, SwitchAudioSource)
-2. **battery** - Battery level with charge state (pmset/upower)
-3. **bitbucket** - Pull requests count (API)
-4. **bitwarden** - Vault lock status (bw CLI)
-5. **bluetooth** - BT status + connected devices (blueutil/bluetoothctl)
-6. **brightness** - Screen brightness (Linux only - sysfs/brightnessctl/light/xbacklight)
-7. **camera** - Camera usage indicator (macOS, lsof)
-8. **chezmoi** - Pending dotfile changes (chezmoi CLI)
-9. **cloud** - Cloud provider profile (AWS/Azure/GCP)
-10. **cloudstatus** - Service status monitoring (status APIs)
-11. **cpu** - CPU usage with thresholds (sysctl/top)
-12. **crypto** - Cryptocurrency prices (CoinGecko API)
-13. **datetime** - Date/time with 15 format presets
-14. **disk** - Disk usage with thresholds (df)
-15. **external_ip** - Public IP address (ipify API)
-16. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
-17. **git** - Branch + modified files status
-18. **github** - Notifications/PRs/issues (gh CLI)
-19. **gitlab** - Merge requests/todos (glab CLI)
-20. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
-21. **hostname** - System hostname
-22. **iops** - Disk I/O operations (iostat)
-23. **jira** - Assigned issues count (API)
-24. **kubernetes** - Context + namespace (kubectl)
-25. **loadavg** - Load average with cores (uptime)
-26. **memory** - Memory usage with thresholds (vm_stat/free)
-27. **microphone** - Mic mute status (macOS, osascript)
-28. **swap** - Swap memory usage (sysctl/vm_stat/proc)
+1. **appearance** - macOS light/dark/auto toggle with theme switching
+2. **audiodevices** - Audio output device (macOS, SwitchAudioSource)
+3. **battery** - Battery level with charge state (pmset/upower)
+4. **bitbucket** - Pull requests count (API)
+5. **bitwarden** - Vault lock status (bw CLI)
+6. **bluetooth** - BT status + connected devices (blueutil/bluetoothctl)
+7. **brightness** - Screen brightness (Linux only - sysfs/brightnessctl/light/xbacklight)
+8. **camera** - Camera usage indicator (macOS, lsof)
+9. **chezmoi** - Pending dotfile changes (chezmoi CLI)
+10. **cloud** - Cloud provider profile (AWS/Azure/GCP)
+11. **cloudstatus** - Service status monitoring (status APIs)
+12. **cpu** - CPU usage with thresholds (sysctl/top)
+13. **crypto** - Cryptocurrency prices (CoinGecko API)
+14. **datetime** - Date/time with 15 format presets
+15. **disk** - Disk usage with thresholds (df)
+16. **external_ip** - Public IP address (ipify API)
+17. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
+18. **git** - Branch + modified files status
+19. **github** - Notifications/PRs/issues (gh CLI)
+20. **gitlab** - Merge requests/todos (glab CLI)
+21. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
+22. **hostname** - System hostname
+23. **iops** - Disk I/O operations (iostat)
+24. **jira** - Assigned issues count (API)
+25. **kubernetes** - Context + namespace (kubectl)
+26. **loadavg** - Load average with cores (uptime)
+27. **memory** - Memory usage with thresholds (vm_stat/free)
+28. **microphone** - Mic mute status (macOS, osascript)
 29. **netspeed** - Upload/download speed (ifstat/netstat)
 30. **nowplaying** - Current music track (Music/Spotify)
 31. **packages** - Pending updates (brew/apt/yum/pacman)
@@ -69,23 +69,24 @@ Mocha is the most popular variant with excellent contrast.
 34. **smartkey** - Custom environment variable display
 35. **ssh** - SSH session indicator
 36. **stocks** - Stock prices (Yahoo Finance API)
-37. **temperature** - CPU temperature (macOS, osx-cpu-temp)
-38. **terraform** - Workspace indicator
-39. **timezones** - Multi-timezone display
-40. **uptime** - System uptime
-41. **volume** - System volume (macOS, osascript)
-42. **vpn** - VPN connection status (tun/tap interfaces)
-43. **weather** - Weather from wttr.in
-44. **wifi** - WiFi SSID + signal strength
-45. **yadm** - yadm dotfile status: modified/untracked, ahead/behind (yadm CLI)
+37. **swap** - Swap memory usage (sysctl/vm_stat/proc)
+38. **temperature** - CPU temperature (macOS, osx-cpu-temp)
+39. **terraform** - Workspace indicator
+40. **timezones** - Multi-timezone display
+41. **uptime** - System uptime
+42. **volume** - System volume (macOS, osascript)
+43. **vpn** - VPN connection status (tun/tap interfaces)
+44. **weather** - Weather from wttr.in
+45. **wifi** - WiFi SSID + signal strength
+46. **yadm** - yadm dotfile repository status (modified, untracked, ahead/behind)
 
 ### Plugin Categories
 
 - **System Monitoring** (13): battery, cpu, disk, fan, gpu, iops, loadavg, memory, swap, temperature, uptime, volume, brightness
 - **Network** (7): external_ip, netspeed, ping, vpn, weather, wifi, ssh
-- **Development** (9): git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud, yadm
+- **Development** (10): git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud, chezmoi, yadm
 - **Media** (4): nowplaying, audiodevices, camera, microphone
-- **Productivity** (5): datetime, timezones, pomodoro, smartkey, bitwarden
+- **Productivity** (6): datetime, timezones, pomodoro, smartkey, bitwarden, appearance
 - **Financial** (2): crypto, stocks
 - **Services** (4): cloudstatus, packages, bluetooth, hostname
 
@@ -1370,7 +1371,7 @@ plugin_get_icon() {
 
 ## Performance Notes
 
-- **42 plugins** will be migrated - performance is critical
+- **46 plugins** — performance is critical
 - Cache data, not rendered output (allows dynamic color changes)
 - Use pure bash arithmetic over external commands
 - One `date +%s` call per render cycle
@@ -2318,76 +2319,3 @@ toast "message" "success"      # green with ✓ icon
 ```
 
 The `toast()` function is available globally after bootstrap via `ui_backend.sh`
-
-## context-mode — MANDATORY routing rules
-
-You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
-
-### BLOCKED commands — do NOT attempt these
-
-#### curl / wget — BLOCKED
-
-Any Bash command containing `curl` or `wget` is intercepted and replaced with an error message. Do NOT retry.
-Instead use:
-
-- `ctx_fetch_and_index(url, source)` to fetch and index web pages
-- `ctx_execute(language: "javascript", code: "const r = await fetch(...)")` to run HTTP calls in sandbox
-
-#### Inline HTTP — BLOCKED
-
-Any Bash command containing `fetch('http`, `requests.get(`, `requests.post(`, `http.get(`, or `http.request(` is intercepted and replaced with an error message. Do NOT retry with Bash.
-Instead use:
-
-- `ctx_execute(language, code)` to run HTTP calls in sandbox — only stdout enters context
-
-#### WebFetch — BLOCKED
-
-WebFetch calls are denied entirely. The URL is extracted and you are told to use `ctx_fetch_and_index` instead.
-Instead use:
-
-- `ctx_fetch_and_index(url, source)` then `ctx_search(queries)` to query the indexed content
-
-### REDIRECTED tools — use sandbox equivalents
-
-#### Bash (>20 lines output)
-
-Bash is ONLY for: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm install`, `pip install`, and other short-output commands.
-For everything else, use:
-
-- `ctx_batch_execute(commands, queries)` — run multiple commands + search in ONE call
-- `ctx_execute(language: "shell", code: "...")` — run in sandbox, only stdout enters context
-
-#### Read (for analysis)
-
-If you are reading a file to **Edit** it → Read is correct (Edit needs content in context).
-If you are reading to **analyze, explore, or summarize** → use `ctx_execute_file(path, language, code)` instead. Only your printed summary enters context. The raw file content stays in the sandbox.
-
-#### Grep (large results)
-
-Grep results can flood context. Use `ctx_execute(language: "shell", code: "grep ...")` to run searches in sandbox. Only your printed summary enters context.
-
-## Tool selection hierarchy
-
-1. **GATHER**: `ctx_batch_execute(commands, queries)` — Primary tool. Runs all commands, auto-indexes output, returns search results. ONE call replaces 30+ individual calls.
-2. **FOLLOW-UP**: `ctx_search(queries: ["q1", "q2", ...])` — Query indexed content. Pass ALL questions as array in ONE call.
-3. **PROCESSING**: `ctx_execute(language, code)` | `ctx_execute_file(path, language, code)` — Sandbox execution. Only stdout enters context.
-4. **WEB**: `ctx_fetch_and_index(url, source)` then `ctx_search(queries)` — Fetch, chunk, index, query. Raw HTML never enters context.
-5. **INDEX**: `ctx_index(content, source)` — Store content in FTS5 knowledge base for later search.
-
-## Subagent routing
-
-When spawning subagents (Agent/Task tool), the routing block is automatically injected into their prompt. Bash-type subagents are upgraded to general-purpose so they have access to MCP tools. You do NOT need to manually instruct subagents about context-mode.
-
-## Output constraints
-
-- Keep responses under 500 words.
-- Write artifacts (code, configs, PRDs) to FILES — never return them as inline text. Return only: file path + 1-line description.
-- When indexing content, use descriptive source labels so others can `ctx_search(source: "label")` later.
-
-## ctx commands
-
-| Command | Action |
-|---------|--------|
-| `ctx stats` | Call the `ctx_stats` MCP tool and display the full output verbatim |
-| `ctx doctor` | Call the `ctx_doctor` MCP tool, run the returned shell command, display as checklist |
-| `ctx upgrade` | Call the `ctx_upgrade` MCP tool, run the returned shell command, display as checklist |
