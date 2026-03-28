@@ -22,11 +22,15 @@
 #
 # Toggle cycle: auto → dark → light → auto
 #   Triggered by keybinding_toggle or mouse click on the plugin segment.
+#   The toggle (appearance_toggle.sh) owns all theme changes for forced modes.
 #
-# This plugin is the tmux-side appearance watcher:
-#   - Polls system appearance each status interval via get_macos_appearance_mode()
-#   - When @dark_appearance changes, dispatches to tmux + all zsh panes via
-#     SIGUSR1, then switches @powerkit_theme/@powerkit_theme_variant to match
+# Polling (plugin_collect):
+#   - Runs every cache_ttl seconds
+#   - ONLY syncs theme when mode is "auto" and macOS appearance has changed
+#   - Forced dark/light modes: plugin_collect is completely hands-off;
+#     the toggle is solely responsible for setting the theme in those modes
+#   - Tracks last-applied value in @_powerkit_appearance_handled (not @dark_appearance,
+#     which external tools like zac may also write) to detect real changes
 #
 # =============================================================================
 
@@ -126,13 +130,20 @@ plugin_collect() {
   mode=$(get_macos_appearance_mode)    # auto | dark | light
   dark_val=$(get_macos_appearance)     # 1 | 0  (actual current display state)
 
-  local last_dark
-  last_dark=$(get_tmux_option "@dark_appearance" "")
-  if [[ "$dark_val" != "$last_dark" ]]; then
-    macos_dispatch_appearance "$dark_val"
-    _appearance_switch_theme "$dark_val"
-    cache_clear_prefix "rendered_right__"
-    tmux run-shell -b "sleep 0.1 && tmux refresh-client -S" 2>/dev/null || true
+  # Only sync theme in auto mode. In forced dark/light the toggle owns the theme;
+  # polling should not interfere with what the user explicitly chose.
+  if [[ "$mode" == "auto" ]]; then
+    # Use a plugin-owned key (not @dark_appearance, which zac/other tools may write)
+    # so we only react to actual macOS appearance changes, not external writes.
+    local last_handled
+    last_handled=$(get_tmux_option "@_powerkit_appearance_handled" "")
+    if [[ "$dark_val" != "$last_handled" ]]; then
+      tmux set-option -gq @_powerkit_appearance_handled "$dark_val" 2>/dev/null || true
+      macos_dispatch_appearance "$dark_val"
+      _appearance_switch_theme "$dark_val"
+      cache_clear_prefix "rendered_right__"
+      tmux run-shell -b "sleep 0.1 && tmux refresh-client -S" 2>/dev/null || true
+    fi
   fi
 
   plugin_data_set "mode" "$mode"
