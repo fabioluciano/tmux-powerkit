@@ -141,8 +141,7 @@ plugin_collect() {
       tmux set-option -gq @_powerkit_appearance_handled "$dark_val" 2>/dev/null || true
       macos_dispatch_appearance "$dark_val"
       _appearance_switch_theme "$dark_val"
-      cache_clear_prefix "rendered_right__"
-      tmux run-shell -b "sleep 0.1 && tmux refresh-client -S" 2>/dev/null || true
+      tmux run-shell -b "sleep 0.1 && POWERKIT_ROOT='${POWERKIT_ROOT}' '${POWERKIT_ROOT}/tmux-powerkit.tmux' && tmux refresh-client -S" 2>/dev/null || true
     fi
   fi
 
