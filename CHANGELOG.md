@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.28.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.0...v5.28.1) (2026-03-30)
+
+### Bug Fixes
+
+* **appearance:** re-run compositor on auto theme switch ([#212](https://github.com/fabioluciano/tmux-powerkit/issues/212)) ([dd5cc14](https://github.com/fabioluciano/tmux-powerkit/commit/dd5cc147e00dd03be94feca9d581333c51f81e67))
+
 ## [5.28.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.27.0...v5.28.0) (2026-03-29)
 
 ### Features
