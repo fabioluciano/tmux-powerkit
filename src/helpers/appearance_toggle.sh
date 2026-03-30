@@ -44,7 +44,6 @@ macos_cycle_appearance
 new_dark_val=$(get_macos_appearance)
 _apply_theme "$new_dark_val"
 tmux set-option -gq @_powerkit_appearance_handled "$new_dark_val" 2>/dev/null || true
-cache_clear_prefix "rendered_right__"
 cache_clear "plugin_appearance_data"
 cache_clear "plugin_appearance_ttl"
 bash "${POWERKIT_ROOT}/tmux-powerkit.tmux" 2>/dev/null || true
