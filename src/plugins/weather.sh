@@ -920,6 +920,7 @@ plugin_collect() {
     # Step 7: Store data
     plugin_data_set "weather" "$weather_text"
     [[ -n "$symbol" ]] && plugin_data_set "symbol" "$symbol"
+    return 0
 }
 
 # =============================================================================
@@ -931,4 +932,3 @@ plugin_render() {
     weather=$(plugin_data_get "weather")
     [[ -n "$weather" ]] && printf '%s' "$weather"
 }
-
