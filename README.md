@@ -351,6 +351,7 @@ Every plugin is highly customizable. Example with the `battery` plugin:
 set -g @powerkit_plugin_battery_warning_threshold "30"
 set -g @powerkit_plugin_battery_critical_threshold "15"
 set -g @powerkit_plugin_battery_icon ""
+set -g @powerkit_plugin_battery_icon_warning "󰂃"
 set -g @powerkit_plugin_battery_icon_charging "󰂄"
 set -g @powerkit_plugin_battery_cache_ttl "5"
 set -g @powerkit_plugin_battery_show_only_on_threshold "false"

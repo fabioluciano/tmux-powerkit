@@ -77,7 +77,7 @@ plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F0079' "Default battery icon (full)"
     declare_option "icon_charging" "icon" $'\U000F0084' "Charging/AC power icon"
-    declare_option "icon_low" "icon" $'\U000F0083' "Low battery icon"
+    declare_option "icon_warning" "icon" $'\U000F0083' "Warning battery icon"
     declare_option "icon_critical" "icon" $'\U000F008E' "Critical battery icon"
 
     # Cache
@@ -376,7 +376,7 @@ plugin_get_icon() {
             ;;
     esac
 
-    # Use health-based icon selection (icon_critical -> icon_low -> icon)
+    # Use health-based icon selection (icon_critical -> icon_warning -> icon)
     plugin_get_icon_by_health "$(plugin_get_health)"
 }
 
