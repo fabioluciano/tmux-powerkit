@@ -124,6 +124,8 @@ _windows_build_separator() {
         # Use statusbar-bg for spacing foreground (works in both transparent and normal modes)
         local spacing_fg
         spacing_fg=$(get_color "statusbar-bg")
+        local spacing_sep_char
+        spacing_sep_char=$(_windows_get_spacing_sep_char)
 
         # Check for first window - use #{base-index} to support both base-index=0 and base-index=1
         local is_first='#{?#{==:#{window_index},#{base-index}},'
@@ -137,20 +139,20 @@ _windows_build_separator() {
                 # First window: edge separator, others: normal separator
                 printf '%s#[fg=%s#,bg=%s]%s,%s#[fg=%s#,bg=%s]%s,}' \
                     "$is_first" "$spacing_fg" "$index_bg" "$_W_EDGE_SEP_CHAR" \
-                    "$not_first" "$spacing_fg" "$index_bg" "$_W_SEP_CHAR"
+                    "$not_first" "$spacing_fg" "$index_bg" "$spacing_sep_char"
             else
-                printf '#[fg=%s#,bg=%s]%s' "$spacing_fg" "$index_bg" "$_W_SEP_CHAR"
+                printf '#[fg=%s#,bg=%s]%s' "$spacing_fg" "$index_bg" "$spacing_sep_char"
             fi
         elif [[ "$side" == "center" ]]; then
             # Center side ▶: gap → window
             # ▶: fg=gap (left), bg=window (right)
             # Skip first window - compositor handles edge separator
-            printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$spacing_fg" "$index_bg" "$_W_SEP_CHAR"
+            printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$spacing_fg" "$index_bg" "$spacing_sep_char"
         elif [[ "$side" == "right" ]]; then
             # Right side ◀: gap → window
             # ◀: fg=window (right), bg=gap (left)
             # Skip first window - compositor handles edge separator
-            printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$index_bg" "$spacing_fg" "$_W_SEP_CHAR"
+            printf '%s#[fg=%s#,bg=%s]%s,}' "$not_first" "$index_bg" "$spacing_fg" "$spacing_sep_char"
         fi
     else
         # For all sides, first window doesn't need edge separator (handled by compositor)
@@ -178,6 +180,16 @@ _windows_build_index_sep() {
     fi
 }
 
+# Get separator glyph for spacing transitions.
+# Falls back to a plain space when separator_style is "none".
+_windows_get_spacing_sep_char() {
+    if [[ -n "$_W_SEP_CHAR" ]]; then
+        printf '%s' "$_W_SEP_CHAR"
+    else
+        printf ' '
+    fi
+}
+
 # Build spacing separator (if enabled)
 # Usage: _windows_build_spacing "side" "content_bg"
 # Note: "center" behaves like "left" for separator direction
@@ -191,6 +203,8 @@ _windows_build_spacing() {
     # Use statusbar-bg for spacing foreground (works in both transparent and normal modes)
     local spacing_fg
     spacing_fg=$(get_color "statusbar-bg")
+    local spacing_sep_char
+    spacing_sep_char=$(_windows_get_spacing_sep_char)
 
     # Exit separator: window → gap (between windows only)
     # Skip for LAST window (edge separator handled by compositor)
@@ -202,13 +216,13 @@ _windows_build_spacing() {
         # ▶: fg=window (left), bg=gap (right)
         printf '%s#[fg=%s#,bg=%s]%s,}' \
             "$not_last_cond" \
-            "$content_bg" "$spacing_fg" "$_W_SEP_CHAR"
+            "$content_bg" "$spacing_fg" "$spacing_sep_char"
     else
         # Right side ◀: window → gap
         # ◀: fg=gap (right), bg=window (left)
         printf '%s#[fg=%s#,bg=%s]%s,}' \
             "$not_last_cond" \
-            "$spacing_fg" "$content_bg" "$_W_SEP_CHAR"
+            "$spacing_fg" "$content_bg" "$spacing_sep_char"
     fi
 }
 
