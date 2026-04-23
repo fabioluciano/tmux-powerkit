@@ -574,6 +574,23 @@ _build_windows_exit_separator() {
     fi
 }
 
+# Build a literal one-cell gap for window spacing when separator_style is "none".
+# Usage: _build_window_spacing_gap
+_build_window_spacing_gap() {
+    local transparent_mode gap_bg gap_fg
+
+    transparent_mode=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+    gap_fg=$(resolve_color "statusbar-bg")
+
+    if [[ "$transparent_mode" == "true" ]]; then
+        gap_bg="default"
+    else
+        gap_bg="$gap_fg"
+    fi
+
+    printf '#[fg=%s,bg=%s] ' "$gap_fg" "$gap_bg"
+}
+
 # =============================================================================
 # Separator Building
 # =============================================================================
@@ -852,7 +869,13 @@ _apply_single_standard() {
                 else
                     sep_char=$(get_right_separator)
                 fi
-                [[ -n "$sep_char" ]] && left_content+="#[fg=${entity_bg},bg=${status_bg}]${sep_char}"
+                if [[ -n "$sep_char" ]]; then
+                    left_content+="#[fg=${entity_bg},bg=${status_bg}]${sep_char}"
+                else
+                    left_content+=$(_build_window_spacing_gap)
+                fi
+            elif [[ -z "$(get_right_separator)" ]]; then
+                left_content+=$(_build_window_spacing_gap)
             fi
         else
             left_content+=$(_build_inter_entity_separator "$last_left" "windows" "left")
@@ -1142,7 +1165,13 @@ _build_line_content() {
                 if [[ "$entity" == "windows" ]]; then
                     # Going TO windows with spacing: add exit edge from previous entity
                     # Windows will handle their own entry separator from spacing gap
-                    content+=$(_build_edge_separator "$prev_entity" "end" "$side")
+                    local windows_entry_gap
+                    windows_entry_gap=$(_build_edge_separator "$prev_entity" "end" "$side")
+                    if [[ -n "$windows_entry_gap" ]]; then
+                        content+="$windows_entry_gap"
+                    else
+                        content+=$(_build_window_spacing_gap)
+                    fi
                 elif [[ "$prev_entity" == "windows" ]]; then
                     # Coming FROM windows with spacing:
                     # Last window doesn't add exit separator, so we need to add it
