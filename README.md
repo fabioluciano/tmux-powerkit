@@ -369,7 +369,8 @@ set -g @powerkit_plugin_cpu_icon ""
 ### Git Plugin
 
 ```bash
-set -g @powerkit_plugin_git_icon ""
+set -g @powerkit_plugin_git_icon "" # Default git icon
+set -g @powerkit_plugin_git_icon_modified "" # Icon used when repository has modifications
 set -g @powerkit_plugin_git_show_branch "true"
 set -g @powerkit_plugin_git_show_files "true"
 set -g @powerkit_plugin_git_max_length "30"
