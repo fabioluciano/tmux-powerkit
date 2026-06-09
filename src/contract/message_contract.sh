@@ -145,7 +145,9 @@ message_popup_cmd() {
     local height="${4:-24}"
 
     if [[ -z "${TMUX:-}" ]]; then
-        eval "$cmd"
+        # Run in a child shell (same as the popup path) instead of eval,
+        # so the command cannot mutate the caller's shell state
+        bash -c "$cmd"
         return
     fi
 
