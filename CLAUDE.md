@@ -107,7 +107,7 @@ PowerKit is a contract-based tmux status bar framework with strict separation of
 - **Renderer**: ALL UI decisions (colors, icons, formatting)
 - **Theme**: Color definitions ONLY
 
-**Target**: Bash 4+ | **Architecture**: Contract-based plugin system
+**Target**: Bash 5.0+ (uses `$EPOCHSECONDS`/`$EPOCHREALTIME`) | **Architecture**: Contract-based plugin system
 
 ## Directory Structure
 
@@ -687,7 +687,7 @@ Native binaries are compiled from Swift source in `src/native/macos/`. Users can
 rm -f ~/.cache/tmux-powerkit/data/binary_decision_*
 
 # Clear tracking files
-rm -f /tmp/powerkit_missing_binaries /tmp/powerkit_binary_pending_all
+rm -f ~/.cache/tmux-powerkit/runtime/missing_binaries ~/.cache/tmux-powerkit/runtime/binary_pending_all
 
 # Remove binaries to force re-download
 rm -f ~/.config/tmux/plugins/tmux-powerkit/bin/powerkit-{gpu,temperature,microphone,nowplaying,brightness}
