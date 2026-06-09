@@ -24,8 +24,19 @@ _BINARY_DIR="${POWERKIT_ROOT}/bin"
 declare -ga _MISSING_BINARIES=()
 declare -gA _MISSING_BINARY_PLUGINS=()
 
+# User-private runtime dir for transient state. Using a fixed path under
+# world-writable /tmp would allow other local users to pre-create/symlink
+# these files (TOCTOU), including the popup script we execute.
+_BINARY_RUNTIME_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit/runtime"
+
 # File to persist missing binaries across subshells (stable name)
-_MISSING_BINARIES_FILE="/tmp/powerkit_missing_binaries"
+_MISSING_BINARIES_FILE="${_BINARY_RUNTIME_DIR}/missing_binaries"
+
+# Ensure the runtime dir exists and is private to the user
+_binary_runtime_init() {
+    [[ -d "$_BINARY_RUNTIME_DIR" ]] && return 0
+    mkdir -p "$_BINARY_RUNTIME_DIR" 2>/dev/null && chmod 700 "$_BINARY_RUNTIME_DIR"
+}
 
 # =============================================================================
 # Internal Functions
@@ -123,6 +134,7 @@ _track_missing_binary() {
     if [[ -f "$_MISSING_BINARIES_FILE" ]] && grep -q "^${binary}:" "$_MISSING_BINARIES_FILE" 2>/dev/null; then
         return 0
     fi
+    _binary_runtime_init
     echo "${binary}:${plugin}" >> "$_MISSING_BINARIES_FILE"
 
     log_debug "binary_manager" "Tracked missing binary: $binary for plugin $plugin"
@@ -144,7 +156,7 @@ binary_has_missing() {
 # Usage: binary_prompt_missing
 # Called after all plugins are initialized
 binary_prompt_missing() {
-    local pending_file="/tmp/powerkit_binary_pending_all"
+    local pending_file="${_BINARY_RUNTIME_DIR}/binary_pending_all"
 
     # Check if popup is already pending
     if [[ -f "$pending_file" ]]; then
@@ -169,12 +181,13 @@ binary_prompt_missing() {
     [[ $count -eq 0 ]] && return 0
 
     # Mark as pending
+    _binary_runtime_init
     echo "1" > "$pending_file"
 
     log_info "binary_manager" "Prompting for ${count} missing binaries"
 
     # Write command to temp file for execution
-    local cmd_file="/tmp/powerkit_popup_cmd"
+    local cmd_file="${_BINARY_RUNTIME_DIR}/popup_cmd"
     cat > "$cmd_file" << EOF
 #!/usr/bin/env bash
 tmux display-popup -E -w 60% -h 70% -T ' PowerKit - Binary Download ' \
@@ -198,7 +211,10 @@ binary_download() {
 
     url=$(binary_get_download_url "$binary")
     arch_suffix=$(binary_get_arch_suffix)
-    temp_file="/tmp/${binary}-${arch_suffix}-$$"
+    temp_file=$(mktemp "${TMPDIR:-/tmp}/powerkit-binary.XXXXXX") || {
+        log_error "binary_manager" "Failed to create temp file for ${binary}"
+        return 1
+    }
 
     log_info "binary_manager" "Downloading ${binary} from ${url}"
 
@@ -214,6 +230,21 @@ binary_download() {
         log_error "binary_manager" "Downloaded file is not a valid macOS binary"
         rm -f "$temp_file" 2>/dev/null
         return 1
+    fi
+
+    # Verify integrity when a .sha256 asset is published for the release
+    local expected_sha actual_sha
+    expected_sha=$(curl -fsSL --connect-timeout 5 --max-time 10 "${url}.sha256" 2>/dev/null | awk '{print $1}')
+    if [[ "$expected_sha" =~ ^[0-9a-fA-F]{64}$ ]]; then
+        actual_sha=$(shasum -a 256 "$temp_file" 2>/dev/null | awk '{print $1}')
+        if [[ "$actual_sha" != "$expected_sha" ]]; then
+            log_error "binary_manager" "Checksum mismatch for ${binary} (expected ${expected_sha}, got ${actual_sha:-none})"
+            rm -f "$temp_file" 2>/dev/null
+            return 1
+        fi
+        log_debug "binary_manager" "Checksum verified for ${binary}"
+    else
+        log_warn "binary_manager" "No checksum published for ${binary}; skipping verification"
     fi
 
     # Make executable and move to bin dir
