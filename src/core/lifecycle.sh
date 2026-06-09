@@ -443,10 +443,9 @@ _resolve_external_plugin() {
 
     # Execute content command
     local output=""
-    if [[ "$content" == "\$(("* || "$content" == "#("* ]]; then
+    if [[ "$content" == "\$("* || "$content" == "#("* ]]; then
         # Command to execute
         local cmd="${content#\$(}"
-        cmd="${cmd%\)}"
         cmd="${cmd#\#(}"
         cmd="${cmd%\)}"
         output=$(eval "$cmd" 2>/dev/null || true)
@@ -862,8 +861,15 @@ collect_external_plugin_render_data() {
 
     # Execute content command if it looks like a command
     local output=""
-    if [[ "$content" == *'$('* || "$content" == *'#('* ]]; then
-        # Command substitution - execute it
+    if [[ ("$content" == "\$("* || "$content" == "#("*) && "$content" == *")" ]]; then
+        # Pure command: strip the wrapper and execute directly.
+        # Avoids re-quoting the command, so embedded quotes work as written.
+        local cmd="${content#\$(}"
+        cmd="${cmd#\#(}"
+        cmd="${cmd%\)}"
+        output=$(eval "$cmd" 2>/dev/null || printf '%s' "$content")
+    elif [[ "$content" == *'$('* || "$content" == *'#('* ]]; then
+        # Command substitution embedded in text - expand it
         local cmd="${content}"
         # Convert #(...) to $(...) for eval
         cmd="${cmd//#\(/\$(}"
