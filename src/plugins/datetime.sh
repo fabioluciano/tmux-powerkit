@@ -47,7 +47,9 @@ plugin_get_state() { printf 'active'; }
 plugin_get_health() { printf 'ok'; }
 
 plugin_get_context() {
-    local hour=$(date +%H)
+    local hour
+    printf -v hour '%(%H)T' -1
+    hour=$((10#$hour))  # Force base 10: "08"/"09" would be invalid octal
     if (( hour >= 6 && hour < 12 )); then
         printf 'morning'
     elif (( hour >= 12 && hour < 18 )); then
@@ -85,7 +87,7 @@ declare -A FORMATS=(
 )
 
 _resolve_format() {
-    local f="${1:-}"
+    local f="${1:-datetime}"
     printf '%s' "${FORMATS[$f]:-$f}"
 }
 
@@ -109,17 +111,27 @@ plugin_render() {
     show_week=$(plugin_data_get "show_week")
     separator=$(plugin_data_get "separator")
 
-    local out="" sep="${separator:- }"
+    local out="" part="" sep="${separator:- }"
     local fmt=$(_resolve_format "$format")
 
+    # Uses the printf '%(...)T' builtin (strftime) instead of the external
+    # date command: render must not execute external commands
+
     # Week number
-    [[ "$show_week" == "true" ]] && out="$(date +W%V 2>/dev/null || date +W%W)${sep}"
+    if [[ "$show_week" == "true" ]]; then
+        printf -v part '%(W%V)T' -1
+        out="${part}${sep}"
+    fi
 
     # Main datetime
-    out+=$(date +"$fmt" 2>/dev/null)
+    printf -v part "%(${fmt})T" -1
+    out+="$part"
 
     # Secondary timezone
-    [[ -n "$timezone" ]] && out+="${sep}$(TZ="$timezone" date +%H:%M 2>/dev/null)"
+    if [[ -n "$timezone" ]]; then
+        TZ="$timezone" printf -v part '%(%H:%M)T' -1
+        out+="${sep}${part}"
+    fi
 
     printf '%s' "$out"
 }
