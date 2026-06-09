@@ -42,18 +42,20 @@ plugin_get_context() {
 
 plugin_collect() {
     local uptime_seconds=0
-        if is_linux && [[ -r /proc/uptime ]]; then
-            uptime_seconds=$(awk '{printf "%d", $1}' /proc/uptime 2>/dev/null)
-        elif is_macos; then
-            # macOS: use sysctl to get boot time (campo 'sec')
-            local boot_time now=$EPOCHSECONDS
-            boot_time=$(sysctl -n kern.boottime | awk '{gsub(",", "", $4); print $4}')
-            ((uptime_seconds=now-boot_time))
+    if is_linux && [[ -r /proc/uptime ]]; then
+        uptime_seconds=$(awk '{printf "%d", $1}' /proc/uptime 2>/dev/null)
+    elif is_macos; then
+        # macOS: use sysctl to get boot time ('sec' field)
+        local boot_time now=$EPOCHSECONDS
+        boot_time=$(sysctl -n kern.boottime 2>/dev/null | awk '{gsub(",", "", $4); print $4}')
+        if [[ "$boot_time" =~ ^[0-9]+$ ]]; then
+            ((uptime_seconds = now - boot_time))
+        fi
     else
         # Fallback: parse uptime output
         uptime_seconds=$(uptime | awk -F'( |,|:)+' '{if ($7=="min") print $6*60; else if ($7=="hrs") print $6*3600; else print 0}')
     fi
-    plugin_data_set "uptime" "$(format_uptime_seconds "$uptime_seconds")"
+    plugin_data_set "uptime" "$(format_uptime_seconds "${uptime_seconds:-0}")"
 }
 
 plugin_render() {
