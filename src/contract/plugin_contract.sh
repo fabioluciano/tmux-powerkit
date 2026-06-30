@@ -333,8 +333,8 @@ evaluate_threshold_health() {
     local crit="$3"
     local invert="${4:-0}"
 
-    # Handle non-numeric values
-    [[ ! "$value" =~ ^[0-9]+$ ]] && { printf 'ok'; return; }
+    # Non-numeric value means collection failed — signal as error, not ok
+    [[ ! "$value" =~ ^[0-9]+$ ]] && { printf 'error'; return; }
 
     if [[ "$invert" -eq 1 ]]; then
         # Lower values are worse (battery, signal strength)
@@ -367,7 +367,7 @@ evaluate_threshold_health_float() {
     local invert="${4:-0}"
 
     # Handle non-numeric values
-    [[ ! "$value" =~ ^[0-9]+\.?[0-9]*$ ]] && { printf 'ok'; return; }
+    [[ ! "$value" =~ ^[0-9]+\.?[0-9]*$ ]] && { printf 'error'; return; }
 
     if [[ "$invert" -eq 1 ]]; then
         if (( $(echo "$value <= $crit" | bc -l 2>/dev/null || echo 0) )); then
@@ -469,6 +469,10 @@ require_platform() {
 #       plugin_get_icon_by_health "$(plugin_get_health)"
 #   }
 #
+# DEPRECATED: Use plugin_get_icon_by_range with plugin_data_get value instead.
+# Calling plugin_get_health() inside plugin_get_icon() couples icon selection
+# to the health system, violating separation of concerns (icon must use raw data).
+# This function remains for backward compatibility only — do not use in new plugins.
 plugin_get_icon_by_health() {
     local health="${1:-ok}"
     local default_icon=$(get_option "icon")

@@ -94,7 +94,7 @@ _collect_linux() {
         }
     ' /proc/meminfo 2>/dev/null)
 
-    [[ -z "$mem_info" ]] && { echo "0 0 0"; return; }
+    [[ -z "$mem_info" ]] && return 1
 
     read -r mem_total mem_available <<< "$mem_info"
     mem_used=$((mem_total - mem_available))
@@ -188,14 +188,19 @@ plugin_collect() {
     local data percent used total
 
     if is_macos; then
-        data=$(_collect_macos)
+        data=$(_collect_macos) || return 1
     elif is_linux; then
-        data=$(_collect_linux)
+        data=$(_collect_linux) || return 1
     else
-        data="0 0 0"
+        return 1
     fi
 
+    [[ -z "$data" ]] && return 1
+
     read -r percent used total <<< "$data"
+
+    # Validate — zeros in total means collection failed
+    [[ "${total:-0}" == "0" ]] && return 1
 
     plugin_data_set "percent" "${percent:-0}"
     plugin_data_set "used" "${used:-0}"

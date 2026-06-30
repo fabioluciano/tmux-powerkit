@@ -310,12 +310,13 @@ plugin_get_context() {
 }
 
 plugin_get_icon() {
-    local health
-    health=$(plugin_get_health)
-    case "$health" in
-        error) get_option "icon_error" ;;
+    # Data-based icon selection: read severity directly from datastore
+    local severity
+    severity=$(plugin_data_get "severity")
+    case "$severity" in
+        error)   get_option "icon_error" ;;
         warning) get_option "icon_warning" ;;
-        *) get_option "icon" ;;
+        *)       get_option "icon" ;;
     esac
 }
 

@@ -231,12 +231,14 @@ plugin_collect() {
     local percent
 
     if is_macos; then
-        percent=$(_get_cpu_macos)
+        percent=$(_get_cpu_macos) || return 1
     elif is_linux; then
-        percent=$(_get_cpu_linux)
+        percent=$(_get_cpu_linux) || return 1
     else
-        percent="0"
+        return 1
     fi
+
+    [[ -z "$percent" ]] && return 1
 
     # Ensure valid range
     percent="${percent:-0}"
@@ -305,26 +307,23 @@ plugin_get_context() {
 # =============================================================================
 
 plugin_get_icon() {
-    local health icon_warn icon_crit
+    local percent warn_th crit_th
+    percent=$(plugin_data_get "percent")
+    warn_th=$(get_option "warning_threshold")
+    crit_th=$(get_option "critical_threshold")
 
-    health=$(plugin_get_health)
-    icon_warn=$(get_option "icon_warning")
-    icon_crit=$(get_option "icon_critical")
-
-    case "$health" in
-        error)
-            [[ -n "$icon_crit" ]] && printf '%s' "$icon_crit" || get_option "icon"
-            return
-            ;;
-        warning)
-            [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
-            return
-            ;;
-        *)
-            get_option "icon"
-            return
-            ;;
-    esac
+    # Data-based icon selection (contract: icon must not call plugin_get_health)
+    if (( ${percent:-0} >= ${crit_th:-90} )); then
+        local icon_crit
+        icon_crit=$(get_option "icon_critical")
+        [[ -n "$icon_crit" ]] && printf '%s' "$icon_crit" || get_option "icon"
+    elif (( ${percent:-0} >= ${warn_th:-70} )); then
+        local icon_warn
+        icon_warn=$(get_option "icon_warning")
+        [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
+    else
+        get_option "icon"
+    fi
 }
 
 # =============================================================================

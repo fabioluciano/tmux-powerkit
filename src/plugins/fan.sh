@@ -74,6 +74,11 @@ plugin_declare_options() {
     declare_option "warning_threshold" "number" "4000" "Warning threshold in RPM"
     declare_option "critical_threshold" "number" "6000" "Critical threshold in RPM"
 
+    # Temperature correlation thresholds (fan health)
+    declare_option "temp_warning_threshold" "number" "70" "Temperature warning threshold (°C)"
+    declare_option "temp_critical_threshold" "number" "85" "Temperature critical threshold (°C)"
+    declare_option "rpm_min_threshold" "number" "200" "Minimum RPM under load (below = fan failure)"
+
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
 }
@@ -94,13 +99,37 @@ plugin_get_state() {
 }
 
 plugin_get_health() {
-    local rpm warn_th crit_th
-    rpm=$(plugin_data_get "rpm")
-    warn_th=$(get_option "warning_threshold")
-    crit_th=$(get_option "critical_threshold")
+    local rpm temp
+    local rpm_min temp_warn temp_crit
 
-    # Higher is worse (default behavior)
-    evaluate_threshold_health "${rpm:-0}" "${warn_th:-4000}" "${crit_th:-6000}"
+    rpm=$(plugin_data_get "rpm")
+    temp=$(plugin_data_get "cpu_temp")
+    rpm_min=$(get_option "rpm_min_threshold")
+    temp_warn=$(get_option "temp_warning_threshold")
+    temp_crit=$(get_option "temp_critical_threshold")
+
+    rpm="${rpm:-0}"
+    temp="${temp:-0}"
+    rpm_min="${rpm_min:-200}"
+    temp_warn="${temp_warn:-70}"
+    temp_crit="${temp_crit:-85}"
+
+    # Fan failure: RPM too low when temperature is elevated
+    if (( rpm > 0 && rpm < rpm_min && temp >= temp_warn )); then
+        printf 'error'
+        return
+    fi
+
+    # Temperature-based: fan not keeping up
+    if (( temp >= temp_crit )); then
+        printf 'error'
+        return
+    elif (( temp >= temp_warn )); then
+        printf 'warning'
+        return
+    fi
+
+    printf 'ok'
 }
 
 plugin_get_context() {
@@ -232,6 +261,29 @@ _get_fan_macos() {
 }
 
 # =============================================================================
+# Temperature Reading (for fan health correlation)
+# =============================================================================
+
+_get_cpu_temp_for_fan() {
+    if is_macos; then
+        has_cmd powerkit-temperature && {
+            local t
+            t=$(POWERKIT_ROOT="${POWERKIT_ROOT}" "${POWERKIT_ROOT}/bin/powerkit-temperature" 2>/dev/null)
+            [[ "$t" =~ ^[0-9]+$ ]] && printf '%d' "$t" && return
+        }
+        has_cmd osx-cpu-temp && osx-cpu-temp 2>/dev/null | grep -o '[0-9]*\.[0-9]*' | head -1 | cut -d. -f1 && return
+    elif is_linux; then
+        for zone in /sys/class/thermal/thermal_zone*/temp; do
+            [[ -f "$zone" ]] || continue
+            local t
+            t=$(cat "$zone" 2>/dev/null)
+            [[ "$t" =~ ^[0-9]+$ ]] && printf '%d' "$(( t / 1000 ))" && return
+        done
+    fi
+    printf '0'
+}
+
+# =============================================================================
 # Main Detection
 # =============================================================================
 
@@ -323,6 +375,10 @@ plugin_collect() {
     (( rpm == 0 )) && return 0
 
     plugin_data_set "rpm" "$rpm"
+
+    local temp
+    temp=$(_get_cpu_temp_for_fan)
+    plugin_data_set "cpu_temp" "${temp:-0}"
 }
 
 # =============================================================================

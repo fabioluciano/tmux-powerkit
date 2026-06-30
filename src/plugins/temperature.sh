@@ -368,26 +368,23 @@ plugin_get_context() {
 # =============================================================================
 
 plugin_get_icon() {
-    local health icon_warn icon_hot
+    local temperature warn_th crit_th
+    temperature=$(plugin_data_get "temp_c")
+    warn_th=$(get_option "warning_threshold")
+    crit_th=$(get_option "critical_threshold")
 
-    health=$(plugin_get_health)
-    icon_warn=$(get_option "icon_warning")
-    icon_hot=$(get_option "icon_hot")
-
-    case "$health" in
-        error)
-            [[ -n "$icon_hot" ]] && printf '%s' "$icon_hot" || get_option "icon"
-            return
-            ;;
-        warning)
-            [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
-            return
-            ;;
-        *)
-            get_option "icon"
-            return
-            ;;
-    esac
+    # Data-based icon selection (contract: icon must not call plugin_get_health)
+    if (( ${temperature:-0} >= ${crit_th:-85} )); then
+        local icon_hot
+        icon_hot=$(get_option "icon_hot")
+        [[ -n "$icon_hot" ]] && printf '%s' "$icon_hot" || get_option "icon"
+    elif (( ${temperature:-0} >= ${warn_th:-70} )); then
+        local icon_warn
+        icon_warn=$(get_option "icon_warning")
+        [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
+    else
+        get_option "icon"
+    fi
 }
 
 # =============================================================================

@@ -279,6 +279,13 @@ plugin_collect() {
             plugin_data_set "on_ac" "0"
             ;;
     esac
+
+    # Collect time remaining for discharging state
+    local time_remaining=""
+    if [[ "$status" == "discharging" ]]; then
+        time_remaining=$(_get_time_remaining)
+    fi
+    plugin_data_set "time_remaining" "${time_remaining:-}"
 }
 
 # =============================================================================
@@ -376,8 +383,15 @@ plugin_get_icon() {
             ;;
     esac
 
-    # Use health-based icon selection (icon_critical -> icon_warning -> icon)
-    plugin_get_icon_by_health "$(plugin_get_health)"
+    # Use data-based icon selection (contract: icon must not call plugin_get_health)
+    local percent crit_th warn_th
+    percent=$(plugin_data_get "percent")
+    crit_th=$(get_option "critical_threshold")
+    warn_th=$(get_option "warning_threshold")
+    plugin_get_icon_by_range "${percent:-100}" \
+        "${crit_th:-15}:icon_critical" \
+        "${warn_th:-30}:icon_low" \
+        "icon"
 }
 
 # =============================================================================
@@ -409,10 +423,9 @@ plugin_render() {
     case "$mode" in
         time)
             # Time mode - show remaining time
-            # Don't show time when charging (doesn't make sense for "time to empty")
             if [[ "$status" == "discharging" ]]; then
                 local time
-                time=$(_get_time_remaining)
+                time=$(plugin_data_get "time_remaining")
                 if [[ -n "$time" && "$time" != "..." && "$time" != "0:00" ]]; then
                     printf '%s' "$time"
                     return
