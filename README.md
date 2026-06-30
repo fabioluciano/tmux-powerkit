@@ -10,7 +10,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-45 Plugins • 43 Themes • Infinite Possibilities
+48 Plugins • 43 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -44,7 +44,7 @@ Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, an
 
 ### 🧩 **Truly Modular**
 
-**45 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
+**48 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
 
 ### 🔧 **Extensible Architecture**
 
@@ -164,7 +164,7 @@ set -g @powerkit_transparent "true"
 
 ## 🎯 Plugins
 
-### 📊 System Monitoring (13 plugins)
+### 📊 System Monitoring (15 plugins)
 
 Monitor every aspect of your system in real-time:
 
@@ -183,8 +183,10 @@ Monitor every aspect of your system in real-time:
 | `brightness` | Screen brightness | Linux only (sysfs, brightnessctl, light, xbacklight) |
 | `uptime` | System uptime | Human-readable format |
 | `hostname` | System hostname | Color-coded by environment |
+| `topproc` | Top CPU process | Process name and usage %, threshold alerts |
+| `sysstatus` | Aggregated system health badge | Combined OK/WARN/CRIT across CPU, memory, disk, temperature |
 
-### 🌐 Network (7 plugins)
+### 🌐 Network (8 plugins)
 
 Stay connected and informed:
 
@@ -197,6 +199,7 @@ Stay connected and informed:
 | `external_ip` | Public IP address | Cached with configurable TTL |
 | `ssh` | SSH session indicator | Shows when connected via SSH |
 | `weather` | Weather from wttr.in | Location-based, customizable format |
+| `connectivity` | Internet connectivity status | Online/offline indicator, configurable endpoint |
 
 ### 🎵 Media (7 plugins)
 

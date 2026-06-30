@@ -46,6 +46,10 @@ plugin_declare_options() {
     declare_option "icon_download" "icon" $'\U000F01DA' "Icon for download"
     declare_option "icon_upload" "icon" $'\U000F0552' "Icon for upload"
 
+    # Thresholds (bytes/s, 0 = disabled)
+    declare_option "warning_threshold"  "number" "0" "Warning threshold (bytes/s, 0=disabled)"
+    declare_option "critical_threshold" "number" "0" "Critical threshold (bytes/s, 0=disabled)"
+
     # Cache
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"
 }
@@ -55,9 +59,29 @@ plugin_declare_options() {
 # =============================================================================
 
 plugin_get_content_type() { printf 'dynamic'; }
-plugin_get_presence() { printf 'always'; }
-plugin_get_state() { printf 'active'; }
-plugin_get_health() { printf 'ok'; }
+plugin_get_presence() { printf 'conditional'; }
+plugin_get_state() {
+    local rx_rate
+    rx_rate=$(plugin_data_get "rx_rate")
+    # Se collect falhou (retornou 1), rx_rate estará vazio
+    [[ -n "$rx_rate" ]] && printf 'active' || printf 'inactive'
+}
+plugin_get_health() {
+    local warn_th crit_th
+    warn_th=$(get_option "warning_threshold")
+    crit_th=$(get_option "critical_threshold")
+
+    # Only evaluate if thresholds are configured (non-zero)
+    if [[ "${warn_th:-0}" != "0" || "${crit_th:-0}" != "0" ]]; then
+        local total_rate rx_rate tx_rate
+        rx_rate=$(plugin_data_get "rx_rate")
+        tx_rate=$(plugin_data_get "tx_rate")
+        total_rate=$(( ${rx_rate:-0} + ${tx_rate:-0} ))
+        evaluate_threshold_health "$total_rate" "${warn_th:-0}" "${crit_th:-0}"
+    else
+        printf 'ok'
+    fi
+}
 
 plugin_get_context() {
     local rx_rate tx_rate

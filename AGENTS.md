@@ -494,12 +494,12 @@ plugin_get_context() {
 
 ## Icon Selection Helpers
 
-Use in `plugin_get_icon()` to eliminate DRY violations for health-based and state-based icon selection:
+Use in `plugin_get_icon()` to eliminate DRY violations for state-based and value-based icon selection:
 
 ```bash
-# Select icon based on health level
-# Returns: icon_critical if error, icon_warning if warning, icon otherwise
-plugin_get_icon_by_health "$(plugin_get_health)"
+# ⚠️ DEPRECATED: plugin_get_icon_by_health
+# This helper couples icon selection to health re-evaluation, violating the contract.
+# See "Contract Violations to Avoid" section below for details.
 
 # Select icon based on boolean state (on/off, connected/disconnected, etc.)
 plugin_get_icon_by_state "$muted" "icon_muted" "icon"
@@ -546,7 +546,8 @@ plugin_get_icon() {
 
 # NEW (14 lines - 55% reduction):
 plugin_get_icon() {
-    local status
+    local percent status
+    percent=$(plugin_data_get "percent")
     status=$(plugin_data_get "status")
 
     # Charging/AC power takes precedence
@@ -557,8 +558,8 @@ plugin_get_icon() {
             ;;
     esac
 
-    # Use health-based icon selection (icon_critical -> icon_low -> icon)
-    plugin_get_icon_by_health "$(plugin_get_health)"
+    # Use value-based icon selection (data-driven, not health-driven)
+    plugin_get_icon_by_range "$percent" "15:icon_critical" "30:icon_low" "icon"
 }
 ```
 
@@ -578,36 +579,13 @@ plugin_get_icon() {
 }
 ```
 
-**Example (temperature.sh):**
-
-```bash
-# OLD:
-plugin_get_icon() {
-    local temp health
-    temp=$(plugin_data_get "temperature")
-    health=$(plugin_get_health)
-
-    case "$health" in
-        error)   get_option "icon_critical"; return ;;
-        warning) get_option "icon_warning"; return ;;
-        *)       get_option "icon"; return ;;
-    esac
-}
-
-# NEW:
-plugin_get_icon() {
-    plugin_get_icon_by_health "$(plugin_get_health)"
-}
-```
-
 **Benefits:**
 
 - **Saves 8-15 lines per plugin** × 12 plugins = **96-180 lines**
 - Consistent icon selection patterns across all plugins
-- Three helpers cover different scenarios:
-  - `plugin_get_icon_by_health`: Most common - maps health levels to icons
+- Two helpers cover different scenarios:
   - `plugin_get_icon_by_state`: Boolean state (on/off, muted/unmuted)
-  - `plugin_get_icon_by_range`: Value-based thresholds (battery percentage)
+  - `plugin_get_icon_by_range`: Value-based thresholds (battery percentage, temperature ranges)
 
 ## macOS Native Binary System
 
@@ -1228,17 +1206,23 @@ plugin_get_health() {
 }
 # Renderer maps health='error' → red color
 
-# WRONG: Icon based on health
+# WRONG: Icon based on health (couples icon to health re-evaluation)
 plugin_get_icon() {
     local health=$(plugin_get_health)
-    [[ "$health" == "error" ]] && printf '%s' "$critical_icon"  # UI logic!
+    [[ "$health" == "error" ]] && printf '%s' "$critical_icon"  # Violates contract!
 }
+# Problem: plugin_get_icon() calls plugin_get_health() again, re-evaluating thresholds.
+# This couples icon selection to health logic, making it impossible to change icon
+# independently of health without re-evaluating the entire health function.
 
-# CORRECT: Icon based on internal data
+# CORRECT: Icon based on internal data (data-driven, not health-driven)
 plugin_get_icon() {
     local percent=$(plugin_data_get "percent")
     (( percent < 15 )) && printf '%s' "$(get_option 'icon_critical')"
 }
+# Correct: Icon selection uses raw data from plugin_data_get(), not health.
+# Health is evaluated separately in plugin_get_health() for color mapping.
+# Icon and health can evolve independently.
 ```
 
 ## Plugin Example (battery.sh)

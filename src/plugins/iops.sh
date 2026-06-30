@@ -46,8 +46,13 @@ plugin_declare_options() {
     declare_option "icon" "icon" $'\U000F02CA' "Plugin icon (harddisk)"
 
     # Thresholds (in bytes/s - 100MB/s warning, 500MB/s critical)
+    # Kept for backward compatibility (no longer used by plugin_get_health)
     declare_option "warning_threshold" "number" "104857600" "Warning threshold (bytes/s)"
     declare_option "critical_threshold" "number" "524288000" "Critical threshold (bytes/s)"
+
+    # Saturation thresholds (in % disk utilization)
+    declare_option "util_warning_threshold" "number" "60" "Utilization warning threshold (%)"
+    declare_option "util_critical_threshold" "number" "85" "Utilization critical threshold (%)"
 
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
@@ -62,13 +67,12 @@ plugin_get_presence() { printf 'always'; }
 plugin_get_state() { printf 'active'; }
 
 plugin_get_health() {
-    local total_rate warn_th crit_th
-    total_rate=$(plugin_data_get "total_rate")
-    warn_th=$(get_option "warning_threshold")
-    crit_th=$(get_option "critical_threshold")
+    local util util_warn util_crit
+    util=$(plugin_data_get "util")
+    util_warn=$(get_option "util_warning_threshold")
+    util_crit=$(get_option "util_critical_threshold")
 
-    # Higher is worse (default behavior)
-    evaluate_threshold_health "${total_rate:-0}" "${warn_th:-104857600}" "${crit_th:-524288000}"
+    evaluate_threshold_health "${util:-0}" "${util_warn:-60}" "${util_crit:-85}"
 }
 
 plugin_get_context() {
@@ -148,6 +152,16 @@ _get_throughput_macos() {
     fi
 }
 
+_get_util_macos() {
+    local total_rate
+    total_rate=$(plugin_data_get "total_rate")
+    total_rate="${total_rate:-0}"
+
+    local pseudo_util=$(( total_rate / 10485760 ))
+    (( pseudo_util > 100 )) && pseudo_util=100
+    printf '%d' "$pseudo_util"
+}
+
 # =============================================================================
 # Linux Implementation using /proc/diskstats
 # =============================================================================
@@ -211,6 +225,42 @@ _get_throughput_linux() {
     fi
 }
 
+_get_util_linux() {
+    local now=${EPOCHSECONDS:-$(date +%s)}
+
+    local total_io_ms=0
+    while IFS= read -r line; do
+        local fields
+        read -ra fields <<< "$line"
+        local dev="${fields[2]}"
+        [[ "$dev" =~ ^(loop|dm-|sr) ]] && continue
+        local io_ms="${fields[12]:-0}"
+        total_io_ms=$((total_io_ms + io_ms))
+    done < /proc/diskstats 2>/dev/null
+
+    local prev_io_ms prev_time
+    prev_io_ms=$(cache_get "iops_util_io_ms" 86400)
+    prev_time=$(cache_get "iops_util_time" 86400)
+
+    cache_set "iops_util_io_ms" "$total_io_ms"
+    cache_set "iops_util_time" "$now"
+
+    [[ -z "$prev_io_ms" || -z "$prev_time" ]] && { printf '0'; return; }
+
+    local delta_io=$((total_io_ms - prev_io_ms))
+    local delta_time=$(( (now - prev_time) * 1000 ))
+
+    (( delta_io < 0 )) && delta_io=0
+
+    if (( delta_time > 0 )); then
+        local util=$(( delta_io * 100 / delta_time ))
+        (( util > 100 )) && util=100
+        printf '%d' "$util"
+    else
+        printf '0'
+    fi
+}
+
 # =============================================================================
 # Main Logic
 # =============================================================================
@@ -236,6 +286,14 @@ plugin_collect() {
     plugin_data_set "read_rate" "$read_rate"
     plugin_data_set "write_rate" "$write_rate"
     plugin_data_set "total_rate" "$((read_rate + write_rate))"
+
+    local util=0
+    if is_linux; then
+        util=$(_get_util_linux)
+    elif is_macos; then
+        util=$(_get_util_macos)
+    fi
+    plugin_data_set "util" "${util:-0}"
 }
 
 plugin_render() {
