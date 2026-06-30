@@ -164,7 +164,7 @@ set -g @powerkit_transparent "true"
 
 ## 🎯 Plugins
 
-### 📊 System Monitoring (15 plugins):
+### 📊 System Monitoring (15 plugins)
 
 Monitor every aspect of your system in real-time:
 
@@ -186,7 +186,7 @@ Monitor every aspect of your system in real-time:
 | `topproc` | Top CPU process | Process name and usage %, threshold alerts |
 | `sysstatus` | Aggregated system health badge | Combined OK/WARN/CRIT across CPU, memory, disk, temperature |
 
-### 🌐 Network (8 plugins):
+### 🌐 Network (8 plugins)
 
 Stay connected and informed:
 

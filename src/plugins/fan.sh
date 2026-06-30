@@ -268,7 +268,7 @@ _get_cpu_temp_for_fan() {
     if is_macos; then
         has_cmd powerkit-temperature && {
             local t
-            t=$(POWERKIT_ROOT="${POWERKIT_ROOT}" "${POWERKIT_ROOT}/bin/powerkit-temperature" 2>/dev/null)
+            t=$("${POWERKIT_ROOT}/bin/powerkit-temperature" 2>/dev/null)
             [[ "$t" =~ ^[0-9]+$ ]] && printf '%d' "$t" && return
         }
         has_cmd osx-cpu-temp && osx-cpu-temp 2>/dev/null | grep -o '[0-9]*\.[0-9]*' | head -1 | cut -d. -f1 && return
