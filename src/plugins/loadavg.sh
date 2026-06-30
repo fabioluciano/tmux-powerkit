@@ -58,7 +58,7 @@ plugin_declare_options() {
     declare_option "icon" "icon" $'\U000F199F' "Plugin icon"
 
     # Thresholds (multiplied by CPU cores)
-    declare_option "warning_threshold_multiplier" "number" "2" "Warning threshold multiplier (times CPU cores)"
+    declare_option "warning_threshold_multiplier" "number" "1" "Warning threshold multiplier (times CPU cores)"
     declare_option "critical_threshold_multiplier" "number" "4" "Critical threshold multiplier (times CPU cores)"
 
     # Cache
