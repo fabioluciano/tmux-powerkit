@@ -44,26 +44,34 @@ build_status_style() {
 
 # Build message style
 # Usage: build_message_style
-# Returns: "fg=COLOR,bg=COLOR"
+# Returns: "fg=COLOR,bg=COLOR,fill=COLOR"
 build_message_style() {
-    local bg fg
+    local fg bg fill
 
-    bg=$(resolve_color "message-bg")
     fg=$(resolve_color "message-fg")
 
-    printf 'fg=%s,bg=%s' "$fg" "$bg"
+    is_theme_loaded || load_powerkit_theme
+    bg=$(get_color "message-bg")
+    [[ -z "$bg" ]] && bg=$(resolve_color "message-bg")
+    fill="$bg"
+
+    printf 'fg=%s,bg=%s,fill=%s' "$fg" "$bg" "$fill"
 }
 
 # Build command message style
 # Usage: build_message_command_style
-# Returns: "fg=COLOR,bg=COLOR"
+# Returns: "fg=COLOR,bg=COLOR,fill=COLOR"
 build_message_command_style() {
-    local bg fg
+    local fg bg fill
 
-    bg=$(resolve_color "session-command-bg")
     fg=$(resolve_color "session-fg")
 
-    printf 'fg=%s,bg=%s' "$fg" "$bg"
+    is_theme_loaded || load_powerkit_theme
+    bg=$(get_color "session-command-bg")
+    [[ -z "$bg" ]] && bg=$(resolve_color "session-command-bg")
+    fill="$bg"
+
+    printf 'fg=%s,bg=%s,fill=%s' "$fg" "$bg" "$fill"
 }
 
 # =============================================================================
