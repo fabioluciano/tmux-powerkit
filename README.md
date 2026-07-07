@@ -345,6 +345,20 @@ set -g @powerkit_elements_spacing "both"  # false, true, both, windows, plugins
 
 ## ⚙️ Advanced Configuration
 
+### Window Customization
+
+You can customize the text color of the active and inactive windows, as well as the padding around the window index. By default, text colors are automatically calculated based on the window's background color, and the index padding is enabled.
+
+```bash
+# Override automatic text color calculation
+set -g @powerkit_active_window_fg "white"
+set -g @powerkit_inactive_window_fg "#c0caf5"
+
+# Disable the padding space around the window index number
+set -g @powerkit_window_index_padding "false"
+```
+
+
 ### Plugin Customization
 
 You can control the edge separator background color when a plugin's icon is hidden (e.g. set to 'none'). By default, it uses the hidden icon's background color.

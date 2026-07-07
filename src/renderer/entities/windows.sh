@@ -67,7 +67,20 @@ _windows_get_colors() {
     local variant
     variant=$(get_contrast_variant "$base_color")
     index_fg=$(resolve_color "${base_color}-${variant}")
-    content_fg=$(resolve_color "${base_color}-${variant}")
+
+    local custom_fg
+    if [[ "$state" == "active" ]]; then
+        custom_fg=$(get_tmux_option "@powerkit_active_window_fg" "")
+    else
+        custom_fg=$(get_tmux_option "@powerkit_inactive_window_fg" "")
+    fi
+
+    if [[ -n "$custom_fg" ]]; then
+        content_fg=$(resolve_color "$custom_fg")
+        index_fg=$(resolve_color "$custom_fg")
+    else
+        content_fg=$(resolve_color "${base_color}-${variant}")
+    fi
 
     index_bg=$(resolve_color "${base_color}-lighter")
     content_bg=$(resolve_color "$base_color")
@@ -196,10 +209,15 @@ _windows_get_spacing_sep_char() {
 _windows_build_index_text() {
     local side="$1" index_fg="$2" index_bg="$3" style_attr="$4"
 
+    local pad=" "
+    if [[ "$(get_tmux_option "@powerkit_window_index_padding" "true")" == "false" ]]; then
+        pad=""
+    fi
+
     if [[ "$side" == "left" && -n "$_W_SEP_CHAR" ]]; then
-        printf '#[fg=%s,bg=%s%s] %s' "$index_fg" "$index_bg" "$style_attr" "$(window_get_index_display)"
+        printf '#[fg=%s,bg=%s%s]%s%s' "$index_fg" "$index_bg" "$style_attr" "$pad" "$(window_get_index_display)"
     else
-        printf '#[fg=%s,bg=%s%s]%s ' "$index_fg" "$index_bg" "$style_attr" "$(window_get_index_display)"
+        printf '#[fg=%s,bg=%s%s]%s%s' "$index_fg" "$index_bg" "$style_attr" "$(window_get_index_display)" "$pad"
     fi
 }
 
