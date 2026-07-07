@@ -323,6 +323,19 @@ render_plugin_segment() {
 
     local segment=""
 
+    local effective_bg
+    if [[ -n "$icon" && "$icon" != "none" ]]; then
+        effective_bg="$icon_bg"
+    else
+        local no_icon_bg_style
+        no_icon_bg_style=$(get_tmux_option "@powerkit_plugin_no_icon_bg_style" "icon")
+        if [[ "$no_icon_bg_style" == "content" ]]; then
+            effective_bg="$content_bg"
+        else
+            effective_bg="$icon_bg"
+        fi
+    fi
+
     # Opening separator logic depends on side and position
     if [[ "$side" == "left" ]]; then
         # Left side: plugins flow left-to-right with RIGHT separators (▶)
@@ -330,10 +343,10 @@ render_plugin_segment() {
         # Other plugins: normal right separator
         if [[ $is_first -eq 1 ]]; then
             # First plugin: small padding from edge
-            segment+="#[bg=${icon_bg}] "
+            segment+="#[bg=${effective_bg}] "
         else
             # Right-pointing (▶): fg=source (prev), bg=destination (icon)
-            segment+="#[fg=${prev_bg},bg=${icon_bg}]${_SEP_CACHE_RIGHT}#[none]"
+            segment+="#[fg=${prev_bg},bg=${effective_bg}]${_SEP_CACHE_RIGHT}#[none]"
         fi
     else
         # Right side: plugins flow right-to-left with LEFT separators (◀)
@@ -346,12 +359,12 @@ render_plugin_segment() {
             sep_opening="${_SEP_CACHE_LEFT}"
         fi
         # Left-pointing (◀): fg=destination (icon), bg=source (prev)
-        segment+="#[fg=${icon_bg},bg=${prev_bg}]${sep_opening}#[none]"
+        segment+="#[fg=${effective_bg},bg=${prev_bg}]${sep_opening}#[none]"
     fi
 
     # Icon section (no bold - icons don't need emphasis)
     # No left padding (separator provides visual space), only right padding
-    if [[ -n "$icon" ]]; then
+    if [[ -n "$icon" && "$icon" != "none" ]]; then
         segment+="#[fg=${icon_fg},bg=${icon_bg}]${icon} "
         # Internal separator between icon and content
         if [[ "$side" == "left" ]]; then

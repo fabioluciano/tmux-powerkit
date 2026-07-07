@@ -345,6 +345,16 @@ set -g @powerkit_elements_spacing "both"  # false, true, both, windows, plugins
 
 ## ⚙️ Advanced Configuration
 
+### Plugin Customization
+
+You can control the edge separator background color when a plugin's icon is hidden (e.g. set to 'none'). By default, it uses the hidden icon's background color.
+
+```bash
+# Set the edge separator background to match the text content block instead of the icon block when the icon is hidden
+set -g @powerkit_plugin_no_icon_bg_style "content" # default is "icon"
+```
+
+
 ### Plugin-Specific Options
 
 Every plugin is highly customizable. Example with the `battery` plugin:
