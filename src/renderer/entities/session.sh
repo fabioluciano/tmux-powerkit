@@ -49,6 +49,22 @@ _session_build_icon_condition() {
     icon_prefix=$(get_tmux_option "@powerkit_session_prefix_icon" "${POWERKIT_DEFAULT_SESSION_PREFIX_ICON}")
     icon_copy=$(get_tmux_option "@powerkit_session_copy_icon" "${POWERKIT_DEFAULT_SESSION_COPY_ICON}")
 
+    # Intelligently attach trailing space only if the icon renders visible content.
+    # This prevents double-spacing when icons are disabled by the user.
+    # Handles both truly empty strings and tmux conditionals that always evaluate
+    # to empty (e.g., "#{?0,,}" which bash sees as non-empty but tmux renders as "").
+    _session_icon_has_content() {
+        local val="$1"
+        [[ -z "$val" ]] && return 1
+        # Match tmux conditionals that always resolve to empty: #{?0,,}
+        local _empty_cond_re="^#\{\?[0-9]+,,\}$"
+        [[ "$val" =~ $_empty_cond_re ]] && return 1
+        return 0
+    }
+    _session_icon_has_content "$icon_prefix" && icon_prefix="${icon_prefix} "
+    _session_icon_has_content "$icon_copy" && icon_copy="${icon_copy} "
+    _session_icon_has_content "$icon_normal" && icon_normal="${icon_normal} "
+
     # Conditional: prefix mode -> prefix_icon, copy mode -> copy_icon, else -> normal_icon
     printf '#{?client_prefix,%s,#{?pane_in_mode,%s,%s}}' "$icon_prefix" "$icon_copy" "$icon_normal"
 }
@@ -99,14 +115,19 @@ session_render() {
     text_color=$(resolve_color "session-fg")
     show_mode=$(get_tmux_option "@powerkit_session_show_mode" "${POWERKIT_DEFAULT_SESSION_SHOW_MODE}")
 
+    local pad=" "
+    if [[ "$(get_tmux_option "@powerkit_session_padding" "true")" == "false" ]]; then
+        pad=""
+    fi
+
     # Build mode text if enabled
     if [[ "$show_mode" == "true" ]]; then
         mode_text=$(_session_build_mode_text)
         # Session content: bold text with mode text and mode-aware background
-        printf '#[fg=%s,bold,bg=%s] %s #S %s' "$text_color" "$bg_condition" "$icon_condition" "$mode_text"
+        printf '#[fg=%s,bold,bg=%s]%s%s#S%s%s' "$text_color" "$bg_condition" "$pad" "$icon_condition" "$pad" "$mode_text"
     else
         # Session content: bold text with mode-aware background (no mode display)
-        printf '#[fg=%s,bold,bg=%s] %s #S ' "$text_color" "$bg_condition" "$icon_condition"
+        printf '#[fg=%s,bold,bg=%s]%s%s#S%s' "$text_color" "$bg_condition" "$pad" "$icon_condition" "$pad"
     fi
 }
 

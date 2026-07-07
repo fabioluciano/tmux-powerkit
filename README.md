@@ -345,6 +345,16 @@ set -g @powerkit_elements_spacing "both"  # false, true, both, windows, plugins
 
 ## ⚙️ Advanced Configuration
 
+### Session Customization
+
+You can customize the padding around the session text.
+
+```bash
+# Disable the padding space around the session name
+set -g @powerkit_session_padding "false"
+```
+
+
 ### Window Customization
 
 You can customize the text color of the active and inactive windows, as well as the padding around the window index. By default, text colors are automatically calculated based on the window's background color, and the index padding is enabled.
