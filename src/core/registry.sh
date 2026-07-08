@@ -142,7 +142,7 @@ declare -grA WINDOW_ICON_MAP=(
     [code]=$'\ue70c'
 
     # Shells
-    [bash]=$'\uf120'
+    [bash]=$'\ue691'
     [zsh]=$'\uf120'
     [fish]=$'\uf120'
     [sh]=$'\uf120'
@@ -208,11 +208,12 @@ declare -grA WINDOW_ICON_MAP=(
     # File managers
     [ranger]=$'\uf07b'
     [nnn]=$'\uf07b'
+    [yazi]=$'\uf07b'
     [lf]=$'\uf07b'
     [mc]=$'\uf07b'
 
     # Network
-    [ssh]=$'\uf489'
+    [ssh]=$'\ueb01'
     [curl]=$'\uf0ac'
     [wget]=$'\uf0ed'
 
