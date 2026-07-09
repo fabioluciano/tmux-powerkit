@@ -176,10 +176,7 @@ window_get_index_icon_format() {
     local format="$fallback"
 
     # For text style, just return the plain index
-    [[ "$style" == "text" ]] && {
-        printf '%s' "$fallback"
-        return
-    }
+    [[ "$style" == "text" ]] && { printf '%s' "$fallback"; return; }
 
     # Generate icons for indices 0-49 (descending order for correct conditional evaluation)
     for index in {49..0}; do
@@ -211,10 +208,9 @@ window_get_index_display() {
 
 # Build tmux conditional format for command-based icons
 # Uses WINDOW_ICON_MAP from registry.sh
-# Usage: window_get_icon_format [fallback_icon]
 window_get_icon_format() {
-    local default_icon="${1:-}"
-    [[ -z "$default_icon" ]] && default_icon=$(get_tmux_option "@powerkit_window_default_icon" "$WINDOW_DEFAULT_ICON")
+    local default_icon
+    default_icon=$(get_tmux_option "@powerkit_window_default_icon" "$WINDOW_DEFAULT_ICON")
 
     # Build nested conditional format from the icon map
     local format="$default_icon"
@@ -260,47 +256,39 @@ _window_get_format() {
     [[ "$type" == "active" ]] && default_show_icon="true"
 
     # Get options
-    local show_icon show_name
+    local show_icon show_index show_name show_flags
     show_icon=$(get_tmux_option "${prefix}_show_icon" "$default_show_icon")
+    show_index=$(get_tmux_option "${prefix}_show_index" "true")
     show_name=$(get_tmux_option "${prefix}_show_name" "true")
+    show_flags=$(get_tmux_option "${prefix}_show_flags" "false")
 
-    local window_title
-    if [[ "$type" == "active" ]]; then
-        window_title=$(get_tmux_option "@powerkit_active_window_title" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_TITLE}")
-    else
-        window_title=$(get_tmux_option "@powerkit_inactive_window_title" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_TITLE}")
-    fi
-
-    local zoomed_icon marked_icon activity_icon bell_icon window_icon
-    zoomed_icon=$(get_tmux_option "@powerkit_zoomed_window_icon" "${POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON}")
-    marked_icon=$(get_tmux_option "@powerkit_window_marked_icon" "${POWERKIT_DEFAULT_WINDOW_MARKED_ICON}")
-    activity_icon=$(get_tmux_option "@powerkit_window_activity_icon" "${POWERKIT_DEFAULT_WINDOW_ACTIVITY_ICON}")
-    bell_icon=$(get_tmux_option "@powerkit_window_bell_icon" "${POWERKIT_DEFAULT_WINDOW_BELL_ICON}")
-
-    if [[ "$type" == "active" ]]; then
-        window_icon=$(get_tmux_option "@powerkit_active_window_icon" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_ICON}")
-    else
-        window_icon=$(get_tmux_option "@powerkit_inactive_window_icon" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON}")
-    fi
-
-    local icon_conditional
-    if [[ "$type" == "active" ]]; then
-        icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_marked_flag,${marked_icon},$(window_get_icon_format "$window_icon")}}"
-    else
-        icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_activity_flag,${activity_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},$(window_get_icon_format "$window_icon")}}}}"
-    fi
+    # Determine is_active for icon lookup
+    local is_active="0"
+    [[ "$type" == "active" ]] && is_active="1"
 
     # Build format string
     local format=""
 
     # Icon (if enabled)
     if [[ "$show_icon" == "true" ]]; then
-        format+="${icon_conditional}"
-        [[ "$show_name" == "true" ]] && format+=" "
+        local icon
+        icon=$(window_get_simple_icon "$is_active")
+        [[ -n "$icon" ]] && format+="${icon} "
+    fi
+
+    # Index (if enabled)
+    [[ "$show_index" == "true" ]] && format+="#{window_index}"
+
+    # Separator between index and name
+    if [[ "$show_index" == "true" && "$show_name" == "true" ]]; then
+        format+=":"
     fi
 
     # Name (if enabled)
-    [[ "$show_name" == "true" ]] && format+="${window_title}"
+    [[ "$show_name" == "true" ]] && format+="#{window_name}"
+
+    # Flags (if enabled)
+    [[ "$show_flags" == "true" ]] && format+="#{window_flags}"
 
     printf '%s' "$format"
 }
