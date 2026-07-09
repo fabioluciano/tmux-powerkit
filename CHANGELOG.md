@@ -2,6 +2,13 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.28.10](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.9...v5.28.10) (2026-07-09)
+
+### Bug Fixes
+
+* Add some settings to bring back old theme ([#228](https://github.com/fabioluciano/tmux-powerkit/issues/228)) ([f94f889](https://github.com/fabioluciano/tmux-powerkit/commit/f94f889ee79f004c5622d747b359cf3ecced9390))
+* Make windows icons mappings working ([#229](https://github.com/fabioluciano/tmux-powerkit/issues/229)) ([95f6078](https://github.com/fabioluciano/tmux-powerkit/commit/95f6078f9451796ec854f8877011ab28bc8964a6))
+
 ## [5.28.9](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.8...v5.28.9) (2026-07-04)
 
 ### Bug Fixes
