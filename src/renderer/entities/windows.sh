@@ -105,8 +105,8 @@ _windows_get_common_settings() {
     statusbar_bg_color=$(get_color "statusbar-bg")
 
     if [[ "$_W_TRANSPARENT" == "true" ]]; then
-        _W_SPACING_BG="default"           # bg=default works (terminal background)
-        _W_SPACING_FG="$statusbar_bg_color"  # fg needs actual color (not "default")
+        _W_SPACING_BG="default"             # bg=default works (terminal background)
+        _W_SPACING_FG="$statusbar_bg_color" # fg needs actual color (not "default")
         _W_STATUS_BG="default"
     else
         _W_SPACING_BG="$statusbar_bg_color"
@@ -263,7 +263,7 @@ _windows_build_format() {
     local side="${1:-left}"
 
     local index_bg index_fg content_bg content_fg style
-    read -r index_bg index_fg content_bg content_fg style <<< "$(_windows_get_colors "inactive")"
+    read -r index_bg index_fg content_bg content_fg style <<<"$(_windows_get_colors "inactive")"
 
     local style_attr=""
     [[ -n "$style" && "$style" != "none" ]] && style_attr=",${style}"
@@ -275,18 +275,9 @@ _windows_build_format() {
     active_content_bg=$(resolve_color "window-active-base")
     previous_bg="#{?#{==:#{e|-:#{window_index},1},#{active_window_index}},${active_content_bg},${content_bg}}"
 
-    # Window icons and title
-    local window_icon window_title zoomed_icon activity_icon bell_icon marked_icon
-    window_icon=$(get_tmux_option "@powerkit_inactive_window_icon" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON}")
-    window_title=$(get_tmux_option "@powerkit_inactive_window_title" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_TITLE}")
-    zoomed_icon=$(get_tmux_option "@powerkit_zoomed_window_icon" "${POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON}")
-    activity_icon=$(get_tmux_option "@powerkit_window_activity_icon" "${POWERKIT_DEFAULT_WINDOW_ACTIVITY_ICON}")
-    bell_icon=$(get_tmux_option "@powerkit_window_bell_icon" "${POWERKIT_DEFAULT_WINDOW_BELL_ICON}")
-    marked_icon=$(get_tmux_option "@powerkit_window_marked_icon" "${POWERKIT_DEFAULT_WINDOW_MARKED_ICON}")
-
-    # Icon priority: zoomed > activity > bell > marked > normal
-    local icon_conditional
-    icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_activity_flag,${activity_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}}}"
+    # Window content assembled by contract helper (icon + title)
+    local window_content
+    window_content=$(window_get_inactive_format)
 
     # Check if index should be shown for inactive windows
     local show_index
@@ -310,9 +301,9 @@ _windows_build_format() {
     fi
     # Add left padding only when rendering from left side
     if [[ "$side" == "left" ]]; then
-        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} "
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${window_content} "
     else
-        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} "
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${window_content} "
     fi
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
@@ -326,7 +317,7 @@ _windows_build_current_format() {
     local side="${1:-left}"
 
     local index_bg index_fg content_bg content_fg style
-    read -r index_bg index_fg content_bg content_fg style <<< "$(_windows_get_colors "active")"
+    read -r index_bg index_fg content_bg content_fg style <<<"$(_windows_get_colors "active")"
 
     local style_attr=",bold"
     [[ -n "$style" && "$style" != "none" ]] && style_attr=",${style}"
@@ -337,17 +328,9 @@ _windows_build_current_format() {
     local previous_bg
     previous_bg=$(resolve_color "window-inactive-base")
 
-    # Window icons and title
-    local window_icon window_title zoomed_icon marked_icon
-    window_icon=$(get_tmux_option "@powerkit_active_window_icon" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_ICON}")
-    window_title=$(get_tmux_option "@powerkit_active_window_title" "${POWERKIT_DEFAULT_ACTIVE_WINDOW_TITLE}")
-    zoomed_icon=$(get_tmux_option "@powerkit_zoomed_window_icon" "${POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON}")
-    marked_icon=$(get_tmux_option "@powerkit_window_marked_icon" "${POWERKIT_DEFAULT_WINDOW_MARKED_ICON}")
-
-    # Icon priority for active window: zoomed > marked > normal
-    # Note: activity/bell are not shown for active window (you're already looking at it)
-    local icon_conditional
-    icon_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_marked_flag,${marked_icon},${window_icon}}}"
+    # Window content assembled by contract helper (icon + title)
+    local window_content
+    window_content=$(window_get_active_format)
 
     # Check if index should be shown for active windows
     local show_index
@@ -371,9 +354,9 @@ _windows_build_current_format() {
     fi
     # Add left padding only when rendering from left side
     if [[ "$side" == "left" ]]; then
-        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${icon_conditional} ${window_title} $(pane_sync_format)"
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}] ${window_content} $(pane_sync_format)"
     else
-        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${icon_conditional} ${window_title} $(pane_sync_format)"
+        format+="#[fg=${content_fg},bg=${content_bg}${style_attr}]${window_content} $(pane_sync_format)"
     fi
     format+=$(_windows_build_spacing "$side" "$content_bg")
     format+="#[norange]"
