@@ -54,10 +54,10 @@ source_guard "registry" && return 0
 # Valid plugin states
 # Usage: for state in "${PLUGIN_STATES[@]}"; do ...
 declare -gra PLUGIN_STATES=(
-    "inactive"   # Plugin is not active (e.g., no battery on desktop)
-    "active"     # Plugin is active and working
-    "degraded"   # Plugin is working but with reduced functionality
-    "failed"     # Plugin failed to collect data
+    "inactive" # Plugin is not active (e.g., no battery on desktop)
+    "active"   # Plugin is active and working
+    "degraded" # Plugin is working but with reduced functionality
+    "failed"   # Plugin failed to collect data
 )
 
 # Plugin state descriptions
@@ -72,15 +72,15 @@ declare -grA PLUGIN_STATE_DESCRIPTIONS=(
 # Valid plugin content types
 # shellcheck disable=SC2034 # Used for validation
 declare -gra PLUGIN_CONTENT_TYPES=(
-    "static"   # Content doesn't change frequently
-    "dynamic"  # Content changes frequently
+    "static"  # Content doesn't change frequently
+    "dynamic" # Content changes frequently
 )
 
 # Valid plugin presence modes
 # shellcheck disable=SC2034 # Used for validation
 declare -gra PLUGIN_PRESENCE_MODES=(
-    "always"       # Always show plugin
-    "conditional"  # Show based on state
+    "always"      # Always show plugin
+    "conditional" # Show based on state
 )
 
 # =============================================================================
@@ -90,18 +90,18 @@ declare -gra PLUGIN_PRESENCE_MODES=(
 # Valid session states
 # shellcheck disable=SC2034 # Used for validation
 declare -gra SESSION_STATES=(
-    "attached"   # Session is attached to a client
-    "detached"   # Session has no attached clients
+    "attached" # Session is attached to a client
+    "detached" # Session has no attached clients
 )
 
 # Valid session modes
 # shellcheck disable=SC2034 # Used for validation
 declare -gra SESSION_MODES=(
-    "normal"   # Default state
-    "prefix"   # After pressing prefix key (client_prefix=1)
-    "copy"     # Copy mode active (pane_in_mode=1)
-    "command"  # Command prompt (:)
-    "search"   # Search mode (/ or ? in copy-mode)
+    "normal"  # Default state
+    "prefix"  # After pressing prefix key (client_prefix=1)
+    "copy"    # Copy mode active (pane_in_mode=1)
+    "command" # Command prompt (:)
+    "search"  # Search mode (/ or ? in copy-mode)
 )
 
 # Session mode descriptions
@@ -121,13 +121,13 @@ declare -grA SESSION_MODE_DESCRIPTIONS=(
 # Valid window states (derived from tmux variables)
 # shellcheck disable=SC2034 # Used for validation
 declare -gra WINDOW_STATES=(
-    "active"    # Current window (window_active=1)
-    "inactive"  # Other windows
-    "activity"  # Has activity (window_activity_flag=1)
-    "bell"      # Has bell (window_bell_flag=1)
-    "zoomed"    # Is zoomed (window_zoomed_flag=1)
-    "last"      # Was last active (window_last_flag=1)
-    "marked"    # Is marked (window_marked_flag=1)
+    "active"   # Current window (window_active=1)
+    "inactive" # Other windows
+    "activity" # Has activity (window_activity_flag=1)
+    "bell"     # Has bell (window_bell_flag=1)
+    "zoomed"   # Is zoomed (window_zoomed_flag=1)
+    "last"     # Was last active (window_last_flag=1)
+    "marked"   # Is marked (window_marked_flag=1)
 )
 
 # Window icon map (command -> icon)
@@ -196,7 +196,7 @@ declare -grA WINDOW_ICON_MAP=(
     # Databases
     [psql]=$'\ue76e'
     [mysql]=$'\ue704'
-    [redis-cli]=$'\ue76d'
+    [redis - cli]=$'\ue76d'
     [mongosh]=$'\ue7a4'
 
     # System tools
@@ -253,116 +253,115 @@ declare -gra WINDOW_INDEX_STYLES=(
 
 # Style: numeric (nf-md-numeric_X)
 declare -grA WINDOW_INDEX_ICONS_NUMERIC=(
-    [0]=$'\U000f0b39'    # nf-md-numeric_0
-    [1]=$'\U000f0b3a'    # nf-md-numeric_1
-    [2]=$'\U000f0b3b'    # nf-md-numeric_2
-    [3]=$'\U000f0b3c'    # nf-md-numeric_3
-    [4]=$'\U000f0b3d'    # nf-md-numeric_4
-    [5]=$'\U000f0b3e'    # nf-md-numeric_5
-    [6]=$'\U000f0b3f'    # nf-md-numeric_6
-    [7]=$'\U000f0b40'    # nf-md-numeric_7
-    [8]=$'\U000f0b41'    # nf-md-numeric_8
-    [9]=$'\U000f0b42'    # nf-md-numeric_9
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
-# Style: box (nf-md-numeric_X_box) - filled boxes
+# Style: box (nf-md-numeric_X) - uses numeric glyphs, box appearance from index bg color
 declare -grA WINDOW_INDEX_ICONS_BOX=(
-    [0]=$'\U000f03a1'    # nf-md-numeric_0_box
-    [1]=$'\U000f03a4'    # nf-md-numeric_1_box
-    [2]=$'\U000f03a7'    # nf-md-numeric_2_box
-    [3]=$'\U000f03aa'    # nf-md-numeric_3_box
-    [4]=$'\U000f03ad'    # nf-md-numeric_4_box
-    [5]=$'\U000f03b1'    # nf-md-numeric_5_box
-    [6]=$'\U000f03b3'    # nf-md-numeric_6_box
-    [7]=$'\U000f03b6'    # nf-md-numeric_7_box
-    [8]=$'\U000f03b9'    # nf-md-numeric_8_box
-    [9]=$'\U000f03bc'    # nf-md-numeric_9_box
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
-# Style: box_outline (nf-md-numeric_X_box_outline) - outlined boxes
+# Style: box_outline (nf-md-numeric_X) - uses numeric glyphs, outline appearance from index bg color
 declare -grA WINDOW_INDEX_ICONS_BOX_OUTLINE=(
-    [0]=$'\U000f03a3'    # nf-md-numeric_0_box_outline
-    [1]=$'\U000f03a6'    # nf-md-numeric_1_box_outline
-    [2]=$'\U000f03a9'    # nf-md-numeric_2_box_outline
-    [3]=$'\U000f03ac'    # nf-md-numeric_3_box_outline
-    [4]=$'\U000f03ae'    # nf-md-numeric_4_box_outline
-    [5]=$'\U000f03b0'    # nf-md-numeric_5_box_outline
-    [6]=$'\U000f03b5'    # nf-md-numeric_6_box_outline
-    [7]=$'\U000f03b8'    # nf-md-numeric_7_box_outline
-    [8]=$'\U000f03bb'    # nf-md-numeric_8_box_outline
-    [9]=$'\U000f03be'    # nf-md-numeric_9_box_outline
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
-# Style: box_multiple (nf-md-numeric_X_box_multiple) - multiple filled boxes
-# Sequential +1 pattern
+# Style: box_multiple (nf-md-numeric_X) - uses numeric glyphs
 declare -grA WINDOW_INDEX_ICONS_BOX_MULTIPLE=(
-    [0]=$'\U000f0f0e'    # nf-md-numeric_0_box_multiple
-    [1]=$'\U000f0f0f'    # nf-md-numeric_1_box_multiple
-    [2]=$'\U000f0f10'    # nf-md-numeric_2_box_multiple
-    [3]=$'\U000f0f11'    # nf-md-numeric_3_box_multiple
-    [4]=$'\U000f0f12'    # nf-md-numeric_4_box_multiple
-    [5]=$'\U000f0f13'    # nf-md-numeric_5_box_multiple
-    [6]=$'\U000f0f14'    # nf-md-numeric_6_box_multiple
-    [7]=$'\U000f0f15'    # nf-md-numeric_7_box_multiple
-    [8]=$'\U000f0f16'    # nf-md-numeric_8_box_multiple
-    [9]=$'\U000f0f17'    # nf-md-numeric_9_box_multiple
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
-# Style: box_multiple_outline (nf-md-numeric_X_box_multiple_outline) - multiple outlined boxes
+# Style: box_multiple_outline (nf-md-numeric_X) - uses numeric glyphs
 declare -grA WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE=(
-    [0]=$'\U000f03a2'    # nf-md-numeric_0_box_multiple_outline
-    [1]=$'\U000f03a5'    # nf-md-numeric_1_box_multiple_outline
-    [2]=$'\U000f03a8'    # nf-md-numeric_2_box_multiple_outline
-    [3]=$'\U000f03ab'    # nf-md-numeric_3_box_multiple_outline
-    [4]=$'\U000f03b2'    # nf-md-numeric_4_box_multiple_outline
-    [5]=$'\U000f03af'    # nf-md-numeric_5_box_multiple_outline
-    [6]=$'\U000f03b4'    # nf-md-numeric_6_box_multiple_outline
-    [7]=$'\U000f03b7'    # nf-md-numeric_7_box_multiple_outline
-    [8]=$'\U000f03ba'    # nf-md-numeric_8_box_multiple_outline
-    [9]=$'\U000f03bd'    # nf-md-numeric_9_box_multiple_outline
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
-# Style: circle (nf-md-numeric_X_circle) - filled circles
+# Style: circle (nf-md-numeric_X) - uses numeric glyphs, circle appearance from index bg color
 # Icons are interleaved with circle_outline (+2 pattern)
 declare -grA WINDOW_INDEX_ICONS_CIRCLE=(
-    [0]=$'\U000f0c9e'    # nf-md-numeric_0_circle
-    [1]=$'\U000f0ca0'    # nf-md-numeric_1_circle
-    [2]=$'\U000f0ca2'    # nf-md-numeric_2_circle
-    [3]=$'\U000f0ca4'    # nf-md-numeric_3_circle
-    [4]=$'\U000f0ca6'    # nf-md-numeric_4_circle
-    [5]=$'\U000f0ca8'    # nf-md-numeric_5_circle
-    [6]=$'\U000f0caa'    # nf-md-numeric_6_circle
-    [7]=$'\U000f0cac'    # nf-md-numeric_7_circle
-    [8]=$'\U000f0cae'    # nf-md-numeric_8_circle
-    [9]=$'\U000f0cb0'    # nf-md-numeric_9_circle
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
-# Style: circle_outline (nf-md-numeric_X_circle_outline) - outlined circles
+# Style: circle_outline (nf-md-numeric_X) - uses numeric glyphs
 # Icons are interleaved with circle (+2 pattern)
 declare -grA WINDOW_INDEX_ICONS_CIRCLE_OUTLINE=(
-    [0]=$'\U000f0c9f'    # nf-md-numeric_0_circle_outline
-    [1]=$'\U000f0ca1'    # nf-md-numeric_1_circle_outline
-    [2]=$'\U000f0ca3'    # nf-md-numeric_2_circle_outline
-    [3]=$'\U000f0ca5'    # nf-md-numeric_3_circle_outline
-    [4]=$'\U000f0ca7'    # nf-md-numeric_4_circle_outline
-    [5]=$'\U000f0ca9'    # nf-md-numeric_5_circle_outline
-    [6]=$'\U000f0cab'    # nf-md-numeric_6_circle_outline
-    [7]=$'\U000f0cad'    # nf-md-numeric_7_circle_outline
-    [8]=$'\U000f0caf'    # nf-md-numeric_8_circle_outline
-    [9]=$'\U000f0cb1'    # nf-md-numeric_9_circle_outline
+    [0]=$'\U000f0b39' # nf-md-numeric_0
+    [1]=$'\U000f0b3a' # nf-md-numeric_1
+    [2]=$'\U000f0b3b' # nf-md-numeric_2
+    [3]=$'\U000f0b3c' # nf-md-numeric_3
+    [4]=$'\U000f0b3d' # nf-md-numeric_4
+    [5]=$'\U000f0b3e' # nf-md-numeric_5
+    [6]=$'\U000f0b3f' # nf-md-numeric_6
+    [7]=$'\U000f0b40' # nf-md-numeric_7
+    [8]=$'\U000f0b41' # nf-md-numeric_8
+    [9]=$'\U000f0b42' # nf-md-numeric_9
 )
 
 # Legacy alias for backwards compatibility
 # shellcheck disable=SC2034
 declare -grA WINDOW_INDEX_ICON_MAP=(
-    [0]=$'\U000f0b39'    [1]=$'\U000f0b3a'    [2]=$'\U000f0b3b'
-    [3]=$'\U000f0b3c'    [4]=$'\U000f0b3d'    [5]=$'\U000f0b3e'
-    [6]=$'\U000f0b3f'    [7]=$'\U000f0b40'    [8]=$'\U000f0b41'
+    [0]=$'\U000f0b39' [1]=$'\U000f0b3a' [2]=$'\U000f0b3b'
+    [3]=$'\U000f0b3c' [4]=$'\U000f0b3d' [5]=$'\U000f0b3e'
+    [6]=$'\U000f0b3f' [7]=$'\U000f0b40' [8]=$'\U000f0b41'
     [9]=$'\U000f0b42'
 )
 
 # Fallback icon for window indices > 9
-WINDOW_INDEX_FALLBACK_ICON=$'\uf120'  # Terminal icon as fallback
+WINDOW_INDEX_FALLBACK_ICON=$'\uf120' # Terminal icon as fallback
 
 # =============================================================================
 # 5. HELPER CONSTANTS
@@ -371,10 +370,10 @@ WINDOW_INDEX_FALLBACK_ICON=$'\uf120'  # Terminal icon as fallback
 # Valid helper types
 # shellcheck disable=SC2034 # Used for validation
 declare -gra HELPER_TYPES=(
-    "popup"    # Opens in display-popup -E
-    "menu"     # Uses display-menu
-    "command"  # Executes via run-shell
-    "toast"    # Shows display-message
+    "popup"   # Opens in display-popup -E
+    "menu"    # Uses display-menu
+    "command" # Executes via run-shell
+    "toast"   # Shows display-message
 )
 
 # Helper type descriptions
@@ -392,11 +391,11 @@ declare -grA HELPER_TYPE_DESCRIPTIONS=(
 
 # Valid health levels
 declare -gra HEALTH_LEVELS=(
-    "ok"       # Everything is fine
-    "good"     # Better than ok, positive state
-    "info"     # Informational state
-    "warning"  # Warning threshold reached
-    "error"    # Error/critical threshold reached
+    "ok"      # Everything is fine
+    "good"    # Better than ok, positive state
+    "info"    # Informational state
+    "warning" # Warning threshold reached
+    "error"   # Error/critical threshold reached
 )
 
 # Health level precedence (for comparisons)
@@ -437,7 +436,7 @@ health_is_worse() {
     local health2="$2"
     local level1="${HEALTH_PRECEDENCE[$health1]:-0}"
     local level2="${HEALTH_PRECEDENCE[$health2]:-0}"
-    (( level1 > level2 ))
+    ((level1 > level2))
 }
 
 # Get the worse of two health levels
@@ -463,10 +462,13 @@ get_window_index_icon() {
     local style="${2:-numeric}"
 
     # For "text" style, return the index as-is
-    [[ "$style" == "text" ]] && { echo "$index"; return; }
+    [[ "$style" == "text" ]] && {
+        echo "$index"
+        return
+    }
 
     # For multi-digit indices, build icon digit by digit
-    if (( index > 9 )); then
+    if ((index > 9)); then
         local result=""
         local digit
         while [[ -n "$index" ]]; do
@@ -481,30 +483,30 @@ get_window_index_icon() {
     # Single digit - get from appropriate map
     local icon
     case "$style" in
-        numeric)
-            icon="${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}"
-            ;;
-        box)
-            icon="${WINDOW_INDEX_ICONS_BOX[$index]:-}"
-            ;;
-        box_outline)
-            icon="${WINDOW_INDEX_ICONS_BOX_OUTLINE[$index]:-}"
-            ;;
-        box_multiple)
-            icon="${WINDOW_INDEX_ICONS_BOX_MULTIPLE[$index]:-}"
-            ;;
-        box_multiple_outline)
-            icon="${WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE[$index]:-}"
-            ;;
-        circle)
-            icon="${WINDOW_INDEX_ICONS_CIRCLE[$index]:-}"
-            ;;
-        circle_outline)
-            icon="${WINDOW_INDEX_ICONS_CIRCLE_OUTLINE[$index]:-}"
-            ;;
-        *)
-            icon="${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}"
-            ;;
+    numeric)
+        icon="${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}"
+        ;;
+    box)
+        icon="${WINDOW_INDEX_ICONS_BOX[$index]:-}"
+        ;;
+    box_outline)
+        icon="${WINDOW_INDEX_ICONS_BOX_OUTLINE[$index]:-}"
+        ;;
+    box_multiple)
+        icon="${WINDOW_INDEX_ICONS_BOX_MULTIPLE[$index]:-}"
+        ;;
+    box_multiple_outline)
+        icon="${WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE[$index]:-}"
+        ;;
+    circle)
+        icon="${WINDOW_INDEX_ICONS_CIRCLE[$index]:-}"
+        ;;
+    circle_outline)
+        icon="${WINDOW_INDEX_ICONS_CIRCLE_OUTLINE[$index]:-}"
+        ;;
+    *)
+        icon="${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}"
+        ;;
     esac
 
     echo "${icon:-$WINDOW_INDEX_FALLBACK_ICON}"
@@ -519,12 +521,12 @@ has_window_index_icon() {
     [[ "$style" == "text" ]] && return 0
 
     case "$style" in
-        numeric)         [[ -n "${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}" ]] ;;
-        box)             [[ -n "${WINDOW_INDEX_ICONS_BOX[$index]:-}" ]] ;;
-        box_outline)     [[ -n "${WINDOW_INDEX_ICONS_BOX_OUTLINE[$index]:-}" ]] ;;
-        box_multiple)    [[ -n "${WINDOW_INDEX_ICONS_BOX_MULTIPLE[$index]:-}" ]] ;;
-        box_multiple_outline) [[ -n "${WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE[$index]:-}" ]] ;;
-        *)               [[ -n "${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}" ]] ;;
+    numeric) [[ -n "${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}" ]] ;;
+    box) [[ -n "${WINDOW_INDEX_ICONS_BOX[$index]:-}" ]] ;;
+    box_outline) [[ -n "${WINDOW_INDEX_ICONS_BOX_OUTLINE[$index]:-}" ]] ;;
+    box_multiple) [[ -n "${WINDOW_INDEX_ICONS_BOX_MULTIPLE[$index]:-}" ]] ;;
+    box_multiple_outline) [[ -n "${WINDOW_INDEX_ICONS_BOX_MULTIPLE_OUTLINE[$index]:-}" ]] ;;
+    *) [[ -n "${WINDOW_INDEX_ICONS_NUMERIC[$index]:-}" ]] ;;
     esac
 }
 
