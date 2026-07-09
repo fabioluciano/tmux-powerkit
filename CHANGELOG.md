@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.28.11](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.10...v5.28.11) (2026-07-09)
+
+### Bug Fixes
+
+* **windows:** delegate icon formatting to contract and fix spacing ([a327630](https://github.com/fabioluciano/tmux-powerkit/commit/a3276304c1b464c72e93c99acef50c29143d6f70))
+
 ## [5.28.10](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.9...v5.28.10) (2026-07-09)
 
 ### Bug Fixes
