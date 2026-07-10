@@ -29,7 +29,11 @@ jobs:
         run: brew install shellcheck
 
       - name: Run shellcheck
-        run: shellcheck -S warning bin/ scripts/ tests/
+        run: |
+          # Recurse because shellcheck does not descend into directories.
+          # Project root acts as source-path so # shellcheck source=... directives resolve.
+          find bin scripts tests -name "*.sh" -type f -print0 \
+            | xargs -0 -n1 shellcheck -S warning --external-sources --shell=bash
 
   tests:
     name: Test suite
