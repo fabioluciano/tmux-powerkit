@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.28.12](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.11...v5.28.12) (2026-07-09)
+
+### Bug Fixes
+
+* adding 228 e 229 pr fixed ([f9a7cb9](https://github.com/fabioluciano/tmux-powerkit/commit/f9a7cb959adf8d71dd400cc0f6970e630dc33ac0))
+
 ## [5.28.11](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.10...v5.28.11) (2026-07-09)
 
 ### Reverts
