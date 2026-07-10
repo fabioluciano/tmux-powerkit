@@ -93,6 +93,9 @@ run_test "ShellCheck Validation" "$SCRIPT_DIR/test_shellcheck.sh"
 # Test 3: Contract Compliance
 run_test "Contract Compliance" "$SCRIPT_DIR/test_contracts.sh"
 
+# Test 4: BATS unit tests (skipped gracefully when bats-core is unavailable)
+run_test "BATS Unit Tests" "$SCRIPT_DIR/test_bats.sh"
+
 # Summary
 print_summary
 

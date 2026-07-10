@@ -2,3 +2,9 @@
 	path = wiki
 	url = https://github.com/fabioluciano/tmux-powerkit.wiki.git
 	branch = master
+[submodule "tests/test_helper/bats-support"]
+	path = tests/test_helper/bats-support
+	url = https://github.com/bats-core/bats-support
+[submodule "tests/test_helper/bats-assert"]
+	path = tests/test_helper/bats-assert
+	url = https://github.com/bats-core/bats-assert

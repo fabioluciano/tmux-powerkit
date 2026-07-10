@@ -64,10 +64,9 @@ _show_loading() {
     local icon="${spinner[$frame_idx]}"
 
     # Get colors from theme
-    local bg fg status_bg transparent
+    local bg fg status_bg
     bg=$(get_color "info-base")
     fg=$(get_color "info-base-darkest")
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
 
     # Use resolve_color for status_bg to respect transparent mode
     status_bg=$(resolve_color "statusbar-bg")
