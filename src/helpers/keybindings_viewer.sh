@@ -71,18 +71,7 @@ format_key() {
 
 extract_plugin_from_path() {
     local path="$1"
-    # Match direct plugin references (e.g., /src/plugins/pomodoro.sh)
-    if [[ "$path" =~ /plugins/([^/\'[:space:]]+) ]]; then
-        printf '%s' "${BASH_REMATCH[1]}"
-        return
-    fi
-    # Match plugin-specific helpers (e.g., pomodoro_timer.sh, bitwarden_selector.sh)
-    # Strip known suffixes to extract the plugin name: pomodoro_timer → pomodoro
-    if [[ "$path" =~ /helpers/([^/\'[:space:]]+)(_timer|_selector|_toggle|_workspace|_context|_namespace|_unlock|_lock)\.sh ]]; then
-        printf '%s' "${BASH_REMATCH[1]}"
-        return
-    fi
-    printf ''
+    [[ "$path" =~ /plugins/([^/\'[:space:]]+) ]] && printf '%s' "${BASH_REMATCH[1]}" || printf ''
 }
 
 print_keybindings() {
@@ -114,7 +103,7 @@ print_keybindings() {
                 builtin_bindings+=("${key}|${cmd}")
             fi
         fi
-    done <<<"$all_bindings"
+    done <<< "$all_bindings"
 
     # Display plugin bindings
     for plugin in $(printf '%s\n' "${!plugin_bindings[@]}" | sort); do
@@ -122,14 +111,14 @@ print_keybindings() {
         while IFS='|' read -r key cmd; do
             [[ -z "$key" ]] && continue
             printf "    ${GREEN}%-15s${RESET} ${DIM}%s${RESET}\n" "$key" "$cmd"
-        done <<<"${plugin_bindings[$plugin]}"
+        done <<< "${plugin_bindings[$plugin]}"
     done
 
     # Display builtin bindings
     if [[ ${#builtin_bindings[@]} -gt 0 ]]; then
         print_section "tmux Built-in" "$MAGENTA"
         for binding in "${builtin_bindings[@]}"; do
-            IFS='|' read -r key cmd <<<"$binding"
+            IFS='|' read -r key cmd <<< "$binding"
             printf "  ${GREEN}%-15s${RESET} ${DIM}%s${RESET}\n" "$key" "$cmd"
         done
     fi
@@ -154,7 +143,7 @@ print_root_bindings() {
             key=$(format_key "$key")
             printf "  ${GREEN}%-15s${RESET} ${DIM}%s${RESET}\n" "$key" "$cmd"
         fi
-    done <<<"$all_bindings"
+    done <<< "$all_bindings"
 }
 
 print_conflicts() {
@@ -174,7 +163,7 @@ print_conflicts() {
         elif [[ "$line" == *"Tmux conflict"* ]]; then
             echo -e "  ${RED}●${RESET} ${YELLOW}${line#  • }${RESET}"
         fi
-    done <"$log_file"
+    done < "$log_file"
 
     echo -e "\n  ${DIM}Fix: Change keys in tmux.conf using @powerkit_* options${RESET}"
 }
@@ -205,14 +194,14 @@ helper_main() {
     local action="${1:-view}"
 
     case "$action" in
-    view | "")
-        shift 2>/dev/null || true
-        _display_keybindings "${1:-}" | helper_pager
-        ;;
-    *)
-        # Treat unknown action as filter
-        _display_keybindings "$action" | helper_pager
-        ;;
+        view|"")
+            shift 2>/dev/null || true
+            _display_keybindings "${1:-}" | helper_pager
+            ;;
+        *)
+            # Treat unknown action as filter
+            _display_keybindings "$action" | helper_pager
+            ;;
     esac
 }
 

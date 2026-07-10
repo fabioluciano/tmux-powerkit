@@ -101,7 +101,7 @@ if [[ -d "$PLUGINS_DIR" ]]; then
 
             if [[ ${#ERRORS[@]} -gt 0 ]]; then
                 echo -e "${YELLOW}⚠${NC} $plugin_name - warnings: ${ERRORS[*]}"
-                ((PLUGIN_PASSED++)) || true # Still pass but with warnings
+                ((PLUGIN_PASSED++)) || true  # Still pass but with warnings
             else
                 echo -e "${GREEN}✓${NC} $plugin_name"
                 ((PLUGIN_PASSED++)) || true
@@ -279,6 +279,32 @@ echo ""
 
 UTILS_DIR="$POWERKIT_ROOT/src/utils"
 
+# Hooks Utility
+if [[ -f "$UTILS_DIR/hooks.sh" ]]; then
+    MISSING_FUNCS=()
+
+    # Check required functions
+    declare -F register_hook &>/dev/null || MISSING_FUNCS+=("register_hook")
+    declare -F register_hook_local &>/dev/null || MISSING_FUNCS+=("register_hook_local")
+    declare -F unregister_hook &>/dev/null || MISSING_FUNCS+=("unregister_hook")
+    declare -F unregister_hook_local &>/dev/null || MISSING_FUNCS+=("unregister_hook_local")
+    declare -F list_hooks &>/dev/null || MISSING_FUNCS+=("list_hooks")
+    declare -F has_hook &>/dev/null || MISSING_FUNCS+=("has_hook")
+    declare -F clear_all_hooks &>/dev/null || MISSING_FUNCS+=("clear_all_hooks")
+    declare -F run_delayed &>/dev/null || MISSING_FUNCS+=("run_delayed")
+    declare -F run_delayed_ms &>/dev/null || MISSING_FUNCS+=("run_delayed_ms")
+
+    if [[ ${#MISSING_FUNCS[@]} -gt 0 ]]; then
+        echo -e "${RED}✗${NC} hooks - missing: ${MISSING_FUNCS[*]}"
+        ((UTILITY_FAILED++)) || true
+    else
+        echo -e "${GREEN}✓${NC} hooks"
+        ((UTILITY_PASSED++)) || true
+    fi
+else
+    echo -e "${YELLOW}⚠${NC} hooks - file not found"
+fi
+
 # Platform Utility
 if [[ -f "$UTILS_DIR/platform.sh" ]]; then
     MISSING_FUNCS=()
@@ -336,7 +362,6 @@ echo -e "Plugins:   ${GREEN}${PLUGIN_PASSED} passed${NC}, ${RED}${PLUGIN_FAILED}
 echo -e "Themes:    ${GREEN}${THEME_PASSED} passed${NC}, ${RED}${THEME_FAILED} failed${NC}"
 echo -e "Contracts: ${GREEN}${CONTRACT_PASSED} passed${NC}, ${RED}${CONTRACT_FAILED} failed${NC}"
 echo -e "Utilities: ${GREEN}${UTILITY_PASSED} passed${NC}, ${RED}${UTILITY_FAILED} failed${NC}"
-echo -e "Total:     ${GREEN}${TOTAL_PASSED} passed${NC}, ${RED}${TOTAL_FAILED} failed${NC}"
 echo ""
 
 if [[ $TOTAL_FAILED -gt 0 ]]; then

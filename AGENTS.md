@@ -1168,27 +1168,6 @@ POWERKIT_ROOT="$(pwd)" ./bin/powerkit-render
 POWERKIT_ROOT="$(pwd)" ./bin/powerkit-plugin battery
 ```
 
-## Validation
-
-Always run the full test suite before committing:
-
-```bash
-bash tests/run_all_tests.sh
-```
-
-This runs:
-
-1. **Bash Syntax Validation** — validates `bash -n` on all .sh files
-2. **ShellCheck Validation** — runs shellcheck with project config (`.shellcheckrc`)
-3. **Contract Compliance** — validates all plugins, themes, contracts, and utilities
-
-Test individual plugins:
-
-```bash
-POWERKIT_ROOT="$(pwd)" ./bin/powerkit-plugin <name>
-POWERKIT_ROOT="$(pwd)" ./bin/powerkit-render
-```
-
 ## Code Style
 
 ### Function Naming

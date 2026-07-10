@@ -14,7 +14,7 @@
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
-[![CI](https://github.com/fabioluciano/tmux-powerkit/actions/workflows/ci.yml/badge.svg)](https://github.com/fabioluciano/tmux-powerkit/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/fabioluciano/tmux-powerkit/plugin-tests.yml?branch=main&style=for-the-badge&label=tests&logo=github-actions&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/actions)
 [![Stars](https://img.shields.io/github/stars/fabioluciano/tmux-powerkit?style=for-the-badge&logo=starship&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/stargazers)
 
 Transform your tmux status bar into a powerful, beautiful, and intelligent command center

@@ -42,9 +42,9 @@ POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && p
 # =============================================================================
 
 plugin_get_metadata() {
-    metadata_set "id" "appearance"
-    metadata_set "name" "Appearance"
-    metadata_set "description" "macOS appearance monitor with auto/dark/light toggle"
+  metadata_set "id"          "appearance"
+  metadata_set "name"        "Appearance"
+  metadata_set "description" "macOS appearance monitor with auto/dark/light toggle"
 }
 
 # =============================================================================
@@ -52,10 +52,10 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    is_macos || return 1
-    require_cmd "defaults" || return 1
-    require_cmd "osascript" || return 1
-    return 0
+  is_macos || return 1
+  require_cmd "defaults"  || return 1
+  require_cmd "osascript" || return 1
+  return 0
 }
 
 # =============================================================================
@@ -63,21 +63,21 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    declare_option "icon_auto" "icon" $'\U000F101B' "Nerd Font icon: auto mode (theme-light-dark)"
-    declare_option "icon_dark" "icon" $'\U000F0594' "Nerd Font icon: dark mode (moon)"
-    declare_option "icon_light" "icon" $'\U000F0599' "Nerd Font icon: light mode (sun)"
+  declare_option "icon_auto"  "icon" $'\U000F101B' "Nerd Font icon: auto mode (theme-light-dark)"
+  declare_option "icon_dark"  "icon" $'\U000F0594' "Nerd Font icon: dark mode (moon)"
+  declare_option "icon_light" "icon" $'\U000F0599' "Nerd Font icon: light mode (sun)"
 
-    declare_option "toggle_icon_auto" "icon" "🌗" "Content icon: auto mode"
-    declare_option "toggle_icon_dark" "icon" "🌚" "Content icon: dark mode"
-    declare_option "toggle_icon_light" "icon" "🌞" "Content icon: light mode"
+  declare_option "toggle_icon_auto"  "icon" "🌗" "Content icon: auto mode"
+  declare_option "toggle_icon_dark"  "icon" "🌚" "Content icon: dark mode"
+  declare_option "toggle_icon_light" "icon" "🌞" "Content icon: light mode"
 
-    declare_option "dark_theme" "string" "" "Theme/variant for dark mode (e.g. catppuccin/mocha)"
-    declare_option "light_theme" "string" "" "Theme/variant for light mode (e.g. catppuccin/latte)"
+  declare_option "dark_theme"  "string" "" "Theme/variant for dark mode (e.g. catppuccin/mocha)"
+  declare_option "light_theme" "string" "" "Theme/variant for light mode (e.g. catppuccin/latte)"
 
-    declare_option "keybinding_toggle" "key" "" "Keybinding to cycle appearance mode"
-    declare_option "mouse_toggle" "bool" "false" "Enable mouse click on the plugin segment to toggle"
+  declare_option "keybinding_toggle" "key"  ""      "Keybinding to cycle appearance mode"
+  declare_option "mouse_toggle"      "bool" "false" "Enable mouse click on the plugin segment to toggle"
 
-    declare_option "cache_ttl" "number" "3" "Cache duration in seconds"
+  declare_option "cache_ttl" "number" "3" "Cache duration in seconds"
 }
 
 # =============================================================================
@@ -90,35 +90,35 @@ plugin_declare_options() {
 #   2. Auto-detect: if current theme has dark.sh + light.sh, switch variant
 #   3. No-op
 _appearance_switch_theme() {
-    local dark_val="$1"
-    local dark_opt light_opt pair theme variant
+  local dark_val="$1"
+  local dark_opt light_opt pair theme variant
 
-    dark_opt=$(get_option "dark_theme")
-    light_opt=$(get_option "light_theme")
+  dark_opt=$(get_option "dark_theme")
+  light_opt=$(get_option "light_theme")
 
-    if [[ -n "$dark_opt" && -n "$light_opt" ]]; then
-        # Explicit config — supports any theme/variant pair (e.g. catppuccin)
-        [[ "$dark_val" == "1" ]] && pair="$dark_opt" || pair="$light_opt"
-        theme="${pair%/*}"
-        variant="${pair#*/}"
+  if [[ -n "$dark_opt" && -n "$light_opt" ]]; then
+    # Explicit config — supports any theme/variant pair (e.g. catppuccin)
+    [[ "$dark_val" == "1" ]] && pair="$dark_opt" || pair="$light_opt"
+    theme="${pair%/*}"
+    variant="${pair#*/}"
+  else
+    # Auto-detect: check if current theme has standard dark.sh + light.sh
+    local current_theme themes_dir
+    current_theme=$(get_tmux_option "@powerkit_theme" "")
+    themes_dir="${POWERKIT_ROOT}/src/themes"
+
+    if [[ -n "$current_theme" && \
+          -f "${themes_dir}/${current_theme}/dark.sh" && \
+          -f "${themes_dir}/${current_theme}/light.sh" ]]; then
+      theme="$current_theme"
+      [[ "$dark_val" == "1" ]] && variant="dark" || variant="light"
     else
-        # Auto-detect: check if current theme has standard dark.sh + light.sh
-        local current_theme themes_dir
-        current_theme=$(get_tmux_option "@powerkit_theme" "")
-        themes_dir="${POWERKIT_ROOT}/src/themes"
-
-        if [[ -n "$current_theme" &&
-            -f "${themes_dir}/${current_theme}/dark.sh" &&
-            -f "${themes_dir}/${current_theme}/light.sh" ]]; then
-            theme="$current_theme"
-            [[ "$dark_val" == "1" ]] && variant="dark" || variant="light"
-        else
-            return 0 # No-op: theme doesn't support auto light/dark switching
-        fi
+      return 0  # No-op: theme doesn't support auto light/dark switching
     fi
+  fi
 
-    tmux set-option -gq @powerkit_theme "$theme" 2>/dev/null || true
-    tmux set-option -gq @powerkit_theme_variant "$variant" 2>/dev/null || true
+  tmux set-option -gq @powerkit_theme         "$theme"   2>/dev/null || true
+  tmux set-option -gq @powerkit_theme_variant "$variant" 2>/dev/null || true
 }
 
 # =============================================================================
@@ -126,27 +126,27 @@ _appearance_switch_theme() {
 # =============================================================================
 
 plugin_collect() {
-    local mode dark_val
-    mode=$(get_macos_appearance_mode) # auto | dark | light
-    dark_val=$(get_macos_appearance)  # 1 | 0  (actual current display state)
+  local mode dark_val
+  mode=$(get_macos_appearance_mode)    # auto | dark | light
+  dark_val=$(get_macos_appearance)     # 1 | 0  (actual current display state)
 
-    # Only sync theme in auto mode. In forced dark/light the toggle owns the theme;
-    # polling should not interfere with what the user explicitly chose.
-    if [[ "$mode" == "auto" ]]; then
-        # Use a plugin-owned key (not @dark_appearance, which zac/other tools may write)
-        # so we only react to actual macOS appearance changes, not external writes.
-        local last_handled
-        last_handled=$(get_tmux_option "@_powerkit_appearance_handled" "")
-        if [[ "$dark_val" != "$last_handled" ]]; then
-            tmux set-option -gq @_powerkit_appearance_handled "$dark_val" 2>/dev/null || true
-            macos_dispatch_appearance "$dark_val"
-            _appearance_switch_theme "$dark_val"
-            tmux run-shell -b "sleep 0.1 && POWERKIT_ROOT='${POWERKIT_ROOT}' '${POWERKIT_ROOT}/tmux-powerkit.tmux' && tmux refresh-client -S" 2>/dev/null || true
-        fi
+  # Only sync theme in auto mode. In forced dark/light the toggle owns the theme;
+  # polling should not interfere with what the user explicitly chose.
+  if [[ "$mode" == "auto" ]]; then
+    # Use a plugin-owned key (not @dark_appearance, which zac/other tools may write)
+    # so we only react to actual macOS appearance changes, not external writes.
+    local last_handled
+    last_handled=$(get_tmux_option "@_powerkit_appearance_handled" "")
+    if [[ "$dark_val" != "$last_handled" ]]; then
+      tmux set-option -gq @_powerkit_appearance_handled "$dark_val" 2>/dev/null || true
+      macos_dispatch_appearance "$dark_val"
+      _appearance_switch_theme "$dark_val"
+      tmux run-shell -b "sleep 0.1 && POWERKIT_ROOT='${POWERKIT_ROOT}' '${POWERKIT_ROOT}/tmux-powerkit.tmux' && tmux refresh-client -S" 2>/dev/null || true
     fi
+  fi
 
-    plugin_data_set "mode" "$mode"
-    plugin_data_set "dark" "$dark_val"
+  plugin_data_set "mode" "$mode"
+  plugin_data_set "dark" "$dark_val"
 }
 
 # =============================================================================
@@ -154,20 +154,17 @@ plugin_collect() {
 # =============================================================================
 
 plugin_get_content_type() { printf 'dynamic'; }
-plugin_get_presence() { printf 'conditional'; }
+plugin_get_presence()     { printf 'conditional'; }
 
 # =============================================================================
 # Plugin Contract: State
 # =============================================================================
 
 plugin_get_state() {
-    is_macos || {
-        printf 'inactive'
-        return
-    }
-    local mode
-    mode=$(plugin_data_get "mode")
-    [[ -n "$mode" ]] && printf 'active' || printf 'inactive'
+  is_macos || { printf 'inactive'; return; }
+  local mode
+  mode=$(plugin_data_get "mode")
+  [[ -n "$mode" ]] && printf 'active' || printf 'inactive'
 }
 
 # =============================================================================
@@ -175,12 +172,12 @@ plugin_get_state() {
 # =============================================================================
 
 plugin_get_health() {
-    local mode
-    mode=$(plugin_data_get "mode")
-    case "$mode" in
-    auto) printf 'ok' ;;
-    *) printf 'good' ;;
-    esac
+  local mode
+  mode=$(plugin_data_get "mode")
+  case "$mode" in
+    auto) printf 'ok'   ;;
+    *)    printf 'good' ;;
+  esac
 }
 
 # =============================================================================
@@ -188,9 +185,9 @@ plugin_get_health() {
 # =============================================================================
 
 plugin_get_context() {
-    local mode
-    mode=$(plugin_data_get "mode")
-    printf '%s' "${mode:-auto}"
+  local mode
+  mode=$(plugin_data_get "mode")
+  printf '%s' "${mode:-auto}"
 }
 
 # =============================================================================
@@ -198,13 +195,13 @@ plugin_get_context() {
 # =============================================================================
 
 plugin_get_icon() {
-    local mode
-    mode=$(plugin_data_get "mode")
-    case "$mode" in
-    dark) get_option "icon_dark" ;;
+  local mode
+  mode=$(plugin_data_get "mode")
+  case "$mode" in
+    dark)  get_option "icon_dark"  ;;
     light) get_option "icon_light" ;;
-    *) get_option "icon_auto" ;;
-    esac
+    *)     get_option "icon_auto"  ;;
+  esac
 }
 
 # =============================================================================
@@ -212,13 +209,13 @@ plugin_get_icon() {
 # =============================================================================
 
 plugin_render() {
-    local mode
-    mode=$(plugin_data_get "mode")
-    case "$mode" in
-    dark) get_option "toggle_icon_dark" ;;
+  local mode
+  mode=$(plugin_data_get "mode")
+  case "$mode" in
+    dark)  get_option "toggle_icon_dark"  ;;
     light) get_option "toggle_icon_light" ;;
-    *) get_option "toggle_icon_auto" ;;
-    esac
+    *)     get_option "toggle_icon_auto"  ;;
+  esac
 }
 
 # =============================================================================
@@ -226,22 +223,22 @@ plugin_render() {
 # =============================================================================
 
 plugin_setup_keybindings() {
-    local toggle_key mouse helper
-    helper="${POWERKIT_ROOT}/src/helpers/appearance_toggle.sh"
+  local toggle_key mouse helper
+  helper="${POWERKIT_ROOT}/src/helpers/appearance_toggle.sh"
 
-    toggle_key=$(get_option "keybinding_toggle")
-    if [[ -n "$toggle_key" ]]; then
-        pk_bind_shell "$toggle_key" "bash '$helper'" "appearance:toggle"
-    fi
+  toggle_key=$(get_option "keybinding_toggle")
+  if [[ -n "$toggle_key" ]]; then
+    register_keybinding "$toggle_key" "run-shell 'bash \"${helper}\"'"
+  fi
 
-    mouse=$(get_option "mouse_toggle")
-    if [[ "$mouse" == "true" ]]; then
-        # MouseDown1Status fires for user-named ranges in status-right.
-        # #{mouse_status_range} returns the bare name (not "user|name").
-        # Fall through to switch-client so window selection still works.
-        tmux bind-key -T root MouseDown1Status \
-            if-shell -F "#{==:#{mouse_status_range},appearance}" \
-            "run-shell 'bash ${helper}'" \
-            "switch-client -t =" 2>/dev/null || true
-    fi
+  mouse=$(get_option "mouse_toggle")
+  if [[ "$mouse" == "true" ]]; then
+    # MouseDown1Status fires for user-named ranges in status-right.
+    # #{mouse_status_range} returns the bare name (not "user|name").
+    # Fall through to switch-client so window selection still works.
+    tmux bind-key -T root MouseDown1Status \
+      if-shell -F "#{==:#{mouse_status_range},appearance}" \
+      "run-shell 'bash ${helper}'" \
+      "switch-client -t =" 2>/dev/null || true
+  fi
 }
