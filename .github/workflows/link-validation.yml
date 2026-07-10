@@ -31,7 +31,7 @@ jobs:
           use-quiet-mode: 'yes'
           use-verbose-mode: 'yes'
           config-file: '.github/workflows/link-check-config.json'
-          file-path: './README.md, ./CLAUDE.md, ./CHANGELOG.md'
+          file-path: './README.md, ./AGENTS.md, ./CHANGELOG.md'
 
   wiki-links:
     name: Validate Wiki Links
