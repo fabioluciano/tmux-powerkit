@@ -35,50 +35,50 @@ _clear_conflict_log() {
 # Usage: _check_and_log_conflict KEY SOURCE
 _check_and_log_conflict() {
     local key="$1" source="$2"
-    
+
     # Check if we already reported this key conflict
     if [[ -n "${_REPORTED_CONFLICTS[$key]:-}" ]]; then
         return 0
     fi
-    
+
     # Get conflict action setting
     local conflict_action
     conflict_action=$(get_tmux_option "@powerkit_keybinding_conflict_action" "warn")
-    
+
     # Skip if conflict detection is disabled
     [[ "$conflict_action" == "ignore" ]] && return 0
-    
+
     # Check if this key is already bound
     local existing_binding
     existing_binding=$(tmux list-keys -T prefix 2>/dev/null | grep "bind-key.*-T prefix.*$key " || true)
-    
+
     [[ -z "$existing_binding" ]] && return 0
-    
+
     # Extract the command from existing binding
     local existing_cmd=""
     if [[ "$existing_binding" =~ bind-key[[:space:]]+-T[[:space:]]+prefix[[:space:]]+[^[:space:]]+[[:space:]]+(.+) ]]; then
         existing_cmd="${BASH_REMATCH[1]}"
     fi
-    
+
     # Check if it's a PowerKit binding
-    if [[ "$existing_cmd" == *"/tmux-powerkit/"* ]] || \
-       [[ "$existing_cmd" == *"powerkit"* ]] || \
-       [[ "$existing_cmd" == *"PowerKit"* ]]; then
+    if [[ "$existing_cmd" == *"/tmux-powerkit/"* ]] ||
+        [[ "$existing_cmd" == *"powerkit"* ]] ||
+        [[ "$existing_cmd" == *"PowerKit"* ]]; then
         # It's a PowerKit binding - no conflict
         return 0
     fi
-    
+
     # Mark this conflict as reported
     _REPORTED_CONFLICTS[$key]="$source"
-    
+
     # Real conflict detected - log it
     local cache_dir
     cache_dir="$(dirname "$(get_cache_dir)")"
     local log_file="${cache_dir}/keybinding_conflicts.log"
-    
+
     # Ensure cache directory exists
     [[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"
-    
+
     # Append to log file (just the conflict line, footer will be added later)
     {
         if [[ ! -f "$log_file" ]]; then
@@ -88,8 +88,8 @@ _check_and_log_conflict() {
             echo ""
         fi
         echo "  • External conflict: '$key' wanted by PowerKit:$source, but already bound to: ${existing_cmd:0:80}"
-    } >> "$log_file"
-    
+    } >>"$log_file"
+
     log_warn "keybinding" "Conflict: '$key' ($source) will override: ${existing_cmd:0:60}"
 }
 
@@ -142,54 +142,54 @@ pk_bind() {
     # Parse options
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -t|--type)
-                bind_type="$2"
-                shift 2
-                ;;
-            -T|--table)
-                table="$2"
-                shift 2
-                ;;
-            -n|--no-prefix)
-                table="root"
-                shift
-                ;;
-            -r|--repeat)
-                repeat="-r"
-                shift
-                ;;
-            -N|--note)
-                note="$2"
-                shift 2
-                ;;
-            -w|--width)
-                popup_width="$2"
-                shift 2
-                ;;
-            -H|--height)
-                popup_height="$2"
-                shift 2
-                ;;
-            -s|--source)
-                source="$2"
-                shift 2
-                ;;
-            -b|--background)
-                background="-b"
-                shift
-                ;;
-            -*)
-                log_warn "keybinding" "Unknown option: $1"
-                shift
-                ;;
-            *)
-                if [[ -z "$key" ]]; then
-                    key="$1"
-                else
-                    command="$1"
-                fi
-                shift
-                ;;
+        -t | --type)
+            bind_type="$2"
+            shift 2
+            ;;
+        -T | --table)
+            table="$2"
+            shift 2
+            ;;
+        -n | --no-prefix)
+            table="root"
+            shift
+            ;;
+        -r | --repeat)
+            repeat="-r"
+            shift
+            ;;
+        -N | --note)
+            note="$2"
+            shift 2
+            ;;
+        -w | --width)
+            popup_width="$2"
+            shift 2
+            ;;
+        -H | --height)
+            popup_height="$2"
+            shift 2
+            ;;
+        -s | --source)
+            source="$2"
+            shift 2
+            ;;
+        -b | --background)
+            background="-b"
+            shift
+            ;;
+        -*)
+            log_warn "keybinding" "Unknown option: $1"
+            shift
+            ;;
+        *)
+            if [[ -z "$key" ]]; then
+                key="$1"
+            else
+                command="$1"
+            fi
+            shift
+            ;;
         esac
     done
 
@@ -212,38 +212,38 @@ pk_bind() {
     # Build the bind-key command
     local bind_args=()
     bind_args+=("-T" "$table")
-    
+
     if [[ -n "$repeat" ]]; then bind_args+=("$repeat"); fi
     if [[ -n "$note" ]]; then bind_args+=("-N" "$note"); fi
-    
+
     bind_args+=("$key")
 
     # Build command based on type
     case "$bind_type" in
-        run-shell)
-            bind_args+=("run-shell" ${background:+"$background"} "$command")
-            ;;
-        popup)
-            local popup_args=("-E")
-            if [[ -n "$popup_width" ]]; then popup_args+=("-w" "$popup_width"); fi
-            if [[ -n "$popup_height" ]]; then popup_args+=("-h" "$popup_height"); fi
-            bind_args+=("display-popup" "${popup_args[@]}" "$command")
-            ;;
-        display-message)
-            bind_args+=("display-message" "$command")
-            ;;
-        send-keys)
-            bind_args+=("send-keys" "$command")
-            ;;
-        custom)
-            # For custom, command is the full tmux command
-            # shellcheck disable=SC2206 # Intentional word splitting for tmux args
-            bind_args+=($command)
-            ;;
-        *)
-            log_error "keybinding" "pk_bind: unknown type '$bind_type'"
-            return 1
-            ;;
+    run-shell)
+        bind_args+=("run-shell" ${background:+"$background"} "$command")
+        ;;
+    popup)
+        local popup_args=("-E")
+        if [[ -n "$popup_width" ]]; then popup_args+=("-w" "$popup_width"); fi
+        if [[ -n "$popup_height" ]]; then popup_args+=("-h" "$popup_height"); fi
+        bind_args+=("display-popup" "${popup_args[@]}" "$command")
+        ;;
+    display-message)
+        bind_args+=("display-message" "$command")
+        ;;
+    send-keys)
+        bind_args+=("send-keys" "$command")
+        ;;
+    custom)
+        # For custom, command is the full tmux command
+        # shellcheck disable=SC2206 # Intentional word splitting for tmux args
+        bind_args+=($command)
+        ;;
+    *)
+        log_error "keybinding" "pk_bind: unknown type '$bind_type'"
+        return 1
+        ;;
     esac
 
     # Execute the bind-key command
@@ -339,12 +339,12 @@ pk_bind_message() {
 pk_bind_smart() {
     local key="$1"
     shift
-    
+
     [[ -z "$key" ]] && return 0
-    
+
     # Check if Meta keys should use root table
     local use_root="${POWERKIT_META_KEYS_USE_ROOT:-false}"
-    
+
     if [[ "$use_root" == "true" && "$key" =~ ^M- ]]; then
         pk_bind -n "$key" "$@"
     else
@@ -361,26 +361,26 @@ pk_bind_smart() {
 pk_unbind() {
     local table="prefix"
     local key=""
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -T|--table)
-                table="$2"
-                shift 2
-                ;;
-            -n|--no-prefix)
-                table="root"
-                shift
-                ;;
-            *)
-                key="$1"
-                shift
-                ;;
+        -T | --table)
+            table="$2"
+            shift 2
+            ;;
+        -n | --no-prefix)
+            table="root"
+            shift
+            ;;
+        *)
+            key="$1"
+            shift
+            ;;
         esac
     done
-    
+
     [[ -z "$key" ]] && return 1
-    
+
     if tmux unbind-key -T "$table" "$key" 2>/dev/null; then
         log_debug "keybinding" "Unbound: $key from $table table"
         return 0
@@ -400,26 +400,26 @@ pk_unbind() {
 pk_is_bound() {
     local table="prefix"
     local key=""
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -T|--table)
-                table="$2"
-                shift 2
-                ;;
-            -n|--no-prefix)
-                table="root"
-                shift
-                ;;
-            *)
-                key="$1"
-                shift
-                ;;
+        -T | --table)
+            table="$2"
+            shift 2
+            ;;
+        -n | --no-prefix)
+            table="root"
+            shift
+            ;;
+        *)
+            key="$1"
+            shift
+            ;;
         esac
     done
-    
+
     [[ -z "$key" ]] && return 1
-    
+
     tmux list-keys -T "$table" 2>/dev/null | grep -q "\\b${key}\\b"
 }
 
@@ -428,26 +428,26 @@ pk_is_bound() {
 pk_get_binding() {
     local table="prefix"
     local key=""
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -T|--table)
-                table="$2"
-                shift 2
-                ;;
-            -n|--no-prefix)
-                table="root"
-                shift
-                ;;
-            *)
-                key="$1"
-                shift
-                ;;
+        -T | --table)
+            table="$2"
+            shift 2
+            ;;
+        -n | --no-prefix)
+            table="root"
+            shift
+            ;;
+        *)
+            key="$1"
+            shift
+            ;;
         esac
     done
-    
+
     [[ -z "$key" ]] && return 1
-    
+
     tmux list-keys -T "$table" 2>/dev/null | grep "\\b${key}\\b" | head -1
 }
 
@@ -460,22 +460,22 @@ pk_get_binding() {
 pk_run_shell() {
     local background=""
     local command=""
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -b|--background)
-                background="-b"
-                shift
-                ;;
-            *)
-                command="$1"
-                shift
-                ;;
+        -b | --background)
+            background="-b"
+            shift
+            ;;
+        *)
+            command="$1"
+            shift
+            ;;
         esac
     done
-    
+
     [[ -z "$command" ]] && return 1
-    
+
     # shellcheck disable=SC2086
     tmux run-shell $background "$command"
 }
@@ -485,45 +485,45 @@ pk_run_shell() {
 pk_popup() {
     local width="" height="" title="" exit_on_close="-E"
     local command=""
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -w|--width)
-                width="$2"
-                shift 2
-                ;;
-            -H|--height)
-                height="$2"
-                shift 2
-                ;;
-            -T|--title)
-                title="$2"
-                shift 2
-                ;;
-            -E)
-                exit_on_close="-E"
-                shift
-                ;;
-            --no-exit)
-                exit_on_close=""
-                shift
-                ;;
-            *)
-                command="$1"
-                shift
-                ;;
+        -w | --width)
+            width="$2"
+            shift 2
+            ;;
+        -H | --height)
+            height="$2"
+            shift 2
+            ;;
+        -T | --title)
+            title="$2"
+            shift 2
+            ;;
+        -E)
+            exit_on_close="-E"
+            shift
+            ;;
+        --no-exit)
+            exit_on_close=""
+            shift
+            ;;
+        *)
+            command="$1"
+            shift
+            ;;
         esac
     done
-    
+
     [[ -z "$command" ]] && return 1
-    
+
     local popup_args=()
     if [[ -n "$exit_on_close" ]]; then popup_args+=("$exit_on_close"); fi
     if [[ -n "$title" ]]; then popup_args+=("-T" "$title"); fi
     if [[ -n "$width" ]]; then popup_args+=("-w" "$width"); fi
     if [[ -n "$height" ]]; then popup_args+=("-h" "$height"); fi
     popup_args+=("$command")
-    
+
     tmux display-popup "${popup_args[@]}"
 }
 
@@ -532,33 +532,34 @@ pk_popup() {
 pk_popup_delayed() {
     local delay="${1:-1}"
     shift
-    
+
     local width="" height="" command=""
-    
+
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -w|--width)
-                width="-w $2"
-                shift 2
-                ;;
-            -H|--height)
-                height="-h $2"
-                shift 2
-                ;;
-            *)
-                command="$1"
-                shift
-                ;;
+        -w | --width)
+            width="-w $2"
+            shift 2
+            ;;
+        -H | --height)
+            height="-h $2"
+            shift 2
+            ;;
+        *)
+            command="$1"
+            shift
+            ;;
         esac
     done
-    
+
     [[ -z "$command" ]] && return 1
-    
+
     # Run popup in background with delay
     # Wait for a client to be attached before showing the popup
     # This handles the case where PowerKit starts during detached session creation
     local popup_script
-    popup_script=$(cat << 'SCRIPT_EOF'
+    popup_script=$(
+        cat <<'SCRIPT_EOF'
 delay=DELAY_PLACEHOLDER
 width="WIDTH_PLACEHOLDER"
 height="HEIGHT_PLACEHOLDER"
@@ -581,14 +582,14 @@ while [[ $waited -lt $max_wait ]]; do
 done
 # No client attached after timeout, skip popup silently
 SCRIPT_EOF
-)
-    
+    )
+
     # Substitute placeholders
     popup_script="${popup_script//DELAY_PLACEHOLDER/$delay}"
     popup_script="${popup_script//WIDTH_PLACEHOLDER/$width}"
     popup_script="${popup_script//HEIGHT_PLACEHOLDER/$height}"
     popup_script="${popup_script//COMMAND_PLACEHOLDER/$command}"
-    
+
     # Execute via bash
     tmux run-shell -b "bash -c '$popup_script'" 2>/dev/null || true
 }
@@ -642,8 +643,22 @@ register_keybinding() {
         return 1
     fi
 
-    # Use pk_bind with custom type to pass through the complete tmux command
-    pk_bind -t custom -s "$source" "$key" "$tmux_command"
+    # Parse command type from tmux_command and delegate to the appropriate pk_bind type.
+    # This avoids word-splitting issues that occur when pk_bind -t custom does
+    # bind_args+=($command) on a string with embedded spaces and quotes.
+    if [[ "$tmux_command" =~ ^run-shell[[:space:]]+(.+)$ ]]; then
+        local shell_cmd="${BASH_REMATCH[1]}"
+        # Strip surrounding quotes if present (plugin may wrap command in '...' or "...")
+        if [[ "$shell_cmd" =~ ^\'(.*)\'$ ]] || [[ "$shell_cmd" =~ ^\"(.*)\"$ ]]; then
+            shell_cmd="${BASH_REMATCH[1]}"
+        fi
+        pk_bind_shell "$key" "$shell_cmd" "$source"
+    elif [[ "$tmux_command" =~ ^display-popup ]]; then
+        pk_bind_popup "$key" "$tmux_command" "" "" "$source"
+    else
+        # Fallback for custom/unknown tmux command types
+        pk_bind -t custom -s "$source" "$key" "$tmux_command"
+    fi
 }
 
 log_debug "keybinding" "Keybinding utils module loaded"
