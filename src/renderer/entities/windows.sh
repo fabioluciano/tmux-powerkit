@@ -206,18 +206,31 @@ _windows_get_spacing_sep_char() {
 # Build window index text with padding appropriate to separator style.
 # Glyph separators provide a visual right edge, but separator_style=none needs
 # an explicit trailing cell before the index-to-content transition.
+#
+# Padding convention:
+# - Trailing pad (after the index) is always applied when the option
+#   @powerkit_window_index_padding is "true" (default).
+# - Leading pad (before the index) is suppressed for the FIRST window
+#   only — windows 2+ get the full padding because the inter-window
+#   separator gives a clean transition point. The first window has the
+#   compositor's edge separator already adding visual breathing room.
 _windows_build_index_text() {
     local side="$1" index_fg="$2" index_bg="$3" style_attr="$4"
 
-    local pad=" "
-    if [[ "$(get_tmux_option "@powerkit_window_index_padding" "true")" == "false" ]]; then
-        pad=""
+    local pad=""
+    if [[ "$(get_tmux_option "@powerkit_window_index_padding" "true")" == "true" ]]; then
+        pad=" "
     fi
 
+    # Leading pad uses a tmux conditional: empty for the first window
+    # (where #{window_index} equals #{base-index}), space otherwise.
+    # This is data-driven and requires no new user-facing option.
+    local leading='#{?#{==:#{window_index},#{base-index}},,'"$pad"'}'
+
     if [[ "$side" == "left" && -n "$_W_SEP_CHAR" ]]; then
-        printf '#[fg=%s,bg=%s%s]%s%s%s' "$index_fg" "$index_bg" "$style_attr" "$pad" "$(window_get_index_display)" "$pad"
+        printf '#[fg=%s,bg=%s%s]%s%s%s' "$index_fg" "$index_bg" "$style_attr" "$leading" "$(window_get_index_display)" "$pad"
     else
-        printf '#[fg=%s,bg=%s%s]%s%s%s' "$index_fg" "$index_bg" "$style_attr" "$pad" "$(window_get_index_display)" "$pad"
+        printf '#[fg=%s,bg=%s%s]%s%s%s' "$index_fg" "$index_bg" "$style_attr" "$leading" "$(window_get_index_display)" "$pad"
     fi
 }
 
