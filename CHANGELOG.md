@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.29.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.12...v5.29.0) (2026-07-10)
+
+### Features
+
+* supercharging tooling ([#233](https://github.com/fabioluciano/tmux-powerkit/issues/233)) ([2708a70](https://github.com/fabioluciano/tmux-powerkit/commit/2708a705e189e00811f3590dddd6269b04089eb5))
+
 ## [5.28.12](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.11...v5.28.12) (2026-07-09)
 
 ### Bug Fixes
