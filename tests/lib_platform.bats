@@ -115,15 +115,13 @@ setup() {
 # Environment detection
 # =============================================================================
 
-@test "is_in_tmux reflects TMUX env var" {
-    run bash -c '
-        source "$1"
-        if [[ -n "${TMUX:-}" ]]; then
-            is_in_tmux || exit 1
-        else
-            is_in_tmux && exit 1
-        fi
-    ' _ "$POWERKIT_ROOT/src/utils/platform.sh"
+@test "is_in_tmux returns failure when TMUX is unset" {
+    run bash -c 'unset TMUX; source "$1"; is_in_tmux' _ "$POWERKIT_ROOT/src/utils/platform.sh"
+    assert_failure
+}
+
+@test "is_in_tmux returns success when TMUX is set" {
+    run bash -c 'export TMUX=test; source "$1"; is_in_tmux' _ "$POWERKIT_ROOT/src/utils/platform.sh"
     assert_success
 }
 
