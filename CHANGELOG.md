@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [5.29.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.29.0...v5.29.1) (2026-07-11)
+
+### Bug Fixes
+
+* index window spacing ([443a7ec](https://github.com/fabioluciano/tmux-powerkit/commit/443a7ecd4134de8b4a1e70c26542eb5973bf61f3))
+
 ## [5.29.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.28.12...v5.29.0) (2026-07-10)
 
 ### Features
