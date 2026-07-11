@@ -24,8 +24,7 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     require_cmd "curl" || return 1
-    require_cmd "jq" 1 # Optional - better JSON parsing
-    return 0
+    require_cmd "jq" || return 1
 }
 
 # =============================================================================
@@ -196,14 +195,9 @@ plugin_collect() {
         local price change=""
 
         # Extract price from JSON
-        if has_cmd jq; then
-            price=$(echo "$response" | jq -r ".\"$coin_id\".\"$currency_lower\" // empty" 2>/dev/null)
-            if [[ "$show_change" == "true" ]]; then
-                change=$(echo "$response" | jq -r ".\"$coin_id\".\"${currency_lower}_24h_change\" // empty" 2>/dev/null)
-            fi
-        else
-            # Fallback: manual JSON parsing
-            price=$(echo "$response" | sed -n 's/.*"'$coin_id'"[^}]*"'$currency_lower'":\([0-9.]*\).*/\1/p')
+        price=$(echo "$response" | jq -r ".\"$coin_id\".\"$currency_lower\" // empty" 2>/dev/null)
+        if [[ "$show_change" == "true" ]]; then
+            change=$(echo "$response" | jq -r ".\"$coin_id\".\"${currency_lower}_24h_change\" // empty" 2>/dev/null)
         fi
 
         [[ -z "$price" || "$price" == "null" ]] && continue

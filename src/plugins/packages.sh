@@ -251,7 +251,7 @@ _count_updates_yay() {
 
 _count_updates_apt() {
     local count
-    count=$(_timeout_pkg command apt list --upgradable 2>/dev/null | grep -c upgradable || echo 0)
+    count=$(_timeout_pkg command apt list --upgradable 2>/dev/null | grep -c '/.*upgradable' || echo 0)
     printf '%s' "$count"
 }
 
