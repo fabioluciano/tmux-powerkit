@@ -98,18 +98,18 @@ _get_mount_label() {
     local mount="$1"
 
     case "$mount" in
-        /)                 printf 'root' ;;
-        /home|/Users/*)    printf 'home' ;;
-        /boot|/boot/*)     printf 'boot' ;;
-        /tmp)              printf 'tmp' ;;
-        /var)              printf 'var' ;;
-        /opt)              printf 'opt' ;;
-        /srv)              printf 'srv' ;;
-        /data)             printf 'data' ;;
-        /mnt/*)            printf '%s' "${mount##*/}" ;;
-        /media/*)          printf '%s' "${mount##*/}" ;;
-        /Volumes/*)        printf '%s' "${mount##*/}" ;;
-        *)                 printf '%s' "${mount##*/}" ;;
+    /) printf 'root' ;;
+    /home | /Users/*) printf 'home' ;;
+    /boot | /boot/*) printf 'boot' ;;
+    /tmp) printf 'tmp' ;;
+    /var) printf 'var' ;;
+    /opt) printf 'opt' ;;
+    /srv) printf 'srv' ;;
+    /data) printf 'data' ;;
+    /mnt/*) printf '%s' "${mount##*/}" ;;
+    /media/*) printf '%s' "${mount##*/}" ;;
+    /Volumes/*) printf '%s' "${mount##*/}" ;;
+    *) printf '%s' "${mount##*/}" ;;
     esac
 }
 
@@ -166,15 +166,19 @@ _get_disk_info() {
 # =============================================================================
 
 plugin_collect() {
-    local mounts
+    local mounts format show_label separator
     mounts=$(get_option "mounts")
+    format=$(get_option "format")
+    show_label=$(get_option "show_label")
+    separator=$(get_option "separator")
     [[ -z "$mounts" ]] && mounts="/"
 
     local max_pct=0
     local mount_count=0
     local mount_data=""
+    local output_parts=()
 
-    IFS=',' read -ra mount_list <<< "$mounts"
+    IFS=',' read -ra mount_list <<<"$mounts"
 
     for mount in "${mount_list[@]}"; do
         mount=$(trim "$mount")
@@ -184,18 +188,32 @@ plugin_collect() {
         pct=$(_get_disk_percent "$mount")
         [[ -z "$pct" || ! "$pct" =~ ^[0-9]+$ ]] && continue
 
-        (( pct > max_pct )) && max_pct=$pct
+        ((pct > max_pct)) && max_pct=$pct
         ((mount_count++))
 
         # Store individual mount data (mount:percent)
         [[ -n "$mount_data" ]] && mount_data+="|"
         mount_data+="${mount}:${pct}"
+
+        # Build formatted output for render
+        local info
+        info=$(_get_disk_info "$mount" "$format")
+        [[ -z "$info" || "$info" == "N/A" ]] && continue
+
+        if [[ "$show_label" == "true" ]]; then
+            local label
+            label=$(_get_mount_label "$mount")
+            output_parts+=("${label} ${info}")
+        else
+            output_parts+=("$info")
+        fi
     done
 
     plugin_data_set "max_percent" "$max_pct"
     plugin_data_set "mount_count" "$mount_count"
     plugin_data_set "mount_data" "$mount_data"
     plugin_data_set "available" "$((mount_count > 0 ? 1 : 0))"
+    plugin_data_set "formatted" "$(join_with_separator "$separator" "${output_parts[@]}")"
 }
 
 # =============================================================================
@@ -243,9 +261,9 @@ plugin_get_context() {
     health=$(plugin_get_health)
 
     case "$health" in
-        error)   printf 'critical_usage' ;;
-        warning) printf 'high_usage' ;;
-        *)       printf 'normal_usage' ;;
+    error) printf 'critical_usage' ;;
+    warning) printf 'high_usage' ;;
+    *) printf 'normal_usage' ;;
     esac
 }
 
@@ -260,11 +278,11 @@ plugin_get_icon() {
     crit_th=$(get_option "critical_threshold")
 
     # Data-based icon selection (contract: icon must not call plugin_get_health)
-    if (( ${percent:-0} >= ${crit_th:-90} )); then
+    if ((${percent:-0} >= ${crit_th:-90})); then
         local icon_crit
         icon_crit=$(get_option "icon_critical")
         [[ -n "$icon_crit" ]] && printf '%s' "$icon_crit" || get_option "icon"
-    elif (( ${percent:-0} >= ${warn_th:-80} )); then
+    elif ((${percent:-0} >= ${warn_th:-80})); then
         local icon_warn
         icon_warn=$(get_option "icon_warning")
         [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
@@ -278,42 +296,12 @@ plugin_get_icon() {
 # =============================================================================
 
 plugin_render() {
-    local mounts format separator show_label
-    mounts=$(get_option "mounts")
-    format=$(get_option "format")
-    separator=$(get_option "separator")
-    show_label=$(get_option "show_label")
-
-    [[ -z "$mounts" ]] && mounts="/"
-
-    # Note: show_only_on_threshold is handled by renderer via health
-
-    local output_parts=()
-    IFS=',' read -ra mount_list <<< "$mounts"
-
-    for mount in "${mount_list[@]}"; do
-        mount=$(trim "$mount")
-        [[ -z "$mount" ]] && continue
-
-        local info
-        info=$(_get_disk_info "$mount" "$format")
-        [[ -z "$info" || "$info" == "N/A" ]] && continue
-
-        if [[ "$show_label" == "true" ]]; then
-            local label
-            label=$(_get_mount_label "$mount")
-            output_parts+=("${label} ${info}")
-        else
-            output_parts+=("$info")
-        fi
-    done
-
-    [[ ${#output_parts[@]} -eq 0 ]] && return
-
-    join_with_separator "$separator" "${output_parts[@]}"
+    local formatted
+    formatted=$(plugin_data_get "formatted")
+    [[ -z "$formatted" ]] && return
+    printf '%s' "$formatted"
 }
 
 # =============================================================================
 # Initialize Plugin
 # =============================================================================
-

@@ -93,8 +93,14 @@ load_bw_session() {
 # Detect which Bitwarden client is available
 # Returns: "bw" or "rbw", exit 1 if neither found
 detect_bitwarden_client() {
-    has_cmd "bw" && { echo "bw"; return 0; }
-    has_cmd "rbw" && { echo "rbw"; return 0; }
+    has_cmd "bw" && {
+        echo "bw"
+        return 0
+    }
+    has_cmd "rbw" && {
+        echo "rbw"
+        return 0
+    }
     return 1
 }
 
@@ -131,7 +137,7 @@ is_bitwarden_cache_valid() {
     local now=$EPOCHSECONDS age
     age=$((now - file_mtime))
 
-    (( age < ttl ))
+    ((age < ttl))
 }
 
 # Invalidate plugin status cache to trigger status bar refresh
@@ -166,58 +172,59 @@ _unlock_bitwarden_bw() {
     status=$(bw status 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
 
     case "$status" in
-        unlocked)
-            printf '%s%s✓ Vault already unlocked%s\n' "$_BW_BOLD" "$_BW_GREEN" "$_BW_RESET"
+    unlocked)
+        printf '%s%s✓ Vault already unlocked%s\n' "$_BW_BOLD" "$_BW_GREEN" "$_BW_RESET"
+        sleep 1
+        return 0
+        ;;
+    unauthenticated)
+        printf '%s%s✗ Please login first: bw login%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
+        printf '\n%sPress any key to close...%s' "$_BW_DIM" "$_BW_RESET"
+        read -rsn1
+        return 1
+        ;;
+    locked)
+        # Prompt for master password and unlock
+        printf '%sEnter master password:%s ' "$_BW_BOLD" "$_BW_RESET"
+        local password
+        read -rs password
+        echo
+
+        if [[ -z "$password" ]]; then
+            printf '%s%s✗ Password required%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
+            sleep 1
+            return 1
+        fi
+
+        printf '%s⏳ Unlocking vault...%s\n' "$_BW_YELLOW" "$_BW_RESET"
+        local session
+        # Password via stdin avoids exposing it in process args
+        session=$(printf '%s' "$password" | bw unlock --raw --stdin 2>/dev/null) || true
+
+        if [[ -n "$session" ]]; then
+            save_bw_session "$session"
+            export BW_SESSION="$session"
+            invalidate_bitwarden_plugin_cache
+            printf '%s%s✓ Vault unlocked!%s\n' "$_BW_BOLD" "$_BW_GREEN" "$_BW_RESET"
+            toast " Vault unlocked" "simple"
             sleep 1
             return 0
-            ;;
-        unauthenticated)
-            printf '%s%s✗ Please login first: bw login%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
-            printf '\n%sPress any key to close...%s' "$_BW_DIM" "$_BW_RESET"
+        else
+            printf '%s%s✗ Invalid password%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
+            printf '\n%sPress any key to try again or Ctrl-C to cancel...%s' "$_BW_DIM" "$_BW_RESET"
             read -rsn1
-            return 1
-            ;;
-        locked)
-            # Prompt for master password and unlock
-            printf '%sEnter master password:%s ' "$_BW_BOLD" "$_BW_RESET"
-            local password
-            read -rs password
-            echo
-
-            if [[ -z "$password" ]]; then
-                printf '%s%s✗ Password required%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
-                sleep 1
-                return 1
-            fi
-
-            printf '%s⏳ Unlocking vault...%s\n' "$_BW_YELLOW" "$_BW_RESET"
-            local session
-            session=$(bw unlock --raw "$password" 2>/dev/null) || true
-
-            if [[ -n "$session" ]]; then
-                save_bw_session "$session"
-                export BW_SESSION="$session"
-                invalidate_bitwarden_plugin_cache
-                printf '%s%s✓ Vault unlocked!%s\n' "$_BW_BOLD" "$_BW_GREEN" "$_BW_RESET"
-                toast " Vault unlocked" "simple"
-                sleep 1
-                return 0
-            else
-                printf '%s%s✗ Invalid password%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
-                printf '\n%sPress any key to try again or Ctrl-C to cancel...%s' "$_BW_DIM" "$_BW_RESET"
-                read -rsn1
-                # Clear screen and retry
-                clear
-                _unlock_bitwarden_bw
-                return $?
-            fi
-            ;;
-        *)
-            printf '%s%s✗ Unknown status: %s%s\n' "$_BW_BOLD" "$_BW_RED" "$status" "$_BW_RESET"
-            printf '\n%sPress any key to close...%s' "$_BW_DIM" "$_BW_RESET"
-            read -rsn1
-            return 1
-            ;;
+            # Clear screen and retry
+            clear
+            _unlock_bitwarden_bw
+            return $?
+        fi
+        ;;
+    *)
+        printf '%s%s✗ Unknown status: %s%s\n' "$_BW_BOLD" "$_BW_RED" "$status" "$_BW_RESET"
+        printf '\n%sPress any key to close...%s' "$_BW_DIM" "$_BW_RESET"
+        read -rsn1
+        return 1
+        ;;
     esac
 }
 
@@ -260,8 +267,8 @@ unlock_bitwarden_vault() {
     }
 
     case "$client" in
-        bw)  _unlock_bitwarden_bw ;;
-        rbw) _unlock_bitwarden_rbw ;;
+    bw) _unlock_bitwarden_bw ;;
+    rbw) _unlock_bitwarden_rbw ;;
     esac
 }
 
@@ -280,6 +287,7 @@ _lock_bitwarden_bw() {
 # Lock vault (rbw)
 _lock_bitwarden_rbw() {
     rbw lock &>/dev/null || true
+    clear_bw_session
     invalidate_bitwarden_plugin_cache
 }
 
@@ -287,11 +295,14 @@ _lock_bitwarden_rbw() {
 # Usage: lock_bitwarden_vault
 lock_bitwarden_vault() {
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 1; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 1
+    }
 
     case "$client" in
-        bw)  _lock_bitwarden_bw ;;
-        rbw) _lock_bitwarden_rbw ;;
+    bw) _lock_bitwarden_bw ;;
+    rbw) _lock_bitwarden_rbw ;;
     esac
 
     toast " Vault locked" "simple"

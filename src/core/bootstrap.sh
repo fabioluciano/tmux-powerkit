@@ -21,8 +21,8 @@ source_guard "bootstrap" && return 0
 
 for _system_dir in /usr/sbin /usr/bin /sbin /bin; do
     case ":${PATH}:" in
-        *":${_system_dir}:"*) ;;
-        *) [[ -d "$_system_dir" ]] && PATH="${PATH}:${_system_dir}" ;;
+    *":${_system_dir}:"*) ;;
+    *) [[ -d "$_system_dir" ]] && PATH="${PATH}:${_system_dir}" ;;
     esac
 done
 unset _system_dir
@@ -260,7 +260,7 @@ _setup_plugin_keybindings() {
                     [[ -z "$kb_opt" ]] && continue
                     kb_value=$(get_option "$kb_opt" 2>/dev/null) || true
                     if [[ -n "$kb_value" ]]; then _conflict_check_keys+=("$kb_value"); fi
-                done <<< "$keybinding_opts"
+                done <<<"$keybinding_opts"
 
                 # Check if any key conflicts with existing non-PowerKit binding
                 local key
@@ -286,6 +286,7 @@ _setup_plugin_keybindings() {
         unset -f plugin_get_metadata plugin_check_dependencies plugin_declare_options \
             plugin_get_content_type plugin_get_presence plugin_get_state plugin_get_health \
             plugin_get_context plugin_get_icon plugin_collect plugin_render plugin_setup_keybindings \
+            plugin_should_be_active \
             2>/dev/null || true
     done
 }

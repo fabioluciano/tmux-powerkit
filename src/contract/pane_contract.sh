@@ -266,8 +266,8 @@ _get_theme_color() {
     # Extract color value from theme file using grep
     # Pattern: [color_name]="#RRGGBB"
     local color_value
-    color_value=$(grep -E "^\s*\[${color_name}\]=" "$theme_file" 2>/dev/null | \
-                  sed -E 's/^[^"]*"([^"]+)".*$/\1/')
+    color_value=$(grep -E "^\s*\[${color_name}\]=" "$theme_file" 2>/dev/null |
+        sed -E 's/^[^"]*"([^"]+)".*$/\1/')
 
     [[ -n "$color_value" ]] && printf '%s' "$color_value"
 }
@@ -279,10 +279,16 @@ _pane_resolve_color() {
 
     # If it contains tmux format strings (e.g., #{?#{@dark_appearance},...}),
     # pass through unresolved for trigger-time evaluation
-    [[ "$color" == *'#{'* ]] && { printf '%s' "$color"; return; }
+    [[ "$color" == *'#{'* ]] && {
+        printf '%s' "$color"
+        return
+    }
 
     # If it's already a hex color, return as-is
-    [[ "$color" =~ ^#[0-9A-Fa-f]{6}$ ]] && { printf '%s' "$color"; return; }
+    [[ "$color" =~ ^#[0-9A-Fa-f]{6}$ ]] && {
+        printf '%s' "$color"
+        return
+    }
 
     # Auto-generate format string for theme colors with light/dark variants
     local theme
@@ -320,7 +326,10 @@ _pane_resolve_color() {
     if declare -F resolve_color &>/dev/null; then
         local resolved
         resolved=$(resolve_color "$color" 2>/dev/null)
-        [[ -n "$resolved" ]] && { printf '%s' "$resolved"; return; }
+        [[ -n "$resolved" ]] && {
+            printf '%s' "$resolved"
+            return
+        }
     fi
 
     # Fallback: return as-is (might be a tmux color name)
@@ -375,11 +384,17 @@ pane_get_state() {
     fi
 
     local vars active zoomed
-    vars=$(tmux display-message -p '#{pane_active}:#{window_zoomed_flag}' 2>/dev/null)
-    IFS=':' read -r active zoomed <<< "$vars"
+    vars=$(tmux display-message -p $'#{pane_active}\t#{window_zoomed_flag}' 2>/dev/null)
+    IFS=$'\t' read -r active zoomed <<<"$vars"
 
-    [[ "$zoomed" == "1" ]] && { printf 'zoomed'; return; }
-    [[ "$active" == "1" ]] && { printf 'active'; return; }
+    [[ "$zoomed" == "1" ]] && {
+        printf 'zoomed'
+        return
+    }
+    [[ "$active" == "1" ]] && {
+        printf 'active'
+        return
+    }
     printf 'inactive'
 }
 
@@ -410,35 +425,50 @@ pane_is_zoomed() {
 # Get current pane ID
 # Usage: pane_get_id
 pane_get_id() {
-    [[ -z "${TMUX:-}" ]] && { printf ''; return; }
+    [[ -z "${TMUX:-}" ]] && {
+        printf ''
+        return
+    }
     tmux display-message -p '#{pane_id}' 2>/dev/null
 }
 
 # Get current pane index
 # Usage: pane_get_index
 pane_get_index() {
-    [[ -z "${TMUX:-}" ]] && { printf '0'; return; }
+    [[ -z "${TMUX:-}" ]] && {
+        printf '0'
+        return
+    }
     tmux display-message -p '#{pane_index}' 2>/dev/null
 }
 
 # Get current pane title
 # Usage: pane_get_title
 pane_get_title() {
-    [[ -z "${TMUX:-}" ]] && { printf ''; return; }
+    [[ -z "${TMUX:-}" ]] && {
+        printf ''
+        return
+    }
     tmux display-message -p '#{pane_title}' 2>/dev/null
 }
 
 # Get current command running in pane
 # Usage: pane_get_command
 pane_get_command() {
-    [[ -z "${TMUX:-}" ]] && { printf ''; return; }
+    [[ -z "${TMUX:-}" ]] && {
+        printf ''
+        return
+    }
     tmux display-message -p '#{pane_current_command}' 2>/dev/null
 }
 
 # Get current path of pane
 # Usage: pane_get_path
 pane_get_path() {
-    [[ -z "${TMUX:-}" ]] && { printf ''; return; }
+    [[ -z "${TMUX:-}" ]] && {
+        printf ''
+        return
+    }
     tmux display-message -p '#{pane_current_path}' 2>/dev/null
 }
 
@@ -456,20 +486,20 @@ pane_get_all() {
     fi
 
     local vars id index title command path active zoomed
-    vars=$(tmux display-message -p '#{pane_id}:#{pane_index}:#{pane_title}:#{pane_current_command}:#{pane_current_path}:#{pane_active}:#{window_zoomed_flag}' 2>/dev/null)
-    IFS=':' read -r id index title command path active zoomed <<< "$vars"
+    vars=$(tmux display-message -p $'#{pane_id}\t#{pane_index}\t#{pane_title}\t#{pane_current_command}\t#{pane_current_path}\t#{pane_active}\t#{window_zoomed_flag}' 2>/dev/null)
+    IFS=$'\t' read -r id index title command path active zoomed <<<"$vars"
 
     # Determine state
     local state="inactive"
     [[ "$zoomed" == "1" ]] && state="zoomed"
     [[ "$active" == "1" && "$zoomed" != "1" ]] && state="active"
 
-    printf 'PANE_ID="%s"\n' "$id"
-    printf 'PANE_INDEX="%s"\n' "$index"
-    printf 'PANE_TITLE="%s"\n' "$title"
-    printf 'PANE_COMMAND="%s"\n' "$command"
-    printf 'PANE_PATH="%s"\n' "$path"
-    printf 'PANE_STATE="%s"\n' "$state"
+    printf 'PANE_ID=%s\n' "$(printf '%q' "$id")"
+    printf 'PANE_INDEX=%s\n' "$(printf '%q' "$index")"
+    printf 'PANE_TITLE=%s\n' "$(printf '%q' "$title")"
+    printf 'PANE_COMMAND=%s\n' "$(printf '%q' "$command")"
+    printf 'PANE_PATH=%s\n' "$(printf '%q' "$path")"
+    printf 'PANE_STATE=%s\n' "$(printf '%q' "$state")"
 }
 
 # =============================================================================

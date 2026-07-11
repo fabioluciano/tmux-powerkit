@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+if (( BASH_VERSINFO[0] < 5 )); then
+    printf 'PowerKit requires Bash 5+, you have %s\n' "$BASH_VERSION" >&2
+    exit 1
+fi
 # =============================================================================
 # PowerKit - tmux Status Bar Framework
 # TPM Entry Point

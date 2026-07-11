@@ -24,7 +24,7 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     require_cmd "curl" || return 1
-    require_cmd "jq" 1  # Optional but recommended
+    require_cmd "jq" 1 # Optional but recommended
     return 0
 }
 
@@ -69,9 +69,18 @@ plugin_get_presence() { printf 'conditional'; }
 _get_token() {
     local token
     token=$(get_option "token")
-    [[ -n "$token" ]] && { printf '%s' "$token"; return 0; }
-    [[ -n "${GITHUB_TOKEN:-}" ]] && { printf '%s' "$GITHUB_TOKEN"; return 0; }
-    [[ -n "${GH_TOKEN:-}" ]] && { printf '%s' "$GH_TOKEN"; return 0; }
+    [[ -n "$token" ]] && {
+        printf '%s' "$token"
+        return 0
+    }
+    [[ -n "${GITHUB_TOKEN:-}" ]] && {
+        printf '%s' "$GITHUB_TOKEN"
+        return 0
+    }
+    [[ -n "${GH_TOKEN:-}" ]] && {
+        printf '%s' "$GH_TOKEN"
+        return 0
+    }
     return 1
 }
 
@@ -79,13 +88,9 @@ _verify_token() {
     local token="$1"
     [[ -z "$token" ]] && return 1
 
-    # Make API call to verify token is valid using api_fetch_with_status
-    local result status
-    result=$(api_fetch_with_status "${GITHUB_API}/user" 5)
-    read -r status _ <<<"$result"
-
-    api_is_success "$status" && return 0
-    return 1
+    local result
+    result=$(make_api_call "${GITHUB_API}/user" "github" "$token" 5) || return 1
+    return 0
 }
 
 _is_authenticated() {
@@ -114,7 +119,7 @@ _has_repos_configured() {
 }
 
 plugin_get_state() {
-    if ! _is_authenticated; then
+    if [[ "$(plugin_data_get "authenticated")" != "1" ]]; then
         printf 'failed'
         return
     fi
@@ -138,14 +143,17 @@ plugin_get_state() {
 }
 
 plugin_get_health() {
-    if ! _is_authenticated; then
+    if [[ "$(plugin_data_get "authenticated")" != "1" ]]; then
         printf 'error'
         return
     fi
 
     local api_error
     api_error=$(plugin_data_get "api_error")
-    [[ "$api_error" == "1" ]] && { printf 'error'; return; }
+    [[ "$api_error" == "1" ]] && {
+        printf 'error'
+        return
+    }
 
     local issues prs
     issues=$(plugin_data_get "issues")
@@ -163,29 +171,32 @@ plugin_get_health() {
 }
 
 plugin_get_context() {
-    if ! _is_authenticated; then
+    if [[ "$(plugin_data_get "authenticated")" != "1" ]]; then
         printf 'unauthenticated'
         return
     fi
-    
+
     local api_error=$(plugin_data_get "api_error")
-    [[ "$api_error" == "1" ]] && { printf 'api_error'; return; }
-    
+    [[ "$api_error" == "1" ]] && {
+        printf 'api_error'
+        return
+    }
+
     local total=$(plugin_data_get "total")
     local issues=$(plugin_data_get "issues")
     local prs=$(plugin_data_get "prs")
-    
+
     total="${total:-0}"
     issues="${issues:-0}"
     prs="${prs:-0}"
-    
-    if (( total == 0 )); then
+
+    if ((total == 0)); then
         printf 'clear'
-    elif (( issues > 0 && prs > 0 )); then
+    elif ((issues > 0 && prs > 0)); then
         printf 'issues_and_prs'
-    elif (( issues > 0 )); then
+    elif ((issues > 0)); then
         printf 'issues_only'
-    elif (( prs > 0 )); then
+    elif ((prs > 0)); then
         printf 'prs_only'
     else
         printf 'activity'
@@ -201,7 +212,7 @@ plugin_get_icon() { get_option "icon"; }
 _make_github_api_call() {
     local url="$1"
     local token=$(_get_token)
-    
+
     make_api_call "$url" "github" "$token" 5
 }
 
@@ -213,10 +224,10 @@ _get_api_error_message() {
 _is_valid_api_response() {
     local response="$1"
     [[ -z "$response" ]] && return 1
-    
+
     local error_msg=$(_get_api_error_message "$response")
     [[ -n "$error_msg" ]] && return 1
-    
+
     return 0
 }
 
@@ -233,11 +244,11 @@ _count_issues() {
     local response=$(_make_github_api_call "$url")
 
     # Validate response using api_validate_response
-    api_validate_response "$response" || { echo "0"; return 1; }
+    api_validate_response "$response" || return 1
 
     if has_cmd jq; then
         local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
-        [[ -n "$error_msg" ]] && { echo "0"; return 1; }
+        [[ -n "$error_msg" ]] && return 1
         echo "$response" | jq -r '.total_count // 0' 2>/dev/null
     else
         # Fallback grep parsing
@@ -258,11 +269,11 @@ _count_prs() {
     local response=$(_make_github_api_call "$url")
 
     # Validate response using api_validate_response
-    api_validate_response "$response" || { echo "0"; return 1; }
+    api_validate_response "$response" || return 1
 
     if has_cmd jq; then
         local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
-        [[ -n "$error_msg" ]] && { echo "0"; return 1; }
+        [[ -n "$error_msg" ]] && return 1
         echo "$response" | jq -r '.total_count // 0' 2>/dev/null
     else
         echo "$response" | grep -o '"total_count":[0-9]*' | grep -o '[0-9]*' | head -1
@@ -273,16 +284,16 @@ _count_prs() {
 _fetch_via_gh_cli() {
     local show_issues=$(get_option "show_issues")
     local show_prs=$(get_option "show_prs")
-    
+
     local issues=0 prs=0
-    
+
     # Check if gh has a default repo set, if not use search API
     if ! gh repo set-default --view &>/dev/null; then
         # Use gh search for user's issues/PRs across all repos
         if [[ "$show_issues" == "true" ]]; then
             issues=$(gh search issues --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
         fi
-        
+
         if [[ "$show_prs" == "true" ]]; then
             prs=$(gh search prs --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
         fi
@@ -290,12 +301,12 @@ _fetch_via_gh_cli() {
         if [[ "$show_issues" == "true" ]]; then
             issues=$(gh issue list --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
         fi
-        
+
         if [[ "$show_prs" == "true" ]]; then
             prs=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
         fi
     fi
-    
+
     echo "$issues $prs 0"
 }
 
@@ -306,16 +317,16 @@ _fetch_via_gh_cli() {
 _format_repo_status() {
     local issues="$1"
     local prs="$2"
-    
+
     local show_issues=$(get_option "show_issues")
     local show_prs=$(get_option "show_prs")
     local format=$(get_option "format")
     local separator=$(get_option "separator")
     local icon_issue=$(get_option "icon_issue")
     local icon_pr=$(get_option "icon_pr")
-    
+
     local parts=()
-    
+
     if [[ "$show_issues" == "true" && "$issues" -gt 0 ]]; then
         if [[ "$format" == "detailed" ]]; then
             parts+=("${icon_issue} ${issues}")
@@ -323,7 +334,7 @@ _format_repo_status() {
             parts+=("${issues}i")
         fi
     fi
-    
+
     if [[ "$show_prs" == "true" && "$prs" -gt 0 ]]; then
         if [[ "$format" == "detailed" ]]; then
             parts+=("${icon_pr} ${prs}")
@@ -338,55 +349,59 @@ _format_repo_status() {
 _get_github_info() {
     local repos_csv=$(get_option "repos")
     local filter_user=$(get_option "filter_user")
-    
+
     # If no repos configured, try gh CLI for user's repos
     if [[ -z "$repos_csv" ]] && has_cmd gh; then
         local result=$(_fetch_via_gh_cli)
         echo "$result"
         return 0
     fi
-    
-    [[ -z "$repos_csv" ]] && { echo "0 0 0"; return 1; }
-    
+
+    [[ -z "$repos_csv" ]] && {
+        echo "0 0 0"
+        return 1
+    }
+
     IFS=',' read -ra repos <<<"$repos_csv"
-    
+
     local total_issues=0 total_prs=0
     local api_error=0
-    
+
     for repo_spec in "${repos[@]}"; do
         repo_spec=$(trim "$repo_spec")
         [[ -z "$repo_spec" || "$repo_spec" != *"/"* ]] && continue
-        
+
         local owner="${repo_spec%%/*}"
         local repo="${repo_spec#*/}"
-        
-        local issues prs
-        
+
+        local issues=0 prs=0
+
         if [[ "$(get_option "show_issues")" == "true" ]]; then
-            issues=$(_count_issues "$owner" "$repo" "$filter_user")
-            [[ -z "$issues" ]] && api_error=1
-            issues="${issues:-0}"
-        else
-            issues=0
+            if ! issues=$(_count_issues "$owner" "$repo" "$filter_user"); then
+                api_error=1
+                issues=0
+            fi
         fi
-        
+
         if [[ "$(get_option "show_prs")" == "true" ]]; then
-            prs=$(_count_prs "$owner" "$repo" "$filter_user")
-            [[ -z "$prs" ]] && api_error=1
-            prs="${prs:-0}"
-        else
-            prs=0
+            if ! prs=$(_count_prs "$owner" "$repo" "$filter_user"); then
+                api_error=1
+                prs=0
+            fi
         fi
-        
+
         total_issues=$((total_issues + issues))
         total_prs=$((total_prs + prs))
     done
-    
+
     echo "$total_issues $total_prs $api_error"
 }
 
 plugin_collect() {
-    if ! _is_authenticated; then
+    if _is_authenticated; then
+        plugin_data_set "authenticated" "1"
+    else
+        plugin_data_set "authenticated" "0"
         plugin_data_set "issues" "0"
         plugin_data_set "prs" "0"
         plugin_data_set "total" "0"
@@ -411,7 +426,7 @@ plugin_collect() {
 }
 
 plugin_render() {
-    if ! _is_authenticated; then
+    if [[ "$(plugin_data_get "authenticated")" != "1" ]]; then
         printf 'unauthenticated'
         return 0
     fi
@@ -434,4 +449,3 @@ plugin_render() {
 
     _format_repo_status "$issues" "$prs"
 }
-

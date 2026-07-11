@@ -24,9 +24,9 @@ echo ""
 
 # Check if shellcheck is installed
 if ! command -v shellcheck &>/dev/null; then
-    echo -e "${YELLOW}WARNING: shellcheck not installed, skipping validation${NC}"
-    echo "Install with: brew install shellcheck (macOS) or apt-get install shellcheck (Linux)"
-    exit 0
+    echo -e "${YELLOW}ERROR: shellcheck not installed, cannot run validation${NC}" >&2
+    echo "Install with: brew install shellcheck (macOS) or apt-get install shellcheck (Linux)" >&2
+    exit 1
 fi
 
 echo "ShellCheck version: $(shellcheck --version | head -2 | tail -1)"
@@ -64,15 +64,15 @@ RESULTS_FILE="$TEMP_DIR/results.txt"
 
 for dir in "${DIRS[@]}"; do
     [[ ! -d "$dir" ]] && continue
-    find "$dir" -name "*.sh" -type f 2>/dev/null >> "$FILE_LIST" || true
+    find "$dir" -name "*.sh" -type f 2>/dev/null >>"$FILE_LIST" || true
 done
 
 if [[ -d "$POWERKIT_ROOT/src/themes" ]]; then
-    find "$POWERKIT_ROOT/src/themes" -name "*.sh" -type f 2>/dev/null >> "$THEME_FILE_LIST" || true
+    find "$POWERKIT_ROOT/src/themes" -name "*.sh" -type f 2>/dev/null >>"$THEME_FILE_LIST" || true
 fi
 
-TOTAL=$(wc -l < "$FILE_LIST" 2>/dev/null | tr -d ' ' || echo 0)
-THEME_TOTAL=$(wc -l < "$THEME_FILE_LIST" 2>/dev/null | tr -d ' ' || echo 0)
+TOTAL=$(wc -l <"$FILE_LIST" 2>/dev/null | tr -d ' ' || echo 0)
+THEME_TOTAL=$(wc -l <"$THEME_FILE_LIST" 2>/dev/null | tr -d ' ' || echo 0)
 
 echo "Files to check: $TOTAL standard + $THEME_TOTAL themes"
 echo ""
@@ -86,9 +86,9 @@ _check_file() {
     local results_file="$3"
 
     if shellcheck -S "$severity" "$file" >/dev/null 2>&1; then
-        echo "PASS:$(basename "$file")" >> "$results_file"
+        echo "PASS:$(basename "$file")" >>"$results_file"
     else
-        echo "FAIL:$file" >> "$results_file"
+        echo "FAIL:$file" >>"$results_file"
     fi
 }
 export -f _check_file
@@ -123,18 +123,18 @@ if [[ -f "$RESULTS_FILE" ]]; then
 
     while IFS=: read -r status file; do
         case "$status" in
-            PASS)
-                printf "${GREEN}✓${NC} %s\n" "$file"
-                ((PASSED++)) || true
-                ;;
-            FAIL)
-                printf "${RED}✗ FAIL:${NC} %s\n" "$file"
-                # Show errors for this specific file (|| true to prevent set -e exit)
-                shellcheck -S warning "$file" 2>&1 | head -10 | sed 's/^/  /' || true
-                ((FAILED++)) || true
-                ;;
+        PASS)
+            printf "${GREEN}✓${NC} %s\n" "$file"
+            ((PASSED++)) || true
+            ;;
+        FAIL)
+            printf "${RED}✗ FAIL:${NC} %s\n" "$file"
+            # Show errors for this specific file (|| true to prevent set -e exit)
+            shellcheck -S warning "$file" 2>&1 | head -10 | sed 's/^/  /' || true
+            ((FAILED++)) || true
+            ;;
         esac
-    done < "$RESULTS_FILE"
+    done <"$RESULTS_FILE"
 else
     echo "WARNING: No results file found"
 fi

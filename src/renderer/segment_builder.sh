@@ -36,6 +36,28 @@ source_guard "renderer_segment_builder" && return 0
 . "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 
 # =============================================================================
+# Tmux Format Escaping
+# =============================================================================
+
+# Escape tmux format strings to prevent injection via plugin data
+# Escapes # to ## so tmux treats it as literal
+_escape_tmux_format() {
+    local text="$1"
+    text="${text//#/##}"
+    printf '%s' "$text"
+}
+
+# Build protocol output with safe escaping
+_build_plugin_output() {
+    local icon="$1" content="$2" state="$3" health="$4" stale="$5"
+    local _delim=$'\x1f'
+    content="${content//$_delim/ }"
+    content="${content//$'\n'/ }"
+    icon="${icon//$_delim/ }"
+    printf '%s%s%s%s%s%s%s%s%s' "$icon" "$_delim" "$content" "$_delim" "$state" "$_delim" "$health" "$_delim" "$stale"
+}
+
+# =============================================================================
 # Icon Padding System
 # =============================================================================
 
@@ -310,6 +332,8 @@ build_icon_segment() {
 render_plugin_segment() {
     local icon="$1"
     local content="$2"
+    icon=$(_escape_tmux_format "$icon")
+    content=$(_escape_tmux_format "$content")
     local state="$3"
     local health="$4"
     local icon_bg="$5"
@@ -418,6 +442,12 @@ _parse_plugin_list() {
     local current_pos=0
     local len=${#plugins_str}
 
+    # Validate color palette before division
+    if [[ ${#color_palette[@]} -eq 0 ]]; then
+        log_error "segment_builder" "Color palette is empty, cannot assign group colors"
+        return 1
+    fi
+
     while [[ $current_pos -lt $len ]]; do
         # Skip whitespace
         while [[ $current_pos -lt $len && "${plugins_str:$current_pos:1}" =~ [[:space:]] ]]; do
@@ -443,6 +473,12 @@ _parse_plugin_list() {
                 [[ "$char" == ")" ]] && ((paren_depth--))
                 [[ $paren_depth -gt 0 ]] && ((current_pos++))
             done
+
+            # Reject unclosed group(
+            if [[ $paren_depth -gt 0 ]]; then
+                log_error "segment_builder" "Unclosed group( in plugin list"
+                return 1
+            fi
 
             # Extract group content (plugins inside group())
             local group_content="${plugins_str:$group_start:$((current_pos - group_start))}"
@@ -472,6 +508,12 @@ _parse_plugin_list() {
                 [[ "$char" == ")" ]] && ((paren_depth--))
                 ((current_pos++))
             done
+
+            # Reject unclosed external(
+            if [[ $paren_depth -gt 0 ]]; then
+                log_error "segment_builder" "Unclosed external( in plugin list"
+                return 1
+            fi
 
             local ext_plugin="${plugins_str:$ext_start:$((current_pos - ext_start))}"
             _PARSED_PLUGINS+=("$ext_plugin")

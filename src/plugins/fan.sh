@@ -47,10 +47,10 @@ plugin_check_dependencies() {
     fi
 
     if is_macos; then
-        require_any_cmd "osx-cpu-temp" "smctemp" "istats" 1  # Optional
+        require_any_cmd "osx-cpu-temp" "smctemp" "istats" 1 # Optional
     else
         # Linux - sysfs is always available, tools are optional
-        require_cmd "sensors" 1  # Optional
+        require_cmd "sensors" 1 # Optional
     fi
     return 0
 }
@@ -92,7 +92,10 @@ plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {
     # Fanless Macs - always inactive
-    is_fanless_mac && { printf 'inactive'; return; }
+    is_fanless_mac && {
+        printf 'inactive'
+        return
+    }
 
     local rpm=$(plugin_data_get "rpm")
     [[ "${rpm:-0}" -gt 0 ]] && printf 'active' || printf 'inactive'
@@ -115,16 +118,16 @@ plugin_get_health() {
     temp_crit="${temp_crit:-85}"
 
     # Fan failure: RPM too low when temperature is elevated
-    if (( rpm > 0 && rpm < rpm_min && temp >= temp_warn )); then
+    if ((rpm > 0 && rpm < rpm_min && temp >= temp_warn)); then
         printf 'error'
         return
     fi
 
     # Temperature-based: fan not keeping up
-    if (( temp >= temp_crit )); then
+    if ((temp >= temp_crit)); then
         printf 'error'
         return
-    elif (( temp >= temp_warn )); then
+    elif ((temp >= temp_warn)); then
         printf 'warning'
         return
     fi
@@ -136,13 +139,13 @@ plugin_get_context() {
     local rpm=$(plugin_data_get "rpm")
     rpm="${rpm:-0}"
 
-    if (( rpm == 0 )); then
+    if ((rpm == 0)); then
         printf 'silent'
-    elif (( rpm < 2000 )); then
+    elif ((rpm < 2000)); then
         printf 'quiet'
-    elif (( rpm < 4000 )); then
+    elif ((rpm < 4000)); then
         printf 'normal'
-    elif (( rpm < 5500 )); then
+    elif ((rpm < 5500)); then
         printf 'loud'
     else
         printf 'max'
@@ -154,7 +157,7 @@ plugin_get_icon() {
     rpm=$(plugin_data_get "rpm")
     warn_th=$(get_option "warning_threshold")
 
-    if (( ${rpm:-0} >= ${warn_th:-4000} )); then
+    if ((${rpm:-0} >= ${warn_th:-4000})); then
         get_option "icon_fast"
     else
         get_option "icon"
@@ -174,7 +177,10 @@ _get_fan_hwmon() {
             [[ -f "$fan_file" ]] || continue
             local rpm
             rpm=$(cat "$fan_file" 2>/dev/null)
-            [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
+            [[ -n "$rpm" && "$rpm" -gt 0 ]] && {
+                printf '%s' "$rpm"
+                return 0
+            }
         done
     done
     return 1
@@ -192,7 +198,7 @@ _get_all_fans_hwmon() {
             rpm=$(cat "$fan_file" 2>/dev/null | tr -d '[:space:]')
             [[ -z "$rpm" || ! "$rpm" =~ ^[0-9]+$ ]] && continue
             # Filter idle fans (0 RPM) when filter_idle is true
-            if [[ "$filter_idle" == "true" ]] && (( rpm == 0 )); then
+            if [[ "$filter_idle" == "true" ]] && ((rpm == 0)); then
                 continue
             fi
             fans+=("$rpm")
@@ -213,7 +219,10 @@ _get_fan_dell() {
             [[ -f "$fan" ]] || continue
             local rpm
             rpm=$(cat "$fan" 2>/dev/null)
-            [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
+            [[ -n "$rpm" && "$rpm" -gt 0 ]] && {
+                printf '%s' "$rpm"
+                return 0
+            }
         done
     done
     return 1
@@ -224,7 +233,10 @@ _get_fan_thinkpad() {
     [[ -f "$fan_file" ]] || return 1
     local rpm
     rpm=$(awk '/^speed:/ {print $2}' "$fan_file" 2>/dev/null)
-    [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
+    [[ -n "$rpm" && "$rpm" -gt 0 ]] && {
+        printf '%s' "$rpm"
+        return 0
+    }
     return 1
 }
 
@@ -239,7 +251,10 @@ _get_fan_macos() {
         output=$(osx-cpu-temp -f 2>/dev/null)
         if [[ "$output" != *"Num fans: 0"* ]]; then
             rpm=$(printf '%s' "$output" | grep -oE '[0-9]+ RPM' | head -1 | grep -oE '[0-9]+')
-            [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
+            [[ -n "$rpm" && "$rpm" -gt 0 ]] && {
+                printf '%s' "$rpm"
+                return 0
+            }
         fi
     fi
 
@@ -247,14 +262,20 @@ _get_fan_macos() {
     if has_cmd smctemp; then
         local rpm
         rpm=$(smctemp -f 2>/dev/null | grep -oE '[0-9]+' | head -1)
-        [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
+        [[ -n "$rpm" && "$rpm" -gt 0 ]] && {
+            printf '%s' "$rpm"
+            return 0
+        }
     fi
 
     # istats fallback
     if has_cmd istats; then
         local rpm
         rpm=$(istats fan speed --value-only 2>/dev/null | head -1)
-        [[ -n "$rpm" && "$rpm" -gt 0 ]] && { printf '%s' "$rpm"; return 0; }
+        [[ -n "$rpm" && "$rpm" -gt 0 ]] && {
+            printf '%s' "$rpm"
+            return 0
+        }
     fi
 
     return 1
@@ -277,7 +298,7 @@ _get_cpu_temp_for_fan() {
             [[ -f "$zone" ]] || continue
             local t
             t=$(cat "$zone" 2>/dev/null)
-            [[ "$t" =~ ^[0-9]+$ ]] && printf '%d' "$(( t / 1000 ))" && return
+            [[ "$t" =~ ^[0-9]+$ ]] && printf '%d' "$((t / 1000))" && return
         done
     fi
     printf '0'
@@ -292,16 +313,16 @@ _get_fan_speed() {
     source=$(get_option "source")
 
     case "$source" in
-        dell)     _get_fan_dell ;;
-        thinkpad) _get_fan_thinkpad ;;
-        hwmon)    _get_fan_hwmon ;;
-        *)
-            if is_macos; then
-                _get_fan_macos
-            else
-                _get_fan_dell || _get_fan_thinkpad || _get_fan_hwmon
-            fi
-            ;;
+    dell) _get_fan_dell ;;
+    thinkpad) _get_fan_thinkpad ;;
+    hwmon) _get_fan_hwmon ;;
+    *)
+        if is_macos; then
+            _get_fan_macos
+        else
+            _get_fan_dell || _get_fan_thinkpad || _get_fan_hwmon
+        fi
+        ;;
     esac
 }
 
@@ -311,17 +332,17 @@ _format_rpm() {
     format=$(get_option "format")
 
     case "$format" in
-        number)  printf '%s' "$rpm" ;;
-        krpm)    awk "BEGIN {printf \"%.1fk\", $rpm / 1000}" ;;
-        icon)
-            icon=$(get_option "icon")
-            printf '%s %s' "$icon" "$rpm"
-            ;;
-        icon_k)
-            icon=$(get_option "icon")
-            awk -v icon="$icon" "BEGIN {printf \"%s %.1fk\", icon, $rpm / 1000}"
-            ;;
-        *)       printf '%s' "$rpm" ;;
+    number) printf '%s' "$rpm" ;;
+    krpm) awk "BEGIN {printf \"%.1fk\", $rpm / 1000}" ;;
+    icon)
+        icon=$(get_option "icon")
+        printf '%s %s' "$icon" "$rpm"
+        ;;
+    icon_k)
+        icon=$(get_option "icon")
+        awk -v icon="$icon" "BEGIN {printf \"%s %.1fk\", icon, $rpm / 1000}"
+        ;;
+    *) printf '%s' "$rpm" ;;
     esac
 }
 
@@ -331,9 +352,9 @@ _get_unit_suffix() {
     format=$(get_option "format")
 
     case "$format" in
-        number|icon)  printf ' RPM' ;;
-        krpm|icon_k)  printf ' RPM' ;;
-        *)            printf ' RPM' ;;
+    number | icon) printf ' RPM' ;;
+    krpm | icon_k) printf ' RPM' ;;
+    *) printf ' RPM' ;;
     esac
 }
 
@@ -372,13 +393,32 @@ plugin_collect() {
     fi
 
     # No active fans - plugin will be inactive
-    (( rpm == 0 )) && return 0
+    ((rpm == 0)) && return 0
 
     plugin_data_set "rpm" "$rpm"
 
     local temp
     temp=$(_get_cpu_temp_for_fan)
     plugin_data_set "cpu_temp" "${temp:-0}"
+
+    # Pre-format RPM values for render
+    local separator
+    separator=$(get_option "separator")
+
+    local all_formatted=""
+    local first=true
+    while IFS= read -r fan_rpm; do
+        [[ -z "$fan_rpm" ]] && continue
+        local formatted=$(_format_rpm "$fan_rpm")
+        if [[ "$first" == "true" ]]; then
+            all_formatted="$formatted"
+            first=false
+        else
+            all_formatted+="$separator$formatted"
+        fi
+    done <<<"$all_rpms"
+
+    plugin_data_set "formatted" "${all_formatted}${all_formatted:+ }$(_get_unit_suffix)"
 }
 
 # =============================================================================
@@ -386,30 +426,10 @@ plugin_collect() {
 # =============================================================================
 
 plugin_render() {
-    local rpm separator
+    local rpm
     rpm=$(plugin_data_get "rpm")
-    separator=$(get_option "separator")
 
     [[ -z "$rpm" || "$rpm" -eq 0 ]] && return 0
 
-    # Show all collected fans (active or all depending on selection)
-    local all_rpms
-    all_rpms=$(plugin_data_get "all_rpms")
-    [[ -z "$all_rpms" ]] && { printf '%s%s' "$(_format_rpm "$rpm")" "$(_get_unit_suffix)"; return; }
-
-    local result_parts=()
-    while IFS= read -r fan_rpm; do
-        [[ -z "$fan_rpm" ]] && continue
-        result_parts+=("$(_format_rpm "$fan_rpm")")
-    done <<< "$all_rpms"
-
-    # Join fan values and append unit suffix once at the end
-    local output=""
-    if [[ ${#result_parts[@]} -gt 1 ]]; then
-        output=$(join_with_separator "$separator" "${result_parts[@]}")
-    elif [[ ${#result_parts[@]} -eq 1 ]]; then
-        output="${result_parts[0]}"
-    fi
-
-    printf '%s%s' "$output" "$(_get_unit_suffix)"
+    printf '%s' "$(plugin_data_get "formatted")"
 }

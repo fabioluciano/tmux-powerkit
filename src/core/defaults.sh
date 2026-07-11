@@ -50,15 +50,15 @@ _DEFAULT_POPUP_SIZE="50%"
 _DEFAULT_TIMEOUT_SHORT="5"
 _DEFAULT_TIMEOUT_MEDIUM="10"
 _DEFAULT_TIMEOUT_LONG="30"
-_DEFAULT_CACHE_TTL_SHORT="60"         # 1 minute
-_DEFAULT_CACHE_TTL_MEDIUM="300"       # 5 minutes
-_DEFAULT_CACHE_TTL_LONG="3600"        # 1 hour
-_DEFAULT_CACHE_TTL_DAY="86400"        # 24 hours
+_DEFAULT_CACHE_TTL_SHORT="60"   # 1 minute
+_DEFAULT_CACHE_TTL_MEDIUM="300" # 5 minutes
+_DEFAULT_CACHE_TTL_LONG="3600"  # 1 hour
+_DEFAULT_CACHE_TTL_DAY="86400"  # 24 hours
 
 # Toast/Display timeouts (in milliseconds)
-_DEFAULT_TOAST_SHORT="3000"           # 3 seconds
-_DEFAULT_TOAST_MEDIUM="5000"          # 5 seconds
-_DEFAULT_TOAST_LONG="10000"           # 10 seconds
+_DEFAULT_TOAST_SHORT="3000"  # 3 seconds
+_DEFAULT_TOAST_MEDIUM="5000" # 5 seconds
+_DEFAULT_TOAST_LONG="10000"  # 10 seconds
 
 # =============================================================================
 # THEME CONFIGURATION
@@ -330,10 +330,10 @@ POWERKIT_FIGURE_SPACE=$'\U00002007'
 POWERKIT_DEFAULT_SESSION_ICON="auto"
 
 # @powerkit_session_prefix_icon - Icon when prefix key is pressed
-POWERKIT_DEFAULT_SESSION_PREFIX_ICON=$'\U0000f11c'    # nf-fa-keyboard
+POWERKIT_DEFAULT_SESSION_PREFIX_ICON=$'\U0000f11c' # nf-fa-keyboard
 
 # @powerkit_session_copy_icon - Icon in copy mode
-POWERKIT_DEFAULT_SESSION_COPY_ICON=$'\U0000f0c5'      # nf-fa-copy
+POWERKIT_DEFAULT_SESSION_COPY_ICON=$'\U0000f0c5' # nf-fa-copy
 
 # Session segment colors (semantic names from theme)
 # @powerkit_session_prefix_color - Background when prefix is pressed
@@ -351,23 +351,23 @@ POWERKIT_DEFAULT_SESSION_SHOW_MODE="false"
 # WINDOW CONFIGURATION
 # =============================================================================
 # @powerkit_active_window_icon - Icon for active window
-POWERKIT_DEFAULT_ACTIVE_WINDOW_ICON=$'\U0000e795'     # nf-dev-terminal
+POWERKIT_DEFAULT_ACTIVE_WINDOW_ICON=$'\U0000e795' # nf-dev-terminal
 
 # @powerkit_inactive_window_icon - Icon for inactive windows
-POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON=$'\U0000f489'   # nf-oct-terminal
+POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON=$'\U0000f489' # nf-oct-terminal
 
 # @powerkit_zoomed_window_icon - Icon indicator for zoomed pane
-POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON=$'\U0000f531'     # nf-mdi-fullscreen
+POWERKIT_DEFAULT_ZOOMED_WINDOW_ICON=$'\U0000f531' # nf-mdi-fullscreen
 
 # @powerkit_window_activity_icon - Icon for windows with activity
 # Shown when monitor-activity is on and activity is detected
-POWERKIT_DEFAULT_WINDOW_ACTIVITY_ICON=$'\U000f006e'   # nf-md-bell_ring
+POWERKIT_DEFAULT_WINDOW_ACTIVITY_ICON=$'\U000f116b' # nf-md-bell_badge
 
 # @powerkit_window_bell_icon - Icon for windows with bell alert
-POWERKIT_DEFAULT_WINDOW_BELL_ICON=$'\U000f009a'       # nf-md-bell_alert
+POWERKIT_DEFAULT_WINDOW_BELL_ICON=$'\U000f009a' # nf-md-bell_alert
 
 # @powerkit_window_marked_icon - Icon for marked windows (M flag)
-POWERKIT_DEFAULT_WINDOW_MARKED_ICON=$'\U000f0306'     # nf-md-bookmark
+POWERKIT_DEFAULT_WINDOW_MARKED_ICON=$'\U000f0306' # nf-md-bookmark
 
 # @powerkit_pane_synchronized_icon - Icon for synchronized panes
 POWERKIT_DEFAULT_PANE_SYNCHRONIZED_ICON=$'\U00002735'
@@ -584,14 +584,14 @@ POWERKIT_DEFAULT_KEYBINDING_CONFLICT_ACTION="warn"
 #   -dark, -darker, -darkest (toward black)
 
 # Light variants (percentage toward white)
-POWERKIT_COLOR_LIGHT_PERCENT=10       # -light: subtle lightening
-POWERKIT_COLOR_LIGHTER_PERCENT=20     # -lighter: medium lightening
-POWERKIT_COLOR_LIGHTEST_PERCENT=80    # -lightest: strong lightening
+POWERKIT_COLOR_LIGHT_PERCENT=10    # -light: subtle lightening
+POWERKIT_COLOR_LIGHTER_PERCENT=20  # -lighter: medium lightening
+POWERKIT_COLOR_LIGHTEST_PERCENT=80 # -lightest: strong lightening
 
 # Dark variants (percentage toward black)
-POWERKIT_COLOR_DARK_PERCENT=10        # -dark: subtle darkening
-POWERKIT_COLOR_DARKER_PERCENT=20      # -darker: medium darkening
-POWERKIT_COLOR_DARKEST_PERCENT=55     # -darkest: strong darkening
+POWERKIT_COLOR_DARK_PERCENT=10    # -dark: subtle darkening
+POWERKIT_COLOR_DARKER_PERCENT=20  # -darker: medium darkening
+POWERKIT_COLOR_DARKEST_PERCENT=55 # -darkest: strong darkening
 
 # Theme colors that should have variants generated
 # Pattern: base-color -> base-color-{light,lighter,lightest,dark,darker,darkest}

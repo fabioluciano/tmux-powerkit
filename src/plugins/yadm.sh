@@ -35,8 +35,8 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Icons
-    declare_option "icon" "icon" $'\U000F0493' "Plugin icon (cog-outline)"
-    declare_option "icon_modified" "icon" $'\U000F0493' "Icon for modified state"
+    declare_option "icon" "icon" $'\U000F02A2' "Plugin icon (git)"
+    declare_option "icon_modified" "icon" $'\U000F02A2' "Icon for modified state"
 
     # Display
     declare_option "show_branch" "bool" "false" "Show branch name instead of yadm label"
@@ -66,9 +66,15 @@ plugin_get_health() {
     local modified=$(plugin_data_get "modified")
 
     # Commits not pushed -> warning (needs attention)
-    [[ "$ahead" -gt 0 ]] && { printf 'warning'; return; }
+    [[ "$ahead" -gt 0 ]] && {
+        printf 'warning'
+        return
+    }
     # Local modifications -> info (informational)
-    [[ "$modified" == "1" ]] && { printf 'info'; return; }
+    [[ "$modified" == "1" ]] && {
+        printf 'info'
+        return
+    }
     # Clean state
     printf 'ok'
 }
@@ -77,8 +83,14 @@ plugin_get_context() {
     local ahead=$(plugin_data_get "ahead")
     local modified=$(plugin_data_get "modified")
 
-    [[ "$ahead" -gt 0 ]] && { printf 'unpushed'; return; }
-    [[ "$modified" == "1" ]] && { printf 'modified'; return; }
+    [[ "$ahead" -gt 0 ]] && {
+        printf 'unpushed'
+        return
+    }
+    [[ "$modified" == "1" ]] && {
+        printf 'modified'
+        return
+    }
     printf 'clean'
 }
 
@@ -126,7 +138,7 @@ plugin_collect() {
             fi
             modified=1
         fi
-    done <<< "$status_output"
+    done <<<"$status_output"
 
     # If no ahead count from status, check for unpushed commits manually
     if [[ "$ahead" -eq 0 && -n "$branch" ]]; then

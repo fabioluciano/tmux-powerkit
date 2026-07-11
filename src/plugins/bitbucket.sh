@@ -70,7 +70,7 @@ _is_authenticated() {
     email=$(get_option "email")
     token=$(get_option "token")
     url=$(get_option "url")
-    
+
     if [[ "$bb_type" == "datacenter" ]]; then
         # Datacenter requires url and token
         [[ -n "$url" && -n "$token" ]] && return 0
@@ -78,7 +78,7 @@ _is_authenticated() {
         # Cloud requires email and token
         [[ -n "$email" && -n "$token" ]] && return 0
     fi
-    
+
     return 1
 }
 
@@ -97,11 +97,11 @@ plugin_get_state() {
         printf 'failed'
         return
     fi
-    
+
     local issues prs
     issues=$(plugin_data_get "issues")
     prs=$(plugin_data_get "prs")
-    
+
     [[ "${issues:-0}" -gt 0 || "${prs:-0}" -gt 0 ]] && printf 'active' || printf 'inactive'
 }
 
@@ -110,13 +110,13 @@ plugin_get_health() {
         printf 'error'
         return
     fi
-    
+
     local issues prs warning_threshold_issues warning_threshold_prs
     issues=$(plugin_data_get "issues")
     prs=$(plugin_data_get "prs")
     warning_threshold_issues=$(get_option "warning_threshold_issues")
     warning_threshold_prs=$(get_option "warning_threshold_prs")
-    
+
     if [[ "${issues:-0}" -ge "$warning_threshold_issues" || "${prs:-0}" -ge "$warning_threshold_prs" ]]; then
         printf 'warning'
     else
@@ -129,18 +129,18 @@ plugin_get_context() {
         printf 'unconfigured'
         return
     fi
-    
+
     local issues prs
     issues=$(plugin_data_get "issues")
     prs=$(plugin_data_get "prs")
     issues="${issues:-0}"
     prs="${prs:-0}"
-    
-    if (( issues == 0 && prs == 0 )); then
+
+    if ((issues == 0 && prs == 0)); then
         printf 'clear'
-    elif (( prs > issues )); then
+    elif ((prs > issues)); then
         printf 'pr_heavy'
-    elif (( issues > prs )); then
+    elif ((issues > prs)); then
         printf 'issue_heavy'
     else
         printf 'balanced'
@@ -154,6 +154,18 @@ plugin_get_icon() { get_option "icon"; }
 # =============================================================================
 
 BITBUCKET_CLOUD_API="https://api.bitbucket.org/2.0"
+
+# =============================================================================
+# URL Encoding
+# =============================================================================
+
+_urlencode() {
+    local s="$1"
+    s="${s//%/\%25}"
+    s="${s// /%20}"
+    s="${s//#/%23}"
+    printf '%s' "$s"
+}
 
 # =============================================================================
 # API Functions
@@ -226,13 +238,13 @@ _count_prs() {
 
 plugin_collect() {
     _is_configured || return 0
-    
+
     local repos_csv show_issues show_prs
     repos_csv=$(get_option "repos")
     show_issues=$(get_option "show_issues")
     show_prs=$(get_option "show_prs")
 
-    IFS=',' read -ra repos <<< "$repos_csv"
+    IFS=',' read -ra repos <<<"$repos_csv"
 
     local total_issues=0 total_prs=0
 
@@ -240,17 +252,19 @@ plugin_collect() {
         repo_spec=$(trim "$repo_spec")
         [[ -z "$repo_spec" || "$repo_spec" != *"/"* ]] && continue
 
-        local workspace="${repo_spec%%/*}"
-        local repo_slug="${repo_spec#*/}"
+        local workspace="$(_urlencode "${repo_spec%%/*}")"
+        local repo_slug="$(_urlencode "${repo_spec#*/}")"
 
         if [[ "$show_issues" == "on" || "$show_issues" == "true" ]]; then
-            local issues=$(_count_issues "$workspace" "$repo_slug")
-            total_issues=$((total_issues + ${issues:-0}))
+            local issues=0
+            issues=$(_count_issues "$workspace" "$repo_slug") || issues=0
+            total_issues=$((total_issues + issues))
         fi
 
         if [[ "$show_prs" == "on" || "$show_prs" == "true" ]]; then
-            local prs=$(_count_prs "$workspace" "$repo_slug")
-            total_prs=$((total_prs + ${prs:-0}))
+            local prs=0
+            prs=$(_count_prs "$workspace" "$repo_slug") || prs=0
+            total_prs=$((total_prs + prs))
         fi
     done
 
@@ -263,12 +277,12 @@ plugin_render() {
         printf 'unauthenticated'
         return 0
     fi
-    
+
     if ! _has_repos_configured; then
         printf 'no repos'
         return 0
     fi
-    
+
     local issues prs show_issues show_prs separator icon_issue icon_pr
     issues=$(plugin_data_get "issues")
     prs=$(plugin_data_get "prs")
@@ -281,15 +295,14 @@ plugin_render() {
     [[ "${issues:-0}" -eq 0 && "${prs:-0}" -eq 0 ]] && return 0
 
     local parts=()
-    
+
     if [[ "$show_issues" == "on" || "$show_issues" == "true" ]] && [[ "${issues:-0}" -gt 0 ]]; then
         parts+=("${icon_issue} ${issues}")
     fi
-    
+
     if [[ "$show_prs" == "on" || "$show_prs" == "true" ]] && [[ "${prs:-0}" -gt 0 ]]; then
         parts+=("${icon_pr} ${prs}")
     fi
 
     [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
-

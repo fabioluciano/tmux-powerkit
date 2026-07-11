@@ -48,25 +48,25 @@ make_api_call() {
     local auth_args=()
     if [[ -n "$token" ]]; then
         case "$auth_type" in
-            bearer)
-                # Standard OAuth Bearer token (Bitbucket, etc.)
-                auth_args=(-H "Authorization: Bearer $token")
-                ;;
-            github)
-                # GitHub uses "token" instead of "Bearer"
-                auth_args=(-H "Authorization: token $token")
-                ;;
-            private-token)
-                # GitLab style
-                auth_args=(-H "PRIVATE-TOKEN: $token")
-                ;;
-            basic)
-                # Basic auth (user:password or user:token)
-                auth_args=(-u "$token")
-                ;;
-            *)
-                # No auth or unknown type
-                ;;
+        bearer)
+            # Standard OAuth Bearer token (Bitbucket, etc.)
+            auth_args=(-H "Authorization: Bearer $token")
+            ;;
+        github)
+            # GitHub uses "token" instead of "Bearer"
+            auth_args=(-H "Authorization: token $token")
+            ;;
+        private-token)
+            # GitLab style
+            auth_args=(-H "PRIVATE-TOKEN: $token")
+            ;;
+        basic)
+            # Basic auth (user:password or user:token)
+            auth_args=(-u "$token")
+            ;;
+        *)
+            # No auth or unknown type
+            ;;
         esac
     fi
 
@@ -103,6 +103,9 @@ is_host_reachable() {
     if has_cmd nc; then
         nc -z -w "$timeout" "$host" "$port" 2>/dev/null
     elif has_cmd timeout; then
+        # Validate host and port before TCP fallback
+        [[ "$port" =~ ^[0-9]+$ ]] && ((port >= 1 && port <= 65535)) || return 1
+        [[ "$host" =~ ^[a-zA-Z0-9._:-]+$ ]] || return 1
         timeout "$timeout" bash -c "echo >/dev/tcp/$host/$port" 2>/dev/null
     else
         # Fallback: use safe_curl
@@ -120,13 +123,13 @@ is_host_reachable() {
 json_get_value() {
     local json="$1"
     local key="$2"
-    
+
     # Try jq first if available
     if has_cmd "jq"; then
         printf '%s' "$json" | jq -r ".$key // empty" 2>/dev/null
         return
     fi
-    
+
     # Fallback: simple grep/sed extraction (works for simple flat JSON)
     printf '%s' "$json" | grep -o "\"$key\":[^,}]*" | head -1 | sed 's/.*://' | tr -d '"[:space:]'
 }
@@ -136,12 +139,12 @@ json_get_value() {
 # Returns: size number or 0
 json_get_size() {
     local json="$1"
-    
+
     if has_cmd "jq"; then
         printf '%s' "$json" | jq -r '.size // 0' 2>/dev/null
         return
     fi
-    
+
     # Fallback
     printf '%s' "$json" | grep -o '"size":[0-9]*' | head -1 | grep -o '[0-9]*' || printf '0'
 }

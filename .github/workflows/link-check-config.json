@@ -10,6 +10,9 @@
       "pattern": "../../wiki/"
     },
     {
+      "pattern": "stargazers"
+    },
+    {
       "pattern": "wiki/"
     }
   ],

@@ -10,10 +10,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if ! command -v bats >/dev/null 2>&1; then
-    echo "WARNING: bats (bats-core) is not installed." >&2
-    echo "         Install it via 'brew install bats-core' or your package manager." >&2
-    echo "         BATS-based tests will be SKIPPED (suite still passes)." >&2
-    exit 0
+    echo "ERROR: bats (bats-core) is not installed." >&2
+    echo "       Install it via 'brew install bats-core' or your package manager." >&2
+    exit 1
 fi
 
 # Ensure submodule-based test helpers are available.

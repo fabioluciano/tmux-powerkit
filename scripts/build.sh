@@ -20,15 +20,15 @@ DIST_DIR="${ROOT_DIR}/dist"
 
 # Directories scanned by shfmt (themes excluded - pure data declarations)
 SHFMT_DIRS=(
-  "${ROOT_DIR}/src/core"
-  "${ROOT_DIR}/src/utils"
-  "${ROOT_DIR}/src/contract"
-  "${ROOT_DIR}/src/renderer"
-  "${ROOT_DIR}/src/plugins"
-  "${ROOT_DIR}/src/helpers"
-  "${ROOT_DIR}/bin"
-  "${ROOT_DIR}/scripts"
-  "${ROOT_DIR}/tests"
+    "${ROOT_DIR}/src/core"
+    "${ROOT_DIR}/src/utils"
+    "${ROOT_DIR}/src/contract"
+    "${ROOT_DIR}/src/renderer"
+    "${ROOT_DIR}/src/plugins"
+    "${ROOT_DIR}/src/helpers"
+    "${ROOT_DIR}/bin"
+    "${ROOT_DIR}/scripts"
+    "${ROOT_DIR}/tests"
 )
 
 # =============================================================================
@@ -36,7 +36,7 @@ SHFMT_DIRS=(
 # =============================================================================
 
 usage() {
-  cat << EOF
+    cat <<EOF
 Usage: scripts/build.sh [options] [<suffix>]
 
 Options:
@@ -55,34 +55,34 @@ EOF
 }
 
 run_shfmt() {
-  local mode="${1:-check}"
+    local mode="${1:-check}"
 
-  if ! command -v shfmt > /dev/null 2>&1; then
-    echo "❌ Error: shfmt not found" >&2
-    echo "Install with one of:" >&2
-    echo "  brew install shfmt" >&2
-    echo "  mise install shfmt" >&2
-    echo "  go install mvdan.cc/sh/v3/cmd/shfmt@latest" >&2
-    return 1
-  fi
-
-  case "$mode" in
-    fix)
-      echo "=== Running shfmt (fix mode) ==="
-      shfmt -w -i 2 -ci -sr -bn "${SHFMT_DIRS[@]}"
-      echo "✓ shfmt formatting applied"
-      ;;
-    check | *)
-      echo "=== Running shfmt (check mode) ==="
-      if shfmt -d -i 2 -ci -sr -bn "${SHFMT_DIRS[@]}"; then
-        echo "✓ All files are properly formatted"
-      else
-        echo "" >&2
-        echo "❌ Some files need formatting. Run with --fix to apply." >&2
+    if ! command -v shfmt >/dev/null 2>&1; then
+        echo "❌ Error: shfmt not found" >&2
+        echo "Install with one of:" >&2
+        echo "  brew install shfmt" >&2
+        echo "  mise install shfmt" >&2
+        echo "  go install mvdan.cc/sh/v3/cmd/shfmt@latest" >&2
         return 1
-      fi
-      ;;
-  esac
+    fi
+
+    case "$mode" in
+    fix)
+        echo "=== Running shfmt (fix mode) ==="
+        shfmt -w -i 2 -ci -sr -bn "${SHFMT_DIRS[@]}"
+        echo "✓ shfmt formatting applied"
+        ;;
+    check | *)
+        echo "=== Running shfmt (check mode) ==="
+        if shfmt -d -i 2 -ci -sr -bn "${SHFMT_DIRS[@]}"; then
+            echo "✓ All files are properly formatted"
+        else
+            echo "" >&2
+            echo "❌ Some files need formatting. Run with --fix to apply." >&2
+            return 1
+        fi
+        ;;
+    esac
 }
 
 # =============================================================================
@@ -93,44 +93,44 @@ ACTION=""
 SUFFIX=""
 
 while [[ $# -gt 0 ]]; do
-  case "$1" in
+    case "$1" in
     --check)
-      ACTION="check"
-      shift
-      ;;
+        ACTION="check"
+        shift
+        ;;
     --fix)
-      ACTION="fix"
-      shift
-      ;;
+        ACTION="fix"
+        shift
+        ;;
     -h | --help)
-      usage
-      exit 0
-      ;;
+        usage
+        exit 0
+        ;;
     -*)
-      echo "❌ Error: unknown option: $1" >&2
-      usage >&2
-      exit 1
-      ;;
+        echo "❌ Error: unknown option: $1" >&2
+        usage >&2
+        exit 1
+        ;;
     *)
-      SUFFIX="$1"
-      shift
-      ;;
-  esac
+        SUFFIX="$1"
+        shift
+        ;;
+    esac
 done
 
 # Dispatch to shfmt action if requested
 if [[ -n "$ACTION" ]]; then
-  if ! run_shfmt "$ACTION"; then
-    exit 1
-  fi
-  exit 0
+    if ! run_shfmt "$ACTION"; then
+        exit 1
+    fi
+    exit 0
 fi
 
 # Validate suffix for build action
 if [[ -z "$SUFFIX" ]]; then
-  echo "❌ Error: SUFFIX argument required for build" >&2
-  usage >&2
-  exit 1
+    echo "❌ Error: SUFFIX argument required for build" >&2
+    usage >&2
+    exit 1
 fi
 
 # =============================================================================
@@ -138,7 +138,7 @@ fi
 # =============================================================================
 
 VERSION=${NEXT_RELEASE_VERSION:-"dev"}
-COMMIT_SHA=$(git rev-parse --short HEAD 2> /dev/null || echo "unknown")
+COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 NATIVE_ARCH=$(uname -m)
 
@@ -155,31 +155,31 @@ echo "========================================="
 
 # Validate we're on macOS
 if [[ "$OSTYPE" != "darwin"* ]]; then
-  echo "❌ Error: This build script requires macOS"
-  exit 1
+    echo "❌ Error: This build script requires macOS"
+    exit 1
 fi
 
 # Validate clang is available
-if ! command -v clang &> /dev/null; then
-  echo "❌ Error: clang compiler not found"
-  exit 1
+if ! command -v clang &>/dev/null; then
+    echo "❌ Error: clang compiler not found"
+    exit 1
 fi
 
 # Validate source directory exists
 if [[ ! -d "$SRC_DIR" ]]; then
-  echo "❌ Error: Source directory not found: $SRC_DIR"
-  exit 1
+    echo "❌ Error: Source directory not found: $SRC_DIR"
+    exit 1
 fi
 
 # Determine target architecture
 TARGET_ARCH=""
 if [[ "$SUFFIX" == *"arm64"* ]]; then
-  TARGET_ARCH="arm64"
+    TARGET_ARCH="arm64"
 elif [[ "$SUFFIX" == *"amd64"* ]] || [[ "$SUFFIX" == *"x86_64"* ]]; then
-  TARGET_ARCH="x86_64"
+    TARGET_ARCH="x86_64"
 else
-  echo "❌ Error: Cannot determine target architecture from suffix: $SUFFIX"
-  exit 1
+    echo "❌ Error: Cannot determine target architecture from suffix: $SUFFIX"
+    exit 1
 fi
 
 echo "Target architecture: $TARGET_ARCH"
@@ -204,33 +204,33 @@ echo "=== Verifying builds ==="
 VERIFICATION_FAILED=0
 
 for binary in powerkit-*; do
-  # Skip source files
-  [[ "$binary" == *.m ]] && continue
+    # Skip source files
+    [[ "$binary" == *.m ]] && continue
 
-  if [ ! -f "$binary" ]; then
-    echo "❌ Binary not found: $binary"
-    VERIFICATION_FAILED=1
-    continue
-  fi
+    if [ ! -f "$binary" ]; then
+        echo "❌ Binary not found: $binary"
+        VERIFICATION_FAILED=1
+        continue
+    fi
 
-  echo ""
-  echo "File: $binary"
-  ls -lh "$binary"
+    echo ""
+    echo "File: $binary"
+    ls -lh "$binary"
 
-  # Verify architecture
-  if lipo -info "$binary" 2> /dev/null | grep -q "$TARGET_ARCH"; then
-    echo "✓ Architecture verified: $TARGET_ARCH"
-  else
-    echo "❌ Wrong architecture in: $binary"
-    lipo -info "$binary" 2> /dev/null
-    VERIFICATION_FAILED=1
-  fi
+    # Verify architecture
+    if lipo -info "$binary" 2>/dev/null | grep -q "$TARGET_ARCH"; then
+        echo "✓ Architecture verified: $TARGET_ARCH"
+    else
+        echo "❌ Wrong architecture in: $binary"
+        lipo -info "$binary" 2>/dev/null
+        VERIFICATION_FAILED=1
+    fi
 done
 
 if [ $VERIFICATION_FAILED -eq 1 ]; then
-  echo ""
-  echo "❌ Build verification failed"
-  exit 1
+    echo ""
+    echo "❌ Build verification failed"
+    exit 1
 fi
 
 # Create dist directory
@@ -240,26 +240,34 @@ mkdir -p "$DIST_DIR"
 echo ""
 echo "=== Copying binaries to dist ==="
 for binary in powerkit-*; do
-  # Skip source files
-  [[ "$binary" == *.m ]] && continue
-  [[ ! -x "$binary" ]] && continue
+    # Skip source files
+    [[ "$binary" == *.m ]] && continue
+    [[ ! -x "$binary" ]] && continue
 
-  TARGET_NAME="${binary}-${SUFFIX}"
-  cp "$binary" "${DIST_DIR}/${TARGET_NAME}"
-  chmod +x "${DIST_DIR}/${TARGET_NAME}"
-  echo "✓ Copied: ${binary} -> dist/${TARGET_NAME}"
+    TARGET_NAME="${binary}-${SUFFIX}"
+    cp "$binary" "${DIST_DIR}/${TARGET_NAME}"
+    chmod +x "${DIST_DIR}/${TARGET_NAME}"
+    echo "✓ Copied: ${binary} -> dist/${TARGET_NAME}"
 done
 
 # Generate checksums
 cd "$DIST_DIR"
 echo ""
 echo "=== Generating checksums ==="
-shasum -a 256 *-${SUFFIX} > "SHA256SUMS-${SUFFIX}.txt"
+shasum -a 256 ./*-${SUFFIX} >"SHA256SUMS-${SUFFIX}.txt"
+
+# Also generate per-binary .sha256 sidecars for the downloader
+for file in ./*-${SUFFIX}; do
+    [[ ! -f "$file" ]] && continue
+    [[ "$file" == *.txt ]] && continue
+    shasum -a 256 "$file" | awk '{print $1}' >"${file}.sha256"
+    echo "✓ Checksum: ${file}.sha256"
+done
 
 # Create build info file
 echo ""
 echo "=== Creating build info ==="
-cat > "BUILD-INFO-${SUFFIX}.txt" << EOF
+cat >"BUILD-INFO-${SUFFIX}.txt" <<EOF
 tmux-powerkit Build Information
 ================================
 
@@ -270,15 +278,15 @@ Target Arch:      ${TARGET_ARCH}
 Native Arch:      ${NATIVE_ARCH}
 Build Date:       ${BUILD_DATE}
 Builder:          GitHub Actions
-macOS Version:    $(sw_vers -productVersion 2> /dev/null || echo "N/A")
-Xcode Version:    $(xcodebuild -version 2> /dev/null | head -n 1 | cut -d' ' -f2 || echo "N/A")
-Clang Version:    $(clang --version 2> /dev/null | head -n 1 | sed 's/.*version //' | cut -d' ' -f1 || echo "N/A")
+macOS Version:    $(sw_vers -productVersion 2>/dev/null || echo "N/A")
+Xcode Version:    $(xcodebuild -version 2>/dev/null | head -n 1 | cut -d' ' -f2 || echo "N/A")
+Clang Version:    $(clang --version 2>/dev/null | head -n 1 | sed 's/.*version //' | cut -d' ' -f1 || echo "N/A")
 
 Binaries Included:
 $(for file in *-"${SUFFIX}"; do
-  [[ -f "$file" && "$file" != *.txt ]] || continue
-  size=$(du -h "$file" | cut -f1)
-  echo "  - $file ($size)"
+    [[ -f "$file" && "$file" != *.txt ]] || continue
+    size=$(du -h "$file" | cut -f1)
+    echo "  - $file ($size)"
 done)
 
 SHA256 Checksums:

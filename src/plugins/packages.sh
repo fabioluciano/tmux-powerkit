@@ -74,9 +74,9 @@ plugin_get_health() {
     warn_th="${warn_th:-10}"
     crit_th="${crit_th:-50}"
 
-    if (( count >= crit_th )); then
+    if ((count >= crit_th)); then
         printf 'error'
-    elif (( count >= warn_th )); then
+    elif ((count >= warn_th)); then
         printf 'warning'
     else
         printf 'info'
@@ -87,11 +87,11 @@ plugin_get_context() {
     local count=$(plugin_data_get "update_count")
     count="${count:-0}"
 
-    if (( count == 0 )); then
+    if ((count == 0)); then
         printf 'up_to_date'
-    elif (( count <= 5 )); then
+    elif ((count <= 5)); then
         printf 'few_updates'
-    elif (( count <= 20 )); then
+    elif ((count <= 20)); then
         printf 'some_updates'
     else
         printf 'many_updates'
@@ -151,7 +151,7 @@ _invalidate_if_upgraded() {
 
     # If log/dir was modified more recently than packages cache, invalidate it
     # This means brew install/upgrade/uninstall was run after last check
-    if (( log_age < pkg_cache_age )); then
+    if ((log_age < pkg_cache_age)); then
         cache_clear "$_PACKAGES_CACHE_KEY"
         # Also clear render cache to force immediate refresh
         cache_clear "plugin_packages_data"
@@ -171,19 +171,22 @@ _PACKAGES_CACHE_KEY="packages_updates"
 _DETECTED_BACKEND=""
 
 _detect_backend() {
-    [[ -n "$_DETECTED_BACKEND" ]] && { printf '%s' "$_DETECTED_BACKEND"; return; }
+    [[ -n "$_DETECTED_BACKEND" ]] && {
+        printf '%s' "$_DETECTED_BACKEND"
+        return
+    }
 
     local backend
     backend=$(get_option "backend")
 
     case "$backend" in
-        brew|yay|apt|dnf|yum|pacman)
-            if has_cmd "$backend"; then
-                _DETECTED_BACKEND="$backend"
-                printf '%s' "$backend"
-                return
-            fi
-            ;;
+    brew | yay | apt | dnf | yum | pacman)
+        if has_cmd "$backend"; then
+            _DETECTED_BACKEND="$backend"
+            printf '%s' "$backend"
+            return
+        fi
+        ;;
     esac
 
     # Auto-detect in priority order
@@ -202,10 +205,31 @@ _detect_backend() {
 # Package Manager Implementations
 # =============================================================================
 
+# Timeout wrapper for package manager calls (prevents hanging)
+_timeout_pkg() {
+    local timeout=30
+    if has_cmd "timeout"; then
+        timeout "$timeout" "$@"
+    elif has_cmd "gtimeout"; then
+        gtimeout "$timeout" "$@"
+    else
+        "$@" # no timeout available
+    fi
+}
+
 _count_updates_brew() {
     local brew_opts outdated count
     brew_opts=$(get_option "brew_options")
-    outdated=$(command brew outdated $brew_opts 2>/dev/null || echo '')
+
+    local brew_args=("outdated")
+    if [[ -n "$brew_opts" ]]; then
+        IFS=',' read -ra opts <<<"$brew_opts"
+        for opt in "${opts[@]}"; do
+            brew_args+=("$(trim "$opt")")
+        done
+    fi
+
+    outdated=$(_timeout_pkg command brew "${brew_args[@]}" 2>/dev/null || echo '')
     if [[ -z "$outdated" ]]; then
         count=0
     else
@@ -216,7 +240,7 @@ _count_updates_brew() {
 
 _count_updates_yay() {
     local outdated count
-    outdated=$(command yay -Qu 2>/dev/null || echo "")
+    outdated=$(_timeout_pkg command yay -Qu 2>/dev/null || echo "")
     if [[ -z "$outdated" ]]; then
         count=0
     else
@@ -227,26 +251,26 @@ _count_updates_yay() {
 
 _count_updates_apt() {
     local count
-    count=$(command apt list --upgradable 2>/dev/null | grep -c upgradable || echo 0)
+    count=$(_timeout_pkg command apt list --upgradable 2>/dev/null | grep -c '/.*upgradable' || echo 0)
     printf '%s' "$count"
 }
 
 _count_updates_dnf() {
     local count
-    count=$(command dnf check-update -q 2>/dev/null | grep -c . || echo 0)
+    count=$(_timeout_pkg command dnf check-update -q 2>/dev/null | grep -c . || echo 0)
     # dnf adds header lines, subtract them
-    (( count > 3 )) && count=$((count - 3)) || count=0
+    ((count > 3)) && count=$((count - 3)) || count=0
     printf '%s' "$count"
 }
 
 _count_updates_yum() {
     local count
-    count=$(command yum check-update -q 2>/dev/null | grep -c '^[^[:space:]]' || echo 0)
+    count=$(_timeout_pkg command yum check-update -q 2>/dev/null | grep -c '^[^[:space:]]' || echo 0)
     printf '%s' "$count"
 }
 
 _count_updates_pacman() {
-    command pacman -Qu 2>/dev/null | wc -l | tr -d ' '
+    _timeout_pkg command pacman -Qu 2>/dev/null | wc -l | tr -d ' '
 }
 
 # =============================================================================
@@ -277,13 +301,13 @@ plugin_collect() {
 
     # No cache - get fresh count (expensive operation)
     case "$backend" in
-        brew)   count=$(_count_updates_brew) ;;
-        yay)    count=$(_count_updates_yay) ;;
-        apt)    count=$(_count_updates_apt) ;;
-        dnf)    count=$(_count_updates_dnf) ;;
-        yum)    count=$(_count_updates_yum) ;;
-        pacman) count=$(_count_updates_pacman) ;;
-        *)      count=0 ;;
+    brew) count=$(_count_updates_brew) ;;
+    yay) count=$(_count_updates_yay) ;;
+    apt) count=$(_count_updates_apt) ;;
+    dnf) count=$(_count_updates_dnf) ;;
+    yum) count=$(_count_updates_yum) ;;
+    pacman) count=$(_count_updates_pacman) ;;
+    *) count=0 ;;
     esac
 
     count="${count:-0}"
@@ -313,4 +337,3 @@ plugin_render() {
         printf 'Updates available'
     fi
 }
-

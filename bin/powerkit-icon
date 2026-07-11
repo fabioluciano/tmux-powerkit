@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# PowerKit Icon Executor
+# Usage: powerkit-icon <plugin_name>
+# Called by tmux via #()
+
+set -uo pipefail
+
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export POWERKIT_ROOT
+
+. "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+
+name="${1:-}"
+[[ -z "$name" ]] && exit 1
+
+plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
+[[ ! -f "$plugin_file" ]] && exit 1
+
+. "$plugin_file"
+
+if declare -F plugin_check_dependencies &>/dev/null; then
+    plugin_check_dependencies || exit 1
+fi
+
+declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+
+_set_plugin_context "$name"
+
+plugin_data_clear
+plugin_collect || exit 1
+
+_get_plugin_icon

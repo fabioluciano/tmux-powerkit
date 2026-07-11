@@ -44,7 +44,7 @@ helper_get_actions() {
 
 _CACHE_BASE_DIR="$(dirname "$(get_cache_dir)")"
 ITEMS_CACHE="${_CACHE_BASE_DIR}/bitwarden_items.cache"
-ITEMS_CACHE_TTL=600  # 10 minutes
+ITEMS_CACHE_TTL=600 # 10 minutes
 
 # ANSI colors from defaults.sh
 _BW_YELLOW="${POWERKIT_ANSI_YELLOW}"
@@ -57,15 +57,19 @@ _BW_RESET="${POWERKIT_ANSI_RESET}"
 # Build cache in background (called after successful selection or manually)
 build_cache_bw() {
     load_bw_session
+    umask 077
     # Only login items (type 1), tab-separated: name, username, id
-    bw list items 2>/dev/null | \
+    bw list items 2>/dev/null |
         jq -r '.[] | select(.type == 1) | [.name, (.login.username // ""), .id] | @tsv' \
-        > "$ITEMS_CACHE.tmp" 2>/dev/null && \
+            >"$ITEMS_CACHE.tmp" 2>/dev/null &&
         mv "$ITEMS_CACHE.tmp" "$ITEMS_CACHE"
+    chmod 600 "$ITEMS_CACHE" 2>/dev/null || true
 }
 
 build_cache_rbw() {
-    rbw list --fields name,user,id 2>/dev/null > "$ITEMS_CACHE"
+    umask 077
+    rbw list --fields name,user,id 2>/dev/null >"$ITEMS_CACHE"
+    chmod 600 "$ITEMS_CACHE" 2>/dev/null || true
 }
 
 # =============================================================================
@@ -82,13 +86,18 @@ select_bw() {
     else
         # No cache - need to fetch (slow)
         printf '%s Loading vault...%s\n' "$_BW_YELLOW" "$_BW_RESET"
-        items=$(bw list items 2>/dev/null | \
+        items=$(bw list items 2>/dev/null |
             jq -r '.[] | select(.type == 1) | [.name, (.login.username // ""), .id] | @tsv' 2>/dev/null)
 
-        [[ -z "$items" ]] && { toast " No items found" "simple"; return 0; }
+        [[ -z "$items" ]] && {
+            toast " No items found" "simple"
+            return 0
+        }
 
         # Save to cache for next time
-        echo "$items" > "$ITEMS_CACHE"
+        umask 077
+        echo "$items" >"$ITEMS_CACHE"
+        chmod 600 "$ITEMS_CACHE"
     fi
 
     # Format for fzf: "name (user)" with hidden id
@@ -134,7 +143,10 @@ select_rbw() {
 
     # rbw is fast, no cache needed
     items=$(rbw list --fields name,user 2>/dev/null)
-    [[ -z "$items" ]] && { toast " No items found" "simple"; return 0; }
+    [[ -z "$items" ]] && {
+        toast " No items found" "simple"
+        return 0
+    }
 
     selected=$(echo "$items" | awk -F'\t' '{
         user = ($2 != "") ? " ("$2")" : ""
@@ -171,16 +183,22 @@ select_rbw() {
 select_password() {
     local backend
     backend=$(ui_get_backend)
-    [[ "$backend" == "basic" ]] && { toast "❯ fzf or gum required" "simple"; return 0; }
+    [[ "$backend" == "basic" ]] && {
+        toast "❯ fzf or gum required" "simple"
+        return 0
+    }
 
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 0
+    }
 
     # Check vault status BEFORE opening selector
     local is_unlocked=false
     case "$client" in
-        bw)  is_bitwarden_unlocked_bw && is_unlocked=true ;;
-        rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
+    bw) is_bitwarden_unlocked_bw && is_unlocked=true ;;
+    rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
@@ -190,33 +208,39 @@ select_password() {
     fi
 
     case "$client" in
-        bw)
-            select_bw
-            # Pre-build cache in background for next time
-            build_cache_bw &
-            ;;
-        rbw)
-            select_rbw
-            ;;
+    bw)
+        select_bw
+        # Pre-build cache in background for next time
+        build_cache_bw &
+        ;;
+    rbw)
+        select_rbw
+        ;;
     esac
 }
 
 refresh_cache() {
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 1; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 1
+    }
 
     toast "󰑓 Refreshing cache..." "simple"
 
     case "$client" in
-        bw)
-            is_bitwarden_unlocked_bw || { toast " Vault locked" "simple"; return 1; }
-            build_cache_bw
-            ;;
-        rbw)
-            # rbw doesn't need cache
-            toast " rbw doesn't use cache" "simple"
-            return 0
-            ;;
+    bw)
+        is_bitwarden_unlocked_bw || {
+            toast " Vault locked" "simple"
+            return 1
+        }
+        build_cache_bw
+        ;;
+    rbw)
+        # rbw doesn't need cache
+        toast " rbw doesn't use cache" "simple"
+        return 0
+        ;;
     esac
 
     toast " Cache refreshed" "simple"
@@ -237,16 +261,22 @@ check_and_select() {
     local popup_width="${1:-60%}"
     local popup_height="${2:-60%}"
 
-    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
+    has_cmd "fzf" || {
+        toast "󰍉 fzf required" "simple"
+        return 0
+    }
 
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 0
+    }
 
     # Check vault status BEFORE opening popup
     local is_unlocked=false
     case "$client" in
-        bw)  is_bitwarden_unlocked_bw && is_unlocked=true ;;
-        rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
+    bw) is_bitwarden_unlocked_bw && is_unlocked=true ;;
+    rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
@@ -270,16 +300,16 @@ helper_main() {
     shift 2>/dev/null || true
 
     case "$action" in
-        select|"")        select_password ;;
-        check-and-select) check_and_select "${1:-}" "${2:-}" ;;
-        refresh)          refresh_cache ;;
-        clear)            clear_cache ;;
-        unlock)           unlock_bitwarden_vault ;;
-        lock)             lock_bitwarden_vault ;;
-        *)
-            echo "Unknown action: $action" >&2
-            return 1
-            ;;
+    select | "") select_password ;;
+    check-and-select) check_and_select "${1:-}" "${2:-}" ;;
+    refresh) refresh_cache ;;
+    clear) clear_cache ;;
+    unlock) unlock_bitwarden_vault ;;
+    lock) lock_bitwarden_vault ;;
+    *)
+        echo "Unknown action: $action" >&2
+        return 1
+        ;;
     esac
 }
 

@@ -24,8 +24,7 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     require_cmd "curl" || return 1
-    require_cmd "jq" 1  # Optional - better JSON parsing
-    return 0
+    require_cmd "jq" || return 1
 }
 
 # =============================================================================
@@ -41,7 +40,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between coin prices"
 
     # Icons
-    declare_option "icon" "icon" $'\U0000f10f' "Plugin icon"
+    declare_option "icon" "icon" $'\U000f0116' "Plugin icon (cash-multiple)"
 
     # Cache (prices don't change very frequently)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds (5 min)"
@@ -153,7 +152,7 @@ _fetch_coingecko() {
 
     # Convert comma-separated symbols to CoinGecko IDs
     local ids=""
-    IFS=',' read -ra COINS <<< "$coins_list"
+    IFS=',' read -ra COINS <<<"$coins_list"
     for coin in "${COINS[@]}"; do
         coin=$(trim "$coin")
         local coin_id=$(_get_coin_id "$coin")
@@ -186,7 +185,7 @@ plugin_collect() {
     show_change=$(get_option "show_change")
 
     local prices_data=""
-    IFS=',' read -ra coin_list <<< "$coins"
+    IFS=',' read -ra coin_list <<<"$coins"
 
     for coin in "${coin_list[@]}"; do
         coin=$(trim "$coin")
@@ -196,14 +195,9 @@ plugin_collect() {
         local price change=""
 
         # Extract price from JSON
-        if has_cmd jq; then
-            price=$(echo "$response" | jq -r ".\"$coin_id\".\"$currency_lower\" // empty" 2>/dev/null)
-            if [[ "$show_change" == "true" ]]; then
-                change=$(echo "$response" | jq -r ".\"$coin_id\".\"${currency_lower}_24h_change\" // empty" 2>/dev/null)
-            fi
-        else
-            # Fallback: manual JSON parsing
-            price=$(echo "$response" | sed -n 's/.*"'$coin_id'"[^}]*"'$currency_lower'":\([0-9.]*\).*/\1/p')
+        price=$(echo "$response" | jq -r ".\"$coin_id\".\"$currency_lower\" // empty" 2>/dev/null)
+        if [[ "$show_change" == "true" ]]; then
+            change=$(echo "$response" | jq -r ".\"$coin_id\".\"${currency_lower}_24h_change\" // empty" 2>/dev/null)
         fi
 
         [[ -z "$price" || "$price" == "null" ]] && continue
@@ -214,38 +208,42 @@ plugin_collect() {
     done
 
     [[ -n "$prices_data" ]] && plugin_data_set "prices" "$prices_data"
+
+    # Build formatted render output
+    if [[ -n "$prices_data" ]]; then
+        local format show_change separator
+        format=$(get_option "format")
+        show_change=$(get_option "show_change")
+        separator=$(get_option "separator")
+
+        local output_parts=()
+        IFS='|' read -ra price_list <<<"$prices_data"
+
+        for price_entry in "${price_list[@]}"; do
+            IFS=':' read -r symbol price change <<<"$price_entry"
+            [[ -z "$price" ]] && continue
+
+            local coin_sym=$(_get_coin_symbol "$symbol")
+            local formatted_price=$(_format_price "$price" "$format")
+            local coin_output="${coin_sym}${formatted_price}"
+
+            # Add 24h change if enabled
+            if [[ "$show_change" == "true" && -n "$change" && "$change" != "null" ]]; then
+                coin_output+=" $(_format_change "$change")"
+            fi
+
+            output_parts+=("$coin_output")
+        done
+
+        [[ ${#output_parts[@]} -gt 0 ]] && plugin_data_set "formatted" "$(join_with_separator "$separator" "${output_parts[@]}")"
+    fi
 }
 
 plugin_render() {
-    local prices format show_change separator
+    local prices formatted
     prices=$(plugin_data_get "prices")
-    format=$(get_option "format")
-    show_change=$(get_option "show_change")
-    separator=$(get_option "separator")
-
     [[ -z "$prices" ]] && return 0
 
-    local output_parts=()
-    IFS='|' read -ra price_list <<< "$prices"
-
-    for price_entry in "${price_list[@]}"; do
-        IFS=':' read -r symbol price change <<< "$price_entry"
-        [[ -z "$price" ]] && continue
-
-        local coin_sym=$(_get_coin_symbol "$symbol")
-        local formatted_price=$(_format_price "$price" "$format")
-        local coin_output="${coin_sym}${formatted_price}"
-
-        # Add 24h change if enabled
-        if [[ "$show_change" == "true" && -n "$change" && "$change" != "null" ]]; then
-            coin_output+=" $(_format_change "$change")"
-        fi
-
-        output_parts+=("$coin_output")
-    done
-
-    [[ ${#output_parts[@]} -eq 0 ]] && return 0
-
-    join_with_separator "$separator" "${output_parts[@]}"
+    formatted=$(plugin_data_get "formatted")
+    printf '%s' "$formatted"
 }
-
