@@ -37,8 +37,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y tmux shellcheck
-          npm install -g bats-core
+          sudo apt-get install -y tmux shellcheck bats
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
