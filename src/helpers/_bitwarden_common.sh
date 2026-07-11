@@ -287,6 +287,7 @@ _lock_bitwarden_bw() {
 # Lock vault (rbw)
 _lock_bitwarden_rbw() {
     rbw lock &>/dev/null || true
+    clear_bw_session
     invalidate_bitwarden_plugin_cache
 }
 

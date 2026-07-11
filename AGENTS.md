@@ -22,7 +22,7 @@ Mocha is the most popular variant with excellent contrast.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 46 plugins migrated to contract system
+**Status**: ✅ COMPLETE - All 49 plugins migrated to contract system
 
 ### Migration Statistics
 
@@ -1376,7 +1376,7 @@ plugin_get_icon() {
 
 ## Performance Notes
 
-- **46 plugins** — performance is critical
+- **49 plugins** — performance is critical
 - Cache data, not rendered output (allows dynamic color changes)
 - Use pure bash arithmetic over external commands
 - One `date +%s` call per render cycle

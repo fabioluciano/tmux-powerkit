@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install shellcheck (Linux)
         if: runner.os == 'Linux'
@@ -46,16 +48,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y tmux bash
+          sudo apt-get install -y tmux bash shellcheck
+          npm install -g bats-core
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install tmux bash
+        run: |
+          brew install tmux bash shellcheck bats-core
 
       - name: Make runner executable
         run: chmod +x tests/run_all_tests.sh

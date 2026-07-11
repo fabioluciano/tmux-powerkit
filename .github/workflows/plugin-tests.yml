@@ -30,17 +30,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Install dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y tmux shellcheck
+          npm install -g bats-core
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install tmux bash shellcheck
+          brew install tmux bash shellcheck bats-core
 
       - name: Run full test suite
         shell: bash

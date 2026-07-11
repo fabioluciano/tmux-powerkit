@@ -51,23 +51,29 @@ jobs:
       - name: Static analysis with clang
         working-directory: src/native/macos
         run: |
+          set -euo pipefail
           echo "Running static analysis..."
           FAILED=0
 
           for file in *.m; do
             echo "Analyzing $file..."
-            # Use clang's static analyzer
             if ! clang --analyze \
               -Xanalyzer -analyzer-output=text \
               -framework Foundation \
               -framework IOKit \
-              "$file" 2>&1 | tee "/tmp/analysis_${file}.txt"; then
-              if grep -q "warning:" "/tmp/analysis_${file}.txt"; then
-                echo "⚠️ Warnings found in $file"
-              fi
+              "$file" &> "/tmp/analysis_${file}.txt"; then
+              echo "❌ Analysis failed for $file"
+              grep "warning:" "/tmp/analysis_${file}.txt" 2>/dev/null || true
+              FAILED=1
+            else
+              echo "✓ $file"
             fi
           done
 
+          if [[ $FAILED -eq 1 ]]; then
+            echo "❌ Static analysis found issues"
+            exit 1
+          fi
           echo "✓ Static analysis complete"
 
   build:
