@@ -24,7 +24,7 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     require_cmd "curl" || return 1
-    require_cmd "jq" 1  # Optional - better JSON parsing
+    require_cmd "jq" 1 # Optional - better JSON parsing
     return 0
 }
 
@@ -41,7 +41,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between coin prices"
 
     # Icons
-    declare_option "icon" "icon" $'\U0000f10f' "Plugin icon"
+    declare_option "icon" "icon" $'\U000f0116' "Plugin icon (cash-multiple)"
 
     # Cache (prices don't change very frequently)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds (5 min)"
@@ -153,7 +153,7 @@ _fetch_coingecko() {
 
     # Convert comma-separated symbols to CoinGecko IDs
     local ids=""
-    IFS=',' read -ra COINS <<< "$coins_list"
+    IFS=',' read -ra COINS <<<"$coins_list"
     for coin in "${COINS[@]}"; do
         coin=$(trim "$coin")
         local coin_id=$(_get_coin_id "$coin")
@@ -186,7 +186,7 @@ plugin_collect() {
     show_change=$(get_option "show_change")
 
     local prices_data=""
-    IFS=',' read -ra coin_list <<< "$coins"
+    IFS=',' read -ra coin_list <<<"$coins"
 
     for coin in "${coin_list[@]}"; do
         coin=$(trim "$coin")
@@ -226,10 +226,10 @@ plugin_render() {
     [[ -z "$prices" ]] && return 0
 
     local output_parts=()
-    IFS='|' read -ra price_list <<< "$prices"
+    IFS='|' read -ra price_list <<<"$prices"
 
     for price_entry in "${price_list[@]}"; do
-        IFS=':' read -r symbol price change <<< "$price_entry"
+        IFS=':' read -r symbol price change <<<"$price_entry"
         [[ -z "$price" ]] && continue
 
         local coin_sym=$(_get_coin_symbol "$symbol")
@@ -248,4 +248,3 @@ plugin_render() {
 
     join_with_separator "$separator" "${output_parts[@]}"
 }
-

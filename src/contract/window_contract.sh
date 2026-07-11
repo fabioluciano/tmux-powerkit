@@ -279,14 +279,14 @@ _window_get_format() {
         window_icon=$(get_tmux_option "@powerkit_inactive_window_icon" "${POWERKIT_DEFAULT_INACTIVE_WINDOW_ICON}")
     fi
 
-    # State icons (zoomed/activity/bell/marked) are always shown when relevant.
+    # State icons (zoomed/bell/marked) are always shown when relevant.
     # Command-based icon (window_get_icon_format) is always shown for both
     # active and inactive windows - show_icon only controls the legacy simple icon.
     local state_conditional
     if [[ "$type" == "active" ]]; then
         state_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_marked_flag,${marked_icon},$(window_get_icon_format "$window_icon")}}"
     else
-        state_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_activity_flag,${activity_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},$(window_get_icon_format "$window_icon")}}}}"
+        state_conditional="#{?window_zoomed_flag,${zoomed_icon},#{?window_bell_flag,${bell_icon},#{?window_marked_flag,${marked_icon},$(window_get_icon_format "$window_icon")}}}"
     fi
 
     # Build format string
@@ -294,6 +294,7 @@ _window_get_format() {
 
     format+="${state_conditional}"
     [[ "$show_name" == "true" ]] && format+=" ${window_title}"
+    [[ "$type" == "inactive" ]] && format+="#{?window_activity_flag, ${activity_icon},}"
 
     printf '%s' "$format"
 }

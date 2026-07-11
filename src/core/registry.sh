@@ -140,32 +140,49 @@ declare -grA WINDOW_ICON_MAP=(
     [nano]=$'\uf0f6'
     [emacs]=$'\ue7c2'
     [code]=$'\ue70c'
+    ["code-insiders"]=$'\ue70c'
+    [zed]=$'\ue70c'
+    [subl]=$'\ue70c'
+    [hx]=$'\ue7c5'
 
     # AI coding agents
     [claude]=$'\U000f06a9'
     [codex]=$'\U000f06a9'
     [opencode]=$'\U000f06a9'
     [mimo]=$'\U000f06a9'
+    [aider]=$'\U000f06a9'
+    [gemini]=$'\U000f06a9'
+    [copilot]=$'\U000f06a9'
 
     # Shells
-    [bash]=$'\uf120'
-    [zsh]=$'\uf120'
-    [fish]=$'\uf120'
-    [sh]=$'\uf120'
-    [dash]=$'\uf120'
+    [bash]=$'\uf489' # nf-oct-terminal
+    [zsh]=$'\uf489'  # nf-oct-terminal
+    [fish]=$'\uf489' # nf-oct-terminal
+    [sh]=$'\uf489'   # nf-oct-terminal
+    [dash]=$'\uf489' # nf-oct-terminal
+    [nu]=$'\uf489'   # nf-oct-terminal
+    [wezterm]=$'\uf120'
+    [ghostty]=$'\uf120'
+    [kitty]=$'\uf120'
+    [alacritty]=$'\uf120'
 
     # Version control
     [git]=$'\uf1d3'
     [lazygit]=$'\uf1d3'
     [tig]=$'\uf1d3'
+    [gh]=$'\uf09b'
+    [gitui]=$'\uf1d3'
 
     # Node/JavaScript
     [node]=$'\ue718'
     [npm]=$'\ue71e'
+    [npx]=$'\ue71e'
     [yarn]=$'\ue718'
     [pnpm]=$'\ue718'
     [bun]=$'\ue76d'
     [deno]=$'\ue628'
+    [vite]=$'\ue718'
+    [next]=$'\ue718'
 
     # Python
     [python]=$'\ue73c'
@@ -173,6 +190,9 @@ declare -grA WINDOW_ICON_MAP=(
     [pip]=$'\ue73c'
     [pipenv]=$'\ue73c'
     [poetry]=$'\ue73c'
+    [uv]=$'\ue73c'
+    [pytest]=$'\ue73c'
+    [ipython]=$'\ue73c'
 
     # Ruby
     [ruby]=$'\ue739'
@@ -194,6 +214,7 @@ declare -grA WINDOW_ICON_MAP=(
 
     # Containers/Cloud
     [docker]=$'\uf308'
+    [podman]=$'\uf308'
     [kubectl]=$'\uf10fe'
     [k9s]=$'\uf10fe'
     [helm]=$'\uf10fe'
@@ -202,13 +223,15 @@ declare -grA WINDOW_ICON_MAP=(
     # Databases
     [psql]=$'\ue76e'
     [mysql]=$'\ue704'
-    [redis - cli]=$'\ue76d'
+    ["redis-cli"]=$'\ue76d'
     [mongosh]=$'\ue7a4'
 
     # System tools
-    [htop]=$'\uf080'
-    [top]=$'\uf080'
-    [btop]=$'\uf080'
+    [htop]=$'\U000f04c5'    # nf-md-speedometer
+    [top]=$'\U000f04c5'     # nf-md-speedometer
+    [btop]=$'\U000f04c5'    # nf-md-speedometer
+    [btm]=$'\U000f04c5'     # nf-md-speedometer
+    [glances]=$'\U000f04c5' # nf-md-speedometer
     [tmux]=$'\uebc8'
 
     # File managers
@@ -217,6 +240,10 @@ declare -grA WINDOW_ICON_MAP=(
     [yazi]=$'\uf07b'
     [lf]=$'\uf07b'
     [mc]=$'\uf07b'
+    [fzf]=$'\uf002'
+    [rg]=$'\uf002'
+    [fd]=$'\uf002'
+    [bat]=$'\uf02d'
 
     # Network
     [ssh]=$'\uf489'
