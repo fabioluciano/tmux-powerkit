@@ -141,6 +141,12 @@ declare -grA WINDOW_ICON_MAP=(
     [emacs]=$'\ue7c2'
     [code]=$'\ue70c'
 
+    # AI coding agents
+    [claude]=$'\U000f06a9'
+    [codex]=$'\U000f06a9'
+    [opencode]=$'\U000f06a9'
+    [mimo]=$'\U000f06a9'
+
     # Shells
     [bash]=$'\uf120'
     [zsh]=$'\uf120'
