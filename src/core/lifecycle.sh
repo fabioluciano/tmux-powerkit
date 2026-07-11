@@ -633,8 +633,6 @@ _collect_plugin_sync() {
         local existing_cache
         existing_cache=$(cache_get "$cache_key" "${_DEFAULT_CACHE_TTL_DAY:-86400}" 2>/dev/null)
         if [[ -n "$existing_cache" && "$existing_cache" != "HIDDEN" ]]; then
-            # Persist stale flag via cache_set
-            cache_set "$cache_key" "$existing_cache"
             # Mark as stale by updating the 5th field (or appending if missing)
             local _delim=$'\x1f'
             if [[ "$existing_cache" == *"${_delim}"*"${_delim}"*"${_delim}"*"${_delim}"* ]]; then
@@ -644,6 +642,8 @@ _collect_plugin_sync() {
                 # Only 4 fields, append stale=1
                 existing_cache="${existing_cache}${_delim}1"
             fi
+            # Persist stale flag via cache_set (atomic write-temp+mv)
+            cache_set "$cache_key" "$existing_cache"
             printf '%s' "$existing_cache"
             return 0
         fi
