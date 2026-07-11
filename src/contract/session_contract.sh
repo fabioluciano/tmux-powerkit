@@ -93,7 +93,7 @@ _session_fetch_vars() {
         return
     fi
 
-    tmux display-message -p '#S:#{client_prefix}:#{pane_in_mode}:#{search_present}:#{pane_mode}:#{client_session}:#{session_grouped}' 2>/dev/null || printf ':0:0:0:::'
+    tmux display-message -p $'#S\t#{client_prefix}\t#{pane_in_mode}\t#{search_present}\t#{pane_mode}\t#{client_session}\t#{session_grouped}' 2>/dev/null || printf $':0:0:0:::'
 }
 
 # Parse batch vars into individual variables
@@ -101,7 +101,7 @@ _session_fetch_vars() {
 # Sets: _SESSION_NAME, _SESSION_PREFIX, _SESSION_IN_MODE, _SESSION_SEARCH, _SESSION_PANE_MODE, _SESSION_CLIENT, _SESSION_GROUPED
 _session_parse_vars() {
     local vars="$1"
-    IFS=':' read -r _SESSION_NAME _SESSION_PREFIX _SESSION_IN_MODE _SESSION_SEARCH _SESSION_PANE_MODE _SESSION_CLIENT _SESSION_GROUPED <<< "$vars"
+    IFS=$'\t' read -r _SESSION_NAME _SESSION_PREFIX _SESSION_IN_MODE _SESSION_SEARCH _SESSION_PANE_MODE _SESSION_CLIENT _SESSION_GROUPED <<<"$vars"
 
     # Default empty values to sensible defaults
     _SESSION_PREFIX="${_SESSION_PREFIX:-0}"
@@ -142,8 +142,8 @@ session_get_mode() {
 
     # Single batch call for all mode-related variables
     local vars prefix in_mode search pane_mode
-    vars=$(tmux display-message -p '#{client_prefix}:#{pane_in_mode}:#{search_present}:#{pane_mode}' 2>/dev/null)
-    IFS=':' read -r prefix in_mode search pane_mode <<< "$vars"
+    vars=$(tmux display-message -p $'#{client_prefix}\t#{pane_in_mode}\t#{search_present}\t#{pane_mode}' 2>/dev/null)
+    IFS=$'\t' read -r prefix in_mode search pane_mode <<<"$vars"
 
     # Default values
     prefix="${prefix:-0}"
@@ -151,15 +151,24 @@ session_get_mode() {
     search="${search:-0}"
 
     # Determine mode based on flags
-    [[ "$prefix" == "1" ]] && { printf 'prefix'; return; }
+    [[ "$prefix" == "1" ]] && {
+        printf 'prefix'
+        return
+    }
 
     if [[ "$in_mode" == "1" ]]; then
-        [[ "$search" == "1" ]] && { printf 'search'; return; }
+        [[ "$search" == "1" ]] && {
+            printf 'search'
+            return
+        }
         printf 'copy'
         return
     fi
 
-    [[ "$pane_mode" == "command-mode" ]] && { printf 'command'; return; }
+    [[ "$pane_mode" == "command-mode" ]] && {
+        printf 'command'
+        return
+    }
 
     printf 'normal'
 }
@@ -184,7 +193,7 @@ session_get_context() {
     grouped=$(tmux display-message -p '#{session_grouped}' 2>/dev/null || echo "0")
     [[ "$grouped" == "1" ]] && context+="grouped "
 
-    printf '%s' "${context% }"  # Trim trailing space
+    printf '%s' "${context% }" # Trim trailing space
 }
 
 # =============================================================================
@@ -216,7 +225,7 @@ session_render() {
 # Get tmux format string for mode-aware session display
 # Returns tmux format string that can be used in status-left
 session_get_mode_format() {
-    cat << 'EOF'
+    cat <<'EOF'
 #{?client_prefix,PREFIX,#{?pane_in_mode,#{?search_present,SEARCH,COPY},#S}}
 EOF
 }
@@ -250,11 +259,11 @@ session_get_icon() {
     icon_search=$(get_tmux_option "@powerkit_session_search_icon" $'\uf002')
 
     case "$mode" in
-        prefix)  printf '%s' "$icon_prefix" ;;
-        copy)    printf '%s' "$icon_copy" ;;
-        command) printf '%s' "$icon_command" ;;
-        search)  printf '%s' "$icon_search" ;;
-        *)       printf '%s' "$icon_normal" ;;
+    prefix) printf '%s' "$icon_prefix" ;;
+    copy) printf '%s' "$icon_copy" ;;
+    command) printf '%s' "$icon_command" ;;
+    search) printf '%s' "$icon_search" ;;
+    *) printf '%s' "$icon_normal" ;;
     esac
 }
 
@@ -271,11 +280,11 @@ session_get_icon_for_mode() {
     icon_search=$(get_tmux_option "@powerkit_session_search_icon" $'\uf002')
 
     case "$mode" in
-        prefix)  printf '%s' "$icon_prefix" ;;
-        copy)    printf '%s' "$icon_copy" ;;
-        command) printf '%s' "$icon_command" ;;
-        search)  printf '%s' "$icon_search" ;;
-        *)       printf '%s' "$icon_normal" ;;
+    prefix) printf '%s' "$icon_prefix" ;;
+    copy) printf '%s' "$icon_copy" ;;
+    command) printf '%s' "$icon_command" ;;
+    search) printf '%s' "$icon_search" ;;
+    *) printf '%s' "$icon_normal" ;;
     esac
 }
 
@@ -297,8 +306,8 @@ session_get_all() {
 
     # Single batch call for main variables
     local vars name prefix in_mode search pane_mode client grouped
-    vars=$(tmux display-message -p '#S:#{client_prefix}:#{pane_in_mode}:#{search_present}:#{pane_mode}:#{client_session}:#{session_grouped}' 2>/dev/null)
-    IFS=':' read -r name prefix in_mode search pane_mode client grouped <<< "$vars"
+    vars=$(tmux display-message -p $'#S\t#{client_prefix}\t#{pane_in_mode}\t#{search_present}\t#{pane_mode}\t#{client_session}\t#{session_grouped}' 2>/dev/null)
+    IFS=$'\t' read -r name prefix in_mode search pane_mode client grouped <<<"$vars"
 
     # Default values
     prefix="${prefix:-0}"
@@ -333,12 +342,12 @@ session_get_all() {
     local icon
     icon=$(session_get_icon_for_mode "$mode")
 
-    # Output all variables
-    printf 'SESSION_STATE="%s"\n' "$state"
-    printf 'SESSION_MODE="%s"\n' "$mode"
-    printf 'SESSION_CONTEXT="%s"\n' "$context"
-    printf 'SESSION_NAME="%s"\n' "$name"
-    printf 'SESSION_ICON="%s"\n' "$icon"
+    # Output all variables with printf %q to prevent eval injection
+    printf 'SESSION_STATE=%s\n' "$(printf '%q' "$state")"
+    printf 'SESSION_MODE=%s\n' "$(printf '%q' "$mode")"
+    printf 'SESSION_CONTEXT=%s\n' "$(printf '%q' "$context")"
+    printf 'SESSION_NAME=%s\n' "$(printf '%q' "$name")"
+    printf 'SESSION_ICON=%s\n' "$(printf '%q' "$icon")"
 }
 
 # =============================================================================

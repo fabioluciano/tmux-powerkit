@@ -19,7 +19,7 @@ api_fetch_url() {
     local url="$1"
     local timeout="${2:-5}"
 
-    curl -s --connect-timeout "$timeout" "$url" 2>/dev/null
+    curl -s --connect-timeout "$timeout" --max-time "$timeout" "$url" 2>/dev/null
 }
 
 # =============================================================================
@@ -38,7 +38,10 @@ api_fetch_with_retry() {
     local attempt
     for attempt in $(seq 1 $max_attempts); do
         result=$(api_fetch_url "$url" "$timeout")
-        [[ -n "$result" ]] && { echo "$result"; return 0; }
+        [[ -n "$result" ]] && {
+            echo "$result"
+            return 0
+        }
         [[ $attempt -lt $max_attempts ]] && sleep 1
     done
 
@@ -57,7 +60,7 @@ api_fetch_with_auth() {
     local auth="$2"
     local timeout="${3:-5}"
 
-    curl -s --connect-timeout "$timeout" \
+    curl -s --connect-timeout "$timeout" --max-time "$timeout" \
         -H "Authorization: $auth" \
         "$url" 2>/dev/null
 }
@@ -79,26 +82,26 @@ make_api_call() {
     local auth_header accept_header
 
     case "$platform" in
-        github)
-            auth_header="Authorization: Bearer ${token}"
-            accept_header="Accept: application/vnd.github+json"
-            ;;
-        gitlab)
-            auth_header="PRIVATE-TOKEN: ${token}"
-            accept_header="Accept: application/json"
-            ;;
-        bitbucket)
-            auth_header="Authorization: Bearer ${token}"
-            accept_header="Accept: application/json"
-            ;;
-        *)
-            # Generic API - just use Bearer token
-            auth_header="Authorization: Bearer ${token}"
-            accept_header="Accept: application/json"
-            ;;
+    github)
+        auth_header="Authorization: Bearer ${token}"
+        accept_header="Accept: application/vnd.github+json"
+        ;;
+    gitlab)
+        auth_header="PRIVATE-TOKEN: ${token}"
+        accept_header="Accept: application/json"
+        ;;
+    bitbucket)
+        auth_header="Authorization: Bearer ${token}"
+        accept_header="Accept: application/json"
+        ;;
+    *)
+        # Generic API - just use Bearer token
+        auth_header="Authorization: Bearer ${token}"
+        accept_header="Accept: application/json"
+        ;;
     esac
 
-    curl -s --connect-timeout "$timeout" \
+    curl -s --connect-timeout "$timeout" --max-time "$timeout" \
         -H "$auth_header" \
         -H "$accept_header" \
         "$url" 2>/dev/null
@@ -152,7 +155,7 @@ api_fetch_with_status() {
     local timeout="${2:-5}"
 
     local response
-    response=$(curl -s -w "\n%{http_code}" --connect-timeout "$timeout" "$url" 2>/dev/null)
+    response=$(curl -s -w "\n%{http_code}" --connect-timeout "$timeout" --max-time "$timeout" "$url" 2>/dev/null)
 
     # Split into body and status code
     local body="${response%$'\n'*}"

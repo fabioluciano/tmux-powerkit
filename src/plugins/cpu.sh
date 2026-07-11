@@ -46,9 +46,11 @@ plugin_check_dependencies() {
         require_cmd "top" 1    # Preferred
         require_cmd "iostat" 1 # Fallback
         require_cmd "ps" 1     # Fallback
-    else
+    elif is_linux; then
         # Linux: /proc/stat is the standard source
         [[ -f /proc/stat ]] || return 1
+    else
+        return 1 # FreeBSD/others not supported
     fi
     return 0
 }
@@ -90,9 +92,12 @@ _get_cpu_linux() {
     local line vals idle total v
 
     # Read current /proc/stat - bash builtin, no subprocess overhead
-    read -r line < /proc/stat 2>/dev/null
-    [[ -z "$line" || "$line" != cpu* ]] && { echo "0"; return; }
-    read -ra vals <<< "${line#cpu }"
+    read -r line </proc/stat 2>/dev/null
+    [[ -z "$line" || "$line" != cpu* ]] && {
+        echo "0"
+        return
+    }
+    read -ra vals <<<"${line#cpu }"
     idle=$((vals[3] + vals[4]))
     total=0
     for v in "${vals[@]}"; do
@@ -126,17 +131,17 @@ _get_cpu_linux() {
     else
         # Check if previous reading is too old (stale after suspend/resume)
         local age=$((current_time - prev_timestamp))
-        if (( age > max_age )); then
+        if ((age > max_age)); then
             # Previous reading too old, fall back to sampling
             need_fallback=1
-        elif (( age < 1 )); then
+        elif ((age < 1)); then
             # Readings too close together (e.g., rapid manual refresh)
             need_fallback=1
         fi
     fi
 
     # Fall back to brief delta sampling if needed
-    if (( need_fallback )); then
+    if ((need_fallback)); then
         local sample_interval
         sample_interval=$(get_option "sample_interval")
         sample_interval="${sample_interval:-0.5}"
@@ -144,9 +149,12 @@ _get_cpu_linux() {
         local prev_idle_fb=$idle prev_total_fb=$total
         sleep "$sample_interval"
 
-        read -r line < /proc/stat 2>/dev/null
-        [[ -z "$line" || "$line" != cpu* ]] && { echo "0"; return; }
-        read -ra vals <<< "${line#cpu }"
+        read -r line </proc/stat 2>/dev/null
+        [[ -z "$line" || "$line" != cpu* ]] && {
+            echo "0"
+            return
+        }
+        read -ra vals <<<"${line#cpu }"
         idle=$((vals[3] + vals[4]))
         total=0
         for v in "${vals[@]}"; do
@@ -162,9 +170,9 @@ _get_cpu_linux() {
     local delta_total=$((total - prev_total))
 
     if [[ $delta_total -gt 0 ]]; then
-        local percent=$(( (delta_total - delta_idle) * 100 / delta_total ))
-        (( percent > 100 )) && percent=100
-        (( percent < 0 )) && percent=0
+        local percent=$(((delta_total - delta_idle) * 100 / delta_total))
+        ((percent > 100)) && percent=100
+        ((percent < 0)) && percent=0
         printf '%d' "$percent"
     else
         printf '0'
@@ -201,7 +209,10 @@ _get_cpu_macos_iostat() {
     # iostat -c 2: take 2 samples, use last one for accuracy
     cpu_usage=$(iostat -c 2 2>/dev/null | tail -1 | awk '{printf "%.0f", 100-$6}')
 
-    [[ -n "$cpu_usage" && "$cpu_usage" != "100" ]] && { printf '%s' "$cpu_usage"; return 0; }
+    [[ -n "$cpu_usage" && "$cpu_usage" != "100" ]] && {
+        printf '%s' "$cpu_usage"
+        return 0
+    }
     return 1
 }
 
@@ -242,8 +253,8 @@ plugin_collect() {
 
     # Ensure valid range
     percent="${percent:-0}"
-    (( percent > 100 )) && percent=100
-    (( percent < 0 )) && percent=0
+    ((percent > 100)) && percent=100
+    ((percent < 0)) && percent=0
 
     plugin_data_set "percent" "$percent"
     plugin_data_set "available" "1"
@@ -313,11 +324,11 @@ plugin_get_icon() {
     crit_th=$(get_option "critical_threshold")
 
     # Data-based icon selection (contract: icon must not call plugin_get_health)
-    if (( ${percent:-0} >= ${crit_th:-90} )); then
+    if ((${percent:-0} >= ${crit_th:-90})); then
         local icon_crit
         icon_crit=$(get_option "icon_critical")
         [[ -n "$icon_crit" ]] && printf '%s' "$icon_crit" || get_option "icon"
-    elif (( ${percent:-0} >= ${warn_th:-70} )); then
+    elif ((${percent:-0} >= ${warn_th:-70})); then
         local icon_warn
         icon_warn=$(get_option "icon_warning")
         [[ -n "$icon_warn" ]] && printf '%s' "$icon_warn" || get_option "icon"
@@ -345,4 +356,3 @@ plugin_render() {
 # =============================================================================
 # Initialize Plugin
 # =============================================================================
-

@@ -171,30 +171,28 @@ _get_nowplaying_macos() {
 # Linux: playerctl backend
 _get_nowplaying_linux() {
     local state artist title album app
-    local ignore_opt=""
     local ignore_players
     ignore_players=$(get_option "ignore_players")
 
-    # Build ignore player options
+    # Build playerctl args array
+    local playerctl_args=("--no-messages")
     if [[ -n "$ignore_players" ]]; then
         local IFS=','
         local p
         for p in $ignore_players; do
             p=$(trim "$p")
-            [[ -n "$p" ]] && ignore_opt+=" --ignore-player=$p"
+            [[ -n "$p" ]] && playerctl_args+=("--ignore-player=$p")
         done
     fi
 
-    # shellcheck disable=SC2086
     local state_raw
-    state_raw=$(playerctl $ignore_opt status 2>/dev/null)
+    state_raw=$(playerctl "${playerctl_args[@]}" status 2>/dev/null)
     [[ -z "$state_raw" ]] && return 1
     state="${state_raw,,}"  # Bash 4.0+ lowercase
 
     # Get all metadata in one call using format string
-    # shellcheck disable=SC2086
     local metadata
-    metadata=$(playerctl $ignore_opt metadata --format '{{artist}}'"$_FIELD_SEP"'{{title}}'"$_FIELD_SEP"'{{album}}'"$_FIELD_SEP"'{{playerName}}' 2>/dev/null)
+    metadata=$(playerctl "${playerctl_args[@]}" metadata --format '{{artist}}'"$_FIELD_SEP"'{{title}}'"$_FIELD_SEP"'{{album}}'"$_FIELD_SEP"'{{playerName}}' 2>/dev/null)
 
     IFS="$_FIELD_SEP" read -r artist title album app <<< "$metadata"
 

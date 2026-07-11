@@ -42,7 +42,7 @@ helper_get_actions() {
 
 _CACHE_BASE_DIR="$(dirname "$(get_cache_dir)")"
 TOTP_CACHE="${_CACHE_BASE_DIR}/bitwarden_totp_items.cache"
-TOTP_CACHE_TTL=600  # 10 minutes
+TOTP_CACHE_TTL=600 # 10 minutes
 
 # ANSI colors from defaults.sh
 _BW_YELLOW="${POWERKIT_ANSI_YELLOW}"
@@ -55,21 +55,25 @@ _BW_RESET="${POWERKIT_ANSI_RESET}"
 # Build cache - only items with TOTP configured
 build_cache_bw() {
     load_bw_session
+    umask 077
     # Only login items (type 1) with TOTP, tab-separated: name, username, id
-    bw list items 2>/dev/null | \
+    bw list items 2>/dev/null |
         jq -r '.[] | select(.type == 1 and .login.totp != null and .login.totp != "") | [.name, (.login.username // ""), .id] | @tsv' \
-        > "$TOTP_CACHE.tmp" 2>/dev/null && \
+            >"$TOTP_CACHE.tmp" 2>/dev/null &&
         mv "$TOTP_CACHE.tmp" "$TOTP_CACHE"
+    chmod 600 "$TOTP_CACHE" 2>/dev/null || true
 }
 
 build_cache_rbw() {
+    umask 077
     # rbw list items with totp - we need to filter
     rbw list --fields name,user,id 2>/dev/null | while IFS=$'\t' read -r name user id; do
         # Check if item has TOTP (rbw code will fail if no TOTP)
         if rbw code "$name" ${user:+"$user"} &>/dev/null; then
             printf '%s\t%s\t%s\n' "$name" "$user" "$id"
         fi
-    done > "$TOTP_CACHE"
+    done >"$TOTP_CACHE"
+    chmod 600 "$TOTP_CACHE" 2>/dev/null || true
 }
 
 # =============================================================================
@@ -86,16 +90,24 @@ select_totp_bw() {
     else
         # No cache - need to fetch (slow)
         printf '%s Loading TOTP items...%s\n' "$_BW_YELLOW" "$_BW_RESET"
-        items=$(bw list items 2>/dev/null | \
+        items=$(bw list items 2>/dev/null |
             jq -r '.[] | select(.type == 1 and .login.totp != null and .login.totp != "") | [.name, (.login.username // ""), .id] | @tsv' 2>/dev/null)
 
-        [[ -z "$items" ]] && { toast " No TOTP items found" "simple"; return 0; }
+        [[ -z "$items" ]] && {
+            toast " No TOTP items found" "simple"
+            return 0
+        }
 
         # Save to cache for next time
-        echo "$items" > "$TOTP_CACHE"
+        umask 077
+        echo "$items" >"$TOTP_CACHE"
+        chmod 600 "$TOTP_CACHE"
     fi
 
-    [[ -z "$items" ]] && { toast " No TOTP items found" "simple"; return 0; }
+    [[ -z "$items" ]] && {
+        toast " No TOTP items found" "simple"
+        return 0
+    }
 
     # Format for fzf: "name (user)" with hidden id
     selected=$(echo "$items" | awk -F'\t' '{
@@ -151,7 +163,10 @@ select_totp_rbw() {
         fi
     done < <(rbw list --fields name,user 2>/dev/null)
 
-    [[ -z "$items" ]] && { toast " No TOTP items found" "simple"; return 0; }
+    [[ -z "$items" ]] && {
+        toast " No TOTP items found" "simple"
+        return 0
+    }
 
     selected=$(printf '%s' "$items" | fzf --prompt=" " --height=100% --layout=reverse --border \
         --header="Enter: copy TOTP | Esc: cancel" \
@@ -190,16 +205,22 @@ select_totp_rbw() {
 select_totp() {
     local backend
     backend=$(ui_get_backend)
-    [[ "$backend" == "basic" ]] && { toast "❯ fzf or gum required" "simple"; return 0; }
+    [[ "$backend" == "basic" ]] && {
+        toast "❯ fzf or gum required" "simple"
+        return 0
+    }
 
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 0
+    }
 
     # Check vault status BEFORE opening selector
     local is_unlocked=false
     case "$client" in
-        bw)  is_bitwarden_unlocked_bw && is_unlocked=true ;;
-        rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
+    bw) is_bitwarden_unlocked_bw && is_unlocked=true ;;
+    rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
@@ -209,26 +230,35 @@ select_totp() {
     fi
 
     case "$client" in
-        bw)  select_totp_bw ;;
-        rbw) select_totp_rbw ;;
+    bw) select_totp_bw ;;
+    rbw) select_totp_rbw ;;
     esac
 }
 
 refresh_cache() {
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 1; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 1
+    }
 
     toast "󰑓 Refreshing TOTP cache..." "simple"
 
     case "$client" in
-        bw)
-            is_bitwarden_unlocked_bw || { toast "Vault locked" "warning"; return 1; }
-            build_cache_bw
-            ;;
-        rbw)
-            is_bitwarden_unlocked_rbw || { toast "Vault locked" "warning"; return 1; }
-            build_cache_rbw
-            ;;
+    bw)
+        is_bitwarden_unlocked_bw || {
+            toast "Vault locked" "warning"
+            return 1
+        }
+        build_cache_bw
+        ;;
+    rbw)
+        is_bitwarden_unlocked_rbw || {
+            toast "Vault locked" "warning"
+            return 1
+        }
+        build_cache_rbw
+        ;;
     esac
 
     toast " TOTP cache refreshed" "simple"
@@ -249,16 +279,22 @@ check_and_select() {
     local popup_width="${1:-60%}"
     local popup_height="${2:-60%}"
 
-    has_cmd "fzf" || { toast "󰍉 fzf required" "simple"; return 0; }
+    has_cmd "fzf" || {
+        toast "󰍉 fzf required" "simple"
+        return 0
+    }
 
     local client
-    client=$(detect_bitwarden_client) || { toast " bw/rbw not found" "simple"; return 0; }
+    client=$(detect_bitwarden_client) || {
+        toast " bw/rbw not found" "simple"
+        return 0
+    }
 
     # Check vault status BEFORE opening popup
     local is_unlocked=false
     case "$client" in
-        bw)  is_bitwarden_unlocked_bw && is_unlocked=true ;;
-        rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
+    bw) is_bitwarden_unlocked_bw && is_unlocked=true ;;
+    rbw) is_bitwarden_unlocked_rbw && is_unlocked=true ;;
     esac
 
     if [[ "$is_unlocked" != "true" ]]; then
@@ -282,14 +318,14 @@ helper_main() {
     shift 2>/dev/null || true
 
     case "$action" in
-        select|"")        select_totp ;;
-        check-and-select) check_and_select "${1:-}" "${2:-}" ;;
-        refresh)          refresh_cache ;;
-        clear)            clear_cache ;;
-        *)
-            echo "Unknown action: $action" >&2
-            return 1
-            ;;
+    select | "") select_totp ;;
+    check-and-select) check_and_select "${1:-}" "${2:-}" ;;
+    refresh) refresh_cache ;;
+    clear) clear_cache ;;
+    *)
+        echo "Unknown action: $action" >&2
+        return 1
+        ;;
     esac
 }
 

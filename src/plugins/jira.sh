@@ -75,7 +75,7 @@ _is_configured() {
     domain=$(get_option "domain")
     email=$(get_option "email")
     token=$(get_option "token")
-    
+
     [[ -n "$domain" && -n "$email" && -n "$token" ]] && return 0
     return 1
 }
@@ -98,23 +98,32 @@ plugin_get_health() {
         printf 'error'
         return
     fi
-    
+
     local flagged in_progress todo
     flagged=$(plugin_data_get "flagged")
     in_progress=$(plugin_data_get "in_progress")
     todo=$(plugin_data_get "todo")
-    
+
     # Blocked issues are always error
-    [[ "${flagged:-0}" -gt 0 ]] && { printf 'error'; return; }
-    
+    [[ "${flagged:-0}" -gt 0 ]] && {
+        printf 'error'
+        return
+    }
+
     local threshold_progress threshold_backlog
     threshold_progress=$(get_option "warning_threshold_progress")
     threshold_backlog=$(get_option "warning_threshold_backlog")
-    
+
     # Check thresholds
-    [[ "${in_progress:-0}" -ge "$threshold_progress" ]] && { printf 'warning'; return; }
-    [[ "${todo:-0}" -ge "$threshold_backlog" ]] && { printf 'warning'; return; }
-    
+    [[ "${in_progress:-0}" -ge "$threshold_progress" ]] && {
+        printf 'warning'
+        return
+    }
+    [[ "${todo:-0}" -ge "$threshold_backlog" ]] && {
+        printf 'warning'
+        return
+    }
+
     printf 'ok'
 }
 
@@ -123,13 +132,19 @@ plugin_get_context() {
         printf 'unconfigured'
         return
     fi
-    
+
     local flagged in_progress
     flagged=$(plugin_data_get "flagged")
     in_progress=$(plugin_data_get "in_progress")
-    
-    [[ "${flagged:-0}" -gt 0 ]] && { printf 'blocked'; return; }
-    [[ "${in_progress:-0}" -gt 0 ]] && { printf 'working'; return; }
+
+    [[ "${flagged:-0}" -gt 0 ]] && {
+        printf 'blocked'
+        return
+    }
+    [[ "${in_progress:-0}" -gt 0 ]] && {
+        printf 'working'
+        return
+    }
     printf 'idle'
 }
 
@@ -181,10 +196,6 @@ _fetch_jira_breakdown() {
 
     [[ -z "$domain" || -z "$email" || -z "$token" ]] && return 1
 
-    # URL encode JQL query
-    local encoded_jql
-    encoded_jql=$(printf '%s' "$jql" | sed 's/ /%20/g; s/=/%3D/g; s/"/%22/g; s/(/%28/g; s/)/%29/g; s/!/%21/g; s/'\''/%27/g')
-
     local in_progress=0
     local todo=0
     local flagged=0
@@ -192,18 +203,23 @@ _fetch_jira_breakdown() {
 
     # Paginate through results
     while true; do
-        # Request status and impediment custom fields
-        local url="https://${domain}/rest/api/3/search/jql?jql=${encoded_jql}&maxResults=100&fields=status,customfield_10177,customfield_10178"
-        [[ -n "$next_token" ]] && url+="&nextPageToken=${next_token}"
+        # Build curl args with URL-encoded parameters via --data-urlencode
+        local curl_args=(
+            -sf --connect-timeout 10 --max-time 20
+            -u "${email}:${token}"
+            -H "Content-Type: application/json"
+            -H "Accept: application/json"
+            --get
+            --data-urlencode "jql=${jql}"
+            --data-urlencode "maxResults=100"
+            --data-urlencode "fields=status,customfield_10177,customfield_10178"
+        )
+        [[ -n "$next_token" ]] && curl_args+=(--data-urlencode "nextPageToken=$next_token")
 
         local response
-        response=$(curl -sf --connect-timeout 10 --max-time 20 \
-            -u "${email}:${token}" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            "$url" 2>/dev/null)
-        
-        [[ -z "$response" ]] && break
+        response=$(curl "${curl_args[@]}" "https://${domain}/rest/api/3/search/jql" 2>/dev/null)
+
+        [[ -z "$response" ]] && return 1
 
         # Check for errors
         if echo "$response" | jq -e '.errorMessages' &>/dev/null; then
@@ -242,26 +258,20 @@ _fetch_jira_breakdown() {
 
 plugin_collect() {
     local result
-    result=$(_fetch_jira_breakdown)
+    result=$(_fetch_jira_breakdown) || return 1
 
-    if [[ -n "$result" ]]; then
-        local in_progress todo flagged
-        IFS='|' read -r in_progress todo flagged <<< "$result"
-        plugin_data_set "in_progress" "${in_progress:-0}"
-        plugin_data_set "todo" "${todo:-0}"
-        plugin_data_set "flagged" "${flagged:-0}"
-    else
-        plugin_data_set "in_progress" "0"
-        plugin_data_set "todo" "0"
-        plugin_data_set "flagged" "0"
-    fi
+    local in_progress todo flagged
+    IFS='|' read -r in_progress todo flagged <<<"$result"
+    plugin_data_set "in_progress" "${in_progress:-0}"
+    plugin_data_set "todo" "${todo:-0}"
+    plugin_data_set "flagged" "${flagged:-0}"
 }
 
 plugin_render() {
     if ! _is_configured; then
         return 0
     fi
-    
+
     local format separator
     format=$(get_option "format")
     separator=$(get_option "separator")
@@ -310,4 +320,3 @@ plugin_setup_keybindings() {
 
     [[ -n "$issues_key" ]] && pk_bind_popup "$issues_key" "bash '$helper_script'" "$width" "$height" "jira:issues"
 }
-

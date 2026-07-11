@@ -43,8 +43,8 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     # All dependencies are optional - different detection methods use different tools
-    require_cmd "gpg-connect-agent" 1  # Optional: for scdaemon checks
-    require_cmd "pcsc_scan" 1          # Optional: for PCSC checks
+    require_cmd "gpg-connect-agent" 1 # Optional: for scdaemon checks
+    require_cmd "pcsc_scan" 1         # Optional: for PCSC checks
     return 0
 }
 
@@ -132,6 +132,7 @@ _check_ykman_waiting() {
 # Method 5: Check for active CCID transaction (low-level)
 # PC/SC daemon shows specific state when card is being accessed
 _check_pcscd_waiting() {
+    is_linux || return 1
     has_cmd pcsc_scan || return 1
 
     # Check if pcscd is running
@@ -165,11 +166,11 @@ _check_scdaemon_signing() {
 
     # If command timed out or took > 200ms, likely waiting for user
     if [[ $result_code -eq 124 ]]; then
-        return 0  # Timeout = blocked waiting
+        return 0 # Timeout = blocked waiting
     fi
 
     # Convert elapsed from microseconds to milliseconds
-    local elapsed_ms=$(( (end_us - start_us) / 1000 ))
+    local elapsed_ms=$(((end_us - start_us) / 1000))
     [[ $elapsed_ms -gt 200 ]] && return 0
 
     return 1
@@ -185,9 +186,9 @@ _check_smartcard_transaction() {
         # Check ioreg for YubiKey with busy > 0 (active transaction)
         # Format: "busy N" where N > 0 means device is in use
         local busy_count
-        busy_count=$(ioreg -p IOUSB -l -w0 2>/dev/null | \
-            grep -A50 "YubiKey" | \
-            grep -o "busy [0-9]*" | \
+        busy_count=$(ioreg -p IOUSB -l -w0 2>/dev/null |
+            grep -A50 "YubiKey" |
+            grep -o "busy [0-9]*" |
             awk '{sum += $2} END {print sum+0}')
         [[ "$busy_count" -gt 0 ]] && return 0
     else
@@ -311,4 +312,3 @@ plugin_render() {
     # Only render when waiting for touch
     [[ "$waiting" == "1" ]] && printf 'TOUCH'
 }
-

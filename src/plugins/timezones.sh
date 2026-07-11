@@ -65,7 +65,10 @@ plugin_get_state() {
     zones=$(get_option "zones")
 
     # No zones configured - degraded state (visible but needs setup)
-    [[ -z "$zones" ]] && { printf 'degraded'; return; }
+    [[ -z "$zones" ]] && {
+        printf 'degraded'
+        return
+    }
 
     local stored_zones
     stored_zones=$(plugin_data_get "zones")
@@ -77,7 +80,10 @@ plugin_get_health() {
     zones=$(get_option "zones")
 
     # No zones configured - error health
-    [[ -z "$zones" ]] && { printf 'error'; return; }
+    [[ -z "$zones" ]] && {
+        printf 'error'
+        return
+    }
 
     printf 'ok'
 }
@@ -85,7 +91,10 @@ plugin_get_health() {
 plugin_get_context() {
     local zones
     zones=$(get_option "zones")
-    [[ -z "$zones" ]] && { printf 'not_configured'; return; }
+    [[ -z "$zones" ]] && {
+        printf 'not_configured'
+        return
+    }
     printf 'configured'
 }
 
@@ -125,33 +134,34 @@ plugin_collect() {
     separator=$(get_option "separator")
 
     plugin_data_set "zones" "$zones"
-    plugin_data_set "format" "$format"
-    plugin_data_set "show_label" "$show_label"
-    plugin_data_set "separator" "$separator"
+
+    # Pre-format timezone strings
+    if [[ -n "$zones" ]]; then
+        local parts=()
+        IFS=',' read -ra tz_array <<<"$zones"
+
+        for tz in "${tz_array[@]}"; do
+            tz=$(trim "$tz")
+            [[ -z "$tz" ]] && continue
+            parts+=("$(_format_tz_time "$tz" "$format" "$show_label")")
+        done
+
+        plugin_data_set "formatted" "$(join_with_separator "$separator" "${parts[@]}")"
+    fi
 }
 
 plugin_render() {
-    local zones format show_label separator
+    local zones formatted
     zones=$(plugin_data_get "zones")
 
     # No zones configured - show message
-    [[ -z "$zones" ]] && { printf 'not configured'; return; }
+    [[ -z "$zones" ]] && {
+        printf 'not configured'
+        return
+    }
 
-    format=$(plugin_data_get "format")
-    show_label=$(plugin_data_get "show_label")
-    separator=$(plugin_data_get "separator")
+    formatted=$(plugin_data_get "formatted")
+    [[ -z "$formatted" ]] && return 0
 
-    IFS=',' read -ra tz_array <<< "$zones"
-    local parts=()
-
-    for tz in "${tz_array[@]}"; do
-        tz=$(trim "$tz")
-        [[ -z "$tz" ]] && continue
-        parts+=("$(_format_tz_time "$tz" "$format" "$show_label")")
-    done
-
-    [[ ${#parts[@]} -eq 0 ]] && return 0
-
-    join_with_separator "$separator" "${parts[@]}"
+    printf '%s' "$formatted"
 }
-

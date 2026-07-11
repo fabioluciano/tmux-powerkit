@@ -28,7 +28,7 @@ declare -g _CYCLE_TIMESTAMP=0
 # Get current timestamp (cached per render cycle for performance)
 # Uses Bash 5.0+ $EPOCHSECONDS builtin (no external process)
 _get_now() {
-    if (( _CYCLE_TIMESTAMP == 0 )); then
+    if ((_CYCLE_TIMESTAMP == 0)); then
         _CYCLE_TIMESTAMP=$EPOCHSECONDS
     fi
     printf '%s' "$_CYCLE_TIMESTAMP"
@@ -117,12 +117,12 @@ cache_get() {
     mtime=$(_file_mtime "$cache_file")
     age=$((now - mtime))
 
-    if (( age > ttl )); then
-        return 1  # Expired
+    if ((age > ttl)); then
+        return 1 # Expired
     fi
 
     local value
-    value=$(< "$cache_file")
+    value=$(<"$cache_file")
 
     # Store in memory cache for this cycle
     _MEMORY_CACHE["$mem_key"]="$value"
@@ -143,7 +143,14 @@ cache_set() {
     local safe_key="${key//[^a-zA-Z0-9_-]/_}"
     local cache_file="${_CACHE_DIR}/${safe_key}"
 
-    printf '%s' "$value" > "$cache_file"
+    local tmp_file="${cache_file}.tmp.$$"
+    printf '%s' "$value" >"$tmp_file" && mv "$tmp_file" "$cache_file"
+
+    # Invalidate memory cache for this key
+    local mem_prefix="${key}:"
+    for mem_key in "${!_MEMORY_CACHE[@]}"; do
+        [[ "$mem_key" == "$mem_prefix"* ]] && unset "_MEMORY_CACHE[$mem_key]"
+    done
 }
 
 # Check if cache entry exists and is valid
@@ -166,7 +173,7 @@ cache_valid() {
     mtime=$(_file_mtime "$cache_file")
     age=$((now - mtime))
 
-    (( age <= ttl ))
+    ((age <= ttl))
 }
 
 # Get cache age in seconds
@@ -178,7 +185,10 @@ cache_age() {
     local cache_file
     cache_file=$(_cache_file_path "$key")
 
-    [[ ! -f "$cache_file" ]] && { echo -1; return 1; }
+    [[ ! -f "$cache_file" ]] && {
+        echo -1
+        return 1
+    }
 
     local now mtime
     now=$(_get_now)
@@ -222,6 +232,12 @@ cache_clear() {
     cache_file=$(_cache_file_path "$key")
 
     rm -f "$cache_file" 2>/dev/null || true
+
+    # Invalidate memory cache for this key
+    local mem_prefix="${key}:"
+    for mem_key in "${!_MEMORY_CACHE[@]}"; do
+        [[ "$mem_key" == "$mem_prefix"* ]] && unset "_MEMORY_CACHE[$mem_key]"
+    done
 }
 
 # Clear all cache entries for a prefix

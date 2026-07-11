@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# PowerKit Plugin Executor
+# Usage: powerkit-plugin <plugin_name>
+# Called by tmux via #()
+
+set -uo pipefail
+
+POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+export POWERKIT_ROOT
+
+. "${POWERKIT_ROOT}/src/core/bootstrap.sh"
+
+name="${1:-}"
+[[ -z "$name" ]] && exit 1
+
+plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
+[[ ! -f "$plugin_file" ]] && exit 1
+
+# Source plugin
+. "$plugin_file"
+
+# Check deps
+if declare -F plugin_check_dependencies &>/dev/null; then
+    plugin_check_dependencies || exit 1
+fi
+
+# Declare options
+declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+
+# Set context
+_set_plugin_context "$name"
+
+# Collect
+plugin_data_clear
+plugin_collect || exit 1
+
+# Output content
+plugin_render

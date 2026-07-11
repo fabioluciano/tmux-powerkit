@@ -38,11 +38,13 @@ _render_cache_key() {
 # TTL for render cache (matches status-interval)
 _RENDER_CACHE_TTL=5
 
-# Check if render is already in progress (uses cache for lock)
+# Check if render is already in progress (uses directory as atomic lock)
 _is_render_in_progress() {
-    # Lock is valid for 30 seconds max
-    cache_valid "render_lock" 30
+    local lock_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit/.render_lock"
+    [[ -d "$lock_dir" ]] && ! _lock_stale "$lock_dir" 30
 }
+
+_lock_stale() { local dir="$1" ttl="$2"; local now; now=$(_get_now); (( now - $(_file_mtime "$dir") > ttl )); }
 
 # Show loading placeholder with animated spinner
 # Usage: _show_loading "side"
@@ -108,7 +110,7 @@ _render_background() {
         export POWERKIT_ROOT
 
         # Cleanup lock on exit
-        trap ". \"${POWERKIT_ROOT}/src/core/cache.sh\"; cache_clear \"render_lock\"" EXIT
+        trap "rmdir \"${_CACHE_DIR}/.render_lock\" 2>/dev/null || true" EXIT
 
         # Source and render
         . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
@@ -164,8 +166,8 @@ if _is_render_in_progress; then
     exit 0
 fi
 
-# Start background render (set lock using cache)
-cache_set "render_lock" "1"
+# Start background render (set lock using atomic mkdir)
+mkdir "${_CACHE_DIR}/.render_lock" 2>/dev/null || true
 _render_background "$side" "$cache_key"
 
 # Return stale cache if exists, otherwise loading

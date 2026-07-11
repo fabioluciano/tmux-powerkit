@@ -43,11 +43,13 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     if is_macos; then
-        require_cmd "memory_pressure" 1  # Preferred
-        require_cmd "vm_stat" 1          # Fallback
-        require_cmd "sysctl" 1           # For total memory
-    else
+        require_cmd "memory_pressure" 1 # Preferred
+        require_cmd "vm_stat" 1         # Fallback
+        require_cmd "sysctl" 1          # For total memory
+    elif is_linux; then
         [[ -f /proc/meminfo ]] || return 1
+    else
+        return 1 # FreeBSD/others not supported
     fi
     return 0
 }
@@ -96,15 +98,15 @@ _collect_linux() {
 
     [[ -z "$mem_info" ]] && return 1
 
-    read -r mem_total mem_available <<< "$mem_info"
+    read -r mem_total mem_available <<<"$mem_info"
     mem_used=$((mem_total - mem_available))
 
     # Calculate percentage (mem_total is in KB)
     percent=$(calc_percent "$mem_used" "$mem_total")
 
     # Ensure valid range
-    (( percent > 100 )) && percent=100
-    (( percent < 0 )) && percent=0
+    ((percent > 100)) && percent=100
+    ((percent < 0)) && percent=0
 
     # Convert KB to bytes for consistency
     local used_bytes=$((mem_used * 1024))
@@ -197,7 +199,7 @@ plugin_collect() {
 
     [[ -z "$data" ]] && return 1
 
-    read -r percent used total <<< "$data"
+    read -r percent used total <<<"$data"
 
     # Validate — zeros in total means collection failed
     [[ "${total:-0}" == "0" ]] && return 1
@@ -206,6 +208,8 @@ plugin_collect() {
     plugin_data_set "used" "${used:-0}"
     plugin_data_set "total" "${total:-0}"
     plugin_data_set "available" "1"
+    plugin_data_set "formatted_used" "$(_bytes_to_human "$used")"
+    plugin_data_set "formatted_total" "$(_bytes_to_human "$total")"
 }
 
 # =============================================================================
@@ -253,9 +257,9 @@ plugin_get_context() {
     health=$(plugin_get_health)
 
     case "$health" in
-        error)   printf 'critical_load' ;;
-        warning) printf 'high_load' ;;
-        *)       printf 'normal_load' ;;
+    error) printf 'critical_load' ;;
+    warning) printf 'high_load' ;;
+    *) printf 'normal_load' ;;
     esac
 }
 
@@ -270,31 +274,28 @@ plugin_get_icon() { get_option "icon"; }
 # =============================================================================
 
 plugin_render() {
-    local format percent used total
+    local format percent
 
     format=$(get_option "format")
     percent=$(plugin_data_get "percent")
-    used=$(plugin_data_get "used")
-    total=$(plugin_data_get "total")
 
     percent="${percent:-0}"
 
     # Note: show_only_on_threshold is handled by renderer via health
 
     case "$format" in
-        usage)
-            printf '%s/%s' "$(_bytes_to_human "$used")" "$(_bytes_to_human "$total")"
-            ;;
-        used)
-            printf '%s' "$(_bytes_to_human "$used")"
-            ;;
-        percent|*)
-            printf '%3d%%' "$percent"
-            ;;
+    usage)
+        printf '%s/%s' "$(plugin_data_get "formatted_used")" "$(plugin_data_get "formatted_total")"
+        ;;
+    used)
+        printf '%s' "$(plugin_data_get "formatted_used")"
+        ;;
+    percent | *)
+        printf '%3d%%' "$percent"
+        ;;
     esac
 }
 
 # =============================================================================
 # Initialize Plugin
 # =============================================================================
-

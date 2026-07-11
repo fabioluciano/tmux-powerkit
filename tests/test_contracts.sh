@@ -86,7 +86,7 @@ if [[ -d "$PLUGINS_DIR" ]]; then
             # Check content_type
             if declare -F plugin_get_content_type &>/dev/null; then
                 content_type=$(plugin_get_content_type 2>/dev/null || echo "")
-                if [[ "$content_type" != "static" && "$content_type" != "dynamic" ]]; then
+                if ! is_valid_content_type "$content_type"; then
                     ERRORS+=("content_type='$content_type' (expected: static|dynamic)")
                 fi
             fi
@@ -94,14 +94,30 @@ if [[ -d "$PLUGINS_DIR" ]]; then
             # Check presence
             if declare -F plugin_get_presence &>/dev/null; then
                 presence=$(plugin_get_presence 2>/dev/null || echo "")
-                if [[ "$presence" != "always" && "$presence" != "conditional" ]]; then
+                if ! is_valid_presence "$presence"; then
                     ERRORS+=("presence='$presence' (expected: always|conditional)")
+                fi
+            fi
+
+            # Check state
+            if declare -F plugin_get_state &>/dev/null; then
+                state=$(plugin_get_state 2>/dev/null || echo "")
+                if ! is_valid_state "$state"; then
+                    ERRORS+=("state='$state' (expected: inactive, active, degraded, failed)")
+                fi
+            fi
+
+            # Check health
+            if declare -F plugin_get_health &>/dev/null; then
+                health=$(plugin_get_health 2>/dev/null || echo "")
+                if ! is_valid_health "$health"; then
+                    ERRORS+=("health='$health' (expected: ok, good, info, warning, error)")
                 fi
             fi
 
             if [[ ${#ERRORS[@]} -gt 0 ]]; then
                 echo -e "${YELLOW}⚠${NC} $plugin_name - warnings: ${ERRORS[*]}"
-                ((PLUGIN_PASSED++)) || true # Still pass but with warnings
+                ((PLUGIN_FAILED++)) || true
             else
                 echo -e "${GREEN}✓${NC} $plugin_name"
                 ((PLUGIN_PASSED++)) || true

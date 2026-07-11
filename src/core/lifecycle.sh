@@ -38,7 +38,7 @@ declare -g _EXTERNAL_PLUGIN_COUNTER=0
 is_plugin_hidden_by_presence() {
     local presence="$1"
     local state="$2"
-    [[ "$presence" == "hidden" || ( "$presence" == "conditional" && "$state" == "inactive" ) ]]
+    [[ "$presence" == "hidden" || ("$presence" == "conditional" && "$state" == "inactive") ]]
 }
 
 # Check plugin visibility using context (plugin_should_be_active)
@@ -123,7 +123,7 @@ _register_plugin() {
 
     if [[ ! -f "$plugin_file" ]]; then
         log_warn "lifecycle" "Plugin file not found: $name"
-        return 0  # Don't fail, just skip
+        return 0 # Don't fail, just skip
     fi
 
     _PLUGINS["$name"]="$plugin_file"
@@ -139,7 +139,7 @@ _register_external_plugin() {
     # Format: external("icon"|"content"|"accent"|"accent_icon"|"ttl")
 
     # Generate unique ID using counter + hash (no subshells)
-    (( ++_EXTERNAL_PLUGIN_COUNTER ))
+    ((++_EXTERNAL_PLUGIN_COUNTER))
     local id="external_${_EXTERNAL_PLUGIN_COUNTER}_$(string_hash "$spec")"
 
     _PLUGINS["$id"]="$spec"
@@ -157,7 +157,7 @@ _register_external_plugin() {
 validate_plugins() {
     local name
     for name in "${!_PLUGINS[@]}"; do
-        [[ "$name" == external_* ]] && continue  # Skip external plugins
+        [[ "$name" == external_* ]] && continue # Skip external plugins
 
         if _validate_plugin "$name"; then
             _PLUGIN_STATES["$name"]="validated"
@@ -296,7 +296,7 @@ collect_plugins() {
     local name
     for name in "${!_PLUGINS[@]}"; do
         [[ "${_PLUGIN_STATES[$name]}" != "initialized" ]] && continue
-        [[ "$name" == external_* ]] && continue  # External plugins collect differently
+        [[ "$name" == external_* ]] && continue # External plugins collect differently
 
         _collect_plugin "$name"
     done
@@ -380,7 +380,7 @@ _resolve_plugin() {
     content_type=$(plugin_get_content_type)
     presence=$(plugin_get_presence)
     state=$(plugin_get_state)
-    
+
     # Health is optional - defaults to "ok"
     if declare -F plugin_get_health &>/dev/null; then
         health=$(plugin_get_health)
@@ -432,7 +432,7 @@ _resolve_external_plugin() {
 
     # Parse external plugin format: external("icon"|"content"|"accent"|"accent_icon"|"ttl")
     local icon="" content="" accent="" accent_icon="" ttl=""
-    
+
     if [[ "$spec" =~ external\(\"([^\"]*)\"\|\"([^\"]*)\"\|\"([^\"]*)\"\|\"([^\"]*)\"\|\"([^\"]*)\"\) ]]; then
         icon="${BASH_REMATCH[1]}"
         content="${BASH_REMATCH[2]}"
@@ -501,35 +501,31 @@ get_visible_plugins() {
 # Usage: _spawn_plugin_refresh "plugin_name"
 _spawn_plugin_refresh() {
     local name="$1"
-    local lock_file="${_CACHE_DIR}/.lock_${name}"
+    local lock_dir="${_CACHE_DIR}/.lock_${name}"
 
-    # Check if refresh already in progress
-    if [[ -f "$lock_file" ]]; then
-        local lock_age now lock_mtime
+    # Atomic lock acquisition via mkdir
+    if ! mkdir "$lock_dir" 2>/dev/null; then
+        local lock_age now
         now=$(_get_now)
-        lock_mtime=$(_file_mtime "$lock_file")
-        lock_age=$((now - lock_mtime))
-        # Stale lock (> 60s) - remove it
-        if (( lock_age > 60 )); then
-            rm -f "$lock_file"
+        lock_age=$((now - $(_file_mtime "$lock_dir" 2>/dev/null || echo 0)))
+        if ((lock_age > 60)); then
+            rmdir "$lock_dir" 2>/dev/null || true
+            mkdir "$lock_dir" 2>/dev/null || return 0
         else
-            return 0  # Refresh already running
+            return 0
         fi
     fi
-
-    # Create lock
-    touch "$lock_file"
 
     # Spawn background process using bash explicitly
     # Pass all needed variables as arguments to avoid subshell issues
     bash -c '
         name="$1"
-        lock_file="$2"
+        lock_dir="$2"
         POWERKIT_ROOT="$3"
         export POWERKIT_ROOT
 
         # Cleanup lock on exit
-        trap "rm -f \"$lock_file\"" EXIT
+        trap "rmdir \"$lock_dir\" 2>/dev/null || true" EXIT
 
         plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
         [[ ! -f "$plugin_file" ]] && exit 1
@@ -546,6 +542,9 @@ _spawn_plugin_refresh() {
         # Declare options
         declare -F plugin_declare_options &>/dev/null && plugin_declare_options
 
+        # Check dependencies
+        declare -F plugin_check_dependencies &>/dev/null && plugin_check_dependencies || exit 1
+
         # Collect data
         plugin_data_clear
         plugin_collect || exit 1
@@ -561,11 +560,18 @@ _spawn_plugin_refresh() {
         fi
 
         # Get health
-        health="ok"
-        declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
+        if ! declare -F plugin_get_health &>/dev/null; then
+            printf 'failed'
+            return 1
+        fi
+        health=$(plugin_get_health)
 
         # Get icon
-        icon=$(_get_plugin_icon)
+        if ! declare -F plugin_get_icon &>/dev/null; then
+            printf 'failed'
+            return 1
+        fi
+        icon=$(plugin_get_icon)
 
         # Get content
         content=$(plugin_render)
@@ -574,14 +580,18 @@ _spawn_plugin_refresh() {
         # stale=0 means fresh data
         _delim=$'"'"'\x1f'"'"'
         stale="0"
-        output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}${_delim}${stale}"
+        # Escape US and newline in content and icon
+        safe_content="${content//${_delim}/ }"
+        safe_content="${safe_content//$'"'"'\n'"'"'/ }"
+        safe_icon="${icon//${_delim}/ }"
+        output="${safe_icon}${_delim}${safe_content}${_delim}${state}${_delim}${health}${_delim}${stale}"
 
         cache_set "plugin_${name}_data" "$output"
 
         # Cache TTL
         ttl=$(_get_plugin_cache_ttl)
         cache_set "plugin_${name}_ttl" "$ttl"
-    ' _ "$name" "$lock_file" "$POWERKIT_ROOT" &>/dev/null &
+    ' _ "$name" "$lock_dir" "$POWERKIT_ROOT" &>/dev/null &
     disown
 }
 
@@ -623,10 +633,8 @@ _collect_plugin_sync() {
         local existing_cache
         existing_cache=$(cache_get "$cache_key" "${_DEFAULT_CACHE_TTL_DAY:-86400}" 2>/dev/null)
         if [[ -n "$existing_cache" && "$existing_cache" != "HIDDEN" ]]; then
-            # Touch cache file to prevent repeated collection attempts
-            # This extends the stale window, reducing API hammering on failures
-            local cache_file="${_CACHE_DIR}/${cache_key}"
-            [[ -f "$cache_file" ]] && touch "$cache_file"
+            # Persist stale flag via cache_set
+            cache_set "$cache_key" "$existing_cache"
             # Mark as stale by updating the 5th field (or appending if missing)
             local _delim=$'\x1f'
             if [[ "$existing_cache" == *"${_delim}"*"${_delim}"*"${_delim}"*"${_delim}"* ]]; then
@@ -658,12 +666,20 @@ _collect_plugin_sync() {
     fi
 
     # Get health
-    local health="ok"
-    declare -F plugin_get_health &>/dev/null && health=$(plugin_get_health)
+    if ! declare -F plugin_get_health &>/dev/null; then
+        printf 'failed'
+        return 1
+    fi
+    local health
+    health=$(plugin_get_health)
 
     # Get icon
+    if ! declare -F plugin_get_icon &>/dev/null; then
+        printf 'failed'
+        return 1
+    fi
     local icon
-    icon=$(_get_plugin_icon)
+    icon=$(plugin_get_icon)
 
     # Get content
     local content
@@ -673,7 +689,11 @@ _collect_plugin_sync() {
     # stale=0 means fresh data
     local _delim=$'\x1f'
     local stale="0"
-    local output="${icon}${_delim}${content}${_delim}${state}${_delim}${health}${_delim}${stale}"
+    # Escape US and newline in content and icon
+    local safe_content="${content//$_delim/ }"
+    safe_content="${safe_content//$'\n'/ }"
+    local safe_icon="${icon//$_delim/ }"
+    local output="${safe_icon}${_delim}${safe_content}${_delim}${state}${_delim}${health}${_delim}${stale}"
 
     # Cache and return
     cache_set "$cache_key" "$output"
@@ -741,7 +761,7 @@ collect_plugin_render_data() {
         now=$(_get_now)
         mtime=$(_file_mtime "$cache_file")
         cache_age=$((now - mtime))
-        cached_data=$(< "$cache_file")
+        cached_data=$(<"$cache_file")
     fi
 
     # =========================================================================
@@ -766,6 +786,7 @@ collect_plugin_render_data() {
     if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
         # Quick check: if cached data is not "HIDDEN", verify visibility conditions
         if [[ "$cached_data" != "HIDDEN" ]]; then
+            clear_options_cache "$name" 2>/dev/null || true
             # shellcheck disable=SC1090
             . "$plugin_file"
             declare -F plugin_declare_options &>/dev/null && plugin_declare_options
@@ -798,6 +819,7 @@ collect_plugin_render_data() {
     # is slightly older than TTL - which would happen with TTL close to status-interval.
     if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" && "$cached_data" != "HIDDEN" ]]; then
         # Source plugin for visibility check
+        clear_options_cache "$name" 2>/dev/null || true
         # shellcheck disable=SC1090
         . "$plugin_file"
         declare -F plugin_declare_options &>/dev/null && plugin_declare_options
@@ -881,7 +903,11 @@ collect_external_plugin_render_data() {
     # Build output in standard format: icon<US>content<US>state<US>health<US>stale<US>accent<US>accent_icon
     # We add accent and accent_icon as extra fields for external plugins
     local _delim=$'\x1f'
-    local result="${icon}${_delim}${output}${_delim}active${_delim}ok${_delim}0${_delim}${accent}${_delim}${accent_icon}"
+    # Escape US and newline in content and icon
+    local safe_content="${output//$_delim/ }"
+    safe_content="${safe_content//$'\n'/ }"
+    local safe_icon="${icon//$_delim/ }"
+    local result="${safe_icon}${_delim}${safe_content}${_delim}active${_delim}ok${_delim}0${_delim}${accent}${_delim}${accent_icon}"
 
     # Cache the result using cache API
     cache_set "$cache_key" "$result"

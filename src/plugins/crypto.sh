@@ -214,37 +214,42 @@ plugin_collect() {
     done
 
     [[ -n "$prices_data" ]] && plugin_data_set "prices" "$prices_data"
+
+    # Build formatted render output
+    if [[ -n "$prices_data" ]]; then
+        local format show_change separator
+        format=$(get_option "format")
+        show_change=$(get_option "show_change")
+        separator=$(get_option "separator")
+
+        local output_parts=()
+        IFS='|' read -ra price_list <<<"$prices_data"
+
+        for price_entry in "${price_list[@]}"; do
+            IFS=':' read -r symbol price change <<<"$price_entry"
+            [[ -z "$price" ]] && continue
+
+            local coin_sym=$(_get_coin_symbol "$symbol")
+            local formatted_price=$(_format_price "$price" "$format")
+            local coin_output="${coin_sym}${formatted_price}"
+
+            # Add 24h change if enabled
+            if [[ "$show_change" == "true" && -n "$change" && "$change" != "null" ]]; then
+                coin_output+=" $(_format_change "$change")"
+            fi
+
+            output_parts+=("$coin_output")
+        done
+
+        [[ ${#output_parts[@]} -gt 0 ]] && plugin_data_set "formatted" "$(join_with_separator "$separator" "${output_parts[@]}")"
+    fi
 }
 
 plugin_render() {
-    local prices format show_change separator
+    local prices formatted
     prices=$(plugin_data_get "prices")
-    format=$(get_option "format")
-    show_change=$(get_option "show_change")
-    separator=$(get_option "separator")
-
     [[ -z "$prices" ]] && return 0
 
-    local output_parts=()
-    IFS='|' read -ra price_list <<<"$prices"
-
-    for price_entry in "${price_list[@]}"; do
-        IFS=':' read -r symbol price change <<<"$price_entry"
-        [[ -z "$price" ]] && continue
-
-        local coin_sym=$(_get_coin_symbol "$symbol")
-        local formatted_price=$(_format_price "$price" "$format")
-        local coin_output="${coin_sym}${formatted_price}"
-
-        # Add 24h change if enabled
-        if [[ "$show_change" == "true" && -n "$change" && "$change" != "null" ]]; then
-            coin_output+=" $(_format_change "$change")"
-        fi
-
-        output_parts+=("$coin_output")
-    done
-
-    [[ ${#output_parts[@]} -eq 0 ]] && return 0
-
-    join_with_separator "$separator" "${output_parts[@]}"
+    formatted=$(plugin_data_get "formatted")
+    printf '%s' "$formatted"
 }

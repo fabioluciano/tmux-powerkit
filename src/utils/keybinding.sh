@@ -237,8 +237,9 @@ pk_bind() {
         ;;
     custom)
         # For custom, command is the full tmux command
-        # shellcheck disable=SC2206 # Intentional word splitting for tmux args
-        bind_args+=($command)
+        local cmd_parts
+        IFS=$' \t\n' read -ra cmd_parts <<<"$command"
+        bind_args+=("${cmd_parts[@]}")
         ;;
     *)
         log_error "keybinding" "pk_bind: unknown type '$bind_type'"
@@ -420,7 +421,7 @@ pk_is_bound() {
 
     [[ -z "$key" ]] && return 1
 
-    tmux list-keys -T "$table" 2>/dev/null | grep -q "\\b${key}\\b"
+    tmux list-keys -T "$table" 2>/dev/null | grep -qF "${key}"
 }
 
 # Get the command bound to a key
@@ -448,7 +449,7 @@ pk_get_binding() {
 
     [[ -z "$key" ]] && return 1
 
-    tmux list-keys -T "$table" 2>/dev/null | grep "\\b${key}\\b" | head -1
+    tmux list-keys -T "$table" 2>/dev/null | grep -F "${key}" | head -1
 }
 
 # =============================================================================
@@ -557,6 +558,13 @@ pk_popup_delayed() {
     # Run popup in background with delay
     # Wait for a client to be attached before showing the popup
     # This handles the case where PowerKit starts during detached session creation
+    # Sanitize all interpolated values with printf %q
+    local safe_delay safe_width safe_height safe_command
+    safe_delay=$(printf '%q' "$delay")
+    safe_width=$(printf '%q' "$width")
+    safe_height=$(printf '%q' "$height")
+    safe_command=$(printf '%q' "$command")
+
     local popup_script
     popup_script=$(
         cat <<'SCRIPT_EOF'
@@ -584,11 +592,11 @@ done
 SCRIPT_EOF
     )
 
-    # Substitute placeholders
-    popup_script="${popup_script//DELAY_PLACEHOLDER/$delay}"
-    popup_script="${popup_script//WIDTH_PLACEHOLDER/$width}"
-    popup_script="${popup_script//HEIGHT_PLACEHOLDER/$height}"
-    popup_script="${popup_script//COMMAND_PLACEHOLDER/$command}"
+    # Substitute placeholders with sanitized values
+    popup_script="${popup_script//DELAY_PLACEHOLDER/$safe_delay}"
+    popup_script="${popup_script//WIDTH_PLACEHOLDER/$safe_width}"
+    popup_script="${popup_script//HEIGHT_PLACEHOLDER/$safe_height}"
+    popup_script="${popup_script//COMMAND_PLACEHOLDER/$safe_command}"
 
     # Execute via bash
     tmux run-shell -b "bash -c '$popup_script'" 2>/dev/null || true
