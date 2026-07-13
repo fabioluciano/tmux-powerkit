@@ -169,7 +169,7 @@ set -g @powerkit_transparent "true"
 Monitor every aspect of your system in real-time:
 
 | Plugin | Description | Highlights |
-|--------|-------------|-----------|
+| -------- | ------------- | ----------- |
 | `battery` | Battery level with charge state | Shows charging status, time remaining, health indicators |
 | `cpu` | CPU usage with per-core support | Thresholds, multi-core detection, platform-specific |
 | `memory` | RAM usage and availability | Multiple formats (percentage, usage, available) |
@@ -191,7 +191,7 @@ Monitor every aspect of your system in real-time:
 Stay connected and informed:
 
 | Plugin | Description | Features |
-|--------|-------------|----------|
+| -------- | ------------- | ---------- |
 | `netspeed` | Upload/download speed | Real-time bandwidth monitoring |
 | `wifi` | WiFi SSID + signal strength | Signal quality indicators |
 | `vpn` | VPN connection status | Detects active VPN tunnels |
@@ -206,7 +206,7 @@ Stay connected and informed:
 Control your media experience:
 
 | Plugin | Description | Platform |
-|--------|-------------|----------|
+| -------- | ------------- | ---------- |
 | `volume` | System volume level | macOS only |
 | `nowplaying` | Current music track | Music.app, Spotify (macOS) |
 | `audiodevices` | Active audio output device | macOS (SwitchAudioSource) |
@@ -219,7 +219,7 @@ Control your media experience:
 Supercharge your development workflow:
 
 | Plugin | Description | Features |
-|--------|-------------|----------|
+| -------- | ------------- | ---------- |
 | `git` | Git branch + status | Modified files, branch info, repo state |
 | `github` | GitHub notifications | PRs, issues, notifications (gh CLI) |
 | `gitlab` | GitLab merge requests | MRs, todos (glab CLI) |
@@ -239,7 +239,7 @@ Supercharge your development workflow:
 Boost your productivity:
 
 | Plugin | Description | Features |
-|--------|-------------|----------|
+| -------- | ------------- | ---------- |
 | `datetime` | Date and time | 15 format presets, fully customizable |
 | `timezones` | Multiple timezones | Display multiple zones simultaneously |
 | `pomodoro` | Pomodoro timer | Work/break phases, keybindings |
@@ -251,10 +251,10 @@ Boost your productivity:
 
 Track your investments:
 
-| Plugin | Description | Source |
-|--------|-------------|--------|
-| `crypto` | Cryptocurrency prices | CoinGecko API |
-| `stocks` | Stock prices | Yahoo Finance API |
+| Plugin   | Description           | Source            |
+| -------- | --------------------- | ----------------- |
+| `crypto` | Cryptocurrency prices | CoinGecko API     |
+| `stocks` | Stock prices          | Yahoo Finance API |
 
 ---
 
@@ -320,17 +320,17 @@ set -g @powerkit_theme_variant "dark"
 
 Choose from **9 beautiful separator styles** to customize your status bar appearance:
 
-| Style | Right | Left | Unicode |
-|-------|-------|------|---------|
-| **normal** |  |  | E0B0/E0B2 |
-| **rounded** |  |  | E0B4/E0B6 |
-| **slant** |  |  | E0B8/E0BA |
-| **slantup** |  |  | E0BC/E0BE |
-| **trapezoid** |  |  | E0C8/E0CA |
-| **flame** |  |  | E0C0/E0C2 |
-| **pixel** |  |  | E0C4/E0C6 |
-| **honeycomb** |  |  | E0CC/E0CD |
-| **none** | - | - | - |
+| Style          | Right | Left  | Unicode   |
+| -------------- | ----- | ----- | --------- |
+| **normal**     |       |       | E0B0/E0B2 |
+| **rounded**    |       |       | E0B4/E0B6 |
+| **slant**      |       |       | E0B8/E0BA |
+| **slantup**    |       |       | E0BC/E0BE |
+| **trapezoid**  |       |       | E0C8/E0CA |
+| **flame**      |       |       | E0C0/E0C2 |
+| **pixel**      |       |       | E0C4/E0C6 |
+| **honeycomb**  |       |       | E0CC/E0CD |
+| **none**       | -     | -     | -         |
 
 ```bash
 # Configure separator style
@@ -671,7 +671,7 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 ## 📚 Complete Documentation
 
 | Resource | Description |
-|----------|-------------|
+| ---------- | ------------- |
 | [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
 | [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
 | [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
@@ -708,7 +708,7 @@ Use this file as a reference or copy the options you need to your `~/.tmux.conf`
 ### Bash Version Features Used
 
 | Version | Features Used |
-|---------|--------------|
+| --------- | -------------- |
 | 5.0+ | `$EPOCHSECONDS`, `$EPOCHREALTIME`, `${var,,}`, `${var^^}` |
 | 5.1+ | `assoc_expand_once` (performance optimization) |
 
