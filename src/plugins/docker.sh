@@ -17,7 +17,7 @@ plugin_declare_options() {
     declare_option "runtime" "enum" "auto" "Container runtime: auto, docker, or podman"
     declare_option "show_stopped" "bool" "false" "Include stopped containers"
     declare_option "show_when_empty" "bool" "false" "Show when no containers are running"
-    declare_option "icon" "icon" $'\U000F04B7' "Container runtime icon"
+    declare_option "icon" "icon" $'\U000F0868' "Docker or Podman icon"
     declare_option "icon_warning" "icon" $'\U000F002A' "Icon when containers need attention"
     declare_option "cache_ttl" "number" "10" "Cache duration in seconds"
 }
