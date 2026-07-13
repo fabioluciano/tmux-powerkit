@@ -2,6 +2,16 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.29.1...v6.0.0) (2026-07-13)
+
+### ⚠ BREAKING CHANGES
+
+* harden plugin contracts and add containers (#241)
+
+### Features
+
+* harden plugin contracts and add containers ([#241](https://github.com/fabioluciano/tmux-powerkit/issues/241)) ([01ca0f0](https://github.com/fabioluciano/tmux-powerkit/commit/01ca0f06fc080e3729bb5545221e81969317a894))
+
 ## [5.29.1](https://github.com/fabioluciano/tmux-powerkit/compare/v5.29.0...v5.29.1) (2026-07-11)
 
 ### Bug Fixes
