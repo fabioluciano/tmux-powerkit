@@ -38,7 +38,7 @@ declare -g _EXTERNAL_PLUGIN_COUNTER=0
 is_plugin_hidden_by_presence() {
     local presence="$1"
     local state="$2"
-    [[ "$presence" == "hidden" || ("$presence" == "conditional" && "$state" == "inactive") ]]
+    [[ "$presence" == "conditional" && "$state" == "inactive" ]]
 }
 
 # Check plugin visibility using context (plugin_should_be_active)
@@ -48,9 +48,6 @@ is_plugin_hidden_by_presence() {
 _check_plugin_context_visibility() {
     local presence
     presence=$(plugin_get_presence 2>/dev/null || echo "always")
-
-    # Hidden presence always hides
-    [[ "$presence" == "hidden" ]] && return 1
 
     # For conditional plugins, check plugin_should_be_active if defined
     if [[ "$presence" == "conditional" ]]; then
@@ -119,6 +116,12 @@ discover_plugins() {
 # Register an internal plugin
 _register_plugin() {
     local name="$1"
+
+    if [[ ! "$name" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+        log_warn "lifecycle" "Invalid plugin name: $name"
+        return 0
+    fi
+
     local plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
 
     if [[ ! -f "$plugin_file" ]]; then
@@ -184,7 +187,8 @@ _validate_plugin() {
         declare -F plugin_get_content_type &>/dev/null || exit 1
         declare -F plugin_get_presence &>/dev/null || exit 1
         declare -F plugin_get_state &>/dev/null || exit 1
-        # plugin_get_health is optional - defaults to "ok"
+        declare -F plugin_get_health &>/dev/null || exit 1
+        declare -F plugin_get_icon &>/dev/null || exit 1
         declare -F plugin_render &>/dev/null || exit 1
     )
 }
@@ -496,6 +500,28 @@ get_visible_plugins() {
 # Lazy Loading: Background Refresh Functions
 # =============================================================================
 
+_build_plugin_output() {
+    local icon="$1"
+    local content="$2"
+    local state="$3"
+    local health="$4"
+    local stale="${5:-0}"
+    local delim=$'\x1f'
+    local safe_content="${content//${delim}/ }"
+    local safe_icon="${icon//${delim}/ }"
+
+    safe_content="${safe_content//$'\n'/ }"
+    printf '%s%s%s%s%s%s%s%s%s' "$safe_icon" "$delim" "$safe_content" "$delim" "$state" "$delim" "$health" "$delim" "$stale"
+}
+
+_validate_plugin_output_values() {
+    local state="$1"
+    local health="$2"
+    local presence="$3"
+
+    is_valid_state "$state" && is_valid_health "$health" && is_valid_presence "$presence"
+}
+
 # Spawn background refresh for a plugin
 # Uses lock file to prevent concurrent refreshes
 # Usage: _spawn_plugin_refresh "plugin_name"
@@ -566,6 +592,8 @@ _spawn_plugin_refresh() {
         fi
         health=$(plugin_get_health)
 
+        _validate_plugin_output_values "$state" "$health" "$presence" || exit 1
+
         # Get icon
         if ! declare -F plugin_get_icon &>/dev/null; then
             printf 'failed'
@@ -576,15 +604,7 @@ _spawn_plugin_refresh() {
         # Get content
         content=$(plugin_render)
 
-        # Build and save output (format: icon<US>content<US>state<US>health<US>stale)
-        # stale=0 means fresh data
-        _delim=$'"'"'\x1f'"'"'
-        stale="0"
-        # Escape US and newline in content and icon
-        safe_content="${content//${_delim}/ }"
-        safe_content="${safe_content//$'"'"'\n'"'"'/ }"
-        safe_icon="${icon//${_delim}/ }"
-        output="${safe_icon}${_delim}${safe_content}${_delim}${state}${_delim}${health}${_delim}${stale}"
+        output=$(_build_plugin_output "$icon" "$content" "$state" "$health")
 
         cache_set "plugin_${name}_data" "$output"
 
@@ -673,6 +693,11 @@ _collect_plugin_sync() {
     local health
     health=$(plugin_get_health)
 
+    if ! _validate_plugin_output_values "$state" "$health" "$presence"; then
+        printf 'failed'
+        return 1
+    fi
+
     # Get icon
     if ! declare -F plugin_get_icon &>/dev/null; then
         printf 'failed'
@@ -685,15 +710,8 @@ _collect_plugin_sync() {
     local content
     content=$(plugin_render)
 
-    # Build output (format: icon<US>content<US>state<US>health<US>stale)
-    # stale=0 means fresh data
-    local _delim=$'\x1f'
-    local stale="0"
-    # Escape US and newline in content and icon
-    local safe_content="${content//$_delim/ }"
-    safe_content="${safe_content//$'\n'/ }"
-    local safe_icon="${icon//$_delim/ }"
-    local output="${safe_icon}${_delim}${safe_content}${_delim}${state}${_delim}${health}${_delim}${stale}"
+    local output
+    output=$(_build_plugin_output "$icon" "$content" "$state" "$health")
 
     # Cache and return
     cache_set "$cache_key" "$output"

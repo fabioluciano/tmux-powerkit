@@ -57,20 +57,20 @@ plugin_get_state() { printf 'active'; }
 
 plugin_get_health() {
     local cpu_health mem_health disk_health temp_health
-    
+
     cpu_health=$(plugin_data_get "cpu_health")
     mem_health=$(plugin_data_get "mem_health")
     disk_health=$(plugin_data_get "disk_health")
     temp_health=$(plugin_data_get "temp_health")
-    
+
     # Aggregate using health_max (returns worst case)
     local worst_health="ok"
-    
+
     [[ -n "$cpu_health" ]] && worst_health=$(health_max "$worst_health" "$cpu_health")
     [[ -n "$mem_health" ]] && worst_health=$(health_max "$worst_health" "$mem_health")
     [[ -n "$disk_health" ]] && worst_health=$(health_max "$worst_health" "$disk_health")
     [[ -n "$temp_health" ]] && worst_health=$(health_max "$worst_health" "$temp_health")
-    
+
     printf '%s' "$worst_health"
 }
 
@@ -86,13 +86,27 @@ plugin_get_icon() {
 # System Metrics Collection (Private Functions)
 # =============================================================================
 
+_shared_metric_health() {
+    local plugin="$1"
+    local key="$2"
+    local warn_th="$3"
+    local crit_th="$4"
+    local value
+    value=$(_datastore_get "$plugin" "$key")
+
+    [[ "$value" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
+    evaluate_threshold_health "${value%%.*}" "$warn_th" "$crit_th"
+}
+
 _collect_cpu_health() {
     local warn_th crit_th
     warn_th=$(get_option "cpu_warning")
     crit_th=$(get_option "cpu_critical")
-    
+
+    _shared_metric_health "cpu" "percent" "$warn_th" "$crit_th" && return 0
+
     local cpu_pct=""
-    
+
     if is_macos; then
         # macOS: top -l1 sample
         cpu_pct=$(top -l1 2>/dev/null | awk '/^CPU usage/ {gsub(/%/,""); print $3}')
@@ -100,9 +114,9 @@ _collect_cpu_health() {
         # Linux: top -bn1 batch mode
         cpu_pct=$(top -bn1 2>/dev/null | awk '/^%Cpu/ {gsub(/[^0-9.]/,"",$2); print $2}')
     fi
-    
+
     cpu_pct=$(extract_numeric "${cpu_pct:-0}")
-    
+
     evaluate_threshold_health "$cpu_pct" "$warn_th" "$crit_th"
 }
 
@@ -110,9 +124,11 @@ _collect_mem_health() {
     local warn_th crit_th
     warn_th=$(get_option "mem_warning")
     crit_th=$(get_option "mem_critical")
-    
+
+    _shared_metric_health "memory" "percent" "$warn_th" "$crit_th" && return 0
+
     local mem_pct=""
-    
+
     if is_macos; then
         # macOS: memory_pressure
         local free_pct
@@ -124,9 +140,9 @@ _collect_mem_health() {
         mem_info=$(awk '/^MemAvailable/ {avail=$2} /^MemTotal/ {total=$2} END {if (total>0) printf "%.0f", (total-avail)/total*100}' /proc/meminfo 2>/dev/null)
         [[ -n "$mem_info" ]] && mem_pct="$mem_info"
     fi
-    
+
     mem_pct=$(extract_numeric "${mem_pct:-0}")
-    
+
     evaluate_threshold_health "$mem_pct" "$warn_th" "$crit_th"
 }
 
@@ -134,13 +150,15 @@ _collect_disk_health() {
     local warn_th crit_th
     warn_th=$(get_option "disk_warning")
     crit_th=$(get_option "disk_critical")
-    
+
+    _shared_metric_health "disk" "max_percent" "$warn_th" "$crit_th" && return 0
+
     # Cross-platform: df -h /
     local disk_pct
     disk_pct=$(df / 2>/dev/null | awk 'NR==2 {gsub(/%/,"",$5); print $5}')
-    
+
     disk_pct=$(extract_numeric "${disk_pct:-0}")
-    
+
     evaluate_threshold_health "$disk_pct" "$warn_th" "$crit_th"
 }
 
@@ -148,9 +166,13 @@ _collect_temp_health() {
     local warn_th crit_th
     warn_th=$(get_option "temp_warning")
     crit_th=$(get_option "temp_critical")
-    
+
+    if [[ "$(_datastore_get "temperature" "available")" == "1" ]]; then
+        _shared_metric_health "temperature" "temp_c" "$warn_th" "$crit_th" && return 0
+    fi
+
     local temp_c=""
-    
+
     if is_macos; then
         # macOS: osx-cpu-temp or smctemp if available
         if has_cmd "osx-cpu-temp"; then
@@ -165,10 +187,10 @@ _collect_temp_health() {
             temp_c=$((temp_c / 1000))
         fi
     fi
-    
+
     # If no temp available, skip (don't affect health)
     [[ -z "$temp_c" ]] && return 1
-    
+
     evaluate_threshold_health "$temp_c" "$warn_th" "$crit_th"
 }
 
@@ -194,53 +216,53 @@ plugin_render() {
     local format health
     format=$(get_option "format")
     health=$(plugin_get_health)
-    
+
     case "$format" in
-        count)
-            local warn_count=0 crit_count=0
-            
-            [[ $(plugin_data_get "cpu_health") == "warning" ]] && ((warn_count++))
-            [[ $(plugin_data_get "cpu_health") == "error" ]] && ((crit_count++))
-            [[ $(plugin_data_get "mem_health") == "warning" ]] && ((warn_count++))
-            [[ $(plugin_data_get "mem_health") == "error" ]] && ((crit_count++))
-            [[ $(plugin_data_get "disk_health") == "warning" ]] && ((warn_count++))
-            [[ $(plugin_data_get "disk_health") == "error" ]] && ((crit_count++))
-            [[ $(plugin_data_get "temp_health") == "warning" ]] && ((warn_count++))
-            [[ $(plugin_data_get "temp_health") == "error" ]] && ((crit_count++))
-            
-            if (( crit_count > 0 )); then
-                printf '%d CRIT' "$crit_count"
-            elif (( warn_count > 0 )); then
-                printf '%d WARN' "$warn_count"
-            else
-                printf 'OK'
-            fi
-            ;;
-        detail)
-            # Show critical metrics only
-            local details=()
-            
-            [[ $(plugin_data_get "cpu_health") == "error" ]] && details+=("CPU CRIT")
-            [[ $(plugin_data_get "cpu_health") == "warning" ]] && details+=("CPU WARN")
-            [[ $(plugin_data_get "mem_health") == "error" ]] && details+=("MEM CRIT")
-            [[ $(plugin_data_get "mem_health") == "warning" ]] && details+=("MEM WARN")
-            [[ $(plugin_data_get "disk_health") == "error" ]] && details+=("DISK CRIT")
-            [[ $(plugin_data_get "disk_health") == "warning" ]] && details+=("DISK WARN")
-            [[ $(plugin_data_get "temp_health") == "error" ]] && details+=("TEMP CRIT")
-            [[ $(plugin_data_get "temp_health") == "warning" ]] && details+=("TEMP WARN")
-            
-            if [[ ${#details[@]} -eq 0 ]]; then
-                printf 'OK'
-            else
-                join_with_separator "|" "${details[@]}"
-            fi
-            ;;
-        badge|*)
-            case "$health" in
-                error)   printf 'CRIT' ;;
-                warning) printf 'WARN' ;;
-                *)       printf 'OK' ;;
-            esac
-            ;;
+    count)
+        local warn_count=0 crit_count=0
+
+        [[ $(plugin_data_get "cpu_health") == "warning" ]] && ((warn_count++))
+        [[ $(plugin_data_get "cpu_health") == "error" ]] && ((crit_count++))
+        [[ $(plugin_data_get "mem_health") == "warning" ]] && ((warn_count++))
+        [[ $(plugin_data_get "mem_health") == "error" ]] && ((crit_count++))
+        [[ $(plugin_data_get "disk_health") == "warning" ]] && ((warn_count++))
+        [[ $(plugin_data_get "disk_health") == "error" ]] && ((crit_count++))
+        [[ $(plugin_data_get "temp_health") == "warning" ]] && ((warn_count++))
+        [[ $(plugin_data_get "temp_health") == "error" ]] && ((crit_count++))
+
+        if ((crit_count > 0)); then
+            printf '%d CRIT' "$crit_count"
+        elif ((warn_count > 0)); then
+            printf '%d WARN' "$warn_count"
+        else
+            printf 'OK'
+        fi
+        ;;
+    detail)
+        # Show critical metrics only
+        local details=()
+
+        [[ $(plugin_data_get "cpu_health") == "error" ]] && details+=("CPU CRIT")
+        [[ $(plugin_data_get "cpu_health") == "warning" ]] && details+=("CPU WARN")
+        [[ $(plugin_data_get "mem_health") == "error" ]] && details+=("MEM CRIT")
+        [[ $(plugin_data_get "mem_health") == "warning" ]] && details+=("MEM WARN")
+        [[ $(plugin_data_get "disk_health") == "error" ]] && details+=("DISK CRIT")
+        [[ $(plugin_data_get "disk_health") == "warning" ]] && details+=("DISK WARN")
+        [[ $(plugin_data_get "temp_health") == "error" ]] && details+=("TEMP CRIT")
+        [[ $(plugin_data_get "temp_health") == "warning" ]] && details+=("TEMP WARN")
+
+        if [[ ${#details[@]} -eq 0 ]]; then
+            printf 'OK'
+        else
+            join_with_separator "|" "${details[@]}"
+        fi
+        ;;
+    badge | *)
+        case "$health" in
+        error) printf 'CRIT' ;;
+        warning) printf 'WARN' ;;
+        *) printf 'OK' ;;
+        esac
+        ;;
     esac
 }

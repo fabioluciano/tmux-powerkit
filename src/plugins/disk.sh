@@ -56,6 +56,7 @@ plugin_declare_options() {
     declare_option "format" "string" "percent" "Display format (percent|usage|free)"
     declare_option "separator" "string" " | " "Separator between mount points"
     declare_option "show_label" "bool" "true" "Show mount point label before value"
+    declare_option "check_inode_usage" "bool" "false" "Include inode usage in health thresholds"
 
     # Icons
     declare_option "icon" "icon" $'\U000F02CA' "Plugin icon (nf-mdi-harddisk)"
@@ -126,6 +127,15 @@ _get_disk_percent() {
     /bin/df -Pk "$real_mount" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }'
 }
 
+# Get inode percentage used. Falls back to the platform's non-POSIX form.
+_get_inode_percent() {
+    local mount="$1"
+    local real_mount output
+    real_mount=$(_resolve_mount "$mount")
+    output=$(/bin/df -Pi "$real_mount" 2>/dev/null || /bin/df -i "$real_mount" 2>/dev/null)
+    awk 'NR==2 { gsub(/%/, "", $5); print $5 }' <<<"$output"
+}
+
 # Get disk info in specified format
 _get_disk_info() {
     local mount="$1"
@@ -166,16 +176,19 @@ _get_disk_info() {
 # =============================================================================
 
 plugin_collect() {
-    local mounts format show_label separator
+    local mounts format show_label separator check_inode_usage
     mounts=$(get_option "mounts")
     format=$(get_option "format")
     show_label=$(get_option "show_label")
     separator=$(get_option "separator")
+    check_inode_usage=$(get_option "check_inode_usage")
     [[ -z "$mounts" ]] && mounts="/"
 
     local max_pct=0
+    local max_inode_pct=0
     local mount_count=0
     local mount_data=""
+    local inode_data=""
     local output_parts=()
 
     IFS=',' read -ra mount_list <<<"$mounts"
@@ -195,6 +208,16 @@ plugin_collect() {
         [[ -n "$mount_data" ]] && mount_data+="|"
         mount_data+="${mount}:${pct}"
 
+        if [[ "$check_inode_usage" == "true" ]]; then
+            local inode_pct
+            inode_pct=$(_get_inode_percent "$mount")
+            if [[ "$inode_pct" =~ ^[0-9]+$ ]]; then
+                ((inode_pct > max_inode_pct)) && max_inode_pct=$inode_pct
+                [[ -n "$inode_data" ]] && inode_data+="|"
+                inode_data+="${mount}:${inode_pct}"
+            fi
+        fi
+
         # Build formatted output for render
         local info
         info=$(_get_disk_info "$mount" "$format")
@@ -212,6 +235,8 @@ plugin_collect() {
     plugin_data_set "max_percent" "$max_pct"
     plugin_data_set "mount_count" "$mount_count"
     plugin_data_set "mount_data" "$mount_data"
+    plugin_data_set "max_inode_percent" "$max_inode_pct"
+    plugin_data_set "inode_data" "$inode_data"
     plugin_data_set "available" "$((mount_count > 0 ? 1 : 0))"
     plugin_data_set "formatted" "$(join_with_separator "$separator" "${output_parts[@]}")"
 }
@@ -243,10 +268,16 @@ plugin_get_state() {
 # =============================================================================
 
 plugin_get_health() {
-    local max_pct warn_th crit_th
+    local max_pct max_inode_pct check_inode_usage warn_th crit_th
     max_pct=$(plugin_data_get "max_percent")
+    max_inode_pct=$(plugin_data_get "max_inode_percent")
+    check_inode_usage=$(get_option "check_inode_usage")
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
+
+    if [[ "$check_inode_usage" == "true" ]] && ((max_inode_pct > max_pct)); then
+        max_pct=$max_inode_pct
+    fi
 
     # Higher is worse (default behavior)
     evaluate_threshold_health "${max_pct:-0}" "${warn_th:-70}" "${crit_th:-90}"

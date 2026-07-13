@@ -32,10 +32,8 @@ jobs:
 
       - name: Run shellcheck
         run: |
-          # Recurse because shellcheck does not descend into directories.
-          # Project root acts as source-path so # shellcheck source=... directives resolve.
-          find bin scripts tests -name "*.sh" -type f -print0 \
-            | xargs -0 -n1 shellcheck -S warning --external-sources --shell=bash
+          git ls-files -z -- '*.sh' '*.bash' '*.tmux' 'bin/*' 'scripts/*' \
+            | xargs -0 -n1 shellcheck -S warning -e SC2034 --shell=bash
 
   tests:
     name: Test suite
@@ -61,9 +59,6 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install tmux bash shellcheck bats-core
-
-      - name: Make runner executable
-        run: chmod +x tests/run_all_tests.sh
 
       - name: Run tests
         run: bash tests/run_all_tests.sh

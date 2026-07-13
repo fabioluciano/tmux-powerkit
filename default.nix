@@ -11,7 +11,7 @@ tmuxPlugins.mkTmuxPlugin {
   meta = with lib; {
     description = "The Ultimate tmux Status Bar Framework";
     longDescription = ''
-      A comprehensive status bar framework for tmux with 42 production-ready plugins,
+      A comprehensive status bar framework for tmux with 50 production-ready plugins,
       32 themes with 56 variants, and 9 separator styles. Features smart caching
       with Stale-While-Revalidate lazy loading.
     '';

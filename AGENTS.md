@@ -22,11 +22,11 @@ Mocha is the most popular variant with excellent contrast.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 49 plugins migrated to contract system
+**Status**: ✅ COMPLETE - All 50 plugins migrated to contract system
 
 ### Migration Statistics
 
-- **Total Plugins**: 46
+- **Total Plugins**: 50
 - **Migration Date**: January 2025
 - **Architecture**: Contract-based plugin system with strict separation of concerns
 - **Lines of Code**: ~5,500 lines (plugins only)
@@ -1376,7 +1376,7 @@ plugin_get_icon() {
 
 ## Performance Notes
 
-- **49 plugins** — performance is critical
+- **50 plugins** — performance is critical
 - Cache data, not rendered output (allows dynamic color changes)
 - Use pure bash arithmetic over external commands
 - One `date +%s` call per render cycle

@@ -38,6 +38,7 @@ plugin_declare_options() {
 
     # Display options
     declare_option "show_count" "bool" "true" "Show update count"
+    declare_option "update_display" "enum" "total" "Show total, security, or both update counts"
 
     # Icons
     declare_option "icon" "icon" $'\U0000eb29' "Plugin icon"
@@ -153,6 +154,7 @@ _invalidate_if_upgraded() {
     # This means brew install/upgrade/uninstall was run after last check
     if ((log_age < pkg_cache_age)); then
         cache_clear "$_PACKAGES_CACHE_KEY"
+        cache_clear "$_PACKAGES_SECURITY_CACHE_KEY"
         # Also clear render cache to force immediate refresh
         cache_clear "plugin_packages_data"
     fi
@@ -163,6 +165,7 @@ _invalidate_if_upgraded() {
 # =============================================================================
 
 _PACKAGES_CACHE_KEY="packages_updates"
+_PACKAGES_SECURITY_CACHE_KEY="packages_security_updates"
 
 # =============================================================================
 # Backend Detection
@@ -273,12 +276,28 @@ _count_updates_pacman() {
     _timeout_pkg command pacman -Qu 2>/dev/null | wc -l | tr -d ' '
 }
 
+_count_security_updates() {
+    local backend="$1"
+
+    case "$backend" in
+    apt)
+        _timeout_pkg command apt-get -s upgrade 2>/dev/null | awk '/^Inst .*security/ { count++ } END { print count + 0 }'
+        ;;
+    dnf | yum)
+        _timeout_pkg command "$backend" check-update --security -q 2>/dev/null | grep -c '^[^[:space:]]' || true
+        ;;
+    *)
+        return 1
+        ;;
+    esac
+}
+
 # =============================================================================
 # Main Logic
 # =============================================================================
 
 plugin_collect() {
-    local backend count packages_cache_ttl cached
+    local backend count security_count packages_cache_ttl display cached
     backend=$(_detect_backend)
 
     [[ -z "$backend" ]] && {
@@ -291,43 +310,54 @@ plugin_collect() {
 
     # Check packages cache (long TTL for expensive brew outdated operation)
     packages_cache_ttl=$(get_option "packages_cache_ttl")
+    display=$(get_option "update_display")
     cached=$(cache_get "$_PACKAGES_CACHE_KEY" "$packages_cache_ttl" 2>/dev/null)
 
     if [[ -n "$cached" ]]; then
         plugin_data_set "update_count" "$cached"
         plugin_data_set "backend" "$backend"
-        return 0
+    else
+        # No cache - get fresh count (expensive operation)
+        case "$backend" in
+        brew) count=$(_count_updates_brew) ;;
+        yay) count=$(_count_updates_yay) ;;
+        apt) count=$(_count_updates_apt) ;;
+        dnf) count=$(_count_updates_dnf) ;;
+        yum) count=$(_count_updates_yum) ;;
+        pacman) count=$(_count_updates_pacman) ;;
+        *) count=0 ;;
+        esac
+
+        count="${count:-0}"
+        cache_set "$_PACKAGES_CACHE_KEY" "$count"
+        plugin_data_set "update_count" "$count"
+        plugin_data_set "backend" "$backend"
     fi
 
-    # No cache - get fresh count (expensive operation)
-    case "$backend" in
-    brew) count=$(_count_updates_brew) ;;
-    yay) count=$(_count_updates_yay) ;;
-    apt) count=$(_count_updates_apt) ;;
-    dnf) count=$(_count_updates_dnf) ;;
-    yum) count=$(_count_updates_yum) ;;
-    pacman) count=$(_count_updates_pacman) ;;
-    *) count=0 ;;
-    esac
-
-    count="${count:-0}"
-
-    # Store in packages cache (long TTL)
-    cache_set "$_PACKAGES_CACHE_KEY" "$count"
-
-    plugin_data_set "update_count" "$count"
-    plugin_data_set "backend" "$backend"
+    [[ "$display" == "total" ]] && return 0
+    security_count=$(cache_get "$_PACKAGES_SECURITY_CACHE_KEY" "$packages_cache_ttl" 2>/dev/null)
+    if [[ -z "$security_count" ]]; then
+        security_count=$(_count_security_updates "$backend") || security_count=""
+        [[ -n "$security_count" ]] && cache_set "$_PACKAGES_SECURITY_CACHE_KEY" "$security_count"
+    fi
+    plugin_data_set "security_update_count" "$security_count"
 }
 
 plugin_render() {
-    local count show_count
+    local count security_count show_count display
     count=$(plugin_data_get "update_count")
     show_count=$(get_option "show_count")
+    display=$(get_option "update_display")
+    security_count=$(plugin_data_get "security_update_count")
 
     count="${count:-0}"
     [[ "$count" -eq 0 ]] && return 0
 
-    if [[ "$show_count" == "true" ]]; then
+    if [[ "$display" == "security" && -n "$security_count" ]]; then
+        printf '%s security updates' "$security_count"
+    elif [[ "$display" == "both" && -n "$security_count" ]]; then
+        printf '%s updates (%s security)' "$count" "$security_count"
+    elif [[ "$show_count" == "true" ]]; then
         if [[ "$count" -eq 1 ]]; then
             printf '1 update'
         else

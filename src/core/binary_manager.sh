@@ -55,9 +55,9 @@ binary_get_arch_suffix() {
     local arch
     arch=$(get_arch)
     case "$arch" in
-        arm64|aarch64) echo "darwin-arm64" ;;
-        x86_64|amd64)  echo "darwin-amd64" ;;
-        *)             echo "darwin-amd64" ;;  # fallback
+    arm64 | aarch64) echo "darwin-arm64" ;;
+    x86_64 | amd64) echo "darwin-amd64" ;;
+    *) return 1 ;;
     esac
 }
 
@@ -76,16 +76,15 @@ _get_powerkit_version() {
     # Fetch from GitHub API with proper timeout to avoid hangs
     local version
     version=$(curl -fsSL --connect-timeout 5 --max-time 10 \
-        "https://api.github.com/repos/${POWERKIT_GITHUB_REPO}/releases/latest" 2>/dev/null \
-        | grep '"tag_name"' | head -1 | sed 's/.*"v\([^"]*\)".*/\1/')
+        "https://api.github.com/repos/${POWERKIT_GITHUB_REPO}/releases/latest" 2>/dev/null |
+        grep '"tag_name"' | head -1 | sed 's/.*"v\([^"]*\)".*/\1/')
 
-    if [[ -n "$version" ]]; then
+    if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]]; then
         cache_set "$cache_key" "$version"
         printf '%s' "$version"
     else
-        # Fallback if API fails - use a recent version known to have binaries
-        log_warn "binary_manager" "Failed to fetch latest version from GitHub API, using fallback"
-        printf '%s' "5.10.1"
+        log_error "binary_manager" "Failed to fetch a valid release version from GitHub API"
+        return 1
     fi
 }
 
@@ -94,16 +93,24 @@ _get_powerkit_version() {
 binary_get_download_url() {
     local binary="$1"
     local version arch_suffix
-    version=$(_get_powerkit_version)
-    arch_suffix=$(binary_get_arch_suffix)
-    echo "https://github.com/${POWERKIT_GITHUB_REPO}/releases/download/v${version}/${binary}-${arch_suffix}"
+    version=$(_get_powerkit_version) || return 1
+    arch_suffix=$(binary_get_arch_suffix) || return 1
+    printf 'https://github.com/%s/releases/download/v%s/%s-%s' "$POWERKIT_GITHUB_REPO" "$version" "$binary" "$arch_suffix"
+}
+
+# Get checksum manifest URL for the selected macOS architecture.
+binary_get_checksum_url() {
+    local version arch_suffix
+    version=$(_get_powerkit_version) || return 1
+    arch_suffix=$(binary_get_arch_suffix) || return 1
+    printf 'https://github.com/%s/releases/download/v%s/SHA256SUMS-%s.txt' "$POWERKIT_GITHUB_REPO" "$version" "$arch_suffix"
 }
 
 # Check cached user decision
 # Usage: _binary_decision_get "binary_name"
 _binary_decision_get() {
     local binary="$1"
-    cache_get "binary_decision_${binary}" 86400  # 24h TTL
+    cache_get "binary_decision_${binary}" 86400 # 24h TTL
 }
 
 # Store user decision in cache
@@ -135,7 +142,7 @@ _track_missing_binary() {
         return 0
     fi
     _binary_runtime_init
-    echo "${binary}:${plugin}" >> "$_MISSING_BINARIES_FILE"
+    echo "${binary}:${plugin}" >>"$_MISSING_BINARIES_FILE"
 
     log_debug "binary_manager" "Tracked missing binary: $binary for plugin $plugin"
 }
@@ -175,20 +182,20 @@ binary_prompt_missing() {
         [[ -z "$line" ]] && continue
         binary_list+="${line} "
         ((count++))
-    done < "$_MISSING_BINARIES_FILE"
-    binary_list="${binary_list% }"  # Remove trailing space
+    done <"$_MISSING_BINARIES_FILE"
+    binary_list="${binary_list% }" # Remove trailing space
 
     [[ $count -eq 0 ]] && return 0
 
     # Mark as pending
     _binary_runtime_init
-    echo "1" > "$pending_file"
+    echo "1" >"$pending_file"
 
     log_info "binary_manager" "Prompting for ${count} missing binaries"
 
     # Write command to temp file for execution
     local cmd_file="${_BINARY_RUNTIME_DIR}/popup_cmd"
-    cat > "$cmd_file" << EOF
+    cat >"$cmd_file" <<EOF
 #!/usr/bin/env bash
 tmux display-popup -E -w 60% -h 70% -T ' PowerKit - Binary Download ' \
     '${POWERKIT_ROOT}/bin/powerkit-binary-prompt' '${binary_list}'
@@ -207,10 +214,11 @@ EOF
 # Returns: 0 on success, 1 on failure
 binary_download() {
     local binary="$1"
-    local url arch_suffix temp_file
+    local url checksum_url arch_suffix temp_file
 
-    url=$(binary_get_download_url "$binary")
-    arch_suffix=$(binary_get_arch_suffix)
+    url=$(binary_get_download_url "$binary") || return 1
+    checksum_url=$(binary_get_checksum_url) || return 1
+    arch_suffix=$(binary_get_arch_suffix) || return 1
     temp_file=$(mktemp "${TMPDIR:-/tmp}/powerkit-binary.XXXXXX") || {
         log_error "binary_manager" "Failed to create temp file for ${binary}"
         return 1
@@ -225,27 +233,33 @@ binary_download() {
         return 1
     fi
 
-    # Verify we got an executable (not an HTML error page)
-    if ! file "$temp_file" | grep -q "Mach-O"; then
+    # Verify we got an executable for the requested architecture (not HTML).
+    local file_info expected_arch
+    file_info=$(file "$temp_file" 2>/dev/null)
+    expected_arch="${arch_suffix##*-}"
+    [[ "$expected_arch" == "amd64" ]] && expected_arch="x86_64"
+    if [[ "$file_info" != *"Mach-O"* || "$file_info" != *"$expected_arch"* ]]; then
         log_error "binary_manager" "Downloaded file is not a valid macOS binary"
         rm -f "$temp_file" 2>/dev/null
         return 1
     fi
 
-    # Verify integrity when a .sha256 asset is published for the release
+    # Checksum manifests are release assets and are mandatory for installation.
     local expected_sha actual_sha
-    expected_sha=$(curl -fsSL --connect-timeout 5 --max-time 10 "${url}.sha256" 2>/dev/null | awk '{print $1}')
-    if [[ "$expected_sha" =~ ^[0-9a-fA-F]{64}$ ]]; then
-        actual_sha=$(shasum -a 256 "$temp_file" 2>/dev/null | awk '{print $1}')
-        if [[ "$actual_sha" != "$expected_sha" ]]; then
-            log_error "binary_manager" "Checksum mismatch for ${binary} (expected ${expected_sha}, got ${actual_sha:-none})"
-            rm -f "$temp_file" 2>/dev/null
-            return 1
-        fi
-        log_debug "binary_manager" "Checksum verified for ${binary}"
-    else
-        log_warn "binary_manager" "No checksum published for ${binary}; skipping verification"
+    expected_sha=$(curl -fsSL --connect-timeout 5 --max-time 10 "$checksum_url" 2>/dev/null | awk -v name="${binary}-${arch_suffix}" '$2 == name { print $1; exit }')
+    if [[ ! "$expected_sha" =~ ^[0-9a-fA-F]{64}$ ]]; then
+        log_error "binary_manager" "Missing checksum for ${binary} in ${checksum_url}"
+        rm -f "$temp_file" 2>/dev/null
+        return 1
     fi
+
+    actual_sha=$(shasum -a 256 "$temp_file" 2>/dev/null | awk '{print $1}')
+    if [[ "$actual_sha" != "$expected_sha" ]]; then
+        log_error "binary_manager" "Checksum mismatch for ${binary}"
+        rm -f "$temp_file" 2>/dev/null
+        return 1
+    fi
+    log_debug "binary_manager" "Checksum verified for ${binary}"
 
     # Make executable and move to bin dir
     chmod +x "$temp_file"
@@ -279,18 +293,18 @@ require_macos_binary() {
     decision=$(_binary_decision_get "$binary")
 
     case "$decision" in
-        yes)
-            # User said yes before but binary is missing - try download again
-            if binary_download "$binary"; then
-                return 0
-            fi
-            return 1
-            ;;
-        no)
-            # User declined before - skip silently
-            log_debug "binary_manager" "Skipping ${binary} (user declined)"
-            return 1
-            ;;
+    yes)
+        # User said yes before but binary is missing - try download again
+        if binary_download "$binary"; then
+            return 0
+        fi
+        return 1
+        ;;
+    no)
+        # User declined before - skip silently
+        log_debug "binary_manager" "Skipping ${binary} (user declined)"
+        return 1
+        ;;
     esac
 
     # No cached decision - track for batch prompt later
