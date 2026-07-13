@@ -69,40 +69,39 @@ api_fetch_with_auth() {
 # Specialized API Fetch (GitHub, GitLab, etc.)
 # =============================================================================
 
-# Make API call with platform-specific headers
-# Usage: make_api_call "url" "platform" "token" [timeout]
-# Platform: github, gitlab, bitbucket
-# Returns: Response body or empty string on failure
+# Make API call with supported authentication types.
+# Usage: make_api_call "url" "auth_type" "credential" [timeout]
+# auth_type: bearer, github, private-token, basic, or a legacy provider name.
 make_api_call() {
     local url="$1"
-    local platform="$2"
-    local token="$3"
+    local auth_type="$2"
+    local credential="$3"
     local timeout="${4:-5}"
 
-    local auth_header accept_header
+    local -a auth_args=()
+    local accept_header="Accept: application/json"
 
-    case "$platform" in
+    case "$auth_type" in
     github)
-        auth_header="Authorization: Bearer ${token}"
+        auth_args=(-H "Authorization: token ${credential}")
         accept_header="Accept: application/vnd.github+json"
         ;;
-    gitlab)
-        auth_header="PRIVATE-TOKEN: ${token}"
-        accept_header="Accept: application/json"
+    gitlab | private-token)
+        auth_args=(-H "PRIVATE-TOKEN: ${credential}")
         ;;
-    bitbucket)
-        auth_header="Authorization: Bearer ${token}"
-        accept_header="Accept: application/json"
+    bitbucket | bearer)
+        auth_args=(-H "Authorization: Bearer ${credential}")
+        ;;
+    basic)
+        auth_args=(-u "$credential")
         ;;
     *)
-        # Generic API - just use Bearer token
-        auth_header="Authorization: Bearer ${token}"
-        accept_header="Accept: application/json"
+        [[ -n "$credential" ]] && auth_args=(-H "Authorization: Bearer ${credential}")
         ;;
     esac
 
-    curl -s --connect-timeout "$timeout" --max-time "$timeout" \
-        -H "$auth_header" \
+    curl -sf --connect-timeout "$timeout" --max-time "$((timeout * 2))" \
+        "${auth_args[@]}" \
         -H "$accept_header" \
         "$url" 2>/dev/null
 }

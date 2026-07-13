@@ -39,6 +39,7 @@ plugin_declare_options() {
 
     # Display
     declare_option "branch_max_length" "number" "15" "Maximum branch name length (0 to disable truncation)"
+    declare_option "show_status_breakdown" "bool" "false" "Show staged, unstaged, and conflict counts"
 
     # Cache
     declare_option "cache_ttl" "number" "15" "Cache duration in seconds"
@@ -68,11 +69,22 @@ plugin_get_state() {
 plugin_get_health() {
     local ahead=$(plugin_data_get "ahead")
     local modified=$(plugin_data_get "modified")
+    local conflicts=$(plugin_data_get "conflicts")
 
+    [[ "$conflicts" -gt 0 ]] && {
+        printf 'error'
+        return
+    }
     # Commits not pushed → warning (needs attention)
-    [[ "$ahead" -gt 0 ]] && { printf 'warning'; return; }
+    [[ "$ahead" -gt 0 ]] && {
+        printf 'warning'
+        return
+    }
     # Local modifications → info (informational)
-    [[ "$modified" == "1" ]] && { printf 'info'; return; }
+    [[ "$modified" == "1" ]] && {
+        printf 'info'
+        return
+    }
     # Clean state
     printf 'ok'
 }
@@ -80,15 +92,27 @@ plugin_get_health() {
 plugin_get_context() {
     local ahead=$(plugin_data_get "ahead")
     local modified=$(plugin_data_get "modified")
+    local conflicts=$(plugin_data_get "conflicts")
 
-    [[ "$ahead" -gt 0 ]] && { printf 'unpushed'; return; }
-    [[ "$modified" == "1" ]] && { printf 'modified'; return; }
+    [[ "$conflicts" -gt 0 ]] && {
+        printf 'conflicted'
+        return
+    }
+    [[ "$ahead" -gt 0 ]] && {
+        printf 'unpushed'
+        return
+    }
+    [[ "$modified" == "1" ]] && {
+        printf 'modified'
+        return
+    }
     printf 'clean'
 }
 
 plugin_get_icon() {
-    local context=$(plugin_get_context)
-    [[ "$context" == "modified" ]] && get_option "icon_modified" || get_option "icon"
+    local modified
+    modified=$(plugin_data_get "modified")
+    [[ "$modified" == "1" ]] && get_option "icon_modified" || get_option "icon"
 }
 
 # =============================================================================
@@ -107,7 +131,7 @@ plugin_collect() {
     status_output=$(git -C "$path" status --porcelain=v1 --branch 2>/dev/null)
 
     # Parse branch, changes and ahead/behind
-    local branch="" modified=0 changed=0 untracked=0 ahead=0 behind=0
+    local branch="" modified=0 changed=0 untracked=0 staged=0 unstaged=0 conflicts=0 detached=0 ahead=0 behind=0
 
     while IFS= read -r line; do
         if [[ "$line" == "## "* ]]; then
@@ -123,6 +147,11 @@ plugin_collect() {
             # Clean branch name
             branch="${branch%%...*}"
             branch="${branch%% \[*}"
+            if [[ "$branch" == "HEAD (detached "* ]]; then
+                detached=1
+                branch="${branch#HEAD (detached }"
+                branch="${branch%)}"
+            fi
         elif [[ -n "$line" ]]; then
             # File change line
             local status="${line:0:2}"
@@ -130,18 +159,21 @@ plugin_collect() {
                 ((untracked++))
             elif [[ "$status" != "  " ]]; then
                 ((changed++))
+                [[ "${status:0:1}" != " " ]] && ((staged++))
+                [[ "${status:1:1}" != " " ]] && ((unstaged++))
+                [[ "$status" == *U* || "$status" == "AA" || "$status" == "DD" ]] && ((conflicts++))
             fi
             modified=1
         fi
-    done <<< "$status_output"
+    done <<<"$status_output"
 
     # If no ahead count from status, check for unpushed commits manually
     # This handles branches without upstream or with different tracking
-    if [[ "$ahead" -eq 0 && -n "$branch" ]]; then
+    if [[ "$ahead" -eq 0 && -n "$branch" && "$detached" == "0" ]]; then
         local remote merge_branch upstream=""
         remote=$(git -C "$path" config --get "branch.${branch}.remote" 2>/dev/null)
         merge_branch=$(git -C "$path" config --get "branch.${branch}.merge" 2>/dev/null)
-        
+
         if [[ -n "$remote" && -n "$merge_branch" ]]; then
             # Use configured upstream
             upstream="${remote}/${merge_branch#refs/heads/}"
@@ -151,7 +183,7 @@ plugin_collect() {
                 upstream="origin/${branch}"
             fi
         fi
-        
+
         if [[ -n "$upstream" ]]; then
             ahead=$(git -C "$path" rev-list --count "${upstream}..HEAD" 2>/dev/null || echo 0)
             behind=$(git -C "$path" rev-list --count "HEAD..${upstream}" 2>/dev/null || echo 0)
@@ -162,18 +194,26 @@ plugin_collect() {
     plugin_data_set "modified" "$modified"
     plugin_data_set "changed" "$changed"
     plugin_data_set "untracked" "$untracked"
+    plugin_data_set "staged" "$staged"
+    plugin_data_set "unstaged" "$unstaged"
+    plugin_data_set "conflicts" "$conflicts"
+    plugin_data_set "detached" "$detached"
     plugin_data_set "ahead" "$ahead"
     plugin_data_set "behind" "$behind"
 }
 
 plugin_render() {
-    local branch changed untracked ahead behind max_length
+    local branch changed untracked staged unstaged conflicts ahead behind max_length show_breakdown
     branch=$(plugin_data_get "branch")
     changed=$(plugin_data_get "changed")
     untracked=$(plugin_data_get "untracked")
+    staged=$(plugin_data_get "staged")
+    unstaged=$(plugin_data_get "unstaged")
+    conflicts=$(plugin_data_get "conflicts")
     ahead=$(plugin_data_get "ahead")
     behind=$(plugin_data_get "behind")
     max_length=$(get_option "branch_max_length")
+    show_breakdown=$(get_option "show_status_breakdown")
 
     [[ -z "$branch" ]] && return 0
 
@@ -185,7 +225,11 @@ plugin_render() {
     [[ "$untracked" -gt 0 ]] && result+=" +$untracked"
     [[ "$ahead" -gt 0 ]] && result+=" ↑$ahead"
     [[ "$behind" -gt 0 ]] && result+=" ↓$behind"
+    if [[ "$show_breakdown" == "true" ]]; then
+        [[ "$staged" -gt 0 ]] && result+=" S$staged"
+        [[ "$unstaged" -gt 0 ]] && result+=" U$unstaged"
+        [[ "$conflicts" -gt 0 ]] && result+=" !$conflicts"
+    fi
 
     printf '%s' "$result"
 }
-

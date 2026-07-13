@@ -77,11 +77,21 @@ _cache_file_path() {
     printf '%s/%s' "$_CACHE_DIR" "$safe_key"
 }
 
+_cache_invalidate_memory() {
+    local key="$1"
+    local mem_key
+    local mem_prefix="${key}:"
+
+    for mem_key in "${!_MEMORY_CACHE[@]}"; do
+        [[ "$mem_key" == "$mem_prefix"* ]] && unset "_MEMORY_CACHE[$mem_key]"
+    done
+}
+
 # Get file modification time in seconds since epoch
 # Usage: _file_mtime "/path/to/file"
 _file_mtime() {
     local file="$1"
-    if [[ -f "$file" ]]; then
+    if [[ -e "$file" ]]; then
         stat -f%m "$file" 2>/dev/null || stat -c%Y "$file" 2>/dev/null || echo 0
     else
         echo 0
@@ -146,11 +156,7 @@ cache_set() {
     local tmp_file="${cache_file}.tmp.$$"
     printf '%s' "$value" >"$tmp_file" && mv "$tmp_file" "$cache_file"
 
-    # Invalidate memory cache for this key
-    local mem_prefix="${key}:"
-    for mem_key in "${!_MEMORY_CACHE[@]}"; do
-        [[ "$mem_key" == "$mem_prefix"* ]] && unset "_MEMORY_CACHE[$mem_key]"
-    done
+    _cache_invalidate_memory "$key"
 }
 
 # Check if cache entry exists and is valid
@@ -233,11 +239,7 @@ cache_clear() {
 
     rm -f "$cache_file" 2>/dev/null || true
 
-    # Invalidate memory cache for this key
-    local mem_prefix="${key}:"
-    for mem_key in "${!_MEMORY_CACHE[@]}"; do
-        [[ "$mem_key" == "$mem_prefix"* ]] && unset "_MEMORY_CACHE[$mem_key]"
-    done
+    _cache_invalidate_memory "$key"
 }
 
 # Clear all cache entries for a prefix
@@ -259,6 +261,7 @@ cache_clear_prefix() {
 cache_clear_all() {
     _ensure_cache_dir
     rm -f "$_CACHE_DIR"/* 2>/dev/null || true
+    _MEMORY_CACHE=()
 }
 
 # =============================================================================

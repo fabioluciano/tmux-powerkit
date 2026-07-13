@@ -39,7 +39,7 @@ safe_curl() {
 # Usage: make_api_call <url> <auth_type> <token> [timeout]
 # auth_type: "bearer" (standard OAuth), "github" (GitHub), "private-token" (GitLab), "basic" (user:pass)
 # Returns: API response or empty on error
-make_api_call() {
+_network_make_api_call() {
     local url="$1"
     local auth_type="$2"
     local token="$3"
@@ -76,6 +76,14 @@ make_api_call() {
         "${auth_args[@]}" \
         "$url" 2>/dev/null
 }
+
+# api.sh owns the canonical implementation when both utility modules are loaded.
+# Keep this wrapper for consumers that source network.sh alone.
+if ! declare -F make_api_call &>/dev/null; then
+    make_api_call() {
+        _network_make_api_call "$@"
+    }
+fi
 
 # =============================================================================
 # Endpoint Reachability

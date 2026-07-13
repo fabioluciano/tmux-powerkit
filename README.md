@@ -44,7 +44,7 @@ Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, an
 
 ### 🧩 **Truly Modular**
 
-**48 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
+**50 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
 
 ### 🔧 **Extensible Architecture**
 
@@ -201,21 +201,20 @@ Stay connected and informed:
 | `weather` | Weather from wttr.in | Location-based, customizable format |
 | `connectivity` | Internet connectivity status | Online/offline indicator, configurable endpoint |
 
-### 🎵 Media (7 plugins)
+### 🎵 Media (6 plugins)
 
 Control your media experience:
 
 | Plugin | Description | Platform |
 |--------|-------------|----------|
 | `volume` | System volume level | macOS only |
-| `brightness` | Screen brightness | Linux only |
 | `nowplaying` | Current music track | Music.app, Spotify (macOS) |
 | `audiodevices` | Active audio output device | macOS (SwitchAudioSource) |
 | `camera` | Camera usage indicator | macOS (lsof) |
 | `microphone` | Microphone mute status | macOS (osascript) |
 | `bluetooth` | Bluetooth status + devices | macOS (blueutil), Linux (bluetoothctl) |
 
-### 💻 Development (11 plugins)
+### 💻 Development (13 plugins)
 
 Supercharge your development workflow:
 
@@ -231,9 +230,11 @@ Supercharge your development workflow:
 | `cloud` | Cloud provider profile | AWS/Azure/GCP active profile |
 | `cloudstatus` | Cloud service status | Service health monitoring |
 | `yadm` | yadm dotfile status | Modified/untracked dotfiles, ahead/behind counts |
+| `chezmoi` | chezmoi dotfile status | Pending dotfile changes |
 | `packages` | Pending system updates | brew, apt, yum, pacman support |
+| `docker` | Docker or Podman containers | Running, stopped, and unhealthy container counts |
 
-### ⏰ Productivity (5 plugins)
+### ⏰ Productivity (6 plugins)
 
 Boost your productivity:
 
@@ -244,6 +245,7 @@ Boost your productivity:
 | `pomodoro` | Pomodoro timer | Work/break phases, keybindings |
 | `bitwarden` | Bitwarden vault status | Lock status, quick access |
 | `smartkey` | Custom environment variables | Display any env var or command output |
+| `appearance` | macOS appearance | Light/dark mode and theme switching |
 
 ### 💰 Financial (2 plugins)
 
@@ -673,7 +675,7 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 | [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
 | [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
 | [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
-| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins-45-available) | Detailed docs for all 45 plugins |
+| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins) | Detailed docs for all available plugins |
 | [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
 | [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
 | [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |

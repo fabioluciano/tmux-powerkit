@@ -11,10 +11,13 @@ export POWERKIT_ROOT
 . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
 
 name="${1:-}"
-[[ -z "$name" ]] && exit 1
+[[ "$name" =~ ^[a-zA-Z0-9_-]+$ ]] || exit 1
 
-plugin_file="${POWERKIT_ROOT}/src/plugins/${name}.sh"
-[[ ! -f "$plugin_file" ]] && exit 1
+plugins_dir=$(cd -P "${POWERKIT_ROOT}/src/plugins" 2>/dev/null && pwd) || exit 1
+plugin_file="${plugins_dir}/${name}.sh"
+[[ -f "$plugin_file" && ! -L "$plugin_file" ]] || exit 1
+plugin_dir=$(cd -P "$(dirname "$plugin_file")" 2>/dev/null && pwd) || exit 1
+[[ "$plugin_dir" == "$plugins_dir" ]] || exit 1
 
 # Source plugin
 . "$plugin_file"

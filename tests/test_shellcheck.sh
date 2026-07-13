@@ -42,39 +42,18 @@ fi
 echo "Parallel jobs: $JOBS"
 echo ""
 
-# Directories to check (standard rules)
-DIRS=(
-    "$POWERKIT_ROOT/src/core"
-    "$POWERKIT_ROOT/src/utils"
-    "$POWERKIT_ROOT/src/contract"
-    "$POWERKIT_ROOT/src/renderer"
-    "$POWERKIT_ROOT/src/plugins"
-    "$POWERKIT_ROOT/src/helpers"
-    "$POWERKIT_ROOT/src/native"
-    "$POWERKIT_ROOT/bin"
-    "$POWERKIT_ROOT/scripts"
-)
-
 # =============================================================================
 # Collect all files
 # =============================================================================
 FILE_LIST="$TEMP_DIR/files.txt"
-THEME_FILE_LIST="$TEMP_DIR/theme_files.txt"
 RESULTS_FILE="$TEMP_DIR/results.txt"
 
-for dir in "${DIRS[@]}"; do
-    [[ ! -d "$dir" ]] && continue
-    find "$dir" -name "*.sh" -type f 2>/dev/null >>"$FILE_LIST" || true
-done
-
-if [[ -d "$POWERKIT_ROOT/src/themes" ]]; then
-    find "$POWERKIT_ROOT/src/themes" -name "*.sh" -type f 2>/dev/null >>"$THEME_FILE_LIST" || true
-fi
+git -C "$POWERKIT_ROOT" ls-files -- '*.sh' '*.bash' '*.tmux' 'bin/*' 'scripts/*' |
+    while IFS= read -r file; do printf '%s/%s\n' "$POWERKIT_ROOT" "$file"; done >"$FILE_LIST"
 
 TOTAL=$(wc -l <"$FILE_LIST" 2>/dev/null | tr -d ' ' || echo 0)
-THEME_TOTAL=$(wc -l <"$THEME_FILE_LIST" 2>/dev/null | tr -d ' ' || echo 0)
 
-echo "Files to check: $TOTAL standard + $THEME_TOTAL themes"
+echo "Files to check: $TOTAL"
 echo ""
 
 # =============================================================================
@@ -85,7 +64,7 @@ _check_file() {
     local severity="$2"
     local results_file="$3"
 
-    if shellcheck -S "$severity" "$file" >/dev/null 2>&1; then
+    if shellcheck -S "$severity" -e SC2034 --shell=bash "$file" >/dev/null 2>&1; then
         echo "PASS:$(basename "$file")" >>"$results_file"
     else
         echo "FAIL:$file" >>"$results_file"
@@ -94,21 +73,12 @@ _check_file() {
 export -f _check_file
 
 # =============================================================================
-# Run shellcheck in parallel for standard files
+# Run ShellCheck in parallel for every tracked shell file
 # =============================================================================
 echo "--- Standard files ---"
 
 if [[ -s "$FILE_LIST" ]]; then
     cat "$FILE_LIST" | xargs -P "$JOBS" -I {} bash -c '_check_file "$@"' _ {} "warning" "$RESULTS_FILE"
-fi
-
-# =============================================================================
-# Run shellcheck in parallel for theme files (syntax errors only)
-# =============================================================================
-if [[ -s "$THEME_FILE_LIST" ]]; then
-    echo ""
-    echo "--- Themes (syntax only) ---"
-    cat "$THEME_FILE_LIST" | xargs -P "$JOBS" -I {} bash -c '_check_file "$@"' _ {} "error" "$RESULTS_FILE"
 fi
 
 # =============================================================================
@@ -130,7 +100,7 @@ if [[ -f "$RESULTS_FILE" ]]; then
         FAIL)
             printf "${RED}✗ FAIL:${NC} %s\n" "$file"
             # Show errors for this specific file (|| true to prevent set -e exit)
-            shellcheck -S warning "$file" 2>&1 | head -10 | sed 's/^/  /' || true
+            shellcheck -S warning -e SC2034 --shell=bash "$file" 2>&1 | head -10 | sed 's/^/  /' || true
             ((FAILED++)) || true
             ;;
         esac

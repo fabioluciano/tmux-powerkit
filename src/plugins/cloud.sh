@@ -55,6 +55,7 @@ plugin_declare_options() {
     # Display options
     declare_option "providers" "string" "all" "Cloud providers to monitor (all|aws,gcp,azure)"
     declare_option "show_region" "bool" "false" "Show AWS region in display"
+    declare_option "show_account" "bool" "false" "Show public AWS account ID when available"
     declare_option "verify_session" "bool" "true" "Verify active session (not just config)"
 
     # Icons (Material Design Icons)
@@ -80,15 +81,22 @@ plugin_get_state() {
     provider=$(plugin_data_get "provider")
     logged_in=$(plugin_data_get "logged_in")
 
-    [[ -z "$provider" ]] && { printf 'inactive'; return; }
-    [[ "$logged_in" != "true" ]] && { printf 'degraded'; return; }
+    [[ -z "$provider" ]] && {
+        printf 'inactive'
+        return
+    }
+    [[ "$logged_in" != "true" ]] && {
+        printf 'degraded'
+        return
+    }
     printf 'active'
 }
 
 plugin_get_health() {
-    local logged_in
+    local logged_in credential_status
     logged_in=$(plugin_data_get "logged_in")
-    [[ "$logged_in" == "true" ]] && printf 'good' || printf 'warning'
+    credential_status=$(plugin_data_get "credential_status")
+    [[ "$logged_in" == "true" && "$credential_status" != "expired" ]] && printf 'good' || printf 'warning'
 }
 
 plugin_get_context() {
@@ -102,11 +110,11 @@ plugin_get_icon() {
     provider=$(plugin_data_get "provider")
 
     case "$provider" in
-        aws)   get_option "icon_aws" ;;
-        gcp)   get_option "icon_gcp" ;;
-        azure) get_option "icon_azure" ;;
-        multi) get_option "icon_multi" ;;
-        *)     get_option "icon" ;;
+    aws) get_option "icon_aws" ;;
+    gcp) get_option "icon_gcp" ;;
+    azure) get_option "icon_azure" ;;
+    multi) get_option "icon_multi" ;;
+    *) get_option "icon" ;;
     esac
 }
 
@@ -132,8 +140,8 @@ _is_aws_session_active() {
             [[ -z "$has_token" ]] && continue
             expires_at=$(jq -r '.expiresAt // empty' "$cache_file" 2>/dev/null)
             [[ -z "$expires_at" ]] && continue
-            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expires_at" +%s 2>/dev/null || \
-                           date -d "$expires_at" +%s 2>/dev/null)
+            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expires_at" +%s 2>/dev/null ||
+                date -d "$expires_at" +%s 2>/dev/null)
             [[ -n "$expires_epoch" && "$expires_epoch" -gt "$now" ]] && return 0
         done
     fi
@@ -147,8 +155,8 @@ _is_aws_session_active() {
             [[ -f "$cache_file" ]] || continue
             expiration=$(jq -r '.Credentials.Expiration // empty' "$cache_file" 2>/dev/null)
             [[ -z "$expiration" ]] && continue
-            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expiration" +%s 2>/dev/null || \
-                           date -d "$expiration" +%s 2>/dev/null)
+            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expiration" +%s 2>/dev/null ||
+                date -d "$expiration" +%s 2>/dev/null)
             [[ -n "$expires_epoch" && "$expires_epoch" -gt "$now" ]] && return 0
         done
     fi
@@ -160,24 +168,42 @@ _is_aws_session_active() {
 }
 
 _get_aws_profile() {
-    [[ -n "${AWS_PROFILE:-}" ]] && { echo "$AWS_PROFILE"; return 0; }
-    [[ -n "${AWS_DEFAULT_PROFILE:-}" ]] && { echo "$AWS_DEFAULT_PROFILE"; return 0; }
+    [[ -n "${AWS_PROFILE:-}" ]] && {
+        echo "$AWS_PROFILE"
+        return 0
+    }
+    [[ -n "${AWS_DEFAULT_PROFILE:-}" ]] && {
+        echo "$AWS_DEFAULT_PROFILE"
+        return 0
+    }
 
     local cfg="${AWS_CONFIG_FILE:-$HOME/.aws/config}"
     [[ ! -f "$cfg" ]] && return 1
 
-    grep -q '^\[default\]\|^\[profile default\]' "$cfg" 2>/dev/null && { echo "default"; return 0; }
+    grep -q '^\[default\]\|^\[profile default\]' "$cfg" 2>/dev/null && {
+        echo "default"
+        return 0
+    }
 
     local profile
     profile=$(grep -oE '^\[profile [^]]+\]' "$cfg" 2>/dev/null | head -1 | sed 's/\[profile //;s/\]//')
-    [[ -n "$profile" ]] && { echo "$profile"; return 0; }
+    [[ -n "$profile" ]] && {
+        echo "$profile"
+        return 0
+    }
     return 1
 }
 
 _get_aws_region() {
     local profile="${1:-default}"
-    [[ -n "${AWS_REGION:-}" ]] && { echo "$AWS_REGION"; return 0; }
-    [[ -n "${AWS_DEFAULT_REGION:-}" ]] && { echo "$AWS_DEFAULT_REGION"; return 0; }
+    [[ -n "${AWS_REGION:-}" ]] && {
+        echo "$AWS_REGION"
+        return 0
+    }
+    [[ -n "${AWS_DEFAULT_REGION:-}" ]] && {
+        echo "$AWS_DEFAULT_REGION"
+        return 0
+    }
 
     local cfg="${AWS_CONFIG_FILE:-$HOME/.aws/config}"
     [[ ! -f "$cfg" ]] && return 1
@@ -192,16 +218,21 @@ _get_aws_region() {
 }
 
 _get_aws_context() {
-    local profile region logged_in show_region context
+    local profile region account logged_in show_region show_account context
     profile=$(_get_aws_profile) || return 1
 
     logged_in="true"
     _is_aws_session_active "$profile" || logged_in="false"
 
     show_region=$(get_option "show_region")
+    show_account=$(get_option "show_account")
     region=$(_get_aws_region "$profile")
 
     [[ -n "$region" && "$show_region" == "true" ]] && context="${profile}@${region}" || context="$profile"
+    if [[ "$logged_in" == "true" && "$show_account" == "true" ]]; then
+        account=$(timeout 2 aws sts get-caller-identity --profile "$profile" --query Account --output text 2>/dev/null)
+        [[ "$account" =~ ^[0-9]{12}$ ]] && context+="@${account}"
+    fi
 
     echo "${context}:${logged_in}"
 }
@@ -218,7 +249,7 @@ _is_gcp_session_active() {
 
     # Check application default credentials
     local adc="$HOME/.config/gcloud/application_default_credentials.json"
-    if [[ -f "$adc" ]]; then
+    if [[ -f "$adc" ]] && has_cmd jq; then
         local has_creds
         has_creds=$(jq -r '.client_id // .type // empty' "$adc" 2>/dev/null)
         [[ -n "$has_creds" ]] && return 0
@@ -239,14 +270,23 @@ _is_gcp_session_active() {
 }
 
 _get_gcp_project() {
-    [[ -n "${CLOUDSDK_CORE_PROJECT:-}" ]] && { echo "$CLOUDSDK_CORE_PROJECT"; return 0; }
-    [[ -n "${GOOGLE_CLOUD_PROJECT:-}" ]] && { echo "$GOOGLE_CLOUD_PROJECT"; return 0; }
+    [[ -n "${CLOUDSDK_CORE_PROJECT:-}" ]] && {
+        echo "$CLOUDSDK_CORE_PROJECT"
+        return 0
+    }
+    [[ -n "${GOOGLE_CLOUD_PROJECT:-}" ]] && {
+        echo "$GOOGLE_CLOUD_PROJECT"
+        return 0
+    }
 
     local cfg="$HOME/.config/gcloud/configurations/config_default"
     if [[ -f "$cfg" ]]; then
         local project
         project=$(awk -F '= ' '/^project = / {print $2}' "$cfg" 2>/dev/null)
-        [[ -n "$project" ]] && { echo "$project"; return 0; }
+        [[ -n "$project" ]] && {
+            echo "$project"
+            return 0
+        }
     fi
     return 1
 }
@@ -273,19 +313,19 @@ _is_azure_session_active() {
 
     # Check accessTokens.json
     local tokens="$HOME/.azure/accessTokens.json"
-    if [[ -f "$tokens" ]]; then
+    if [[ -f "$tokens" ]] && has_cmd jq; then
         local now=$EPOCHSECONDS expires expires_epoch
         expires=$(jq -r '.[0].expiresOn // empty' "$tokens" 2>/dev/null)
         if [[ -n "$expires" ]]; then
-            expires_epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$expires" +%s 2>/dev/null || \
-                           date -d "$expires" +%s 2>/dev/null)
+            expires_epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$expires" +%s 2>/dev/null ||
+                date -d "$expires" +%s 2>/dev/null)
             [[ -n "$expires_epoch" && "$expires_epoch" -gt "$now" ]] && return 0
         fi
     fi
 
     # Check msal token cache
     local msal_cache="$HOME/.azure/msal_token_cache.json"
-    [[ -f "$msal_cache" ]] && jq -e '.AccessToken | length > 0' "$msal_cache" &>/dev/null && return 0
+    [[ -f "$msal_cache" ]] && has_cmd jq && jq -e '.AccessToken | length > 0' "$msal_cache" &>/dev/null && return 0
 
     # Fallback: Quick az check
     has_cmd az && timeout 2 az account show &>/dev/null && return 0
@@ -294,13 +334,19 @@ _is_azure_session_active() {
 }
 
 _get_azure_subscription() {
-    [[ -n "${AZURE_SUBSCRIPTION_ID:-}" ]] && { echo "$AZURE_SUBSCRIPTION_ID"; return 0; }
+    [[ -n "${AZURE_SUBSCRIPTION_ID:-}" ]] && {
+        echo "$AZURE_SUBSCRIPTION_ID"
+        return 0
+    }
 
     local cfg="$HOME/.azure/azureProfile.json"
     if [[ -f "$cfg" ]] && has_cmd jq; then
         local sub
         sub=$(jq -r '.subscriptions[] | select(.isDefault==true) | .name' "$cfg" 2>/dev/null | head -1)
-        [[ -n "$sub" ]] && { echo "$sub"; return 0; }
+        [[ -n "$sub" ]] && {
+            echo "$sub"
+            return 0
+        }
     fi
     return 1
 }
@@ -329,27 +375,27 @@ _get_cloud_context() {
 
     for provider in ${providers//,/ }; do
         case "${provider,,}" in
-            aws)
-                ctx=$(_get_aws_context) && {
-                    results+=("${ctx%:*}")
-                    provider_list+=("aws")
-                    login_states+=("${ctx##*:}")
-                }
-                ;;
-            gcp)
-                ctx=$(_get_gcp_context) && {
-                    results+=("${ctx%:*}")
-                    provider_list+=("gcp")
-                    login_states+=("${ctx##*:}")
-                }
-                ;;
-            azure)
-                ctx=$(_get_azure_context) && {
-                    results+=("${ctx%:*}")
-                    provider_list+=("azure")
-                    login_states+=("${ctx##*:}")
-                }
-                ;;
+        aws)
+            ctx=$(_get_aws_context) && {
+                results+=("${ctx%:*}")
+                provider_list+=("aws")
+                login_states+=("${ctx##*:}")
+            }
+            ;;
+        gcp)
+            ctx=$(_get_gcp_context) && {
+                results+=("${ctx%:*}")
+                provider_list+=("gcp")
+                login_states+=("${ctx##*:}")
+            }
+            ;;
+        azure)
+            ctx=$(_get_azure_context) && {
+                results+=("${ctx%:*}")
+                provider_list+=("azure")
+                login_states+=("${ctx##*:}")
+            }
+            ;;
         esac
     done
 
@@ -359,7 +405,10 @@ _get_cloud_context() {
     local all_logged="true"
     local state
     for state in "${login_states[@]}"; do
-        [[ "$state" != "true" ]] && { all_logged="false"; break; }
+        [[ "$state" != "true" ]] && {
+            all_logged="false"
+            break
+        }
     done
 
     # Single or multiple providers
@@ -389,6 +438,7 @@ plugin_collect() {
     plugin_data_set "provider" "$provider"
     plugin_data_set "context" "$context"
     plugin_data_set "logged_in" "$logged_in"
+    [[ "$logged_in" == "true" ]] && plugin_data_set "credential_status" "valid" || plugin_data_set "credential_status" "expired"
 }
 
 # =============================================================================
