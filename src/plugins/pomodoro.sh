@@ -34,10 +34,10 @@ plugin_declare_options() {
     declare_option "show_sessions" "bool" "true" "Show completed session count"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0517' "Default icon"
+    declare_option "icon" "icon" $'\U000F051B' "Default icon (timer-outline)"
     declare_option "icon_work" "icon" $'\U000F13AB' "Work session icon"
     declare_option "icon_break" "icon" $'\U000F04B2' "Break session icon"
-    declare_option "icon_stopped" "icon" $'\U000F040C' "Stopped icon"
+    declare_option "icon_stopped" "icon" $'\U000F0667' "Stopped icon (stop-circle-outline)"
 
     # Keybindings
     declare_option "keybinding_toggle" "key" "C-p" "Keybinding to toggle timer"

@@ -55,7 +55,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F0237' "Default plugin icon (key)"
-    declare_option "icon_waiting" "icon" $'\U000F0237' "Icon when waiting for touch"
+    declare_option "icon_waiting" "icon" $'\U000F0741' "Icon when waiting for touch (gesture-tap)"
 
     # Cache - very short TTL since touch state changes quickly
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"

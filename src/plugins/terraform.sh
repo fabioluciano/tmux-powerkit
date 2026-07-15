@@ -66,7 +66,7 @@ plugin_declare_options() {
 
     # Icons
     declare_option "icon" "icon" $'\U000F1062' "Plugin icon"
-    declare_option "icon_pending" "icon" $'\U000F12A3' "Pending changes icon"
+    declare_option "icon_pending" "icon" $'\U000F04C2' "Pending changes icon (source-pull)"
 
     # Keybindings
     declare_option "keybinding_workspace" "key" "" "Keybinding for workspace selector"

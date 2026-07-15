@@ -201,7 +201,7 @@ plugin_declare_options() {
     # Z.ai (Zhipu GLM Coding Plan)
     declare_option "zai_quota_url" "string" "${AIQUOTAS_DEFAULT_URLS[zai_quota]}" "Z.ai quota/limit endpoint (Coding Plan 5h quota)"
 
-    declare_option "icon" "icon" $'\uEE9C' "Plugin icon"
+    declare_option "icon" "icon" $'\uEE9C' "Plugin icon (brain)"
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
 }
 

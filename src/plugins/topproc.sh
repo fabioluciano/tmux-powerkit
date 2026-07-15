@@ -33,7 +33,7 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    declare_option "icon" "icon" $'\U000F0322' "Plugin icon (process)"
+    declare_option "icon" "icon" $'\U000F0238' "Plugin icon (fire)"
     declare_option "warning_threshold" "number" "70" "Warning threshold (%)"
     declare_option "critical_threshold" "number" "90" "Critical threshold (%)"
     declare_option "max_length" "number" "15" "Max process name length"

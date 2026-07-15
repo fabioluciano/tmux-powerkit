@@ -39,7 +39,7 @@ plugin_declare_options() {
     declare_option "format" "string" "usage" "Display format (percent|usage|free)"
 
     # Icons - Use correct UTF-32 format (4-digit for BMP)
-    declare_option "icon" "icon" $'\U000f04e1' "Plugin icon (swap/exchange)"
+    declare_option "icon" "icon" $'\U000F0CFF' "Plugin icon (database-sync)"
 
     # Thresholds (higher = worse)
     declare_option "warning_threshold" "number" "60" "Warning threshold percentage"
@@ -148,15 +148,15 @@ _collect_macos() {
 
         # Provide degraded information (activity-based approximation)
         plugin_data_set "available" "1"
-        plugin_data_set "degraded" "1"  # Mark as degraded data
+        plugin_data_set "degraded" "1" # Mark as degraded data
         plugin_data_set "swap_activity" "$swap_activity"
         plugin_data_set "method" "vm_stat"
 
         # Cannot provide accurate percentage with vm_stat alone
         # Set placeholder values for display
-        plugin_data_set "percent" "0"  # Unknown
-        plugin_data_set "used" "$swap_activity"  # Activity count as proxy
-        plugin_data_set "total" "0"  # Unknown
+        plugin_data_set "percent" "0"           # Unknown
+        plugin_data_set "used" "$swap_activity" # Activity count as proxy
+        plugin_data_set "total" "0"             # Unknown
         return 0
     fi
 
@@ -170,10 +170,10 @@ _to_bytes() {
     local unit="$2"
 
     case "$unit" in
-        M) echo "$((${value%.*} * 1024 * 1024))" ;;
-        G) echo "$((${value%.*} * 1024 * 1024 * 1024))" ;;
-        T) echo "$((${value%.*} * 1024 * 1024 * 1024 * 1024))" ;;
-        *) echo "0" ;;
+    M) echo "$((${value%.*} * 1024 * 1024))" ;;
+    G) echo "$((${value%.*} * 1024 * 1024 * 1024))" ;;
+    T) echo "$((${value%.*} * 1024 * 1024 * 1024 * 1024))" ;;
+    *) echo "0" ;;
     esac
 }
 
@@ -185,14 +185,14 @@ _bytes_to_human() {
     local mb=$((1024 * 1024))
     local kb=1024
 
-    if (( bytes >= gb )); then
+    if ((bytes >= gb)); then
         # Show GB with one decimal place
         local gb_val=$((bytes * 10 / gb))
         printf '%d.%dG' $((gb_val / 10)) $((gb_val % 10))
-    elif (( bytes >= mb )); then
+    elif ((bytes >= mb)); then
         # Show MB with no decimals
         printf '%dM' $((bytes / mb))
-    elif (( bytes >= kb )); then
+    elif ((bytes >= kb)); then
         # Show KB
         printf '%dK' $((bytes / kb))
     else
@@ -250,7 +250,7 @@ plugin_get_state() {
     if [[ "$available" != "1" ]]; then
         printf 'inactive'
     elif [[ "$degraded" == "1" ]]; then
-        printf 'degraded'  # macOS vm_stat fallback provides limited info
+        printf 'degraded' # macOS vm_stat fallback provides limited info
     else
         printf 'active'
     fi
@@ -266,8 +266,8 @@ plugin_get_health() {
     if [[ "$degraded" == "1" ]] || [[ "$method" == "vm_stat" ]]; then
         # Check swap activity for approximation
         local activity=$(plugin_data_get "swap_activity")
-        if [[ -n "$activity" ]] && (( activity > 0 )); then
-            printf 'info'  # Swap is active (approximation)
+        if [[ -n "$activity" ]] && ((activity > 0)); then
+            printf 'info' # Swap is active (approximation)
         else
             printf 'ok'
         fi
@@ -280,9 +280,9 @@ plugin_get_health() {
     crit_th=$(get_option "critical_threshold")
 
     # Inline threshold evaluation (higher is worse)
-    if (( ${percent:-0} >= ${crit_th:-80} )); then
+    if ((${percent:-0} >= ${crit_th:-80})); then
         printf 'error'
-    elif (( ${percent:-0} >= ${warn_th:-60} )); then
+    elif ((${percent:-0} >= ${warn_th:-60})); then
         printf 'warning'
     else
         printf 'ok'
@@ -292,9 +292,9 @@ plugin_get_health() {
 plugin_get_context() {
     local health=$(plugin_get_health)
     case "$health" in
-        error)   printf 'critical_usage' ;;
-        warning) printf 'high_usage' ;;
-        *)       printf 'normal_usage' ;;
+    error) printf 'critical_usage' ;;
+    warning) printf 'high_usage' ;;
+    *) printf 'normal_usage' ;;
     esac
 }
 
@@ -314,8 +314,8 @@ plugin_render() {
     # Handle degraded data (vm_stat fallback)
     if [[ "$degraded" == "1" ]] || [[ "$method" == "vm_stat" ]]; then
         local activity=$(plugin_data_get "swap_activity")
-        if [[ -n "$activity" ]] && (( activity > 0 )); then
-            printf 'swap active'  # Indicate swap is being used
+        if [[ -n "$activity" ]] && ((activity > 0)); then
+            printf 'swap active' # Indicate swap is being used
         else
             printf 'no swap'
         fi
@@ -324,16 +324,16 @@ plugin_render() {
 
     # Normal rendering for accurate data
     case "$format" in
-        usage)
-            printf '%s/%s' "$(_bytes_to_human "${used:-0}")" "$(_bytes_to_human "${total:-0}")"
-            ;;
-        free)
-            local free=$(( ${total:-0} - ${used:-0} ))
-            printf '%s free' "$(_bytes_to_human "$free")"
-            ;;
-        percent|*)
-            printf '%3d%%' "${percent:-0}"
-            ;;
+    usage)
+        printf '%s/%s' "$(_bytes_to_human "${used:-0}")" "$(_bytes_to_human "${total:-0}")"
+        ;;
+    free)
+        local free=$((${total:-0} - ${used:-0}))
+        printf '%s free' "$(_bytes_to_human "$free")"
+        ;;
+    percent | *)
+        printf '%3d%%' "${percent:-0}"
+        ;;
     esac
 }
 

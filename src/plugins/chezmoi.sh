@@ -51,7 +51,7 @@ plugin_check_dependencies() {
 
 plugin_declare_options() {
     # Icons
-    declare_option "icon" "icon" $'\U000F0494' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F1159' "Plugin icon (home-edit)"
 
     # Thresholds
     declare_option "warning_threshold"  "number" "5"  "Warning threshold (number of pending differences)"

@@ -40,7 +40,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between coin prices"
 
     # Icons
-    declare_option "icon" "icon" $'\U000f0116' "Plugin icon (cash-multiple)"
+    declare_option "icon" "icon" $'\U000F01AC' "Plugin icon (currency-btc)"
 
     # Cache (prices don't change very frequently)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds (5 min)"

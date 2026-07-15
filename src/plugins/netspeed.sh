@@ -42,7 +42,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between up/down"
 
     # Icons
-    declare_option "icon" "icon" $'\U0000F0B5' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F04C5' "Plugin icon (speedometer)"
     declare_option "icon_download" "icon" $'\U000F01DA' "Icon for download"
     declare_option "icon_upload" "icon" $'\U000F0552' "Icon for upload"
 

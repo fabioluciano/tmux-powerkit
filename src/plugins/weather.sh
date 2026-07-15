@@ -55,7 +55,7 @@ plugin_declare_options() {
     declare_option "hide_plus_sign" "bool" "true" "Hide + sign for positive temperatures"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0599' "Plugin icon (used when icon_mode is static)"
+    declare_option "icon" "icon" $'\U000F0590' "Plugin icon (weather-cloudy)"
     declare_option "icon_mode" "string" "dynamic" "Icon mode: static (use icon option) or dynamic (use weather condition symbol from API)"
 
     # Cache (weather doesn't change frequently)

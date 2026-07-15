@@ -16,7 +16,7 @@ plugin_get_metadata() {
 
 plugin_declare_options() {
     declare_option "format" "string" "short" "Hostname format (short|full)"
-    declare_option "icon" "icon" $'\U0000f015' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F0379' "Plugin icon (monitor)"
 }
 
 

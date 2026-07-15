@@ -69,10 +69,10 @@ plugin_declare_options() {
 
     # Icons
     declare_option "icon" "icon" $'\U000F061A' "Plugin icon"
-    declare_option "icon_usage" "icon" $'\U0000f4bc' "Usage metric icon (nf-md-chip)"
+    declare_option "icon_usage" "icon" $'\U000F061A' "Usage metric icon (chip)"
     declare_option "icon_memory" "icon" $'\U0000efc5' "Memory metric icon (nf-md-memory)"
     declare_option "icon_temp" "icon" $'\U000F050F' "Temperature metric icon (nf-md-thermometer)"
-    declare_option "icon_freq" "icon" $'\U000F0A40' "Frequency metric icon (nf-md-sine-wave)"
+    declare_option "icon_freq" "icon" $'\U000F095B' "Frequency metric icon (sine-wave)"
 
     # Thresholds for GPU usage (%)
     declare_option "usage_warning_threshold" "number" "70" "Usage warning threshold (%)"

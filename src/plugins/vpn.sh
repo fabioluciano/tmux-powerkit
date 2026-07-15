@@ -43,7 +43,7 @@ plugin_declare_options() {
     declare_option "interfaces" "string" "tun,tap,ppp,wg" "VPN interface prefixes"
 
     # Icon
-    declare_option "icon" "icon" $'\U000F0483' "VPN icon (󱒃)"
+    declare_option "icon" "icon" $'\U000F099D' "VPN icon (shield-lock)"
 
     # Cache
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"

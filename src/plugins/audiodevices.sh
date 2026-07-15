@@ -44,7 +44,7 @@ plugin_declare_options() {
     declare_option "show_device_icons" "bool" "true" "Show input/output icons"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0025' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F05C5' "Plugin icon (surround-sound)"
     declare_option "input_icon" "icon" $'\U000F036C' "Input device icon"
     declare_option "output_icon" "icon" $'\U000F1120' "Output device icon"
 

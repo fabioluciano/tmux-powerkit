@@ -67,7 +67,7 @@ plugin_declare_options() {
     declare_option "hide_below_threshold" "number" "" "Hide plugin when temp is below this value (°C)"
 
     # Icons
-    declare_option "icon" "icon" $'\U0000F2CB' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F050F' "Plugin icon (thermometer)"
     declare_option "icon_warning" "icon" $'\U0000F2C9' "Icon for warning temperature"
     declare_option "icon_hot" "icon" $'\U0000EF2A' "Icon for critical temperature"
 
