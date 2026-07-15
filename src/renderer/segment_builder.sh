@@ -557,16 +557,19 @@ _is_hidden_by_threshold() {
 
     [[ "$show_only_on_threshold" != "true" ]] && return 1
 
-    local health_level
-    health_level=$(get_health_level "$health")
-    log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health health_level=$health_level"
+    log_debug "segment_builder" "plugin=$plugin_name show_only_on_threshold=$show_only_on_threshold health=$health"
 
-    if [[ "$health_level" -lt 1 ]]; then
-        log_debug "segment_builder" "plugin=$plugin_name hidden by show_only_on_threshold (health_level=$health_level)"
+    # Only warning and error represent a threshold breach.
+    # good/info are positive/informational states and must be hidden.
+    case "$health" in
+    warning | error)
+        return 1
+        ;;
+    *)
+        log_debug "segment_builder" "plugin=$plugin_name hidden by show_only_on_threshold (health=$health)"
         return 0
-    fi
-
-    return 1
+        ;;
+    esac
 }
 
 # Build spacing separator between plugins

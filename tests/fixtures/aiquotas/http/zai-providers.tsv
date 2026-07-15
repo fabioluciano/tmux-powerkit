@@ -1,0 +1,19 @@
+# Z.ai (Zhipu GLM Coding Plan) quota fixtures manifest.
+#
+# Format per line (tab-separated):
+#   STATUS <TAB> BODY_FILE <TAB> EXPECTED_URL_REGEX
+#
+# Lines starting with "#" are ignored. The shim consumes the Nth
+# non-comment line on the Nth invocation; on URL mismatch it FAIL HARD
+# (exit 70) to prevent accidental network access.
+#
+# Dedicated manifest so existing limited-providers.tsv indices stay stable.
+
+# Z.ai: happy path — 5h window 25% used, weekly 10% used
+200	tests/fixtures/aiquotas/zai-quota-limit.json	^https://api\.z\.ai/api/monitor/usage/quota/limit$
+
+# Z.ai: envelope-level error (HTTP 200, success:false, code 401)
+200	tests/fixtures/aiquotas/zai-envelope-error.json	^https://api\.z\.ai/api/monitor/usage/quota/limit$
+
+# Z.ai: malformed (no limits array)
+200	tests/fixtures/aiquotas/zai-malformed.json	^https://api\.z\.ai/api/monitor/usage/quota/limit$

@@ -1,0 +1,7 @@
+{
+  "garbage_field": "no canonical mapping exists",
+  "junk_number": 42,
+  "nested": {
+    "irrelevant": true
+  }
+}

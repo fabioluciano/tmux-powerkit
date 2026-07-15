@@ -1,0 +1,21 @@
+# Anthropic + OpenAI happy-path + error fixtures manifest.
+#
+# Format per line (tab-separated):
+#   STATUS <TAB> BODY_FILE <TAB> EXPECTED_URL_REGEX
+#
+# Lines starting with "#" are ignored. The shim consumes the Nth
+# non-comment line on the Nth invocation; on URL mismatch it FAIL HARD
+# (exit 70) to prevent accidental network access or unbounded pagination.
+#
+# No real credentials, no live endpoints. All tokens and URLs are
+# anonymised.
+
+200	tests/fixtures/aiquotas/anthropic-single-page.json	^https://api\.anthropic\.com/v1/organizations/usage_report/messages
+200	tests/fixtures/aiquotas/anthropic-cost.json	^https://api\.anthropic\.com/v1/organizations/cost_report
+200	tests/fixtures/aiquotas/openai-page-1.json	^https://api\.openai\.com/v1/organization/usage/completions\?start_time=[0-9]+
+200	tests/fixtures/aiquotas/openai-page-2.json	^https://api\.openai\.com/v1/organization/usage/completions\?.*page=cursor-2
+200	tests/fixtures/aiquotas/openai-cost.json	^https://api\.openai\.com/v1/organization/costs
+401	tests/fixtures/aiquotas/401.json	^https://api\.anthropic\.com/v1/organizations/usage_report/messages
+403	tests/fixtures/aiquotas/403.json	^https://api\.openai\.com/v1/organization/usage/completions
+429	tests/fixtures/aiquotas/429.json	^https://api\.openai\.com/v1/organization/usage/completions\?start_time=[0-9]+
+429	tests/fixtures/aiquotas/429.json	^https://api\.anthropic\.com/v1/organizations/cost_report

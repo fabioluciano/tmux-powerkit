@@ -36,7 +36,7 @@ plugin_declare_options() {
     declare_option "host" "string" "https://1.1.1.1" "Host to check connectivity"
     declare_option "timeout" "number" "2" "Connection timeout in seconds"
     declare_option "icon" "icon" $'\U000F059F' "Plugin icon (network)"
-    declare_option "icon_offline" "icon" $'\U000F0F17' "Icon when offline"
+    declare_option "icon_offline" "icon" $'\U000F0A8E' "Icon when offline"
     declare_option "cache_ttl" "number" "10" "Cache duration in seconds"
 }
 

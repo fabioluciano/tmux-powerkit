@@ -1,0 +1,18 @@
+{
+  "balance_infos": [
+    {
+      "currency": "USD",
+      "total_balance": "10.50",
+      "granted_balance": "8.00",
+      "topped_up_balance": "2.50"
+    },
+    {
+      "currency": "EUR",
+      "total_balance": "5.25",
+      "granted_balance": "0.00",
+      "topped_up_balance": "5.25"
+    }
+  ],
+  "available_balance": null,
+  "eos_balance": 0
+}

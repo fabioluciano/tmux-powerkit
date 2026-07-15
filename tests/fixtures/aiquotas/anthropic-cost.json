@@ -1,0 +1,16 @@
+{
+  "data": [
+    {
+      "starting_at": "2026-07-12T00:00:00Z",
+      "ending_at": "2026-07-13T00:00:00Z",
+      "results": [
+        {
+          "model": "claude-sonnet-4-5",
+          "amount": "1234",
+          "currency": "USD"
+        }
+      ]
+    }
+  ],
+  "has_more": false
+}

@@ -1,0 +1,32 @@
+# Limited providers fixtures manifest (DeepSeek, MiniMax, Xiaomi MiMo).
+#
+# Format per line (tab-separated):
+#   STATUS <TAB> BODY_FILE <TAB> EXPECTED_URL_REGEX
+#
+# Lines starting with "#" are ignored. The shim consumes the Nth
+# non-comment line on the Nth invocation; on URL mismatch it FAIL HARD
+# (exit 70) to prevent accidental network access.
+#
+# No real credentials, no live endpoints. All tokens and URLs are
+# anonymised. Counts are pre-seeded via printf "N\n" to AIQUOTAS_HTTP_STATE/counter.
+
+# DeepSeek: multi-currency balance (USD + EUR)
+200	tests/fixtures/aiquotas/deepseek-balance-multi.json	^https://api\.deepseek\.com/user/balance$
+
+# DeepSeek: single currency (CNY)
+200	tests/fixtures/aiquotas/deepseek-balance-single.json	^https://api\.deepseek\.com/user/balance$
+
+# MiniMax: Token Plan (multiple models)
+200	tests/fixtures/aiquotas/minimax-token-plan.json	^https://api\.minimax\.io/v1/token_plan/remains$
+
+# Xiaomi MiMo: configured URL + schema returns valid configured records
+200	tests/fixtures/aiquotas/mimo-configured.json	^https://configured-mimo\.example/api$
+
+# Xiaomi MiMo: malformed body (response has no canonical fields)
+200	tests/fixtures/aiquotas/mimo-malformed.json	^https://malformed-mimo\.example/api$
+
+# DeepSeek: 401 unauthorized
+401	tests/fixtures/aiquotas/401.json	^https://api\.deepseek\.com/user/balance$
+
+# MiniMax: 429 rate limited
+429	tests/fixtures/aiquotas/429.json	^https://api\.minimax\.io/v1/token_plan/remains$

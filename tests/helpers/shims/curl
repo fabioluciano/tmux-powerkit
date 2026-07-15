@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# aiquotas HTTP shim — deterministic curl mock for offline BATS testing
+MANIFEST="${AIQUOTAS_HTTP_SCENARIO:-}"
+STATE_DIR="${AIQUOTAS_HTTP_STATE:-}"
+COUNTER_FILE="${STATE_DIR}/counter"
+PROJECT_ROOT="${AIQUOTAS_PROJECT_ROOT:-/Users/fabioluciano/.config/tmux/plugins/tmux-powerkit}"
+
+_die_network() { echo "[shim] no manifest" >&2; exit 70; }
+_die_mismatch() { echo "[shim] URL mismatch" >&2; exit 70; }
+
+# parse curl args to find URL and detect -f flag
+URL=""
+HAS_F=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -sf) HAS_F=1 ;;
+        -s) ;;
+        -f) HAS_F=1 ;;
+        -w|-o|-X) shift ;;
+        -H|--connect-timeout|--max-time|--retry|--retry-delay) shift ;;
+        --*) ;;
+        -*) ;;
+        *) URL="$1" ;;
+    esac
+    shift
+done
+
+# validate
+[[ -z "$MANIFEST" || ! -f "$MANIFEST" ]] && _die_network
+[[ -z "$STATE_DIR" ]] && _die_network
+[[ -f "$COUNTER_FILE" ]] || printf '0\n' >"$COUNTER_FILE"
+
+# read counter + find manifest line
+read -r IDX <"$COUNTER_FILE" 2>/dev/null || IDX=0
+CURRENT=0
+while IFS=$'\t' read -r st file rx _; do
+    [[ -z "${st// }" || "$st" == "#"* ]] && continue
+    [[ $CURRENT -eq $IDX ]] && { STATUS="$st"; BODY_FILE="$file"; REGEX="$rx"; break; }
+    ((CURRENT++))
+done < "$MANIFEST"
+
+[[ -z "$STATUS" ]] && { echo "[shim] exhausted at $IDX" >&2; exit 6; }
+
+# validate URL
+[[ ! "$URL" =~ $REGEX ]] && _die_mismatch
+
+# increment counter
+echo "$((IDX + 1))" >"$COUNTER_FILE"
+
+# write last_status for adapter
+printf '%s' "$STATUS" >"$STATE_DIR/last_status"
+
+# output body
+BODY_PATH="$BODY_FILE"
+[[ -f "$PROJECT_ROOT/$BODY_PATH" ]] && BODY_PATH="$PROJECT_ROOT/$BODY_PATH"
+[[ -f "$BODY_PATH" ]] && cat "$BODY_PATH" || echo "{}"
+
+# request log
+[[ -d "$STATE_DIR" ]] && { mkdir -p "$STATE_DIR/requests"; printf 'URL=%s\n' "$URL" >"$STATE_DIR/requests/$((IDX+1)).log"; }
+
+# exit: only honour -f (exit 22 on 4xx/5xx). Without -f, exit 0 even on errors (matching real curl).
+[[ "$HAS_F" -eq 1 && "$STATUS" =~ ^[45] ]] && exit 22
+exit 0
