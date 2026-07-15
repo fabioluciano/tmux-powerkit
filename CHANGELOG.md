@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v6.0.0...v6.0.1) (2026-07-13)
+
+### Bug Fixes
+
+* **docker:** use Docker icon ([#242](https://github.com/fabioluciano/tmux-powerkit/issues/242)) ([46d51c7](https://github.com/fabioluciano/tmux-powerkit/commit/46d51c76b517bb5f1898e88234a6703cc81200ea))
+
 ## [6.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v5.29.1...v6.0.0) (2026-07-13)
 
 ### ⚠ BREAKING CHANGES
