@@ -290,6 +290,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/bluetooth.sh"
+        is_macos() { return 0; }
         _set_plugin_context bluetooth
         plugin_declare_options
         plugin_collect 2>/dev/null || true
@@ -318,6 +319,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/bluetooth.sh"
+        is_macos() { return 0; }
         _set_plugin_context bluetooth
         plugin_declare_options
         plugin_collect 2>/dev/null || true
@@ -343,6 +345,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/bluetooth.sh"
+        is_macos() { return 0; }
         _set_plugin_context bluetooth
         plugin_declare_options
         plugin_collect 2>/dev/null || true
@@ -371,6 +374,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/bluetooth.sh"
+        is_macos() { return 0; }
         _set_plugin_context bluetooth
         plugin_declare_options
         plugin_collect 2>/dev/null || true
@@ -398,6 +402,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/bluetooth.sh"
+        is_macos() { return 0; }
         _set_plugin_context bluetooth
         plugin_declare_options
         plugin_collect 2>/dev/null || true

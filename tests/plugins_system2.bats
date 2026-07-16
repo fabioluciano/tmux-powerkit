@@ -267,6 +267,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/gpu.sh"
+        is_macos() { return 1; }
         _set_plugin_context gpu
         plugin_declare_options
         plugin_collect 2>/dev/null || true
@@ -302,6 +303,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/gpu.sh"
+        is_macos() { return 1; }
         _set_plugin_context gpu
         plugin_declare_options
         plugin_collect 2>/dev/null || true
