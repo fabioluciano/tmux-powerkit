@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.1.0...v6.2.0) (2026-07-16)
+
+### Features
+
+* **aiquotas:** add compact content option and OpenAI Codex support ([debd3fe](https://github.com/fabioluciano/tmux-powerkit/commit/debd3fed9172521441497a3ca2c3234554e2b834))
+
 ## [6.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.0.1...v6.1.0) (2026-07-16)
 
 ### Features
