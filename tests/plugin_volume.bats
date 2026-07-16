@@ -23,6 +23,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/volume.sh"
+        is_macos() { return 0; }
         _set_plugin_context volume
         plugin_declare_options
         plugin_collect
@@ -58,6 +59,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/volume.sh"
+        is_macos() { return 0; }
         _set_plugin_context volume
         plugin_declare_options
         plugin_collect
@@ -87,6 +89,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/volume.sh"
+        is_macos() { return 0; }
         _set_plugin_context volume
         plugin_declare_options
         plugin_collect
@@ -118,6 +121,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/volume.sh"
+        is_macos() { return 0; }
         _set_plugin_context volume
         plugin_declare_options
         plugin_collect
@@ -147,6 +151,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/volume.sh"
+        is_macos() { return 0; }
         _set_plugin_context volume
         get_option() {
             if [[ "$1" == "show_percentage" ]]; then printf "false"; else printf ""; fi
@@ -202,6 +207,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/volume.sh"
+        is_macos() { return 0; }
         _set_plugin_context volume
         plugin_declare_options
         plugin_collect

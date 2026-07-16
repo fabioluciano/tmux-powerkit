@@ -22,6 +22,7 @@ BINARY_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
+        is_macos() { return 0; }
         _set_plugin_context nowplaying
         plugin_declare_options
         plugin_collect
@@ -54,6 +55,7 @@ EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
+        is_macos() { return 0; }
         _set_plugin_context nowplaying
         plugin_declare_options
         plugin_collect
@@ -78,6 +80,7 @@ BINARY_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 info_when_paused) printf "true" ;;
@@ -111,6 +114,7 @@ BINARY_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "%%title%% (%%album%%)" ;;
@@ -160,6 +164,7 @@ BINARY_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
+        is_macos() { return 0; }
         _set_plugin_context nowplaying
         plugin_declare_options
         plugin_collect
