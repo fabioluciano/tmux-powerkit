@@ -22,6 +22,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "1" ;;
@@ -58,6 +60,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "5" ;;
@@ -91,6 +95,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "all" ;;
@@ -124,6 +130,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "1" ;;
@@ -160,6 +168,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "1" ;;
@@ -193,6 +203,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "1" ;;
@@ -229,6 +241,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "1" ;;
@@ -262,6 +276,8 @@ SYSCTL_EOF
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/loadavg.sh"
+        is_linux() { return 1; }
+        is_macos() { return 0; }
         get_option() {
             case "$1" in
                 format) printf "15" ;;
