@@ -193,6 +193,8 @@ EOF
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/fan.sh"
         is_macos() { return 0; }
+        is_linux() { return 1; }
+        is_fanless_mac() { return 1; }
         _set_plugin_context fan
         plugin_declare_options
         plugin_collect 2>/dev/null || true
@@ -222,6 +224,8 @@ EOF
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/fan.sh"
         is_macos() { return 0; }
+        is_linux() { return 1; }
+        is_fanless_mac() { return 1; }
         _set_plugin_context fan
         plugin_declare_options
         plugin_collect 2>/dev/null || true
