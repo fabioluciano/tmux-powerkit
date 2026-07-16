@@ -246,7 +246,7 @@ binary_download() {
 
     # Checksum manifests are release assets and are mandatory for installation.
     local expected_sha actual_sha
-    expected_sha=$(curl -fsSL --connect-timeout 5 --max-time 10 "$checksum_url" 2>/dev/null | awk -v name="${binary}-${arch_suffix}" '$2 == name { print $1; exit }')
+    expected_sha=$(curl -fsSL --connect-timeout 5 --max-time 10 "$checksum_url" 2>/dev/null | awk -v name="${binary}-${arch_suffix}" '$2 ~ name "$" { print $1; exit }')
     if [[ ! "$expected_sha" =~ ^[0-9a-fA-F]{64}$ ]]; then
         log_error "binary_manager" "Missing checksum for ${binary} in ${checksum_url}"
         rm -f "$temp_file" 2>/dev/null

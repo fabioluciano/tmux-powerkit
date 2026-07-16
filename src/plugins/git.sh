@@ -35,7 +35,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F02A2' "Plugin icon"
-    declare_option "icon_modified" "icon" $'\U000F02A2' "Icon for modified state"
+    declare_option "icon_modified" "icon" $'\U000F08D5' "Icon for modified state (circle-edit-outline)"
 
     # Display
     declare_option "branch_max_length" "number" "15" "Maximum branch name length (0 to disable truncation)"

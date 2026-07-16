@@ -33,7 +33,7 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    declare_option "icon" "icon" $'\U000F0560' "Plugin icon (dashboard)"
+    declare_option "icon" "icon" $'\U000F05F6' "Plugin icon (heart-pulse)"
     declare_option "cpu_warning" "number" "70" "CPU warning threshold (%)"
     declare_option "cpu_critical" "number" "90" "CPU critical threshold (%)"
     declare_option "mem_warning" "number" "80" "Memory warning threshold (%)"

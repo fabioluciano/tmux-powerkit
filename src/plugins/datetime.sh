@@ -31,7 +31,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " " "Separator between elements"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0954' "Plugin icon (nf-mdi-calendar_clock)"
+    declare_option "icon" "icon" $'\U000F00F0' "Plugin icon (calendar-clock)"
 
     # Cache - time changes constantly, keep TTL short for accuracy
     declare_option "cache_ttl" "number" "5" "Cache duration in seconds"

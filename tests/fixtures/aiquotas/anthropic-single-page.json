@@ -1,0 +1,19 @@
+{
+  "data": [
+    {
+      "starting_at": "2026-07-12T00:00:00Z",
+      "ending_at": "2026-07-13T00:00:00Z",
+      "results": [
+        {
+          "model": "claude-sonnet-4-5",
+          "input_tokens": 1200,
+          "output_tokens": 800,
+          "cache_creation_input_tokens": 100,
+          "cache_read_input_tokens": 50,
+          "requests": 12
+        }
+      ]
+    }
+  ],
+  "has_more": false
+}

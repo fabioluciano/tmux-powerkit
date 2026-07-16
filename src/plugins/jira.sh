@@ -46,9 +46,9 @@ plugin_declare_options() {
 
     # Icons
     declare_option "icon" "icon" $'\U000F0303' "Plugin icon"
-    declare_option "icon_progress" "icon" $'\U000F0E4E' "Icon for in-progress issues"
-    declare_option "icon_todo" "icon" $'\U000F0E4F' "Icon for backlog issues"
-    declare_option "icon_flagged" "icon" $'\U000F0229' "Icon for blocked issues"
+    declare_option "icon_progress" "icon" $'\U000F0995' "Icon for in-progress issues (progress-check)"
+    declare_option "icon_todo" "icon" $'\U000F10D5' "Icon for backlog issues (clipboard-list-outline)"
+    declare_option "icon_flagged" "icon" $'\U000F023B' "Icon for blocked issues (flag)"
 
     # Thresholds
     declare_option "warning_threshold_progress" "number" "3" "Warning when in-progress issues exceed threshold"

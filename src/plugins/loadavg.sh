@@ -55,7 +55,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between load values (for format=all)"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F199F' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F04C5' "Plugin icon (speedometer)"
 
     # Thresholds (multiplied by CPU cores)
     declare_option "warning_threshold_multiplier" "number" "1" "Warning threshold multiplier (times CPU cores)"

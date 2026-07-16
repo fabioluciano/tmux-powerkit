@@ -61,9 +61,9 @@ plugin_declare_options() {
     # Icons (Material Design Icons)
     declare_option "icon" "icon" $'\U000F0163' "Default icon (cloud-outline)"
     declare_option "icon_aws" "icon" $'\U000F0E0F' "AWS icon"
-    declare_option "icon_gcp" "icon" $'\U000F0B20' "GCP icon"
+    declare_option "icon_gcp" "icon" $'\U000F11F6' "GCP icon (google-cloud)"
     declare_option "icon_azure" "icon" $'\U000F0805' "Azure icon"
-    declare_option "icon_multi" "icon" $'\U000F0164' "Multi-provider icon"
+    declare_option "icon_multi" "icon" $'\U000F1B95' "Multi-provider icon (clouds)"
 
     # Cache - cloud sessions are relatively stable (minutes to hours)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"

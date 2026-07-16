@@ -78,7 +78,7 @@ plugin_declare_options() {
     declare_option "icon" "icon" $'\U000F0079' "Default battery icon (full)"
     declare_option "icon_charging" "icon" $'\U000F0084' "Charging/AC power icon"
     declare_option "icon_warning" "icon" $'\U000F0083' "Warning battery icon"
-    declare_option "icon_critical" "icon" $'\U000F008E' "Critical battery icon"
+    declare_option "icon_critical" "icon" $'\U000F10CC' "Critical battery icon (battery-alert-variant)"
 
     # Cache
     declare_option "cache_ttl" "number" "30" "Cache duration in seconds"

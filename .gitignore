@@ -1,6 +1,7 @@
 .github/agents
 .claude
 .vscode
+bin/test-binary
 # Build artifacts
 dist/
 

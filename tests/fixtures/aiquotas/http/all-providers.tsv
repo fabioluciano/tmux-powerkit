@@ -1,0 +1,29 @@
+# All-providers fixtures manifest for aiquotas_manual_smoke.bash.
+#
+# Combines anthropic-openai.tsv + limited-providers.tsv. The plugin
+# walks providers in order (anthropic, openai, deepseek, minimax,
+# xiaomi_mimo). Each provider consumes 1-2 manifest lines for its
+# USAGE+COST calls. The shim consumes the Nth non-comment line on the
+# Nth invocation; URL mismatch -> exit 70 to prevent accidental network
+# access or unbounded pagination.
+#
+# No real credentials, no live endpoints. All tokens and URLs are
+# anonymised. Pre-seed counter via printf "N\n" > AIQUOTAS_HTTP_STATE/counter
+# if you need to skip lines.
+
+# Anthropic usage (page 1)
+200	tests/fixtures/aiquotas/anthropic-single-page.json	^https://api\.anthropic\.com/v1/organizations/usage_report/messages
+# Anthropic cost
+200	tests/fixtures/aiquotas/anthropic-cost.json	^https://api\.anthropic\.com/v1/organizations/cost_report
+# OpenAI usage (page 1)
+200	tests/fixtures/aiquotas/openai-page-1.json	^https://api\.openai\.com/v1/organization/usage/completions\?start_time=[0-9]+
+# OpenAI usage (page 2 — pagination)
+200	tests/fixtures/aiquotas/openai-page-2.json	^https://api\.openai\.com/v1/organization/usage/completions\?.*page=cursor-2
+# OpenAI cost
+200	tests/fixtures/aiquotas/openai-cost.json	^https://api\.openai\.com/v1/organization/costs
+# DeepSeek balance (multi-currency)
+200	tests/fixtures/aiquotas/deepseek-balance-multi.json	^https://api\.deepseek\.com/user/balance$
+# MiniMax Token Plan
+200	tests/fixtures/aiquotas/minimax-token-plan.json	^https://api\.minimax\.io/v1/token_plan/remains$
+# Xiaomi MiMo (configured URL — will only fire if xiaomi_mimo_usage_url is set in plugin options)
+200	tests/fixtures/aiquotas/mimo-configured.json	^https://configured-mimo\.example/api$

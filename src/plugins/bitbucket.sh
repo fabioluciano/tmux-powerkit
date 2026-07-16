@@ -45,7 +45,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between metrics"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0171' "Plugin icon"
+    declare_option "icon" "icon" $'\U000F00A8' "Plugin icon (bitbucket)"
     declare_option "icon_issue" "icon" $'\U0000F41B' "Icon for issues"
     declare_option "icon_pr" "icon" $'\U0000F407' "Icon for pull requests"
 

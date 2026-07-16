@@ -63,13 +63,13 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    declare_option "icon_auto" "icon" $'\U000F101B' "Nerd Font icon: auto mode (theme-light-dark)"
+    declare_option "icon_auto" "icon" $'\U000F050E' "Auto mode icon (theme-light-dark)"
     declare_option "icon_dark" "icon" $'\U000F0594' "Nerd Font icon: dark mode (moon)"
     declare_option "icon_light" "icon" $'\U000F0599' "Nerd Font icon: light mode (sun)"
 
-    declare_option "toggle_icon_auto" "icon" "🌗" "Content icon: auto mode"
-    declare_option "toggle_icon_dark" "icon" "🌚" "Content icon: dark mode"
-    declare_option "toggle_icon_light" "icon" "🌞" "Content icon: light mode"
+    declare_option "toggle_icon_auto" "icon" $'\U000F050E' "Content icon: auto mode (theme-light-dark)"
+    declare_option "toggle_icon_dark" "icon" $'\U000F0594' "Content icon: dark mode (weather-night)"
+    declare_option "toggle_icon_light" "icon" $'\U000F0599' "Content icon: light mode (weather-sunny)"
 
     declare_option "dark_theme" "string" "" "Theme/variant for dark mode (e.g. catppuccin/mocha)"
     declare_option "light_theme" "string" "" "Theme/variant for light mode (e.g. catppuccin/latte)"
@@ -214,11 +214,7 @@ plugin_get_icon() {
 plugin_render() {
     local mode
     mode=$(plugin_data_get "mode")
-    case "$mode" in
-    dark) get_option "toggle_icon_dark" ;;
-    light) get_option "toggle_icon_light" ;;
-    *) get_option "toggle_icon_auto" ;;
-    esac
+    printf '%s' "${mode:-auto}"
 }
 
 # =============================================================================

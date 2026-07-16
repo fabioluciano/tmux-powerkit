@@ -68,7 +68,7 @@ plugin_declare_options() {
 
     # Icons
     declare_option "icon" "icon" $'\U000F0210' "Fan icon"
-    declare_option "icon_fast" "icon" $'\U000F0211' "Fast fan icon"
+    declare_option "icon_fast" "icon" $'\U000F146C' "Fast fan icon (fan-alert)"
 
     # Thresholds (RPM)
     declare_option "warning_threshold" "number" "4000" "Warning threshold in RPM"

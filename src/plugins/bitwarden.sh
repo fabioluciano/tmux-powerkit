@@ -40,10 +40,10 @@ plugin_declare_options() {
     declare_option "cache_ttl" "number" "60" "Cache duration (bw status is slow)"
 
     # Icons
-    declare_option "icon" "icon" $'\U000F0306' "Default icon"
+    declare_option "icon" "icon" $'\U000F0BC4' "Default icon (shield-key)"
     declare_option "icon_locked" "icon" $'\U000F033E' "Locked icon"
     declare_option "icon_unlocked" "icon" $'\U000F0FC6' "Unlocked icon"
-    declare_option "icon_unauthenticated" "icon" $'\U000F0425' "Unauthenticated icon"
+    declare_option "icon_unauthenticated" "icon" $'\U000F0012' "Unauthenticated icon (account-off)"
 
     # Keybindings
     declare_option "keybinding_password" "key" "C-v" "Keybinding for password selector"

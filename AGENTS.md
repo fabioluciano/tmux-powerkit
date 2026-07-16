@@ -22,73 +22,77 @@ Mocha is the most popular variant with excellent contrast.
 
 ## Migration Summary
 
-**Status**: ✅ COMPLETE - All 50 plugins migrated to contract system
+**Status**: ✅ COMPLETE - All 51 plugins migrated to contract system
 
 ### Migration Statistics
 
-- **Total Plugins**: 50
+- **Total Plugins**: 51
 - **Migration Date**: January 2025
 - **Architecture**: Contract-based plugin system with strict separation of concerns
 - **Lines of Code**: ~5,500 lines (plugins only)
 
 ### Migrated Plugins (Alphabetical)
 
-1. **appearance** - macOS light/dark/auto toggle with theme switching
-2. **audiodevices** - Audio output device (macOS, SwitchAudioSource)
-3. **battery** - Battery level with charge state (pmset/upower)
-4. **bitbucket** - Pull requests count (API)
-5. **bitwarden** - Vault lock status (bw CLI)
-6. **bluetooth** - BT status + connected devices (blueutil/bluetoothctl)
-7. **brightness** - Screen brightness (Linux only - sysfs/brightnessctl/light/xbacklight)
-8. **camera** - Camera usage indicator (macOS, lsof)
-9. **chezmoi** - Pending dotfile changes (chezmoi CLI)
-10. **cloud** - Cloud provider profile (AWS/Azure/GCP)
-11. **cloudstatus** - Service status monitoring (status APIs)
-12. **cpu** - CPU usage with thresholds (sysctl/top)
-13. **crypto** - Cryptocurrency prices (CoinGecko API)
-14. **datetime** - Date/time with 15 format presets
-15. **disk** - Disk usage with thresholds (df)
-16. **external_ip** - Public IP address (ipify API)
-17. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
-18. **git** - Branch + modified files status
-19. **github** - Notifications/PRs/issues (gh CLI)
-20. **gitlab** - Merge requests/todos (glab CLI)
-21. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
-22. **hostname** - System hostname
-23. **iops** - Disk I/O operations (iostat)
-24. **jira** - Assigned issues count (API)
-25. **kubernetes** - Context + namespace (kubectl)
-26. **loadavg** - Load average with cores (uptime)
-27. **memory** - Memory usage with thresholds (vm_stat/free)
-28. **microphone** - Mic mute status (macOS, osascript)
-29. **netspeed** - Upload/download speed (ifstat/netstat)
-30. **nowplaying** - Current music track (Music/Spotify)
-31. **packages** - Pending updates (brew/apt/yum/pacman)
-32. **ping** - Network latency with thresholds
-33. **pomodoro** - Timer with work/break phases
-34. **smartkey** - Custom environment variable display
-35. **ssh** - SSH session indicator
-36. **stocks** - Stock prices (Yahoo Finance API)
-37. **swap** - Swap memory usage (sysctl/vm_stat/proc)
-38. **temperature** - CPU temperature (macOS, osx-cpu-temp)
-39. **terraform** - Workspace indicator
-40. **timezones** - Multi-timezone display
-41. **uptime** - System uptime
-42. **volume** - System volume (macOS, osascript)
-43. **vpn** - VPN connection status (tun/tap interfaces)
-44. **weather** - Weather from wttr.in
-45. **wifi** - WiFi SSID + signal strength
-46. **yadm** - yadm dotfile repository status (modified, untracked, ahead/behind)
+1. **aiquotas** - AI provider quotas, usage, balances, and rate limits
+2. **appearance** - macOS light/dark/auto toggle with theme switching
+3. **audiodevices** - Audio output device (macOS, SwitchAudioSource)
+4. **battery** - Battery level with charge state (pmset/upower)
+5. **bitbucket** - Pull requests count (API)
+6. **bitwarden** - Vault lock status (bw CLI)
+7. **bluetooth** - BT status + connected devices (blueutil/bluetoothctl)
+8. **brightness** - Screen brightness (Linux only - sysfs/brightnessctl/light/xbacklight)
+9. **camera** - Camera usage indicator (macOS, lsof)
+10. **chezmoi** - Pending dotfile changes (chezmoi CLI)
+11. **cloud** - Cloud provider profile (AWS/Azure/GCP)
+12. **cloudstatus** - Service status monitoring (status APIs)
+13. **connectivity** - Internet connectivity status (curl)
+14. **cpu** - CPU usage with thresholds (sysctl/top)
+15. **crypto** - Cryptocurrency prices (CoinGecko API)
+16. **datetime** - Date/time with 15 format presets
+17. **disk** - Disk usage with thresholds (df)
+18. **docker** - Docker or Podman container status
+19. **external_ip** - Public IP address (ipify API)
+20. **fan** - Fan speed (macOS: osx-cpu-temp/iStats, Linux: hwmon/dell_smm/thinkpad)
+21. **git** - Branch + modified files status
+22. **github** - Notifications/PRs/issues (gh CLI)
+23. **gitlab** - Merge requests/todos (glab CLI)
+24. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
+25. **hostname** - System hostname
+26. **iops** - Disk I/O operations (iostat)
+27. **jira** - Assigned issues count (API)
+28. **kubernetes** - Context + namespace (kubectl)
+29. **loadavg** - Load average with cores (uptime)
+30. **memory** - Memory usage with thresholds (vm_stat/free)
+31. **microphone** - Mic mute status (macOS, osascript)
+32. **netspeed** - Upload/download speed (ifstat/netstat)
+33. **nowplaying** - Current music track (Music/Spotify)
+34. **packages** - Pending updates (brew/apt/yum/pacman)
+35. **ping** - Network latency with thresholds
+36. **pomodoro** - Timer with work/break phases
+37. **smartkey** - Custom environment variable display
+38. **ssh** - SSH session indicator
+39. **stocks** - Stock prices (Yahoo Finance API)
+40. **swap** - Swap memory usage (sysctl/vm_stat/proc)
+41. **sysstatus** - Aggregated system health badge
+42. **temperature** - CPU temperature (macOS, osx-cpu-temp)
+43. **terraform** - Workspace indicator
+44. **timezones** - Multi-timezone display
+45. **topproc** - Process consuming the most CPU
+46. **uptime** - System uptime
+47. **volume** - System volume (macOS, osascript)
+48. **vpn** - VPN connection status (tun/tap interfaces)
+49. **weather** - Weather from wttr.in
+50. **wifi** - WiFi SSID + signal strength
+51. **yadm** - yadm dotfile repository status (modified, untracked, ahead/behind)
 
 ### Plugin Categories
 
-- **System Monitoring** (13): battery, cpu, disk, fan, gpu, iops, loadavg, memory, swap, temperature, uptime, volume, brightness
-- **Network** (7): external_ip, netspeed, ping, vpn, weather, wifi, ssh
-- **Development** (10): git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud, chezmoi, yadm
-- **Media** (4): nowplaying, audiodevices, camera, microphone
+- **System Monitoring** (15): battery, cpu, memory, swap, disk, loadavg, uptime, temperature, fan, gpu, iops, hostname, topproc, sysstatus, volume
+- **Network** (8): netspeed, wifi, vpn, ping, external_ip, ssh, weather, connectivity
+- **Media** (6): nowplaying, audiodevices, camera, microphone, bluetooth, brightness
+- **Development** (14): aiquotas, git, github, gitlab, bitbucket, jira, kubernetes, terraform, cloud, cloudstatus, packages, chezmoi, yadm, docker
 - **Productivity** (6): datetime, timezones, pomodoro, smartkey, bitwarden, appearance
 - **Financial** (2): crypto, stocks
-- **Services** (4): cloudstatus, packages, bluetooth, hostname
 
 ### Platform-Specific Plugins
 
@@ -1376,7 +1380,7 @@ plugin_get_icon() {
 
 ## Performance Notes
 
-- **50 plugins** — performance is critical
+- **51 plugins** — performance is critical
 - Cache data, not rendered output (allows dynamic color changes)
 - Use pure bash arithmetic over external commands
 - One `date +%s` call per render cycle

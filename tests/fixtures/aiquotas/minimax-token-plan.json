@@ -1,0 +1,14 @@
+{
+  "model_remains": [
+    {
+      "model_name": "MiniMax-M2",
+      "current_interval_total_count": 1000,
+      "current_interval_usage_count": 250
+    },
+    {
+      "model_name": "abab6.5s-chat",
+      "current_interval_total_count": 500,
+      "current_interval_usage_count": 50
+    }
+  ]
+}

@@ -36,7 +36,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Icons
     declare_option "icon" "icon" $'\U000F02A2' "Plugin icon (git)"
-    declare_option "icon_modified" "icon" $'\U000F02A2' "Icon for modified state"
+    declare_option "icon_modified" "icon" $'\U000F08D5' "Icon for modified state (circle-edit-outline)"
 
     # Display
     declare_option "show_branch" "bool" "false" "Show branch name instead of yadm label"
