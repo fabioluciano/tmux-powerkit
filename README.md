@@ -44,7 +44,7 @@ Smart **multi-layer caching**, **Stale-While-Revalidate (SWR) lazy loading**, an
 
 ### 🧩 **Truly Modular**
 
-**50 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
+**51 production-ready plugins** covering system monitoring, development tools, productivity, media control, and more. Mix and match to create your perfect setup.
 
 ### 🔧 **Extensible Architecture**
 
