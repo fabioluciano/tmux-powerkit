@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.0.1...v6.1.0) (2026-07-16)
+
+### Features
+
+* add aiquota plugin ([#243](https://github.com/fabioluciano/tmux-powerkit/issues/243)) ([89d2a79](https://github.com/fabioluciano/tmux-powerkit/commit/89d2a7956498179431f0c9f4973d6f43e14b97cf))
+
 ## [6.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v6.0.0...v6.0.1) (2026-07-13)
 
 ### Bug Fixes
