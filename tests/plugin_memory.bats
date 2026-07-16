@@ -7,6 +7,13 @@ load './helpers/test_helper.bash'
 
 setup() {
     setup_test_root
+    mock_dir=$(create_mock_path)
+    cat >"$mock_dir/uname" <<'EOF'
+#!/usr/bin/env bash
+[[ "${1:-}" == "-s" ]] && printf 'Darwin\n' || command uname "$@"
+EOF
+    chmod +x "$mock_dir/uname"
+    export PATH="$mock_dir:$PATH"
 }
 
 # =============================================================================
