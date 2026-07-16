@@ -221,6 +221,7 @@ EOF
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/fan.sh"
+        is_macos() { return 0; }
         _set_plugin_context fan
         plugin_declare_options
         plugin_collect 2>/dev/null || true
