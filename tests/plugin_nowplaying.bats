@@ -6,23 +6,18 @@ setup() {
     mock_dir="$BATS_TEST_TMPDIR/bin"
     mkdir -p "$mock_dir"
     export PATH="$mock_dir:$PATH"
-    bin_dir="${POWERKIT_ROOT}/bin"
-    mkdir -p "$bin_dir"
 }
 
 @test "track playing shows state=active and renders artist - title" {
     local sep=$'\x1F'
-    cat >"$bin_dir/powerkit-nowplaying" <<BINARY_EOF
-#!/usr/bin/env bash
-printf '%s' "Playing${sep}Radiohead${sep}Creep${sep}Pablo Honey${sep}Spotify"
-BINARY_EOF
-    chmod +x "$bin_dir/powerkit-nowplaying"
 
     run bash -c '
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
         is_macos() { return 0; }
+        nowplaying_output="$2"
+        _get_nowplaying_macos() { printf "%s" "$nowplaying_output"; }
         _set_plugin_context nowplaying
         plugin_declare_options
         plugin_collect
@@ -34,7 +29,7 @@ BINARY_EOF
             "$(plugin_data_get app)" \
             "$(plugin_get_health)" \
             "$(plugin_render)"
-    ' _ "$POWERKIT_ROOT"
+    ' _ "$POWERKIT_ROOT" "Playing${sep}Radiohead${sep}Creep${sep}Pablo Honey${sep}Spotify"
     assert_success
     assert_output --partial "playing=1"
     assert_output --partial "state=Playing"
@@ -45,17 +40,12 @@ BINARY_EOF
 }
 
 @test "no player binary output returns playing=0 and inactive state" {
-    cat >"$bin_dir/powerkit-nowplaying" <<'EOF'
-#!/usr/bin/env bash
-exit 1
-EOF
-    chmod +x "$bin_dir/powerkit-nowplaying"
-
     run bash -c '
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
         is_macos() { return 0; }
+        _get_nowplaying_macos() { return 1; }
         _set_plugin_context nowplaying
         plugin_declare_options
         plugin_collect
@@ -68,19 +58,36 @@ EOF
     assert_output --partial "state=inactive"
 }
 
-@test "paused track with info_when_paused=true reports health=info" {
+@test "stopped player with stale metadata returns playing=0 and renders nothing" {
     local sep=$'\x1F'
-    cat >"$bin_dir/powerkit-nowplaying" <<BINARY_EOF
-#!/usr/bin/env bash
-printf '%s' "paused${sep}Artist${sep}Song${sep}Album${sep}Spotify"
-BINARY_EOF
-    chmod +x "$bin_dir/powerkit-nowplaying"
-
     run bash -c '
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
         is_macos() { return 0; }
+        nowplaying_output="$2"
+        _get_nowplaying_macos() { printf "%s" "$nowplaying_output"; }
+        _set_plugin_context nowplaying
+        plugin_declare_options
+        plugin_collect
+        printf "playing=%s state=%s render=%s" \
+            "$(plugin_data_get playing)" \
+            "$(plugin_get_state)" \
+            "$(plugin_render)"
+    ' _ "$POWERKIT_ROOT" "stopped${sep}Artist${sep}Old Song${sep}Album${sep}Spotify"
+    assert_success
+    assert_output "playing=0 state=inactive render="
+}
+
+@test "paused track with info_when_paused=true reports health=info" {
+    local sep=$'\x1F'
+    run bash -c '
+        POWERKIT_ROOT="$1"; export POWERKIT_ROOT
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/plugins/nowplaying.sh"
+        is_macos() { return 0; }
+        nowplaying_output="$2"
+        _get_nowplaying_macos() { printf "%s" "$nowplaying_output"; }
         get_option() {
             case "$1" in
                 info_when_paused) printf "true" ;;
@@ -96,7 +103,7 @@ BINARY_EOF
             "$(plugin_get_health)" \
             "$(plugin_get_state)" \
             "$(plugin_data_get playing)"
-    ' _ "$POWERKIT_ROOT"
+    ' _ "$POWERKIT_ROOT" "paused${sep}Artist${sep}Song${sep}Album${sep}Spotify"
     assert_success
     assert_output --partial "health=info"
     assert_output --partial "state=active"
@@ -104,17 +111,13 @@ BINARY_EOF
 
 @test "custom format string is honored in render" {
     local sep=$'\x1F'
-    cat >"$bin_dir/powerkit-nowplaying" <<BINARY_EOF
-#!/usr/bin/env bash
-printf '%s' "Playing${sep}Queen${sep}Bohemian Rhapsody${sep}A Night at the Opera${sep}Spotify"
-BINARY_EOF
-    chmod +x "$bin_dir/powerkit-nowplaying"
-
     run bash -c '
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
         is_macos() { return 0; }
+        nowplaying_output="$2"
+        _get_nowplaying_macos() { printf "%s" "$nowplaying_output"; }
         get_option() {
             case "$1" in
                 format) printf "%%title%% (%%album%%)" ;;
@@ -127,18 +130,12 @@ BINARY_EOF
         _set_plugin_context nowplaying
         plugin_collect
         plugin_render
-    ' _ "$POWERKIT_ROOT"
+    ' _ "$POWERKIT_ROOT" "Playing${sep}Queen${sep}Bohemian Rhapsody${sep}A Night at the Opera${sep}Spotify"
     assert_success
     assert_output "Bohemian Rhapsody (A Night at the Opera)"
 }
 
 @test "nowplaying plugin is conditional presence" {
-    cat >"$bin_dir/powerkit-nowplaying" <<'EOF'
-#!/usr/bin/env bash
-exit 1
-EOF
-    chmod +x "$bin_dir/powerkit-nowplaying"
-
     run bash -c '
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
@@ -154,22 +151,18 @@ EOF
 
 @test "app name is lowercased" {
     local sep=$'\x1F'
-    cat >"$bin_dir/powerkit-nowplaying" <<BINARY_EOF
-#!/usr/bin/env bash
-printf '%s' "Playing${sep}Artist${sep}Title${sep}Album${sep}SPOTIFY"
-BINARY_EOF
-    chmod +x "$bin_dir/powerkit-nowplaying"
-
     run bash -c '
         POWERKIT_ROOT="$1"; export POWERKIT_ROOT
         source "$1/src/core/bootstrap.sh"
         source "$1/src/plugins/nowplaying.sh"
         is_macos() { return 0; }
+        nowplaying_output="$2"
+        _get_nowplaying_macos() { printf "%s" "$nowplaying_output"; }
         _set_plugin_context nowplaying
         plugin_declare_options
         plugin_collect
         printf "app=%s" "$(plugin_data_get app)"
-    ' _ "$POWERKIT_ROOT"
+    ' _ "$POWERKIT_ROOT" "Playing${sep}Artist${sep}Title${sep}Album${sep}SPOTIFY"
     assert_success
     assert_output --partial "app=spotify"
 }

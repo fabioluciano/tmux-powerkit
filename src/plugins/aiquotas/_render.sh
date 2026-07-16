@@ -59,6 +59,25 @@ _aiquotas_quota_percentages() {
     '
 }
 
+_aiquotas_render_label() {
+    local provider="$1"
+    local compact_content="${2:-false}"
+
+    if [[ "$compact_content" == "true" ]]; then
+        case "$provider" in
+        anthropic) printf 'C' ;;
+        openai) printf 'OAI' ;;
+        deepseek) printf 'DS' ;;
+        minimax) printf 'MM' ;;
+        zai) printf 'zai' ;;
+        *) printf '%s' "$provider" ;;
+        esac
+        return
+    fi
+
+    printf '%s' "${AIQUOTAS_LABELS[$provider]:-$provider}"
+}
+
 # Render a single record (or aggregated record list) as COMPACT text.
 # Compact format shows the human label + the most relevant value(s):
 #   * monetary_balance / monetary_spend -> "<Label> <value> <currency>"
@@ -84,8 +103,10 @@ _aiquotas_render_record_compact() {
     local record="$8"
     local show_x_of_y="${9:-false}"
     local show_video="${10:-false}"
+    local compact_content="${11:-false}"
 
-    local label="${AIQUOTAS_LABELS[$provider]:-$provider}"
+    local label
+    label=$(_aiquotas_render_label "$provider" "$compact_content")
 
     # MiniMax compact aggregation: when <record> is a JSON array we treat
     # it as the full set of filtered records for this provider and emit a
@@ -94,15 +115,19 @@ _aiquotas_render_record_compact() {
     # (defaults to the empty string when the dimension is absent). The
     # "video" group is suppressed unless show_video=true.
     if [[ "$provider" == "minimax" ]] && [[ "${record:0:1}" == "[" ]]; then
-        _aiquotas_render_minimax_compact "$label" "$record" "$show_x_of_y" "$show_video"
+        _aiquotas_render_minimax_compact "$label" "$record" "$show_x_of_y" "$show_video" "$compact_content"
         return
     fi
 
     case "$metric_kind" in
     monetary_balance | monetary_spend)
         if [[ -n "$value" ]]; then
-            printf '%s %s' "$label" "$value"
-            [[ -n "$currency" ]] && printf ' %s' "$currency"
+            if [[ "$compact_content" == "true" && "$currency" == "USD" ]]; then
+                printf '%s $%s' "$label" "$value"
+            else
+                printf '%s %s' "$label" "$value"
+                [[ -n "$currency" ]] && printf ' %s' "$currency"
+            fi
         fi
         ;;
     quota | token_quota | rate_limit)
@@ -125,8 +150,12 @@ _aiquotas_render_record_compact() {
                         "$usage_pct" "$available_pct"
                     ;;
                 left | *)
-                    printf '%s %s(%s%% left)' \
-                        "$label" "$xy_prefix" "$available_pct"
+                    if [[ "$compact_content" == "true" ]]; then
+                        printf '%s %s%s%%' "$label" "$xy_prefix" "$available_pct"
+                    else
+                        printf '%s %s(%s%% left)' \
+                            "$label" "$xy_prefix" "$available_pct"
+                    fi
                     ;;
                 esac
             else
@@ -136,14 +165,19 @@ _aiquotas_render_record_compact() {
                         "$label" "$usage_pct" "$available_pct"
                     ;;
                 left | *)
-                    printf '%s %s%% left' "$label" "$available_pct"
+                    if [[ "$compact_content" == "true" ]]; then
+                        printf '%s %s%%' "$label" "$available_pct"
+                    else
+                        printf '%s %s%% left' "$label" "$available_pct"
+                    fi
                     ;;
                 esac
             fi
         elif [[ -n "$value" ]]; then
             printf '%s %s' "$label" "$(_aiquotas_compact_value "$value")"
         elif [[ -n "$remaining" ]]; then
-            printf '%s %s left' "$label" "$(_aiquotas_compact_value "$remaining")"
+            printf '%s %s' "$label" "$(_aiquotas_compact_value "$remaining")"
+            [[ "$compact_content" != "true" ]] && printf ' left'
         fi
         ;;
     token_usage)
@@ -175,6 +209,7 @@ _aiquotas_render_minimax_compact() {
     local records="$2"
     local show_x_of_y="$3"
     local show_video="$4"
+    local compact_content="${5:-false}"
 
     local general_pcts="" video_pcts=""
     local xy_value="" xy_limit=""
@@ -306,7 +341,8 @@ _aiquotas_render_minimax_compact() {
         xy_prefix="${xy_value}/${xy_limit} "
     fi
 
-    printf '%s %s%s left' "$label" "$xy_prefix" "$joined"
+    printf '%s %s%s' "$label" "$xy_prefix" "$joined"
+    [[ "$compact_content" != "true" ]] && printf ' left'
 }
 
 # Render a single record as DETAILED text (used by plugin_render).
@@ -386,6 +422,7 @@ _aiquotas_render_record() {
     local show_percent="${4:-left}"
     local show_x_of_y="${5:-false}"
     local show_video="${6:-false}"
+    local compact_content="${7:-false}"
 
     if [[ "$format" == "detailed" ]]; then
         # Detailed output is per-record; if we received the array form
@@ -442,5 +479,5 @@ _aiquotas_render_record() {
 
     _aiquotas_render_record_compact \
         "$provider" "$metric_kind" "$value" "$limit" "$remaining" \
-        "$unit" "$currency" "$record" "$show_x_of_y" "$show_video"
+        "$unit" "$currency" "$record" "$show_x_of_y" "$show_video" "$compact_content"
 }

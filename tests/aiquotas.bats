@@ -2308,6 +2308,49 @@ JSON
     [[ "$output" != *"0/3"* ]] || { echo "FAIL: 0/3 should be hidden: $output"; exit 1; }
 }
 
+@test "compact_content keeps provider metrics while shortening compact text" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        DOC_ZAI=$(cat <<"JSON"
+{"records":[{"provider":"zai","metric_kind":"quota","value":0,"limit":100,"remaining":100,"unit":"count"}]}
+JSON
+)
+        DOC_DEEPSEEK=$(cat <<"JSON"
+{"records":[{"provider":"deepseek","metric_kind":"monetary_balance","value":12.99,"limit":null,"remaining":null,"unit":"currency","currency":"USD"}]}
+JSON
+)
+        DOC_MINIMAX=$(cat <<"JSON"
+{"records":[{"provider":"minimax","metric_kind":"quota","value":20,"limit":100,"remaining":80,"unit":"count","dimensions":{"model":"general"}},{"provider":"minimax","metric_kind":"quota","value":0,"limit":100,"remaining":100,"unit":"count","dimensions":{"model":"general"}}]}
+JSON
+)
+        plugin_data_set "document_zai" "$DOC_ZAI"
+        plugin_data_set "document_deepseek" "$DOC_DEEPSEEK"
+        plugin_data_set "document_minimax" "$DOC_MINIMAX"
+        get_option() {
+            case "$1" in
+                providers) printf "zai,deepseek,minimax" ;;
+                format) printf "compact" ;;
+                compact_content) printf "true" ;;
+                show_percent) printf "left" ;;
+                show_x_of_y) printf "false" ;;
+                show_video) printf "false" ;;
+                separator) printf "|" ;;
+                min_limit) printf "1" ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+
+    assert_success
+    assert_output "zai 100%|DS \$12.99|MM 80/100%"
+}
+
 # =============================================================================
 # Todo 17: MiniMax compact — aggregate sibling records by dimensions.model
 # Plan: model "general" emits interval%/weekly%, model "video" only emits
@@ -2588,4 +2631,41 @@ JSON
     ' _ "$POWERKIT_ROOT"
     assert_success
     [[ "$output" == "MiniMax 0/0 89/82% left" ]] || { echo "FAIL: expected 'MiniMax 0/0 89/82% left': $output"; exit 1; }
+}
+
+@test "OpenAI Codex OAuth maps ChatGPT Plus primary quota to a canonical record" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
+            (.provider_outcomes[0].status == \"ok\") and
+            ((.records | length) == 1) and
+            (.records[0].provider == \"openai\") and
+            (.records[0].metric_kind == \"quota\") and
+            (.records[0].value == 80) and
+            (.records[0].limit == 100) and
+            (.records[0].remaining == 20) and
+            (.records[0].dimensions.model == \"plus\") and
+            (.records[0].dimensions.resource == \"chatgpt\")
+        "
+    ' _ "$POWERKIT_ROOT"
+
+    assert_success
+    assert_output "true"
 }

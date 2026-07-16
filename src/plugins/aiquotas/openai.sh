@@ -23,8 +23,9 @@ source_guard "aiquotas_openai" && return 0
 # OpenAI adapter
 # -----------------------------------------------------------------------------
 #
-# Collects token usage (paginated via has_more/next_page) and cost from
-# the official OpenAI Admin API.
+# Prefers ChatGPT Plus/Pro quota from the local Codex OAuth file. Falls back
+# to token usage (paginated via has_more/next_page) and cost from the official
+# OpenAI Admin API when Codex OAuth is unavailable.
 #
 #   * Usage: GET {openai_usage_url}?start_time=<unix>&end_time=<unix>&bucket_width=...
 #             Authorization: Bearer <key>
@@ -81,7 +82,91 @@ _aiquotas_http_get_skim() {
     return 70
 }
 
+_aiquotas_collect_openai_codex() {
+    local auth_file="$1"
+    local timeout
+    timeout=$(get_option "timeout")
+    timeout="${timeout:-5}"
+
+    local access_token account_id
+    IFS=$'\t' read -r access_token account_id < <(
+        jq -r '[(.tokens.access_token // ""), (.tokens.account_id // "")] | @tsv' "$auth_file" 2>/dev/null
+    )
+
+    if [[ -z "$access_token" ]]; then
+        jq -nc '
+            {schema_version:1, records:[],
+             provider_outcomes:[{provider:"openai",source:"official",
+                                  status:"unconfigured",
+                                  error:"Codex OAuth access token not found"}]}
+        '
+        return 0
+    fi
+
+    local body status
+    body=$(_aiquotas_http_get_skim \
+        "https://chatgpt.com/backend-api/wham/usage" "$timeout" \
+        -H "Authorization: Bearer $access_token" \
+        -H "User-Agent: tmux-powerkit/1.0" \
+        -H "ChatGPT-Account-Id: $account_id") || {
+        jq -nc '
+            {schema_version:1, records:[],
+             provider_outcomes:[{provider:"openai",source:"official",
+                                  status:"unavailable",
+                                  error:"ChatGPT quota fetch transport failure"}]}
+        '
+        return 0
+    }
+
+    status=$(_aiquotas_last_status)
+    if [[ "$status" != 2* ]]; then
+        local error
+        error=$(_aiquotas_http_status_error_message "$body" "ChatGPT quota")
+        jq -nc --arg status "$(_aiquotas_http_status_to_canonical "$status")" --arg error "$error" '
+            {schema_version:1, records:[],
+             provider_outcomes:[{provider:"openai",source:"official",status:$status,error:$error}]}
+        '
+        return 0
+    fi
+
+    local now
+    now=$(time_iso_now)
+    jq -nc --arg now "$now" --argjson response "$body" '
+        ($response.rate_limit.primary_window // null) as $window |
+        ($window.used_percent // null) as $used |
+        if ($used | type) != "number" then
+            {schema_version:1, records:[],
+             provider_outcomes:[{provider:"openai",source:"official",
+                                  status:"malformed",error:"ChatGPT quota response has no primary window"}]}
+        else
+            ($used | if . < 0 then 0 elif . > 100 then 100 else . end) as $clamped_used |
+            ($window.reset_at // null | if type == "number" then todateiso8601 else null end) as $reset_at |
+            {schema_version:1,
+             records:[{
+                 provider:"openai", metric_kind:"quota", value:$clamped_used,
+                 limit:100, remaining:(100 - $clamped_used), unit:"percent", currency:null,
+                 window_start:$now, window_end:$reset_at, reset_at:$reset_at,
+                 source:"official", status:"ok", error:null,
+                 dimensions:{
+                     input_tokens:null, cached_input_tokens:null, cache_creation_tokens:null,
+                     output_tokens:null, requests:null, model:($response.plan_type // null),
+                     project:null, line_item:"primary", resource:"chatgpt"
+                 }
+             }],
+             provider_outcomes:[{provider:"openai",source:"official",status:"ok",error:null}]}
+        end
+    '
+}
+
 _aiquotas_collect_openai() {
+    local openai_source codex_auth_file
+    openai_source=$(get_option "openai_source")
+    codex_auth_file=$(get_option "openai_codex_auth_file")
+    if [[ "$openai_source" == "codex" && -n "$codex_auth_file" && -r "$codex_auth_file" ]]; then
+        _aiquotas_collect_openai_codex "$codex_auth_file"
+        return
+    fi
+
     local key="${OPENAI_ADMIN_KEY:-${OPENAI_API_KEY:-}}"
 
     if [[ -z "$key" ]]; then

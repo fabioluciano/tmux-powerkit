@@ -89,10 +89,10 @@ setup() {
 @test "binary_exists returns 0 for existing executable binary" {
     run bash -c '
         source "$1/src/core/bootstrap.sh"
-        mkdir -p "$1/bin"
-        touch "$1/bin/test-binary"
-        chmod +x "$1/bin/test-binary"
-        _BINARY_DIR="$1/bin"
+        mkdir -p "$2/bin"
+        touch "$2/bin/test-binary"
+        chmod +x "$2/bin/test-binary"
+        _BINARY_DIR="$2/bin"
         binary_exists "test-binary"
     ' _ "$POWERKIT_ROOT" "$BATS_TEST_TMPDIR"
     assert_success

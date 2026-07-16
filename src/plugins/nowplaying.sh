@@ -215,6 +215,20 @@ plugin_collect() {
         local state artist title album app
         IFS="$_FIELD_SEP" read -r state artist title album app <<< "$nowplaying"
 
+        # Ignore stale metadata returned while playback is stopped.
+        case "${state,,}" in
+            playing|paused) ;;
+            *)
+                plugin_data_set "playing" "0"
+                plugin_data_set "state" "stopped"
+                plugin_data_set "artist" ""
+                plugin_data_set "title" ""
+                plugin_data_set "album" ""
+                plugin_data_set "app" ""
+                return
+                ;;
+        esac
+
         # Validate we have at least a title
         [[ -z "$title" ]] && { plugin_data_set "playing" "0"; return; }
 
@@ -274,4 +288,3 @@ plugin_render() {
 
     printf '%s' "$result"
 }
-

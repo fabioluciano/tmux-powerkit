@@ -162,6 +162,7 @@ plugin_declare_options() {
     declare_option "separator" "string" " | " "Separator between providers"
     declare_option "timeout" "number" "5" "HTTP timeout in seconds"
     declare_option "format" "enum" "compact" "Output format: compact or detailed"
+    declare_option "compact_content" "bool" "false" "Use short provider labels and remove redundant compact-format text"
     declare_option "show_percent" "enum" "left" "Show percentage in render: both|left"
     declare_option "show_x_of_y" "bool" "false" "Show raw X/Y values alongside percentages (true|false)"
     declare_option "show_video" "bool" "false" "Show MiniMax video bonus in render (MiniMax only)"
@@ -180,6 +181,8 @@ plugin_declare_options() {
     # OpenAI
     declare_option "openai_usage_url" "string" "${AIQUOTAS_DEFAULT_URLS[openai_usage]}" "OpenAI usage endpoint"
     declare_option "openai_cost_url" "string" "${AIQUOTAS_DEFAULT_URLS[openai_cost]}" "OpenAI cost endpoint"
+    declare_option "openai_source" "enum" "api" "OpenAI data source: api or codex"
+    declare_option "openai_codex_auth_file" "path" "${HOME}/.codex/auth.json" "Codex OAuth file for ChatGPT Plus/Pro quota"
     declare_option "openai_group_by" "string" "" "OpenAI group_by CSV (only sent when non-empty)"
     declare_option "openai_models" "string" "" "OpenAI models filter CSV (only sent when non-empty)"
     declare_option "openai_project_ids" "string" "" "OpenAI project IDs filter CSV (only sent when non-empty)"
@@ -409,11 +412,13 @@ plugin_render() {
     # records[0]). Joins with the configured separator (default " | ").
     # Format is decided by the @powerkit_plugin_aiquotas_format option
     # (compact | detailed). Default is compact.
-    local separator format show_percent show_x_of_y show_video min_limit parts=() provider document recs rec_count i record part result
+    local separator format compact_content show_percent show_x_of_y show_video min_limit parts=() provider document recs rec_count i record part result
     separator=$(get_option "separator")
     [[ -z "$separator" ]] && separator=" | "
     format=$(get_option "format")
     [[ -z "$format" ]] && format="compact"
+    compact_content=$(get_option "compact_content")
+    [[ -z "$compact_content" ]] && compact_content="false"
     show_percent=$(get_option "show_percent")
     [[ -z "$show_percent" ]] && show_percent="left"
     show_x_of_y=$(get_option "show_x_of_y")
@@ -479,13 +484,13 @@ plugin_render() {
             for r in "${filtered_recs[@]}"; do
                 filtered_json=$(jq -c --argjson x "$r" '. + [$x]' <<<"$filtered_json")
             done
-            part=$(_aiquotas_render_record "$provider" "$filtered_json" "$format" "$show_percent" "$show_x_of_y" "$show_video")
+            part=$(_aiquotas_render_record "$provider" "$filtered_json" "$format" "$show_percent" "$show_x_of_y" "$show_video" "$compact_content")
             [[ -n "$part" ]] && parts+=("$part")
             continue
         fi
 
         for record in "${filtered_recs[@]}"; do
-            part=$(_aiquotas_render_record "$provider" "$record" "$format" "$show_percent" "$show_x_of_y" "$show_video")
+            part=$(_aiquotas_render_record "$provider" "$record" "$format" "$show_percent" "$show_x_of_y" "$show_video" "$compact_content")
             [[ -n "$part" ]] && parts+=("$part")
         done
     done
