@@ -133,6 +133,7 @@ _aiquotas_collect_openai_codex() {
     now=$(time_iso_now)
     jq -nc --arg now "$now" --argjson response "$body" '
         ($response.rate_limit.primary_window // null) as $window |
+        ($response.rate_limit.secondary_window // null) as $secondary |
         ($window.used_percent // null) as $used |
         if ($used | type) != "number" then
             {schema_version:1, records:[],
@@ -141,6 +142,9 @@ _aiquotas_collect_openai_codex() {
         else
             ($used | if . < 0 then 0 elif . > 100 then 100 else . end) as $clamped_used |
             ($window.reset_at // null | if type == "number" then todateiso8601 else null end) as $reset_at |
+            ($secondary.used_percent // null | if . == null then null
+                elif . < 0 then 0 elif . > 100 then 100 else . end) as $weekly_used |
+            (if $weekly_used == null then null else 100 - $weekly_used end) as $weekly_remaining |
             {schema_version:1,
              records:[{
                  provider:"openai", metric_kind:"quota", value:$clamped_used,
@@ -150,7 +154,9 @@ _aiquotas_collect_openai_codex() {
                  dimensions:{
                      input_tokens:null, cached_input_tokens:null, cache_creation_tokens:null,
                      output_tokens:null, requests:null, model:($response.plan_type // null),
-                     project:null, line_item:"primary", resource:"chatgpt"
+                     project:null, line_item:"primary", resource:"chatgpt",
+                     interval_remaining_percent:(100 - $clamped_used),
+                     weekly_remaining_percent:$weekly_remaining
                  }
              }],
              provider_outcomes:[{provider:"openai",source:"official",status:"ok",error:null}]}

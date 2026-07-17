@@ -2669,3 +2669,182 @@ JSON
     assert_success
     assert_output "true"
 }
+
+# ---------- Dual-window quota render: zai + OpenAI Codex ----------
+
+@test "zai compact render: dual-window shows interval/weekly % left" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/zai-quota-limit.json")
+        DOC=$(_aiquotas_metrics_document "zai" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        get_option() {
+            case "$1" in
+                providers) printf "zai" ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "zai 75/90% left"
+}
+
+@test "zai compact_content: dual-window drops trailing ' left'" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/zai-quota-limit.json")
+        DOC=$(_aiquotas_metrics_document "zai" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        get_option() {
+            case "$1" in
+                providers) printf "zai" ;;
+                compact_content) printf "true" ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "zai 75/90%"
+}
+
+@test "zai detailed render: appends weekly % left" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/zai-quota-limit.json")
+        DOC=$(_aiquotas_metrics_document "zai" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        get_option() {
+            case "$1" in
+                format) printf "detailed" ;;
+                providers) printf "zai" ;;
+                separator) printf "%s" " | " ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == *"weekly 90% left"* ]] || { echo "FAIL: missing weekly: $output"; exit 1; }
+    [[ "$output" == *"zai usage"* ]] || { echo "FAIL: missing usage: $output"; exit 1; }
+}
+
+@test "OpenAI Codex captures secondary_window (weekly) into weekly_remaining_percent" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":5,\"reset_at\":1784900000}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
+            (.records[0].value == 80) and
+            (.records[0].remaining == 20) and
+            (.records[0].dimensions.interval_remaining_percent == 20) and
+            (.records[0].dimensions.weekly_remaining_percent == 95)
+        "
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "true"
+}
+
+@test "OpenAI Codex without secondary_window keeps weekly_remaining_percent null (back-compat)" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
+            (.records[0].dimensions.interval_remaining_percent == 20) and
+            (.records[0].dimensions.weekly_remaining_percent == null)
+        "
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "true"
+}
+
+@test "OpenAI Codex compact render with primary+secondary shows dual-window" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        plugin_declare_options
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                timeout) printf "5" ;;
+                openai_source) printf "codex" ;;
+                openai_codex_auth_file) printf "%s" "$AUTH_FILE" ;;
+                providers) printf "openai" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":5,\"reset_at\":1784900000}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        DOC=$(_aiquotas_collect_openai "$AUTH_FILE")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_openai" "$DOC"
+        plugin_data_set "outcome_openai" "{\"provider\":\"openai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "OpenAI 20/95% left"
+}

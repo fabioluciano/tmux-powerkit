@@ -131,6 +131,31 @@ _aiquotas_render_record_compact() {
         fi
         ;;
     quota | token_quota | rate_limit)
+        # Dual-window quota providers (e.g. zai Coding Plan, OpenAI Codex
+        # ChatGPT Plus/Pro) expose both an interval window (5h) and a weekly
+        # window via the interval_remaining_percent / weekly_remaining_percent
+        # dimensions. When the weekly dimension is present, emit
+        # "<interval>/<weekly>% left" so both budgets are visible — mirroring
+        # the MiniMax compact aggregator. Records without these dimensions
+        # (anthropic/openai-api/deepseek) fall through to the value/limit
+        # path below. MiniMax itself is handled by its dedicated aggregator.
+        local dim_interval dim_weekly
+        dim_interval=$(jq -r '.dimensions.interval_remaining_percent // empty' <<<"$record" 2>/dev/null)
+        dim_weekly=$(jq -r '.dimensions.weekly_remaining_percent // empty' <<<"$record" 2>/dev/null)
+        [[ "$dim_interval" =~ ^[0-9]+([.][0-9]+)?$ ]] || dim_interval=""
+        [[ "$dim_weekly" =~ ^[0-9]+([.][0-9]+)?$ ]] || dim_weekly=""
+        if [[ -n "$dim_weekly" ]] && [[ "$provider" != "minimax" ]]; then
+            local int_pct="${dim_interval%.*}"
+            local wk_pct="${dim_weekly%.*}"
+            [[ -n "$int_pct" ]] || int_pct="$wk_pct"
+            if [[ "$compact_content" == "true" ]]; then
+                printf '%s %s/%s%%' "$label" "$int_pct" "$wk_pct"
+            else
+                printf '%s %s/%s%% left' "$label" "$int_pct" "$wk_pct"
+            fi
+            return 0
+        fi
+
         local percentages usage_pct available_pct compact_value compact_limit
         if [[ -n "$value" && -n "$limit" ]] &&
             percentages=$(_aiquotas_quota_percentages "$value" "$limit" "$remaining"); then
@@ -376,11 +401,14 @@ _aiquotas_render_record_detailed() {
         fi
         ;;
     quota | token_quota | rate_limit)
-        local percentages usage_pct available_pct details
+        local percentages usage_pct available_pct details dim_weekly
         if [[ -n "$value" && -n "$limit" ]] &&
             percentages=$(_aiquotas_quota_percentages "$value" "$limit" "$remaining"); then
             read -r usage_pct available_pct <<<"$percentages"
+            dim_weekly=$(jq -r '.dimensions.weekly_remaining_percent // empty' <<<"$record" 2>/dev/null)
+            [[ "$dim_weekly" =~ ^[0-9]+([.][0-9]+)?$ ]] || dim_weekly=""
             details="${usage_pct}% used, ${available_pct}% left"
+            [[ -n "$dim_weekly" ]] && details+=", weekly ${dim_weekly%.*}% left"
             [[ -n "$model" ]] && details+=", model=$model"
             [[ -n "$reset" ]] && details+=", reset=$reset"
             printf '%s usage %s/%s (%s)' \
