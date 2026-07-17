@@ -1851,6 +1851,126 @@ JSON
     [[ "$output" == "ok" ]]
 }
 
+# ---------- Secondary-window (weekly_remaining_percent) threshold -----------
+
+@test "weekly dimension: weekly_remaining_percent=0 escalates health to error" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                providers) printf "zai" ;;
+                *) printf "" ;;
+            esac
+        }
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/zai-quota-weekly-exhausted.json")
+        DOC=$(_aiquotas_metrics_document "zai" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "error" ]]
+}
+
+@test "weekly dimension: weekly_remaining_percent=15 (consumed 85%) -> warning" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                providers) printf "zai" ;;
+                *) printf "" ;;
+            esac
+        }
+        DOC=$(cat <<"JSON"
+{"schema_version":1,"records":[{"provider":"zai","metric_kind":"quota","value":10,"limit":100,"remaining":90,"unit":"percent","currency":null,"window_start":"2025-07-17T10:00:00Z","window_end":"2025-07-17T15:00:00Z","reset_at":null,"source":"official","status":"ok","error":null,"dimensions":{"input_tokens":null,"cached_input_tokens":null,"cache_creation_tokens":null,"output_tokens":null,"requests":null,"model":null,"project":null,"line_item":null,"resource":null,"interval_remaining_percent":90,"weekly_remaining_percent":15}}],"provider_outcomes":[{"provider":"zai","source":"official","status":"ok","error":null}]}
+JSON
+)
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "warning" ]]
+}
+
+@test "weekly dimension: weekly_remaining_percent=30 (consumed 70%) stays ok" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                providers) printf "zai" ;;
+                *) printf "" ;;
+            esac
+        }
+        DOC=$(cat <<"JSON"
+{"schema_version":1,"records":[{"provider":"zai","metric_kind":"quota","value":10,"limit":100,"remaining":90,"unit":"percent","currency":null,"window_start":"2025-07-17T10:00:00Z","window_end":"2025-07-17T15:00:00Z","reset_at":null,"source":"official","status":"ok","error":null,"dimensions":{"input_tokens":null,"cached_input_tokens":null,"cache_creation_tokens":null,"output_tokens":null,"requests":null,"model":null,"project":null,"line_item":null,"resource":null,"interval_remaining_percent":90,"weekly_remaining_percent":30}}],"provider_outcomes":[{"provider":"zai","source":"official","status":"ok","error":null}]}
+JSON
+)
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "ok" ]]
+}
+
+@test "weekly dimension: missing/null weekly_remaining_percent does NOT escalate" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                providers) printf "anthropic" ;;
+                *) printf "" ;;
+            esac
+        }
+        DOC=$(cat <<"JSON"
+{"schema_version":1,"records":[{"provider":"anthropic","metric_kind":"quota","value":10,"limit":100,"remaining":90,"unit":"count","currency":null,"window_start":"2025-07-17T10:00:00Z","window_end":"2025-07-18T10:00:00Z","reset_at":null,"source":"official","status":"ok","error":null,"dimensions":{"input_tokens":null,"cached_input_tokens":null,"cache_creation_tokens":null,"output_tokens":null,"requests":null,"model":null,"project":null,"line_item":null,"resource":null,"interval_remaining_percent":null,"weekly_remaining_percent":null}}],"provider_outcomes":[{"provider":"anthropic","source":"official","status":"ok","error":null}]}
+JSON
+)
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_anthropic" "$DOC"
+        plugin_data_set "outcome_anthropic" "{\"provider\":\"anthropic\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "ok" ]]
+}
+
 # ---------- plugin_collect: exit-code semantics with HTTP shim ------------------
 
 @test "Todo 4 plugin_collect: partial failure (1 ok, 1 unconfigured) returns exit 0" {
@@ -2847,4 +2967,145 @@ JSON
     ' _ "$POWERKIT_ROOT"
     assert_success
     assert_output "OpenAI 20/95% left"
+}
+
+# ---------- OpenAI Codex: response shape variants ------------------------------
+
+@test "OpenAI Codex: rate_limits (plural) alias maps primary + secondary" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limits\":{\"primary_window\":{\"used_percent\":100,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":20,\"reset_at\":1784900000}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
+            (.records[0].value == 100) and
+            (.records[0].remaining == 0) and
+            (.records[0].dimensions.interval_remaining_percent == 0) and
+            (.records[0].dimensions.weekly_remaining_percent == 80)
+        "
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "true"
+}
+
+@test "OpenAI Codex: legacy five_hour/weekly aliases with percent_left (REMAINING) get inverted" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            # Legacy shape: percent_left = REMAINING, reset_time_ms = ms epoch.
+            # 5h has 0% remaining (exhausted); weekly has 90% remaining.
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"five_hour\":{\"percent_left\":0,\"reset_time_ms\":1752600000000},\"weekly\":{\"percent_left\":90,\"reset_time_ms\":1753200000000}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
+            (.records[0].value == 100) and
+            (.records[0].remaining == 0) and
+            (.records[0].dimensions.weekly_remaining_percent == 90)
+        "
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "true"
+}
+
+@test "OpenAI Codex: primary exhausted + weekly healthy escalates health to error" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        plugin_declare_options
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                timeout) printf "5" ;;
+                openai_source) printf "codex" ;;
+                openai_codex_auth_file) printf "%s" "$AUTH_FILE" ;;
+                providers) printf "openai" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":100,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":10,\"reset_at\":1784900000}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        DOC=$(_aiquotas_collect_openai "$AUTH_FILE")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_openai" "$DOC"
+        plugin_data_set "outcome_openai" "{\"provider\":\"openai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "error" ]]
+}
+
+@test "OpenAI Codex: primary healthy + weekly near-exhausted also escalates to warning" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        _aiquotas_load_provider openai
+        plugin_declare_options
+        AUTH_FILE=$(mktemp)
+        printf "%s" "{\"tokens\":{\"access_token\":\"test-token\",\"account_id\":\"account-1\"}}" >"$AUTH_FILE"
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                timeout) printf "5" ;;
+                openai_source) printf "codex" ;;
+                openai_codex_auth_file) printf "%s" "$AUTH_FILE" ;;
+                providers) printf "openai" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_http_get_skim() {
+            # primary only at 5% consumed (well below warn), but weekly at 85% consumed
+            # (above warn_th=80). Health must escalate because of the secondary window.
+            printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":5,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":85,\"reset_at\":1784900000}}}"
+        }
+        _aiquotas_last_status() { printf "200"; }
+        DOC=$(_aiquotas_collect_openai "$AUTH_FILE")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_openai" "$DOC"
+        plugin_data_set "outcome_openai" "{\"provider\":\"openai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "warning" ]]
 }

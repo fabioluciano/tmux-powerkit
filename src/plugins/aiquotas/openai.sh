@@ -132,18 +132,84 @@ _aiquotas_collect_openai_codex() {
     local now
     now=$(time_iso_now)
     jq -nc --arg now "$now" --argjson response "$body" '
-        ($response.rate_limit.primary_window // null) as $window |
-        ($response.rate_limit.secondary_window // null) as $secondary |
-        ($window.used_percent // null) as $used |
+        # The /backend-api/wham/usage endpoint is undocumented and its schema
+        # has shifted across releases. The parser below tries every known
+        # alias in priority order so users on different plans / versions
+        # still see their windows. Field priority order follows the
+        # gubasso/codex-session reverse-engineered spec (2026-05-26).
+        def safe_get($o; $k):
+            if $o == null then null
+            elif ($o | type) != "object" then null
+            elif ($o[$k] // null) != null then $o[$k]
+            else null end;
+
+        def pick_window_obj($rl):
+            if $rl == null then null
+            elif safe_get($rl; "primary_window") != null then $rl.primary_window
+            elif safe_get($rl; "primary")        != null then $rl.primary
+            elif safe_get($rl; "five_hour")      != null then $rl.five_hour
+            else null end;
+
+        def pick_secondary_obj($rl):
+            if $rl == null then null
+            elif safe_get($rl; "secondary_window") != null then $rl.secondary_window
+            elif safe_get($rl; "secondary")        != null then $rl.secondary
+            elif safe_get($rl; "weekly")           != null then $rl.weekly
+            else null end;
+
+        # used_percent / usedPercent = % CONSUMED (0-100).
+        # percent_left (legacy)      = % REMAINING (0-100) — invert.
+        def pick_used($obj):
+            if $obj == null then null
+            elif safe_get($obj; "used_percent") != null then $obj.used_percent
+            elif safe_get($obj; "usedPercent") != null then $obj.usedPercent
+            elif safe_get($obj; "percent_left") != null then (100 - $obj.percent_left)
+            else null end;
+
+        # reset_at (current)        = unix seconds (integer).
+        # reset_time_ms (legacy)    = unix milliseconds — divide by 1000.
+        # reset_at (legacy string)  = ISO-8601 — kept as-is and passed
+        #                               straight to window_end so the
+        #                               threshold evaluator can parse it.
+        def pick_reset_epoch($obj):
+            if $obj == null then null
+            elif safe_get($obj; "reset_at") != null and ($obj.reset_at | type) == "number"
+                 then $obj.reset_at
+            elif safe_get($obj; "reset_time_ms") != null
+                 then ($obj.reset_time_ms / 1000)
+            else null end;
+
+        def pick_reset_iso($obj):
+            if $obj == null then null
+            elif safe_get($obj; "reset_at") != null and ($obj.reset_at | type) == "number"
+                 then $obj.reset_at | todateiso8601
+            elif safe_get($obj; "reset_time_ms") != null
+                 then ($obj.reset_time_ms / 1000) | todateiso8601
+            elif safe_get($obj; "reset_at") != null and ($obj.reset_at | type) == "string"
+                 then $obj.reset_at
+            else null end;
+
+        # Root key: try the current plural first, then the legacy singular.
+        ($response.rate_limits // $response.rate_limit // null) as $rl |
+
+        (pick_window_obj($rl))    as $window |
+        (pick_secondary_obj($rl)) as $secondary |
+
+        (pick_used($window))      as $used |
+        (pick_reset_epoch($window)) as $reset_epoch |
+        (pick_reset_iso($window))   as $reset_at |
+
         if ($used | type) != "number" then
             {schema_version:1, records:[],
              provider_outcomes:[{provider:"openai",source:"official",
                                   status:"malformed",error:"ChatGPT quota response has no primary window"}]}
         else
             ($used | if . < 0 then 0 elif . > 100 then 100 else . end) as $clamped_used |
-            ($window.reset_at // null | if type == "number" then todateiso8601 else null end) as $reset_at |
-            ($secondary.used_percent // null | if . == null then null
-                elif . < 0 then 0 elif . > 100 then 100 else . end) as $weekly_used |
+            (pick_used($secondary)) as $weekly_used_raw |
+            ($weekly_used_raw | if . == null then null
+                                elif . < 0 then 0
+                                elif . > 100 then 100
+                                else . end) as $weekly_used |
             (if $weekly_used == null then null else 100 - $weekly_used end) as $weekly_remaining |
             {schema_version:1,
              records:[{
