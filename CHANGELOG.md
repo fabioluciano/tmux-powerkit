@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.3.1](https://github.com/fabioluciano/tmux-powerkit/compare/v6.3.0...v6.3.1) (2026-07-17)
+
+### Bug Fixes
+
+* **aiquotas:** escalate health on secondary-window exhaustion; harden OpenAI Codex parser ([4e3472c](https://github.com/fabioluciano/tmux-powerkit/commit/4e3472c9edfaddd10341757cef5e887464d9cfa8))
+
 ## [6.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.2.0...v6.3.0) (2026-07-17)
 
 ### Features
