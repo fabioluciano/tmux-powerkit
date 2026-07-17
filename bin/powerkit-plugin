@@ -22,6 +22,9 @@ plugin_dir=$(cd -P "$(dirname "$plugin_file")" 2>/dev/null && pwd) || exit 1
 # Source plugin
 . "$plugin_file"
 
+# Set context (must come before declare_options, which requires _CURRENT_PLUGIN)
+_set_plugin_context "$name"
+
 # Check deps
 if declare -F plugin_check_dependencies &>/dev/null; then
     plugin_check_dependencies || exit 1
@@ -29,9 +32,6 @@ fi
 
 # Declare options
 declare -F plugin_declare_options &>/dev/null && plugin_declare_options
-
-# Set context
-_set_plugin_context "$name"
 
 # Collect
 plugin_data_clear

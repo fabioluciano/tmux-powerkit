@@ -33,7 +33,7 @@ plugin_check_dependencies() {
 # =============================================================================
 
 plugin_declare_options() {
-    declare_option "host" "string" "https://1.1.1.1" "Host to check connectivity"
+    declare_option "host" "string" "https://connectivitycheck.gstatic.com/generate_204" "Host to check connectivity"
     declare_option "timeout" "number" "2" "Connection timeout in seconds"
     declare_option "icon" "icon" $'\U000F059F' "Plugin icon (network)"
     declare_option "icon_offline" "icon" $'\U000F0A8E' "Icon when offline"
