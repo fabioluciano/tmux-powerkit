@@ -2,6 +2,17 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.2.0...v6.3.0) (2026-07-17)
+
+### Features
+
+* **aiquotas:** expose weekly window for dual-window providers ([2f61007](https://github.com/fabioluciano/tmux-powerkit/commit/2f61007a07a0a8e454c87b242ed385e8cb613d6e))
+
+### Bug Fixes
+
+* **connectivity:** fixing order ([dc86e32](https://github.com/fabioluciano/tmux-powerkit/commit/dc86e3294053fe4d7fbe8d0962399dbdfacb3bc8))
+* **icons:** correct codepoints for kubectl/k9s/helm and cloud multi ([fa91528](https://github.com/fabioluciano/tmux-powerkit/commit/fa915288723922dff9689cc02345db0d843a4753))
+
 ## [6.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.1.0...v6.2.0) (2026-07-16)
 
 ### Features
