@@ -63,7 +63,7 @@ plugin_declare_options() {
     declare_option "icon_aws" "icon" $'\U000F0E0F' "AWS icon"
     declare_option "icon_gcp" "icon" $'\U000F11F6' "GCP icon (google-cloud)"
     declare_option "icon_azure" "icon" $'\U000F0805' "Azure icon"
-    declare_option "icon_multi" "icon" $'\U000F1B95' "Multi-provider icon (clouds)"
+    declare_option "icon_multi" "icon" $'\U000F015F' "Multi-provider icon (cloud)"
 
     # Cache - cloud sessions are relatively stable (minutes to hours)
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"

@@ -215,9 +215,9 @@ declare -grA WINDOW_ICON_MAP=(
     # Containers/Cloud
     [docker]=$'\uf308'
     [podman]=$'\uf308'
-    [kubectl]=$'\uf10fe'
-    [k9s]=$'\uf10fe'
-    [helm]=$'\uf10fe'
+    [kubectl]=$'\U000f10fe'
+    [k9s]=$'\U000f10fe'
+    [helm]=$'\U000f10fe'
     [terraform]=$'\uf1bb'
 
     # Databases
