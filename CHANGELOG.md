@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [6.3.2](https://github.com/fabioluciano/tmux-powerkit/compare/v6.3.1...v6.3.2) (2026-07-18)
+
+### Bug Fixes
+
+* **aiquotas:** weekly escalation must run independent of primary window timestamps ([86e9689](https://github.com/fabioluciano/tmux-powerkit/commit/86e9689cc69e80d55bf1cd5d94e16be473f3869a))
+
 ## [6.3.1](https://github.com/fabioluciano/tmux-powerkit/compare/v6.3.0...v6.3.1) (2026-07-17)
 
 ### Bug Fixes
