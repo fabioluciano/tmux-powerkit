@@ -78,6 +78,22 @@ _aiquotas_threshold_health() {
             *) continue ;;
             esac
 
+            # Secondary-window check FIRST. The weekly dimension is
+            # independent of the record's primary window timestamps, so
+            # it must run even when window_start/window_end are missing
+            # (some Z.ai responses omit nextResetTime for the 5h bucket).
+            # Otherwise a fully-exhausted weekly stays green just because
+            # the primary record has no timestamps.
+            weekly_remaining=$(jq -r '.dimensions.weekly_remaining_percent // empty' <<<"$record" 2>/dev/null)
+            if [[ -n "$weekly_remaining" ]] && [[ "$weekly_remaining" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+                weekly_consumed=$(awk -v r="$weekly_remaining" 'BEGIN { printf "%.0f", (100 - r) }')
+                if ((crit_th > 0)) && ((weekly_consumed >= crit_th)); then
+                    result="error"
+                elif ((warn_th > 0)) && ((weekly_consumed >= warn_th)); then
+                    [[ "$result" != "error" ]] && result="warning"
+                fi
+            fi
+
             limit=$(jq -r '.limit // 0' <<<"$record" 2>/dev/null)
             value=$(jq -r '.value // 0' <<<"$record" 2>/dev/null)
             ws=$(jq -r '.window_start // ""' <<<"$record" 2>/dev/null)
@@ -95,24 +111,6 @@ _aiquotas_threshold_health() {
             if ((crit_th > 0)) && ((pct >= crit_th)); then
                 result="error"
             elif ((warn_th > 0)) && ((pct >= warn_th)); then
-                [[ "$result" != "error" ]] && result="warning"
-            fi
-
-            # Secondary-window check: when the canonical record carries a
-            # weekly_remaining_percent dimension (zai Coding Plan, OpenAI
-            # Codex ChatGPT Plus/Pro, MiniMax Coding Plan), the primary
-            # value/limit above only reflects the rolling interval window.
-            # A weekly window at 0% must still escalate health — otherwise
-            # the user keeps getting green status while the weekly budget
-            # is exhausted. remaining 0% => consumed 100%.
-            weekly_remaining=$(jq -r '.dimensions.weekly_remaining_percent // empty' <<<"$record" 2>/dev/null)
-            if [[ -z "$weekly_remaining" ]] || ! [[ "$weekly_remaining" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
-                continue
-            fi
-            weekly_consumed=$(awk -v r="$weekly_remaining" 'BEGIN { printf "%.0f", (100 - r) }')
-            if ((crit_th > 0)) && ((weekly_consumed >= crit_th)); then
-                result="error"
-            elif ((warn_th > 0)) && ((weekly_consumed >= warn_th)); then
                 [[ "$result" != "error" ]] && result="warning"
             fi
         done

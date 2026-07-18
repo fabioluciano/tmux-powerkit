@@ -1971,6 +1971,40 @@ JSON
     [[ "$output" == "ok" ]]
 }
 
+# Regression: Z.ai 5h bucket omits nextResetTime on some plans. The primary
+# record then has window_start=window_end=null, which used to skip the whole
+# record (including the weekly check). The weekly check must now run
+# independently so exhausted weekly still escalates health.
+@test "weekly dimension: weekly exhaustion escalates even when primary record has no window timestamps" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                providers) printf "zai" ;;
+                *) printf "" ;;
+            esac
+        }
+        # Matches the real Z.ai response shape: 5h bucket has no
+        # nextResetTime, weekly bucket is fully consumed.
+        PAYLOAD='"'"'{"success":true,"code":200,"msg":"Operation successful","data":{"level":"lite","limits":[{"type":"TIME_LIMIT","unit":5,"number":1,"percentage":0,"usage":100,"currentValue":0,"remaining":100},{"type":"TOKENS_LIMIT","unit":3,"number":5,"percentage":0},{"type":"TOKENS_LIMIT","unit":6,"number":1,"percentage":100,"nextResetTime":1784700295984}]}}'"'"'
+        DOC=$(_aiquotas_metrics_document "zai" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_zai" "$DOC"
+        plugin_data_set "outcome_zai" "{\"provider\":\"zai\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "error" ]]
+}
+
 # ---------- plugin_collect: exit-code semantics with HTTP shim ------------------
 
 @test "Todo 4 plugin_collect: partial failure (1 ok, 1 unconfigured) returns exit 0" {
