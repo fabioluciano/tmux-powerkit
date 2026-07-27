@@ -55,13 +55,17 @@ api_fetch_with_retry() {
 # API fetch with authorization header
 # Usage: api_fetch_with_auth "https://api.example.com/endpoint" "Bearer token" [timeout]
 # Returns: Response body or empty string on failure
+#
+# The auth string is routed via curl --config (stdin) so the token never
+# appears in process argv.
 api_fetch_with_auth() {
     local url="$1"
     local auth="$2"
     local timeout="${3:-5}"
 
-    curl -s --connect-timeout "$timeout" --max-time "$timeout" \
-        -H "Authorization: $auth" \
+    printf 'header = "Authorization: %s"\n' "$auth" | curl -s \
+        --config - \
+        --connect-timeout "$timeout" --max-time "$timeout" \
         "$url" 2>/dev/null
 }
 
@@ -84,31 +88,37 @@ make_api_call() {
     local credential="$3"
     local timeout="${4:-5}"
 
-    local -a auth_args=()
-    local accept_header="Accept: application/json"
+    # Route every credential through curl --config (stdin) so the
+    # token never appears in process argv. The config body is built
+    # line by line depending on auth_type.
+    local cfg_body="" accept_header="Accept: application/json"
 
     case "$auth_type" in
     github)
-        auth_args=(-H "Authorization: token ${credential}")
+        cfg_body+="header = \"Authorization: token ${credential}\""$'\n'
         accept_header="Accept: application/vnd.github+json"
         ;;
     gitlab | private-token)
-        auth_args=(-H "PRIVATE-TOKEN: ${credential}")
+        cfg_body+="header = \"PRIVATE-TOKEN: ${credential}\""$'\n'
         ;;
     bitbucket | bearer)
-        auth_args=(-H "Authorization: Bearer ${credential}")
+        cfg_body+="header = \"Authorization: Bearer ${credential}\""$'\n'
         ;;
     basic)
-        auth_args=(-u "$credential")
+        cfg_body+="user = \"${credential}\""$'\n'
         ;;
     *)
-        [[ -n "$credential" ]] && auth_args=(-H "Authorization: Bearer ${credential}")
+        if [[ -n "$credential" ]]; then
+            cfg_body+="header = \"Authorization: Bearer ${credential}\""$'\n'
+        fi
         ;;
     esac
+    cfg_body+="header = \"${accept_header}\""$'\n'
 
-    curl -sf --connect-timeout "$timeout" --max-time "$((timeout * 2))" \
-        "${auth_args[@]}" \
-        -H "$accept_header" \
+    printf '%s' "$cfg_body" | curl -sf \
+        --config - \
+        --connect-timeout "$timeout" \
+        --max-time "$((timeout * 2))" \
         "$url" 2>/dev/null
 }
 

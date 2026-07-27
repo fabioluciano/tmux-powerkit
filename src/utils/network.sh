@@ -39,30 +39,30 @@ safe_curl() {
 # Usage: make_api_call <url> <auth_type> <token> [timeout]
 # auth_type: "bearer" (standard OAuth), "github" (GitHub), "private-token" (GitLab), "basic" (user:pass)
 # Returns: API response or empty on error
+#
+# Every credential is routed through curl --config (stdin) so it never
+# appears in process argv. The Accept header stays in argv because it
+# is not a secret.
 _network_make_api_call() {
     local url="$1"
     local auth_type="$2"
     local token="$3"
     local timeout="${4:-5}"
 
-    local auth_args=()
+    local cfg_body=""
     if [[ -n "$token" ]]; then
         case "$auth_type" in
         bearer)
-            # Standard OAuth Bearer token (Bitbucket, etc.)
-            auth_args=(-H "Authorization: Bearer $token")
+            cfg_body+="header = \"Authorization: Bearer ${token}\""$'\n'
             ;;
         github)
-            # GitHub uses "token" instead of "Bearer"
-            auth_args=(-H "Authorization: token $token")
+            cfg_body+="header = \"Authorization: token ${token}\""$'\n'
             ;;
         private-token)
-            # GitLab style
-            auth_args=(-H "PRIVATE-TOKEN: $token")
+            cfg_body+="header = \"PRIVATE-TOKEN: ${token}\""$'\n'
             ;;
         basic)
-            # Basic auth (user:password or user:token)
-            auth_args=(-u "$token")
+            cfg_body+="user = \"${token}\""$'\n'
             ;;
         *)
             # No auth or unknown type
@@ -70,11 +70,18 @@ _network_make_api_call() {
         esac
     fi
 
-    curl -sf \
-        --connect-timeout "$timeout" \
-        --max-time "$((timeout * 2))" \
-        "${auth_args[@]}" \
-        "$url" 2>/dev/null
+    if [[ -z "$cfg_body" ]]; then
+        curl -sf \
+            --connect-timeout "$timeout" \
+            --max-time "$((timeout * 2))" \
+            "$url" 2>/dev/null
+    else
+        printf '%s' "$cfg_body" | curl -sf \
+            --config - \
+            --connect-timeout "$timeout" \
+            --max-time "$((timeout * 2))" \
+            "$url" 2>/dev/null
+    fi
 }
 
 # api.sh owns the canonical implementation when both utility modules are loaded.
@@ -84,6 +91,29 @@ if ! declare -F make_api_call &>/dev/null; then
         _network_make_api_call "$@"
     }
 fi
+
+# Credential-safe wrapper for callers that need HTTP Basic auth with an
+# email:token (or user:pass) pair. The Basic auth header is composed and
+# piped through stdin so neither the cleartext pair nor the base64 blob
+# ever appears in process argv.
+# Usage: safe_curl_with_auth "user:pass" "url" [timeout] [extra_argv...]
+safe_curl_with_auth() {
+    local userpass="$1"
+    local url="$2"
+    local timeout="${3:-5}"
+    shift 3 2>/dev/null || shift 2
+    local -a extra_args=("$@")
+    local auth_header
+    auth_header=$(printf '%s' "$userpass" | base64 | tr -d '\n')
+    {
+        printf 'header = "Authorization: Basic %s"\n' "$auth_header"
+    } | curl -sf \
+        --config - \
+        --connect-timeout "$timeout" \
+        --max-time "$((timeout * 2))" \
+        "${extra_args[@]}" \
+        "$url" 2>/dev/null
+}
 
 # =============================================================================
 # Endpoint Reachability

@@ -208,6 +208,9 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -216,7 +219,7 @@ done')
         _network_make_api_call "http://test" "bearer" "mytoken" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "H: Authorization: Bearer mytoken"
+    assert_output --partial "cfg: header = \"Authorization: Bearer mytoken\""
 }
 
 @test "_network_make_api_call with github auth" {
@@ -228,6 +231,9 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -236,7 +242,7 @@ done')
         _network_make_api_call "http://test" "github" "ghp_xxx" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "H: Authorization: token ghp_xxx"
+    assert_output --partial "cfg: header = \"Authorization: token ghp_xxx\""
 }
 
 @test "_network_make_api_call with private-token auth" {
@@ -248,6 +254,9 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -256,7 +265,7 @@ done')
         _network_make_api_call "http://test" "private-token" "glpat_xxx" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "H: PRIVATE-TOKEN: glpat_xxx"
+    assert_output --partial "cfg: header = \"PRIVATE-TOKEN: glpat_xxx\""
 }
 
 @test "_network_make_api_call with basic auth" {
@@ -268,6 +277,9 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -276,7 +288,7 @@ done')
         _network_make_api_call "http://test" "basic" "user:pass" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "user: user:pass"
+    assert_output --partial "cfg: user = \"user:pass\""
 }
 
 # =============================================================================

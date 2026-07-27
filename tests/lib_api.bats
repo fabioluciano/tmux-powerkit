@@ -122,6 +122,10 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+# Also read stdin (curl --config - pipes config through stdin)
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -130,7 +134,7 @@ done')
         make_api_call "http://test" "github" "ghp_token" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "H: Authorization: token ghp_token"
+    assert_output --partial "cfg: header = \"Authorization: token ghp_token\""
 }
 
 @test "make_api_call with bearer auth type" {
@@ -142,6 +146,10 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+# Also read stdin (curl --config - pipes config through stdin)
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -150,7 +158,7 @@ done')
         make_api_call "http://test" "bearer" "my_token" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "H: Authorization: Bearer my_token"
+    assert_output --partial "cfg: header = \"Authorization: Bearer my_token\""
 }
 
 @test "make_api_call with basic auth type" {
@@ -162,6 +170,10 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+# Also read stdin (curl --config - pipes config through stdin)
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -170,7 +182,7 @@ done')
         make_api_call "http://test" "basic" "user:pass" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "user: user:pass"
+    assert_output --partial "cfg: user = \"user:pass\""
 }
 
 @test "make_api_call with private-token auth type" {
@@ -182,6 +194,10 @@ while [[ $# -gt 0 ]]; do
         *) echo "url: $1";;
     esac
     shift
+done
+# Also read stdin (curl --config - pipes config through stdin)
+while IFS= read -r line; do
+    printf "cfg: %s\n" "$line"
 done')
 
     run bash -c '
@@ -190,7 +206,7 @@ done')
         make_api_call "http://test" "private-token" "glpat_token" 5
     ' _ "$POWERKIT_ROOT"
     assert_success
-    assert_output --partial "H: PRIVATE-TOKEN: glpat_token"
+    assert_output --partial "cfg: header = \"PRIVATE-TOKEN: glpat_token\""
 }
 
 # =============================================================================
