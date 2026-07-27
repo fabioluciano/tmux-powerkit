@@ -82,26 +82,26 @@ _resolve_format() {
     local format="$1"
 
     case "$format" in
-        compact)
-            # Compact: temperature and condition icon
-            printf '%s' '%t %c'
-            ;;
-        full)
-            # Full: temperature, condition icon, and humidity
-            printf '%s' '%t %c H:%h'
-            ;;
-        minimal)
-            # Minimal: just temperature
-            printf '%s' '%t'
-            ;;
-        detailed)
-            # Detailed: location, temperature, and condition icon
-            printf '%s' '%l: %t %c'
-            ;;
-        *)
-            # Custom format string - pass through as-is
-            printf '%s' "$format"
-            ;;
+    compact)
+        # Compact: temperature and condition icon
+        printf '%s' '%t %c'
+        ;;
+    full)
+        # Full: temperature, condition icon, and humidity
+        printf '%s' '%t %c H:%h'
+        ;;
+    minimal)
+        # Minimal: just temperature
+        printf '%s' '%t'
+        ;;
+    detailed)
+        # Detailed: location, temperature, and condition icon
+        printf '%s' '%l: %t %c'
+        ;;
+    *)
+        # Custom format string - pass through as-is
+        printf '%s' "$format"
+        ;;
     esac
 }
 
@@ -242,7 +242,10 @@ declare -gA _LANGUAGE_MAP=(
 # Output: mapped language code or "en" (English fallback)
 _map_language() {
     local lang="$1"
-    [[ -z "$lang" ]] && { printf 'en'; return; }
+    [[ -z "$lang" ]] && {
+        printf 'en'
+        return
+    }
 
     printf '%s' "${_LANGUAGE_MAP[$lang]:-en}"
 }
@@ -288,58 +291,58 @@ plugin_get_icon() {
 
 declare -gA _WMO_CODE_MAP=(
     # Clear/Sunny (0)
-    [0]=$'\U000F0599'                # nf-md-weather_sunny
+    [0]=$'\U000F0599' # nf-md-weather_sunny
 
     # Mainly clear (1)
-    [1]=$'\U000F0595'                # nf-md-weather_partly_cloudy
+    [1]=$'\U000F0595' # nf-md-weather_partly_cloudy
 
     # Partly cloudy (2)
-    [2]=$'\U000F0595'                # nf-md-weather_partly_cloudy
+    [2]=$'\U000F0595' # nf-md-weather_partly_cloudy
 
     # Overcast (3)
-    [3]=$'\U000F0590'                # nf-md-weather_cloudy
+    [3]=$'\U000F0590' # nf-md-weather_cloudy
 
     # Fog (45, 48)
-    [45]=$'\U000F0591'               # nf-md-weather_fog
-    [48]=$'\U000F0591'               # nf-md-weather_fog
+    [45]=$'\U000F0591' # nf-md-weather_fog
+    [48]=$'\U000F0591' # nf-md-weather_fog
 
     # Drizzle (light precipitation)
-    [51]=$'\U000F0597'               # nf-md-weather_rainy
-    [53]=$'\U000F0597'               # nf-md-weather_rainy
-    [55]=$'\U000F0597'               # nf-md-weather_rainy
+    [51]=$'\U000F0597' # nf-md-weather_rainy
+    [53]=$'\U000F0597' # nf-md-weather_rainy
+    [55]=$'\U000F0597' # nf-md-weather_rainy
 
     # Freezing drizzle
-    [56]=$'\U000F0598'               # nf-md-weather_snowy
-    [57]=$'\U000F0598'               # nf-md-weather_snowy
+    [56]=$'\U000F0598' # nf-md-weather_snowy
+    [57]=$'\U000F0598' # nf-md-weather_snowy
 
     # Rain (moderate)
-    [61]=$'\U000F0597'               # nf-md-weather_rainy
-    [63]=$'\U000F0597'               # nf-md-weather_rainy
-    [65]=$'\U000F0597'               # nf-md-weather_rainy
+    [61]=$'\U000F0597' # nf-md-weather_rainy
+    [63]=$'\U000F0597' # nf-md-weather_rainy
+    [65]=$'\U000F0597' # nf-md-weather_rainy
 
     # Freezing rain
-    [66]=$'\U000F0598'               # nf-md-weather_snowy
-    [67]=$'\U000F0598'               # nf-md-weather_snowy
+    [66]=$'\U000F0598' # nf-md-weather_snowy
+    [67]=$'\U000F0598' # nf-md-weather_snowy
 
     # Snow
-    [71]=$'\U000F0598'               # nf-md-weather_snowy
-    [73]=$'\U000F0598'               # nf-md-weather_snowy
-    [75]=$'\U000F0598'               # nf-md-weather_snowy
-    [77]=$'\U000F0598'               # nf-md-weather_snowy
+    [71]=$'\U000F0598' # nf-md-weather_snowy
+    [73]=$'\U000F0598' # nf-md-weather_snowy
+    [75]=$'\U000F0598' # nf-md-weather_snowy
+    [77]=$'\U000F0598' # nf-md-weather_snowy
 
     # Rain showers
-    [80]=$'\U000F0597'               # nf-md-weather_rainy
-    [81]=$'\U000F0597'               # nf-md-weather_rainy
-    [82]=$'\U000F0597'               # nf-md-weather_rainy
+    [80]=$'\U000F0597' # nf-md-weather_rainy
+    [81]=$'\U000F0597' # nf-md-weather_rainy
+    [82]=$'\U000F0597' # nf-md-weather_rainy
 
     # Snow showers
-    [85]=$'\U000F0598'               # nf-md-weather_snowy
-    [86]=$'\U000F0598'               # nf-md-weather_snowy
+    [85]=$'\U000F0598' # nf-md-weather_snowy
+    [86]=$'\U000F0598' # nf-md-weather_snowy
 
     # Thunderstorm
-    [95]=$'\U000F0596'               # nf-md-weather_lightning_rainy
-    [96]=$'\U000F0596'               # nf-md-weather_lightning_rainy
-    [99]=$'\U000F0596'               # nf-md-weather_lightning_rainy
+    [95]=$'\U000F0596' # nf-md-weather_lightning_rainy
+    [96]=$'\U000F0596' # nf-md-weather_lightning_rainy
+    [99]=$'\U000F0596' # nf-md-weather_lightning_rainy
 )
 
 declare -gA _WMO_CODE_TEXT=(
@@ -376,14 +379,23 @@ declare -gA _WMO_CODE_TEXT=(
 # Map WMO weather code to Nerd Font icon
 _map_weather_code() {
     local code="$1"
-    local is_day="${2:-1}"  # 1 for day, 0 for night
+    local is_day="${2:-1}" # 1 for day, 0 for night
 
     # Handle night variants for codes 0, 1, 2 (clear/cloudy conditions)
     if [[ "$is_day" -eq 0 ]]; then
         case "$code" in
-            0) printf '%s' $'\U000F0594'; return 0;;         # nf-md-weather_night (clear sky → night)
-            1) printf '%s' $'\U000F0594'; return 0;;         # nf-md-weather_night (mainly clear → night)
-            2) printf '%s' $'\U000F0594'; return 0;;         # nf-md-weather_night (partly cloudy → night)
+        0)
+            printf '%s' $'\U000F0594'
+            return 0
+            ;; # nf-md-weather_night (clear sky → night)
+        1)
+            printf '%s' $'\U000F0594'
+            return 0
+            ;; # nf-md-weather_night (mainly clear → night)
+        2)
+            printf '%s' $'\U000F0594'
+            return 0
+            ;; # nf-md-weather_night (partly cloudy → night)
         esac
     fi
 
@@ -391,7 +403,7 @@ _map_weather_code() {
     if [[ -n "${_WMO_CODE_MAP[$code]:-}" ]]; then
         printf '%s' "${_WMO_CODE_MAP[$code]}"
     else
-        printf '%s' $'\U000F0590'  # Fallback: generic cloudy icon
+        printf '%s' $'\U000F0590' # Fallback: generic cloudy icon
     fi
 }
 
@@ -501,8 +513,8 @@ _geocode_location() {
     if [[ -z "$location" ]]; then
         normalized=""
     else
-        normalized=$(printf '%s' "$location" | \
-            tr '[:upper:]' '[:lower:]' | \
+        normalized=$(printf '%s' "$location" |
+            tr '[:upper:]' '[:lower:]' |
             sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]/_/g')
     fi
 
@@ -540,8 +552,20 @@ _geocode_location() {
 # Rate Limiting Protection
 # =============================================================================
 
-# Check if rate limit has been exceeded for the current hour
-# Returns: 0 if request allowed, 1 if rate limited
+# Check if rate limit has been exceeded for the current hour.
+# Reserves a slot BEFORE the request and only consumes it after a
+# successful response. Failed requests release the reservation so the
+# real outbound-call count matches the counter instead of being
+# inflated by transport failures.
+#
+# Returns:
+#   0  → slot reserved; caller MUST call _release_rate_limit on failure
+#        or _consume_rate_limit on success
+#   1  → rate limited (do not call release/consume)
+#
+# Backward compatibility: legacy callers that only call
+# _check_rate_limit continue to work because the reservation is
+# persisted immediately. The release/consume helpers are opt-in.
 _check_rate_limit() {
     local max_per_hour
     max_per_hour=$(get_option "max_requests_per_hour")
@@ -550,20 +574,45 @@ _check_rate_limit() {
     local hour_bucket
     hour_bucket=$(date +"%Y%m%d%H")
     local cache_key="weather_rate_limit:${hour_bucket}"
+    local pending_key="weather_rate_pending:${hour_bucket}"
 
-    # Get current count for this hour (default to 0)
-    local current_count
+    local current_count pending_count effective
     current_count=$(cache_get "$cache_key" "3600") || current_count="0"
+    pending_count=$(cache_get "$pending_key" "120") || pending_count="0"
+    effective=$((current_count + pending_count))
 
     # Check if over limit
-    if (( current_count >= max_per_hour )); then
-        log_debug "weather" "Rate limit exceeded: ${current_count}/${max_per_hour}"
+    if ((effective >= max_per_hour)); then
+        log_debug "weather" "Rate limit exceeded: ${effective}/${max_per_hour}"
         return 1
     fi
 
-    # Increment counter and cache it
-    cache_set "$cache_key" "$((current_count + 1))"
+    # Reserve a slot. The reservation lives in a short-TTL cache so a
+    # crash mid-request still releases the slot within 2 minutes.
+    cache_set "$pending_key" "$((pending_count + 1))" "120"
+
+    # Also bump the persistent counter so the cap is observed even
+    # before the request returns. The release helper rolls it back if
+    # the request fails.
+    cache_set "$cache_key" "$((current_count + 1))" "3600"
     return 0
+}
+
+# Release a reserved slot after a failed outbound request. This avoids
+# inflating the per-hour counter with transport failures or 4xx/5xx
+# responses that did not actually hit the upstream quota.
+_release_rate_limit() {
+    local hour_bucket
+    hour_bucket=$(date +"%Y%m%d%H")
+    local cache_key="weather_rate_limit:${hour_bucket}"
+    local pending_key="weather_rate_pending:${hour_bucket}"
+
+    local current_count pending_count
+    current_count=$(cache_get "$cache_key" "3600") || current_count="0"
+    pending_count=$(cache_get "$pending_key" "120") || pending_count="0"
+
+    ((current_count > 0)) && cache_set "$cache_key" "$((current_count - 1))" "3600"
+    ((pending_count > 0)) && cache_set "$pending_key" "$((pending_count - 1))" "120"
 }
 
 # =============================================================================
@@ -644,7 +693,7 @@ _fetch_weather_openmeteo() {
 
     # Step 2: Parse geocode result
     local lat lon location_name
-    IFS='|' read -r lat lon location_name <<< "$geocode_result"
+    IFS='|' read -r lat lon location_name <<<"$geocode_result"
 
     [[ -z "$lat" || -z "$lon" ]] && return 1
 
@@ -653,20 +702,20 @@ _fetch_weather_openmeteo() {
     local wind_unit="kmh"
 
     case "$units" in
-        u)
-            temp_unit="fahrenheit"
-            wind_unit="mph"
-            ;;
-        M)
-            # SI units: Celsius and m/s (Note: Kelvin not supported by Open Meteo)
-            temp_unit="celsius"
-            wind_unit="ms"
-            ;;
-        *)
-            # Default: metric (Celsius, km/h)
-            temp_unit="celsius"
-            wind_unit="kmh"
-            ;;
+    u)
+        temp_unit="fahrenheit"
+        wind_unit="mph"
+        ;;
+    M)
+        # SI units: Celsius and m/s (Note: Kelvin not supported by Open Meteo)
+        temp_unit="celsius"
+        wind_unit="ms"
+        ;;
+    *)
+        # Default: metric (Celsius, km/h)
+        temp_unit="celsius"
+        wind_unit="kmh"
+        ;;
     esac
 
     # Step 4: Build API URL with current weather variables
@@ -719,12 +768,15 @@ _degrees_to_compass() {
     local degrees="$1"
 
     # Validate input
-    [[ ! "$degrees" =~ ^[0-9]+(\.[0-9]+)?$ ]] && { printf 'N'; return; }
+    [[ ! "$degrees" =~ ^[0-9]+(\.[0-9]+)?$ ]] && {
+        printf 'N'
+        return
+    }
 
     # 16-point compass: each direction covers 22.5 degrees
     # Formula: index = ((degrees + 11.25) / 22.5) % 16
     # Using integer math: index = ((degrees + 11) / 22) % 16
-    local index=$(( (${degrees%.*} + 11) / 22 % 16 ))
+    local index=$(((${degrees%.*} + 11) / 22 % 16))
 
     local compass_points=(
         "N" "NNE" "NE" "ENE" "E" "ESE" "SE" "SSE"
@@ -752,7 +804,7 @@ _parse_json_value() {
     # Fallback: regex parsing (fragile but better than nothing)
     # Convert dot notation to regex pattern
     # Example: "current.temperature_2m" -> match after "temperature_2m":<whitespace>value
-    local key="${key_path##*.}"  # Get last part after dot
+    local key="${key_path##*.}" # Get last part after dot
 
     # Match: "key": value (number) or "key": "value" (string)
     if [[ "$json" =~ \"$key\":[[:space:]]*([0-9.-]+) ]]; then
@@ -772,18 +824,18 @@ _resolve_format_openmeteo() {
 
     # Resolve preset formats first
     case "$format" in
-        compact)
-            format='%t %c'
-            ;;
-        full)
-            format='%t %c H:%h'
-            ;;
-        minimal)
-            format='%t'
-            ;;
-        detailed)
-            format='%l: %t %c'
-            ;;
+    compact)
+        format='%t %c'
+        ;;
+    full)
+        format='%t %c H:%h'
+        ;;
+    minimal)
+        format='%t'
+        ;;
+    detailed)
+        format='%l: %t %c'
+        ;;
     esac
 
     # Parse all needed values from JSON
@@ -846,8 +898,8 @@ _resolve_format_openmeteo() {
     result="${result//%h/${humidity}%}"
     result="${result//%l/$location_name}"
     result="${result//%p/${precipitation}mm}"
-    result="${result//%P/}"  # Empty - not available
-    result="${result//%m/}"  # Empty - not available
+    result="${result//%P/}" # Empty - not available
+    result="${result//%m/}" # Empty - not available
 
     # Clean up: remove empty placeholders and extra spaces
     result=$(printf '%s' "$result" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//;s/[[:space:]]\{2,\}/ /g')
@@ -860,7 +912,9 @@ _resolve_format_openmeteo() {
 # =============================================================================
 
 plugin_collect() {
-    # Step 1: Check rate limiting first
+    # Step 1: Check rate limiting first. _check_rate_limit reserves a
+    # slot; on a failed fetch we release it so transport errors do not
+    # consume the per-hour quota.
     _check_rate_limit || {
         # Rate limited - try to use cached data
         local cached_weather
@@ -876,9 +930,13 @@ plugin_collect() {
         return 1
     }
 
-    # Step 2: Fetch weather from Open Meteo
+    # Step 2: Fetch weather from Open Meteo. On any failure, release
+    # the reserved slot so the counter reflects only real upstream calls.
     local result
-    result=$(_fetch_weather_openmeteo) || return 1
+    if ! result=$(_fetch_weather_openmeteo); then
+        _release_rate_limit
+        return 1
+    fi
 
     # Step 3: Parse pipe-separated result (json_data|location_name)
     local json_data="${result%|*}"

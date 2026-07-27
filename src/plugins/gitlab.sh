@@ -209,14 +209,20 @@ _make_gitlab_api_call() {
     local url="$1"
     local token=$(_get_token)
 
-    make_api_call "$url" "private-token" "$token" 5
+    # PRIVATE-TOKEN is passed via curl --config (stdin) so it never
+    # appears in process argv. The body returned here is the same
+    # JSON shape as make_api_call would have given.
+    api_fetch_with_token_header "$url" "PRIVATE-TOKEN" "$token" 5
 }
 
 _make_gitlab_head_call() {
     local url="$1"
     local token=$(_get_token)
 
-    safe_curl "$url" 5 -I -H "PRIVATE-TOKEN: $token"
+    # Same credential-safe transport for HEAD requests. The header is
+    # forwarded via stdin; only the URL is in argv.
+    printf 'header = "PRIVATE-TOKEN: %s"\nheader = "X-Head-Only: 1"\nrequest = "HEAD"\n' "$token" |
+        curl -sf --config - --connect-timeout 5 --max-time 10 "$url" 2>/dev/null
 }
 
 _count_issues() {

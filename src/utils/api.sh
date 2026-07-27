@@ -107,6 +107,53 @@ make_api_call() {
 }
 
 # =============================================================================
+# Credential-Safe Transport
+# =============================================================================
+# These helpers avoid exposing secrets in process argv (visible via /proc,
+# ps, process accounting, set -x traces). Prefer them over make_api_call when
+# the credential would otherwise appear as a curl argv element.
+
+# Fetch a URL with an HTTP header passed via curl --config (stdin).
+# Usage: api_fetch_with_header_stdin "url" "Header-Name: value" [timeout]
+# Returns: response body; empty string on transport failure
+api_fetch_with_header_stdin() {
+    local url="$1" header="$2" timeout="${3:-5}"
+    printf 'header = "%s"\n' "$header" |
+        curl -sf --config - --connect-timeout "$timeout" --max-time "$((timeout * 2))" \
+            "$url" 2>/dev/null
+}
+
+# Fetch a URL with HTTP basic auth passed via a curl config file.
+# Usage: api_fetch_with_basic_config "url" "user" "password" [timeout]
+# Returns: response body; empty string on transport failure
+# The temp file is created with mode 600 and removed via trap on return.
+api_fetch_with_basic_config() {
+    local url="$1" user="$2" password="$3" timeout="${4:-5}"
+    local cfg
+    cfg=$(mktemp "${TMPDIR:-/tmp}/powerkit-curl.XXXXXX") || return 1
+    chmod 600 "$cfg"
+    trap 'rm -f "$cfg"' RETURN
+    printf -- '-u %s:%s\n' "$user" "$password" >"$cfg"
+    curl -sf --config "$cfg" --connect-timeout "$timeout" --max-time "$((timeout * 2))" \
+        "$url" 2>/dev/null
+}
+
+# Fetch a URL with bearer token in Authorization header, passed via stdin.
+# Usage: api_fetch_with_bearer "url" "token" [timeout]
+api_fetch_with_bearer() {
+    local url="$1" token="$2" timeout="${3:-5}"
+    api_fetch_with_header_stdin "$url" "Authorization: Bearer ${token}" "$timeout"
+}
+
+# Fetch a URL with a vendor-specific token header via stdin.
+# Usage: api_fetch_with_token_header "url" "Header-Name" "token" [timeout]
+# Example: api_fetch_with_token_header "$url" "PRIVATE-TOKEN" "$glpat" 5
+api_fetch_with_token_header() {
+    local url="$1" header_name="$2" token="$3" timeout="${4:-5}"
+    api_fetch_with_header_stdin "$url" "${header_name}: ${token}" "$timeout"
+}
+
+# =============================================================================
 # Response Validation
 # =============================================================================
 
@@ -126,6 +173,53 @@ api_validate_response() {
     [[ "$response" =~ \"error\" ]] && return 1
 
     return 0
+}
+
+# Validate that a string is parseable JSON (requires jq).
+# Usage: api_validate_json "$body" || return 1
+# Returns: 0 if valid JSON, 1 if not
+api_validate_json() {
+    local body="$1"
+    has_cmd jq || return 1
+    printf '%s' "$body" | jq -e . >/dev/null 2>&1
+}
+
+# Validate that a string is an IPv4 or IPv6 address.
+# Usage: api_validate_ip "$value" || return 1
+# Returns: 0 if valid IP, 1 if not
+api_validate_ip() {
+    local value="$1"
+    if [[ "$value" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        local o
+        local IFS='.'
+        # shellcheck disable=SC2206
+        local -a octets=($value)
+        for o in "${octets[@]}"; do
+            ((o >= 0 && o <= 255)) || return 1
+        done
+        return 0
+    fi
+    [[ "$value" =~ ^[0-9a-fA-F:]+$ ]] && [[ "$value" == *:* ]]
+}
+
+# Classify an HTTP response into a canonical outcome string.
+# Usage: outcome=$(api_classify_outcome "$http_status" "$body")
+# Returns: success | unauthorized | forbidden | rate_limited | not_found |
+#          server_error | transport_error | malformed
+api_classify_outcome() {
+    local status="$1" body="${2:-}"
+    case "$status" in
+    2*) printf 'success' ;;
+    401) printf 'unauthorized' ;;
+    403) printf 'forbidden' ;;
+    404) printf 'not_found' ;;
+    429) printf 'rate_limited' ;;
+    5*) printf 'server_error' ;;
+    0 | "") printf 'transport_error' ;;
+    *)
+        [[ -z "$body" ]] && printf 'transport_error' || printf 'malformed'
+        ;;
+    esac
 }
 
 # Check if response contains specific error patterns

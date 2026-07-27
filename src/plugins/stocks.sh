@@ -144,16 +144,38 @@ _fetch_stock_price() {
 
     [[ -z "$response" ]] && return 1
 
-    # Parse JSON manually (no jq dependency)
+    # Validate JSON shape before regex extraction. The previous code
+    # applied a sed pattern to whatever the server returned, which
+    # silently succeeded on HTML error pages, captive portals, or 429
+    # bodies. A successful empty grep is what produced zero prices
+    # without raising the cache.
+    if has_cmd jq; then
+        api_validate_json "$response" || return 1
+        # Use jq's structural path so we do not depend on a regex that
+        # the provider can change at any release.
+        local price prev_close
+        price=$(printf '%s' "$response" | jq -r '.chart.result[0].meta.regularMarketPrice // empty' 2>/dev/null) || return 1
+        prev_close=$(printf '%s' "$response" | jq -r '.chart.result[0].meta.chartPreviousClose // empty' 2>/dev/null) || return 1
+        [[ -z "$price" ]] && return 1
+
+        local change_pct
+        if [[ -n "$prev_close" && "$prev_close" != "0" ]]; then
+            change_pct=$(awk -v p="$price" -v pc="$prev_close" 'BEGIN { printf "%.2f", ((p - pc) / pc) * 100 }')
+        else
+            change_pct="0.00"
+        fi
+        printf '%s|%s' "$price" "$change_pct"
+        return 0
+    fi
+
+    # Fallback: regex parsing (kept for environments without jq).
     local price prev_close change_pct
     price=$(echo "$response" | sed -n 's/.*"regularMarketPrice":\([0-9.]*\).*/\1/p' | head -1)
     prev_close=$(echo "$response" | sed -n 's/.*"chartPreviousClose":\([0-9.]*\).*/\1/p' | head -1)
 
     [[ -z "$price" ]] && return 1
 
-    # Calculate change percentage
     if [[ -n "$prev_close" && "$prev_close" != "0" ]]; then
-        # Use awk for floating point calculation
         change_pct=$(awk -v p="$price" -v pc="$prev_close" 'BEGIN { printf "%.2f", ((p - pc) / pc) * 100 }')
     else
         change_pct="0.00"
@@ -216,13 +238,17 @@ plugin_collect() {
     IFS=',' read -ra ticker_list <<<"$tickers"
 
     local prices_data="" changes_data=""
+    local attempted=0 parsed=0
     for ticker in "${ticker_list[@]}"; do
         ticker=$(trim "$ticker")
         ticker="${ticker^^}" # Bash 4.0+ uppercase
         [[ -z "$ticker" ]] && continue
 
+        ((attempted++))
         local stock_data
-        stock_data=$(_fetch_stock_price "$ticker")
+        if ! stock_data=$(_fetch_stock_price "$ticker"); then
+            continue
+        fi
 
         if [[ -n "$stock_data" ]]; then
             IFS='|' read -r price change <<<"$stock_data"
@@ -231,8 +257,16 @@ plugin_collect() {
 
             [[ -n "$changes_data" ]] && changes_data+="|"
             changes_data+="${ticker}:${change}"
+            ((parsed++))
         fi
     done
+
+    # When no ticker produced a price, refuse to overwrite the prior
+    # cache so the lifecycle can keep the previous record and mark it
+    # stale.
+    if ((attempted > 0 && parsed == 0)); then
+        return 1
+    fi
 
     [[ -n "$prices_data" ]] && plugin_data_set "prices" "$prices_data"
     [[ -n "$changes_data" ]] && plugin_data_set "changes" "$changes_data"

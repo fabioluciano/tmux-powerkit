@@ -68,6 +68,13 @@ plugin_get_icon() { get_option "icon"; }
 plugin_collect() {
     local ip
     ip=$(safe_curl "https://api.ipify.org" 3)
+    # ipify returns the bare IP, but a transport error or a captive
+    # portal redirect can produce arbitrary text. Validate before
+    # accepting; refuse to overwrite the prior cache otherwise so the
+    # lifecycle can keep the previous record and mark it stale.
+    if ! api_validate_ip "$ip"; then
+        return 1
+    fi
     plugin_data_set "ip" "$ip"
 }
 
@@ -75,4 +82,3 @@ plugin_render() {
     local ip=$(plugin_data_get "ip")
     [[ -n "$ip" ]] && printf '%s' "$ip" || printf 'N/A'
 }
-

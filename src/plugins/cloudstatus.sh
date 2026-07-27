@@ -42,7 +42,7 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     require_cmd "curl" || return 1
-    require_cmd "jq" 1  # Optional - improves JSON parsing
+    require_cmd "jq" 1 # Optional - improves JSON parsing
     return 0
 }
 
@@ -191,10 +191,10 @@ _parse_azure() {
         local status
         status=$(printf '%s' "$data" | jq -r '.status.health // "good"' 2>/dev/null)
         case "$status" in
-            good|healthy) printf 'operational' ;;
-            advisory|degraded) printf 'minor' ;;
-            critical|unhealthy) printf 'major' ;;
-            *) printf 'operational' ;;
+        good | healthy) printf 'operational' ;;
+        advisory | degraded) printf 'minor' ;;
+        critical | unhealthy) printf 'major' ;;
+        *) printf 'operational' ;;
         esac
         return
     fi
@@ -209,10 +209,10 @@ _parse_slack() {
         local status
         status=$(printf '%s' "$data" | jq -r '.status // "ok"' 2>/dev/null)
         case "$status" in
-            ok|active) printf 'operational' ;;
-            notice) printf 'minor' ;;
-            incident|outage) printf 'major' ;;
-            *) printf 'operational' ;;
+        ok | active) printf 'operational' ;;
+        notice) printf 'minor' ;;
+        incident | outage) printf 'major' ;;
+        *) printf 'operational' ;;
         esac
         return
     fi
@@ -239,40 +239,43 @@ _get_provider_status() {
     [[ -z "$provider_config" ]] && return 1
 
     local _name api_url icon timeout
-    IFS='|' read -r _name api_url icon <<< "$provider_config"
+    IFS='|' read -r _name api_url icon <<<"$provider_config"
     timeout=$(get_option "timeout")
     timeout="${timeout:-5}"
 
     local data
     data=$(safe_curl "$api_url" "$timeout" 2>/dev/null)
-    [[ -z "$data" ]] && { printf 'unknown'; return; }
+    [[ -z "$data" ]] && {
+        printf 'unknown'
+        return
+    }
 
     # Provider-specific parsers
     case "$provider_key" in
-        aws)    _parse_aws "$data" ;;
-        gcp)    _parse_gcp "$data" ;;
-        azure)  _parse_azure "$data" ;;
-        slack)  _parse_slack "$data" ;;
-        heroku) _parse_heroku "$data" ;;
-        *)      _parse_statuspage "$data" ;;
+    aws) _parse_aws "$data" ;;
+    gcp) _parse_gcp "$data" ;;
+    azure) _parse_azure "$data" ;;
+    slack) _parse_slack "$data" ;;
+    heroku) _parse_heroku "$data" ;;
+    *) _parse_statuspage "$data" ;;
     esac
 }
 
 _normalize_status() {
     case "$1" in
-        none|operational|green|ok) printf 'ok' ;;
-        minor|degraded*|yellow)    printf 'warning' ;;
-        major|partial*|critical*)  printf 'error' ;;
-        *)                         printf 'unknown' ;;
+    none | operational | green | ok) printf 'ok' ;;
+    minor | degraded* | yellow) printf 'warning' ;;
+    major | partial* | critical*) printf 'error' ;;
+    *) printf 'unknown' ;;
     esac
 }
 
 _get_status_indicator() {
     local status="$1"
     case "$status" in
-        warning) printf '!' ;;
-        error)   printf '!!' ;;
-        *)       printf '' ;;
+    warning) printf '!' ;;
+    error) printf '!!' ;;
+    *) printf '' ;;
     esac
 }
 
@@ -293,9 +296,9 @@ plugin_get_health() {
     local severity
     severity=$(plugin_data_get "severity")
     case "$severity" in
-        error) printf 'error' ;;
-        warning) printf 'warning' ;;
-        *) printf 'ok' ;;
+    error) printf 'error' ;;
+    warning) printf 'warning' ;;
+    *) printf 'ok' ;;
     esac
 }
 
@@ -303,9 +306,9 @@ plugin_get_context() {
     local severity
     severity=$(plugin_data_get "severity")
     case "$severity" in
-        error) printf 'incident' ;;
-        warning) printf 'degraded' ;;
-        *) printf 'operational' ;;
+    error) printf 'incident' ;;
+    warning) printf 'degraded' ;;
+    *) printf 'operational' ;;
     esac
 }
 
@@ -314,9 +317,9 @@ plugin_get_icon() {
     local severity
     severity=$(plugin_data_get "severity")
     case "$severity" in
-        error)   get_option "icon_error" ;;
-        warning) get_option "icon_warning" ;;
-        *)       get_option "icon" ;;
+    error) get_option "icon_error" ;;
+    warning) get_option "icon_warning" ;;
+    *) get_option "icon" ;;
     esac
 }
 
@@ -336,24 +339,46 @@ plugin_collect() {
 
     local output_parts=()
     local has_error=false has_warning=false has_issues=false
+    local attempted=0 unknown_count=0
     local provider raw_status normalized indicator icon
 
-    IFS=',' read -ra provider_list <<< "$providers"
+    IFS=',' read -ra provider_list <<<"$providers"
 
     for provider in "${provider_list[@]}"; do
         provider=$(trim "$provider")
         [[ -z "$provider" || -z "${CLOUD_PROVIDERS[$provider]}" ]] && continue
 
-        IFS='|' read -r _ _ icon <<< "${CLOUD_PROVIDERS[$provider]}"
+        IFS='|' read -r _ _ icon <<<"${CLOUD_PROVIDERS[$provider]}"
+        ((attempted++))
         raw_status=$(_get_provider_status "$provider")
         normalized=$(_normalize_status "$raw_status")
+
+        # 'unknown' is the result when the provider endpoint is
+        # unreachable, returned malformed JSON, or its schema drifted.
+        # Previously the plugin would silently treat this as operational,
+        # which is unsafe. We now surface it explicitly and fail collection
+        # when every requested provider is unknown so the lifecycle can
+        # preserve the prior cache as stale.
+        if [[ "$normalized" == "unknown" ]]; then
+            ((unknown_count++))
+            # Still render a question-mark indicator so the user can see
+            # which providers could not be contacted.
+            output_parts+=("${icon}?")
+            continue
+        fi
 
         # Skip OK if issues_only
         [[ "$issues_only" == "true" && "$normalized" == "ok" ]] && continue
 
         # Track severity
-        [[ "$normalized" == "error" ]] && { has_error=true; has_issues=true; }
-        [[ "$normalized" == "warning" ]] && { has_warning=true; has_issues=true; }
+        [[ "$normalized" == "error" ]] && {
+            has_error=true
+            has_issues=true
+        }
+        [[ "$normalized" == "warning" ]] && {
+            has_warning=true
+            has_issues=true
+        }
 
         # Add indicator for individual severity
         indicator=$(_get_status_indicator "$normalized")
@@ -364,10 +389,21 @@ plugin_collect() {
     local severity="ok"
     [[ "$has_warning" == "true" ]] && severity="warning"
     [[ "$has_error" == "true" ]] && severity="error"
+    # If every provider returned unknown, treat as error so the renderer
+    # uses the error color and the lifecycle marks the cache as stale.
+    if ((attempted > 0 && unknown_count == attempted)); then
+        severity="error"
+    fi
 
     plugin_data_set "severity" "$severity"
-    plugin_data_set "has_issues" "$([[ "$has_issues" == "true" ]] && echo "1" || echo "0")"
+    plugin_data_set "has_issues" "$([[ "$has_issues" == "true" || "$unknown_count" -gt 0 ]] && echo "1" || echo "0")"
     plugin_data_set "output" "$(join_with_separator ' ' "${output_parts[@]}")"
+
+    # Refuse to overwrite the prior cache if every requested provider
+    # was unreachable or returned a malformed body.
+    if ((attempted > 0 && unknown_count == attempted)); then
+        return 1
+    fi
 }
 
 # =============================================================================

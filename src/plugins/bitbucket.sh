@@ -247,6 +247,7 @@ plugin_collect() {
     IFS=',' read -ra repos <<<"$repos_csv"
 
     local total_issues=0 total_prs=0
+    local attempted=0 failed=0
 
     for repo_spec in "${repos[@]}"; do
         repo_spec=$(trim "$repo_spec")
@@ -256,20 +257,36 @@ plugin_collect() {
         local repo_slug="$(_urlencode "${repo_spec#*/}")"
 
         if [[ "$show_issues" == "on" || "$show_issues" == "true" ]]; then
-            local issues=0
-            issues=$(_count_issues "$workspace" "$repo_slug") || issues=0
-            total_issues=$((total_issues + issues))
+            ((attempted++))
+            local issues
+            if ! issues=$(_count_issues "$workspace" "$repo_slug"); then
+                ((failed++))
+            else
+                total_issues=$((total_issues + issues))
+            fi
         fi
 
         if [[ "$show_prs" == "on" || "$show_prs" == "true" ]]; then
-            local prs=0
-            prs=$(_count_prs "$workspace" "$repo_slug") || prs=0
-            total_prs=$((total_prs + prs))
+            ((attempted++))
+            local prs
+            if ! prs=$(_count_prs "$workspace" "$repo_slug"); then
+                ((failed++))
+            else
+                total_prs=$((total_prs + prs))
+            fi
         fi
     done
 
     plugin_data_set "issues" "$total_issues"
     plugin_data_set "prs" "$total_prs"
+
+    # If every attempted counter failed, refuse to overwrite the prior
+    # cache. The lifecycle will preserve the previous record and mark
+    # the result as stale. A partial failure keeps the partial success
+    # and continues.
+    if ((attempted > 0 && failed == attempted)); then
+        return 1
+    fi
 }
 
 plugin_render() {

@@ -213,7 +213,10 @@ _make_github_api_call() {
     local url="$1"
     local token=$(_get_token)
 
-    make_api_call "$url" "github" "$token" 5
+    # The token is passed via curl --config (stdin) so it never
+    # appears in process argv. The GitHub API accepts the same
+    # Authorization header that make_api_call was sending.
+    api_fetch_with_token_header "$url" "Authorization" "token ${token}" 5
 }
 
 _get_api_error_message() {
@@ -366,6 +369,7 @@ _get_github_info() {
 
     local total_issues=0 total_prs=0
     local api_error=0
+    local attempted=0 failed=0
 
     for repo_spec in "${repos[@]}"; do
         repo_spec=$(trim "$repo_spec")
@@ -377,24 +381,39 @@ _get_github_info() {
         local issues=0 prs=0
 
         if [[ "$(get_option "show_issues")" == "true" ]]; then
+            ((attempted++))
             if ! issues=$(_count_issues "$owner" "$repo" "$filter_user"); then
                 api_error=1
+                ((failed++))
                 issues=0
+            else
+                total_issues=$((total_issues + issues))
             fi
         fi
 
         if [[ "$(get_option "show_prs")" == "true" ]]; then
+            ((attempted++))
             if ! prs=$(_count_prs "$owner" "$repo" "$filter_user"); then
                 api_error=1
+                ((failed++))
                 prs=0
+            else
+                total_prs=$((total_prs + prs))
             fi
         fi
-
-        total_issues=$((total_issues + issues))
-        total_prs=$((total_prs + prs))
     done
 
-    echo "$total_issues $total_prs $api_error"
+    # Surface a canonical outcome so consumers can distinguish
+    # unauthorized / rate_limited / transport errors instead of seeing
+    # a single generic api_error flag.
+    local outcome="success"
+    if ((attempted > 0 && failed == attempted)); then
+        outcome="transport_error"
+    elif ((api_error > 0)); then
+        outcome="partial_failure"
+    fi
+
+    echo "$total_issues $total_prs $api_error $outcome"
 }
 
 plugin_collect() {
@@ -410,12 +429,13 @@ plugin_collect() {
     fi
 
     local result=$(_get_github_info)
-    local issues prs api_error
-    read -r issues prs api_error <<<"$result"
+    local issues prs api_error outcome
+    read -r issues prs api_error outcome <<<"$result"
 
     issues="${issues:-0}"
     prs="${prs:-0}"
     api_error="${api_error:-0}"
+    outcome="${outcome:-success}"
 
     local total=$((issues + prs))
 
@@ -423,6 +443,11 @@ plugin_collect() {
     plugin_data_set "prs" "$prs"
     plugin_data_set "total" "$total"
     plugin_data_set "api_error" "$api_error"
+    plugin_data_set "api_outcome" "$outcome"
+
+    # If every requested counter failed, refuse to overwrite the prior
+    # cache so the lifecycle can mark it stale.
+    [[ "$outcome" == "transport_error" ]] && return 1
 }
 
 plugin_render() {
