@@ -266,7 +266,7 @@ setup() {
 # window_get_icon_format
 # =============================================================================
 
-@test "window_get_icon_format returns non-empty conditional format" {
+@test "window_get_icon_format returns shallow command mapping format" {
     run bash -c '
         source "$1/src/core/bootstrap.sh"
         source "$1/src/contract/window_contract.sh"
@@ -274,9 +274,20 @@ setup() {
     ' _ "$POWERKIT_ROOT"
     assert_success
     refute_output ""
-    # Should contain pane_current_command conditionals
-    assert_output --partial '#{?#{=='
+    assert_output --partial '#{?#{m/r:'
+    assert_output --partial 's|^nvim$|'
     assert_output --partial '#{pane_current_command}'
+}
+
+@test "window_get_icon_format uses one conditional regardless of icon count" {
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/window_contract.sh"
+        format=$(window_get_icon_format)
+        printf "%s\n" "$(grep -oF "#{?" <<<"$format" | wc -l | tr -d " ")"
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "1"
 }
 
 # =============================================================================

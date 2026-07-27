@@ -217,16 +217,19 @@ window_get_icon_format() {
     [[ -z "$default_icon" ]] && default_icon=$(get_tmux_option "@powerkit_window_default_icon" "$WINDOW_DEFAULT_ICON")
 
     # Build nested conditional format from the icon map
-    local format="$default_icon"
+    local command_pattern=""
+    local substitutions=""
     local cmd icon
 
     # Iterate through icon map (from registry.sh)
     for cmd in "${!WINDOW_ICON_MAP[@]}"; do
         icon="${WINDOW_ICON_MAP[$cmd]}"
-        format="#{?#{==:#{pane_current_command},$cmd},$icon,$format}"
+        command_pattern+="${command_pattern:+|}${cmd}"
+        substitutions+="${substitutions:+;}s|^${cmd}$|${icon}|"
     done
 
-    printf '%s' "$format"
+    printf '#{?#{m/r:^(%s)$,#{pane_current_command}},#{%s:pane_current_command},%s}' \
+        "$command_pattern" "$substitutions" "$default_icon"
 }
 
 # Simpler icon format (just returns default or custom)
