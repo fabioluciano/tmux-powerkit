@@ -1,0 +1,1 @@
+mean=84ms median=83ms p95=93ms cycles=100 side=right bash=5.3.15(1)-release
