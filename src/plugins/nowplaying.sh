@@ -150,8 +150,17 @@ _get_nowplaying_macos() {
     local binary="${POWERKIT_ROOT}/bin/powerkit-nowplaying"
     [[ -x "$binary" ]] || return 1
 
+    # Forward the app_priority option to the binary so the operator
+    # can pin a preferred player when several are running. The binary
+    # accepts the same comma-separated list format as playerctl.
+    local app_priority priority_args=()
+    app_priority=$(get_option "app_priority")
+    if [[ -n "$app_priority" ]]; then
+        priority_args=(-p "$app_priority")
+    fi
+
     local output
-    output=$("$binary" 2>/dev/null) || return 1
+    output=$("$binary" "${priority_args[@]}" 2>/dev/null) || return 1
     [[ -z "$output" ]] && return 1
 
     # Check if app should be ignored

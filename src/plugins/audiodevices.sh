@@ -24,9 +24,9 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     if is_macos; then
-        require_cmd "SwitchAudioSource" 1  # Optional
+        require_cmd "SwitchAudioSource" 1 # Optional
     else
-        require_cmd "pactl" 1  # Optional
+        require_cmd "pactl" 1 # Optional
     fi
     return 0
 }
@@ -67,8 +67,14 @@ plugin_get_presence() { printf 'conditional'; }
 plugin_get_state() {
     local show
     show=$(get_option "display_mode")
-    [[ "$show" == "off" ]] && { printf 'inactive'; return; }
-    [[ "$(_get_audio_system)" == "none" ]] && { printf 'inactive'; return; }
+    [[ "$show" == "off" ]] && {
+        printf 'inactive'
+        return
+    }
+    [[ "$(_get_audio_system)" == "none" ]] && {
+        printf 'inactive'
+        return
+    }
     printf 'active'
 }
 plugin_get_health() { printf 'ok'; }
@@ -76,10 +82,10 @@ plugin_get_health() { printf 'ok'; }
 plugin_get_context() {
     local mode=$(get_option "display_mode")
     case "$mode" in
-        input)  printf 'input_only' ;;
-        output) printf 'output_only' ;;
-        both)   printf 'both_devices' ;;
-        *)      printf 'disabled' ;;
+    input) printf 'input_only' ;;
+    output) printf 'output_only' ;;
+    both) printf 'both_devices' ;;
+    *) printf 'disabled' ;;
     esac
 }
 
@@ -106,8 +112,8 @@ _get_audio_input() {
     else
         local src
         src=$(pactl get-default-source 2>/dev/null)
-        [[ -n "$src" ]] && pactl list sources 2>/dev/null | \
-            grep -A 20 "Name: $src" | grep "Description:" | \
+        [[ -n "$src" ]] && pactl list sources 2>/dev/null |
+            grep -A 20 "Name: $src" | grep "Description:" |
             cut -d: -f2- | sed 's/^ *//'
     fi
 }
@@ -118,8 +124,8 @@ _get_audio_output() {
     else
         local sink
         sink=$(pactl get-default-sink 2>/dev/null)
-        [[ -n "$sink" ]] && pactl list sinks 2>/dev/null | \
-            grep -A 20 "Name: $sink" | grep "Description:" | \
+        [[ -n "$sink" ]] && pactl list sinks 2>/dev/null |
+            grep -A 20 "Name: $sink" | grep "Description:" |
             cut -d: -f2- | sed 's/^ *//'
     fi
 }
@@ -128,22 +134,34 @@ plugin_collect() {
     local show input output
     show=$(get_option "display_mode")
 
+    # Invalidate the plugin cache when display_mode changes so the new
+    # mode takes effect on the very next render instead of waiting for
+    # the TTL window. The previous mode is tracked in a side cache key
+    # that lives across the cache TTL.
+    local prev_mode_key="audiodevices:prev_display_mode"
+    local prev_mode
+    prev_mode=$(cache_get "$prev_mode_key" "86400" 2>/dev/null || echo "")
+    if [[ -n "$prev_mode" && "$prev_mode" != "$show" ]]; then
+        cache_clear "plugin_audiodevices"
+    fi
+    cache_set "$prev_mode_key" "$show" "86400" 2>/dev/null || true
+
     # Skip if audio system not available
     [[ "$show" == "off" ]] && return 0
     [[ "$(_get_audio_system)" == "none" ]] && return 0
 
     case "$show" in
-        input|both)
-            input=$(_get_audio_input)
-            plugin_data_set "input" "${input:-Unknown}"
-            ;;
+    input | both)
+        input=$(_get_audio_input)
+        plugin_data_set "input" "${input:-Unknown}"
+        ;;
     esac
 
     case "$show" in
-        output|both)
-            output=$(_get_audio_output)
-            plugin_data_set "output" "${output:-Unknown}"
-            ;;
+    output | both)
+        output=$(_get_audio_output)
+        plugin_data_set "output" "${output:-Unknown}"
+        ;;
     esac
 }
 
@@ -196,4 +214,3 @@ plugin_setup_keybindings() {
     pk_bind_shell "$input_key" "bash '$helper_script' input" "audiodevices:input"
     pk_bind_shell "$output_key" "bash '$helper_script' output" "audiodevices:output"
 }
-
