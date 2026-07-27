@@ -214,7 +214,7 @@ EOF
 # Returns: 0 on success, 1 on failure
 binary_download() {
     local binary="$1"
-    local url checksum_url arch_suffix temp_file
+    local url checksum_url arch_suffix temp_file staged_file final_file
 
     url=$(binary_get_download_url "$binary") || return 1
     checksum_url=$(binary_get_checksum_url) || return 1
@@ -223,13 +223,21 @@ binary_download() {
         log_error "binary_manager" "Failed to create temp file for ${binary}"
         return 1
     }
+    staged_file="${_BINARY_DIR}/${binary}.new.$$"
+    final_file="${_BINARY_DIR}/${binary}"
+
+    # trap guarantees the temp file and the staged .new binary are
+    # removed on every exit path, including signals. The previous code
+    # cleaned $temp_file on each explicit error branch but had no
+    # rollback for the post-mv installation, so a later step failure
+    # could leave a partial binary in $_BINARY_DIR.
+    trap 'rm -f "$temp_file" "$staged_file" 2>/dev/null; trap - RETURN' RETURN
 
     log_info "binary_manager" "Downloading ${binary} from ${url}"
 
     # Download using curl (available on macOS)
     if ! curl -fsSL "$url" -o "$temp_file" 2>/dev/null; then
         log_error "binary_manager" "Failed to download ${binary} from ${url}"
-        rm -f "$temp_file" 2>/dev/null
         return 1
     fi
 
@@ -240,7 +248,6 @@ binary_download() {
     [[ "$expected_arch" == "amd64" ]] && expected_arch="x86_64"
     if [[ "$file_info" != *"Mach-O"* || "$file_info" != *"$expected_arch"* ]]; then
         log_error "binary_manager" "Downloaded file is not a valid macOS binary"
-        rm -f "$temp_file" 2>/dev/null
         return 1
     fi
 
@@ -249,22 +256,36 @@ binary_download() {
     expected_sha=$(curl -fsSL --connect-timeout 5 --max-time 10 "$checksum_url" 2>/dev/null | awk -v name="${binary}-${arch_suffix}" '$2 ~ name "$" { print $1; exit }')
     if [[ ! "$expected_sha" =~ ^[0-9a-fA-F]{64}$ ]]; then
         log_error "binary_manager" "Missing checksum for ${binary} in ${checksum_url}"
-        rm -f "$temp_file" 2>/dev/null
         return 1
     fi
 
     actual_sha=$(shasum -a 256 "$temp_file" 2>/dev/null | awk '{print $1}')
     if [[ "$actual_sha" != "$expected_sha" ]]; then
         log_error "binary_manager" "Checksum mismatch for ${binary}"
-        rm -f "$temp_file" 2>/dev/null
         return 1
     fi
     log_debug "binary_manager" "Checksum verified for ${binary}"
 
-    # Make executable and move to bin dir
+    # Atomic install:
+    # 1. Copy the verified binary to a side-car path (.new.$$) so the
+    #    existing binary stays untouched if anything goes wrong.
+    # 2. mv the side-car over the final path (same filesystem, atomic
+    #    at the inode level on macOS/Linux when both are on the same FS).
     chmod +x "$temp_file"
     mkdir -p "$_BINARY_DIR"
-    mv "$temp_file" "${_BINARY_DIR}/${binary}"
+    if ! mv "$temp_file" "$staged_file"; then
+        log_error "binary_manager" "Failed to stage ${binary}"
+        return 1
+    fi
+    # temp_file is now gone; clear the trap's reference so it does not
+    # try to remove something that no longer exists.
+    temp_file=""
+    if ! mv -f "$staged_file" "$final_file"; then
+        log_error "binary_manager" "Failed to install ${binary}"
+        # staged_file is still on disk; the RETURN trap will remove it
+        return 1
+    fi
+    staged_file=""
 
     log_info "binary_manager" "Installed ${binary} to ${_BINARY_DIR}"
     toast "Binary ${binary} installed successfully" "success"

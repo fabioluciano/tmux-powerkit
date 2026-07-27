@@ -137,7 +137,9 @@ select_totp_bw() {
 
     if [[ -n "$totp_code" ]]; then
         printf '%s' "$totp_code" | copy_to_clipboard
-        toast " ${item_name:0:25} ($totp_code)" "simple"
+        # Toast receives a fixed confirmation; never the TOTP code itself.
+        # The code is already in the clipboard and must not enter terminal capture.
+        toast " ${item_name:0:25} → clipboard" "success"
     else
         toast " Failed to get TOTP" "simple"
     fi
@@ -192,7 +194,8 @@ select_totp_rbw() {
 
     if [[ -n "$totp_code" ]]; then
         printf '%s' "$totp_code" | copy_to_clipboard
-        toast " ${item_name:0:25} ($totp_code)" "simple"
+        # Do not display the TOTP code in toast text.
+        toast " ${item_name:0:25} → clipboard" "success"
     else
         toast " Failed to get TOTP" "simple"
     fi

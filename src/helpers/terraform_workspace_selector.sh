@@ -32,8 +32,14 @@ helper_get_actions() {
 
 # Detect terraform or tofu
 detect_tool() {
-    has_cmd "terraform" && { echo "terraform"; return 0; }
-    has_cmd "tofu" && { echo "tofu"; return 0; }
+    has_cmd "terraform" && {
+        echo "terraform"
+        return 0
+    }
+    has_cmd "tofu" && {
+        echo "tofu"
+        return 0
+    }
     return 1
 }
 
@@ -89,11 +95,14 @@ select_workspace() {
     # Check if we're in a terraform directory
     if ! is_tf_directory "$pane_path"; then
         toast "Not in a Terraform directory" "error"
-        return 0  # Return 0 to avoid tmux showing error message
+        return 0 # Return 0 to avoid tmux showing error message
     fi
 
     # Detect tool
-    tool=$(detect_tool) || { toast "terraform/tofu not found" "error"; return 0; }
+    tool=$(detect_tool) || {
+        toast "terraform/tofu not found" "error"
+        return 0
+    }
 
     # Get current workspace
     current_ws=$(cd "$pane_path" && "$tool" workspace show 2>/dev/null) || current_ws="default"
@@ -109,24 +118,84 @@ select_workspace() {
         workspaces+=("$ws")
     done < <(cd "$pane_path" && "$tool" workspace list 2>/dev/null)
 
-    [[ ${#workspaces[@]} -eq 0 ]] && { toast "No workspaces found" "error"; return 0; }
+    [[ ${#workspaces[@]} -eq 0 ]] && {
+        toast "No workspaces found" "error"
+        return 0
+    }
 
-    # Build menu
-    local -a menu_args=()
+    # Workspace names AND pane paths are passed as argv to the helper
+    # itself rather than being interpolated into a shell command.
+    # Anything that would require shell quoting is filtered out up front.
+    local -a safe_workspaces=()
     for ws in "${workspaces[@]}"; do
+        if [[ "$ws" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            safe_workspaces+=("$ws")
+        fi
+    done
+    # Pane path is also restricted to a safe charset. tmux guarantees
+    # pane_current_path is an existing directory, but the helper script
+    # still re-validates the argv form before use.
+    if ! printf '%s' "$pane_path" | grep -Eq '^[/A-Za-z0-9._+-]+$'; then
+        toast "Pane path contains unsafe characters" "error"
+        return 0
+    fi
+    [[ ${#safe_workspaces[@]} -eq 0 ]] && {
+        toast "No safe workspaces found" "error"
+        return 0
+    }
+
+    local helper_path="$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh"
+    local -a menu_args=()
+    for ws in "${safe_workspaces[@]}"; do
         local marker=" "
         [[ "$ws" == "$current_ws" ]] && marker="●"
-        menu_args+=("$marker $ws" "" "run-shell \"cd '$pane_path' && $tool workspace select '$ws' >/dev/null 2>&1 && bash '$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh' invalidate && bash '$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh' toast 'Workspace: $ws' info\"")
+        # ws and pane_path are passed as argv; the helper re-validates.
+        menu_args+=("$marker $ws" "" "run-shell \"$helper_path _switch '$pane_path' '$tool' '$ws'\"")
     done
 
-    # Add separator and new workspace option
+    # Add separator and new workspace option. The "new workspace" path
+    # uses command-prompt so the user supplies the name; we still validate
+    # it after capture and reject anything outside the allowed charset.
     menu_args+=("" "" "")
-    menu_args+=("+ New workspace..." "" "command-prompt -p 'New workspace name:' \"run-shell \\\"cd '$pane_path' && $tool workspace new '%1' >/dev/null 2>&1 && bash '$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh' invalidate && bash '$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh' toast 'Created: %1' success\\\"\"")
+    menu_args+=("+ New workspace..." "" "command-prompt -p 'New workspace name:' \"run-shell '$helper_path _new '$pane_path' '$tool' %1'\"")
 
     # Show menu
     local icon=""
     [[ "$tool" == "tofu" ]] && icon=""
     tmux display-menu -T "$icon  Select Workspace" -x C -y C "${menu_args[@]}"
+}
+
+# Internal action: switch to an existing workspace. Receives path, tool
+# and workspace name as argv. No shell interpolation of user-controlled values.
+_pk_tf_switch() {
+    local pane_path="$1" tool="$2" ws="$3"
+    if ! [[ "$pane_path" =~ ^[/A-Za-z0-9._+-]+$ ]]; then return 2; fi
+    case "$tool" in
+    terraform | tofu) ;;
+    *) return 2 ;;
+    esac
+    if ! printf '%s' "$ws" | grep -Eq '^[A-Za-z0-9._-]+$'; then return 2; fi
+    (cd "$pane_path" && "$tool" workspace select "$ws" >/dev/null 2>&1) || return 1
+    "$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh" invalidate
+    "$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh" toast "Workspace: $ws" info
+}
+
+# Internal action: create a new workspace. The user-supplied name is
+# validated against the same allowlist before being passed to the tool.
+_pk_tf_new() {
+    local pane_path="$1" tool="$2" ws="$3"
+    if ! printf '%s' "$pane_path" | grep -Eq '^[/A-Za-z0-9._+-]+$'; then return 2; fi
+    case "$tool" in
+    terraform | tofu) ;;
+    *) return 2 ;;
+    esac
+    if ! printf '%s' "$ws" | grep -Eq '^[A-Za-z0-9._-]+$'; then
+        "$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh" toast "Invalid workspace name" error
+        return 2
+    fi
+    (cd "$pane_path" && "$tool" workspace new "$ws" >/dev/null 2>&1) || return 1
+    "$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh" invalidate
+    "$HELPER_SCRIPT_DIR/terraform_workspace_selector.sh" toast "Created: $ws" success
 }
 
 # =============================================================================
@@ -139,13 +208,21 @@ helper_main() {
     [[ $# -gt 0 ]] && shift
 
     case "$action" in
-        select|switch|"") select_workspace ;;
-        invalidate)       invalidate_cache ;;
-        toast)            toast "$@" ;;
-        *)
-            echo "Unknown action: $action" >&2
-            return 1
-            ;;
+    select | switch | "") select_workspace ;;
+    invalidate) invalidate_cache ;;
+    toast) toast "$@" ;;
+    _switch)
+        shift
+        _pk_tf_switch "$@"
+        ;;
+    _new)
+        shift
+        _pk_tf_new "$@"
+        ;;
+    *)
+        echo "Unknown action: $action" >&2
+        return 1
+        ;;
     esac
 }
 

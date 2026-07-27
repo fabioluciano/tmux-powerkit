@@ -210,9 +210,16 @@ _unlock_bitwarden_bw() {
             sleep 1
             return 0
         else
+            # Ensure no stale session is left behind on auth failure.
+            clear_bw_session 2>/dev/null || true
             printf '%s%s✗ Invalid password%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
             printf '\n%sPress any key to try again or Ctrl-C to cancel...%s' "$_BW_DIM" "$_BW_RESET"
             read -rsn1
+            # Ctrl-C on read returns 130; abort the retry loop instead of recursing
+            if (($? == 130)); then
+                clear_bw_session 2>/dev/null || true
+                return 130
+            fi
             # Clear screen and retry
             clear
             _unlock_bitwarden_bw
@@ -220,6 +227,7 @@ _unlock_bitwarden_bw() {
         fi
         ;;
     *)
+        clear_bw_session 2>/dev/null || true
         printf '%s%s✗ Unknown status: %s%s\n' "$_BW_BOLD" "$_BW_RED" "$status" "$_BW_RESET"
         printf '\n%sPress any key to close...%s' "$_BW_DIM" "$_BW_RESET"
         read -rsn1
