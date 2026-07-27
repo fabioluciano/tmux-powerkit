@@ -14,6 +14,8 @@ source_guard "aiquotas_render" && return 0
 
 # Compact a numeric value for display (e.g., 1250000 -> 1.2M).
 # Returns the input unchanged when not a non-negative integer.
+# Pure bash: integer divide by 1000/1000000 for the magnitude, then
+# derive the one decimal digit from the remainder.
 _aiquotas_compact_value() {
     local value="$1"
     [[ "$value" =~ ^[0-9]+$ ]] || {
@@ -21,9 +23,17 @@ _aiquotas_compact_value() {
         return
     }
     if ((value >= 1000000)); then
-        awk -v v="$value" 'BEGIN { printf "%.1fM", v / 1000000 }'
+        # Round to nearest 0.1M: (value + 50000) / 1000000.
+        local tenths=$(((value + 50000) / 100000))
+        local millions=$((tenths / 10))
+        local dec=$((tenths % 10))
+        printf '%d.%dM' "$millions" "$dec"
     elif ((value >= 1000)); then
-        awk -v v="$value" 'BEGIN { printf "%.1fK", v / 1000 }'
+        # Round to nearest 0.1K: (value + 50) / 1000.
+        local tenths=$(((value + 50) / 100))
+        local thousands=$((tenths / 10))
+        local dec=$((tenths % 10))
+        printf '%d.%dK' "$thousands" "$dec"
     else
         printf '%s' "$value"
     fi
@@ -32,6 +42,7 @@ _aiquotas_compact_value() {
 # Calculate rounded usage/available percentages for quota-shaped records.
 # A zero-sized, unused quota is treated as fully available so the renderer can
 # still explain API responses such as value=0, limit=0, remaining=0.
+# Pure bash: integer math with manual decimal handling.
 _aiquotas_quota_percentages() {
     local value="$1"
     local limit="$2"
@@ -41,22 +52,35 @@ _aiquotas_quota_percentages() {
     [[ "$limit" =~ ^[0-9]+([.][0-9]+)?$ ]] || return 1
 
     if ! [[ "$remaining" =~ ^[0-9]+([.][0-9]+)?$ ]]; then
-        remaining=$(awk -v v="$value" -v l="$limit" 'BEGIN { print l - v }')
+        # limit - value: trim decimals to integer for the bash subtraction.
+        local lim_int val_int
+        lim_int="${limit%%.*}"
+        val_int="${value%%.*}"
+        remaining=$((lim_int - val_int))
     fi
 
-    awk -v v="$value" -v l="$limit" -v r="$remaining" '
-        BEGIN {
-            if (l == 0) {
-                if (v == 0) {
-                    print "0 100"
-                } else {
-                    print "100 0"
-                }
-                exit
-            }
-            printf "%.0f %.0f\n", (v / l) * 100, (r / l) * 100
-        }
-    '
+    # Zero-limit edge cases match the original awk logic.
+    local lim_int="${limit%%.*}"
+    local val_int="${value%%.*}"
+    local rem_int="${remaining%%.*}"
+    lim_int="${lim_int:-0}"
+    val_int="${val_int:-0}"
+    rem_int="${rem_int:-0}"
+
+    if ((lim_int == 0)); then
+        if ((val_int == 0)); then
+            printf '0 100'
+        else
+            printf '100 0'
+        fi
+        return
+    fi
+
+    # Rounded percentage = round( value * 100 / limit ).
+    # Use bash arithmetic: (val * 100 + lim/2) / lim  for rounding to nearest int.
+    local usage_pct=$(((val_int * 100 + lim_int / 2) / lim_int))
+    local available_pct=$(((rem_int * 100 + lim_int / 2) / lim_int))
+    printf '%d %d' "$usage_pct" "$available_pct"
 }
 
 _aiquotas_render_label() {
@@ -69,7 +93,8 @@ _aiquotas_render_label() {
         openai) printf 'OAI' ;;
         deepseek) printf 'DS' ;;
         minimax) printf 'MM' ;;
-        zai) printf 'zai' ;;
+        zai) printf 'ZA' ;;
+        kimicode) printf 'KM' ;;
         *) printf '%s' "$provider" ;;
         esac
         return
