@@ -72,6 +72,12 @@ api_fetch_with_auth() {
 # Make API call with supported authentication types.
 # Usage: make_api_call "url" "auth_type" "credential" [timeout]
 # auth_type: bearer, github, private-token, basic, or a legacy provider name.
+#
+# DEPRECATED: the credential is passed as a curl argv element and is
+# therefore visible in process listings. Prefer
+# api_fetch_with_bearer / api_fetch_with_token_header /
+# api_fetch_with_basic_config for any new caller so the secret stays
+# out of argv.
 make_api_call() {
     local url="$1"
     local auth_type="$2"
@@ -199,7 +205,36 @@ api_validate_ip() {
         done
         return 0
     fi
-    [[ "$value" =~ ^[0-9a-fA-F:]+$ ]] && [[ "$value" == *:* ]]
+    # IPv6: every group is 1-4 hex digits separated by ":". A single
+    # "::" is allowed to compress one or more zero groups. Reject
+    # values that have no colon at all, more than one "::", or that
+    # don't expose either the 8-group form or the compressed form.
+    if [[ ! "$value" =~ ^[0-9a-fA-F:]+$ ]]; then
+        return 1
+    fi
+    [[ "$value" == *:* ]] || return 1
+    # More than one "::" is invalid. awk splits on the literal "::"
+    # and reports the number of resulting fields; 1 means no "::",
+    # 2 means exactly one, 3+ means too many.
+    local dbl_colon_count
+    dbl_colon_count=$(awk -v v="$value" 'BEGIN { n = split(v, parts, "::"); print (n - 1) }')
+    [[ "$dbl_colon_count" -le 1 ]] || return 1
+    # Each non-empty group must be 1-4 hex digits; the empty groups
+    # around "::" are accepted as-is.
+    local IFS=':'
+    # shellcheck disable=SC2206
+    local -a groups=($value)
+    local g
+    for g in "${groups[@]}"; do
+        [[ -z "$g" || "$g" =~ ^[0-9a-fA-F]{1,4}$ ]] || return 1
+    done
+    # Require either 8 groups (full form) or at least one "::"
+    # (compressed form). Without this check "abc:def" would pass
+    # because both groups are valid 1-4 hex chunks.
+    if [[ "$value" == *"::"* ]]; then
+        return 0
+    fi
+    [[ "${#groups[@]}" -eq 8 ]]
 }
 
 # Classify an HTTP response into a canonical outcome string.

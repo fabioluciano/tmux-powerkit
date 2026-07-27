@@ -203,7 +203,14 @@ _unlock_bitwarden_bw() {
 
         if [[ -n "$session" ]]; then
             save_bw_session "$session"
-            export BW_SESSION="$session"
+            # The session is intentionally kept inside tmux's global
+            # environment only. Do not propagate it to the helper's own
+            # shell environment: the helper shell exits as soon as the
+            # popup closes, so the propagation would either be useless
+            # or leak the token to any subprocess inherited from this
+            # shell. The password and TOTP selectors read it back
+            # through load_bw_session, which queries tmux's environment
+            # directly.
             invalidate_bitwarden_plugin_cache
             printf '%s%s✓ Vault unlocked!%s\n' "$_BW_BOLD" "$_BW_GREEN" "$_BW_RESET"
             toast " Vault unlocked" "simple"
