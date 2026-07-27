@@ -16,11 +16,18 @@ source_guard "datastore" && return 0
 # Main datastore - associative array with plugin:key format
 declare -gA _DATASTORE=()
 
+# Per-plugin key index for O(1) clear (Sprint 2.2).
+# _KEYS_BY_PLUGIN[plugin] = "key1 key2 key3 ..." (space-separated).
+declare -gA _KEYS_BY_PLUGIN=()
+
 # Current plugin context (set by _set_plugin_context in lifecycle)
 declare -g _CURRENT_PLUGIN=""
 
 # Metadata storage
 declare -gA _METADATA=()
+
+# Per-plugin metadata key index (mirror of _KEYS_BY_PLUGIN for _METADATA).
+declare -gA _KEYS_BY_PLUGIN_METADATA=()
 
 # =============================================================================
 # Plugin Data API
@@ -48,7 +55,21 @@ plugin_data_set() {
         return 1
     fi
 
-    _DATASTORE["${_CURRENT_PLUGIN}:${key}"]="$value"
+    local full_key="${_CURRENT_PLUGIN}:${key}"
+    _DATASTORE["$full_key"]="$value"
+
+    # Track key in per-plugin index (avoid duplicates via space-separated scan).
+    local existing="${_KEYS_BY_PLUGIN[$_CURRENT_PLUGIN]:-}"
+    case " $existing " in
+    *" $key "*) ;; # already tracked
+    *)
+        if [[ -z "$existing" ]]; then
+            _KEYS_BY_PLUGIN["$_CURRENT_PLUGIN"]="$key"
+        else
+            _KEYS_BY_PLUGIN["$_CURRENT_PLUGIN"]="$existing $key"
+        fi
+        ;;
+    esac
 }
 
 # Retrieve a value from plugin scope
@@ -83,13 +104,15 @@ plugin_data_clear() {
         return 1
     fi
 
-    local prefix="${_CURRENT_PLUGIN}:"
-    local key
-    for key in "${!_DATASTORE[@]}"; do
-        if [[ "$key" == "${prefix}"* ]]; then
-            unset "_DATASTORE[$key]"
-        fi
-    done
+    # O(1) clear using _KEYS_BY_PLUGIN index (Sprint 2.2).
+    local keys="${_KEYS_BY_PLUGIN[$_CURRENT_PLUGIN]:-}"
+    if [[ -n "$keys" ]]; then
+        local key
+        for key in $keys; do
+            unset '_DATASTORE['"$_CURRENT_PLUGIN"':'"$key"']'
+        done
+    fi
+    unset '_KEYS_BY_PLUGIN['"$_CURRENT_PLUGIN"']'
 }
 
 # =============================================================================
@@ -125,13 +148,14 @@ _datastore_has() {
 # Usage: _datastore_clear_plugin "plugin_name"
 _datastore_clear_plugin() {
     local plugin="$1"
-    local prefix="${plugin}:"
-    local key
-    for key in "${!_DATASTORE[@]}"; do
-        if [[ "$key" == "${prefix}"* ]]; then
-            unset "_DATASTORE[$key]"
-        fi
-    done
+    local keys="${_KEYS_BY_PLUGIN[$plugin]:-}"
+    if [[ -n "$keys" ]]; then
+        local key
+        for key in $keys; do
+            unset '_DATASTORE['"$plugin"':'"$key"']'
+        done
+    fi
+    unset '_KEYS_BY_PLUGIN['"$plugin"']'
 }
 
 # Clear entire datastore (core use only)

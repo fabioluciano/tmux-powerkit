@@ -176,16 +176,15 @@ plugin_get_context() {
         return
     fi
 
-    local api_error=$(plugin_data_get "api_error")
+    printf -v api_error '%s' "$(plugin_data_get "api_error")"
     [[ "$api_error" == "1" ]] && {
         printf 'api_error'
         return
     }
 
-    local total=$(plugin_data_get "total")
-    local issues=$(plugin_data_get "issues")
-    local prs=$(plugin_data_get "prs")
-
+    printf -v total '%s' "$(plugin_data_get "total")"
+    printf -v issues '%s' "$(plugin_data_get "issues")"
+    printf -v prs '%s' "$(plugin_data_get "prs")"
     total="${total:-0}"
     issues="${issues:-0}"
     prs="${prs:-0}"
@@ -211,8 +210,7 @@ plugin_get_icon() { get_option "icon"; }
 
 _make_github_api_call() {
     local url="$1"
-    local token=$(_get_token)
-
+    printf -v token '%s' "$(_get_token)"
     # The token is passed via curl --config (stdin) so it never
     # appears in process argv. The GitHub API accepts the same
     # Authorization header that make_api_call was sending.
@@ -228,7 +226,7 @@ _is_valid_api_response() {
     local response="$1"
     [[ -z "$response" ]] && return 1
 
-    local error_msg=$(_get_api_error_message "$response")
+    printf -v error_msg '%s' "$(_get_api_error_message "$response")"
     [[ -n "$error_msg" ]] && return 1
 
     return 0
@@ -244,13 +242,12 @@ _count_issues() {
     [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
 
     local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
-    local response=$(_make_github_api_call "$url")
-
+    printf -v response '%s' "$(_make_github_api_call "$url")"
     # Validate response using api_validate_response
     api_validate_response "$response" || return 1
 
     if has_cmd jq; then
-        local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
+        printf -v error_msg '%s' "$(echo "$response" | jq -r '.message // empty' 2>/dev/null)"
         [[ -n "$error_msg" ]] && return 1
         echo "$response" | jq -r '.total_count // 0' 2>/dev/null
     else
@@ -269,13 +266,12 @@ _count_prs() {
     [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
 
     local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
-    local response=$(_make_github_api_call "$url")
-
+    printf -v response '%s' "$(_make_github_api_call "$url")"
     # Validate response using api_validate_response
     api_validate_response "$response" || return 1
 
     if has_cmd jq; then
-        local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
+        printf -v error_msg '%s' "$(echo "$response" | jq -r '.message // empty' 2>/dev/null)"
         [[ -n "$error_msg" ]] && return 1
         echo "$response" | jq -r '.total_count // 0' 2>/dev/null
     else
@@ -285,9 +281,8 @@ _count_prs() {
 
 # Use gh CLI if available
 _fetch_via_gh_cli() {
-    local show_issues=$(get_option "show_issues")
-    local show_prs=$(get_option "show_prs")
-
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_prs '%s' "$(get_option "show_prs")"
     local issues=0 prs=0
 
     # Check if gh has a default repo set, if not use search API
@@ -321,13 +316,12 @@ _format_repo_status() {
     local issues="$1"
     local prs="$2"
 
-    local show_issues=$(get_option "show_issues")
-    local show_prs=$(get_option "show_prs")
-    local format=$(get_option "format")
-    local separator=$(get_option "separator")
-    local icon_issue=$(get_option "icon_issue")
-    local icon_pr=$(get_option "icon_pr")
-
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_prs '%s' "$(get_option "show_prs")"
+    printf -v format '%s' "$(get_option "format")"
+    printf -v separator '%s' "$(get_option "separator")"
+    printf -v icon_issue '%s' "$(get_option "icon_issue")"
+    printf -v icon_pr '%s' "$(get_option "icon_pr")"
     local parts=()
 
     if [[ "$show_issues" == "true" && "$issues" -gt 0 ]]; then
@@ -350,12 +344,11 @@ _format_repo_status() {
 }
 
 _get_github_info() {
-    local repos_csv=$(get_option "repos")
-    local filter_user=$(get_option "filter_user")
-
+    printf -v repos_csv '%s' "$(get_option "repos")"
+    printf -v filter_user '%s' "$(get_option "filter_user")"
     # If no repos configured, try gh CLI for user's repos
     if [[ -z "$repos_csv" ]] && has_cmd gh; then
-        local result=$(_fetch_via_gh_cli)
+        printf -v result '%s' "$(_fetch_via_gh_cli)"
         echo "$result"
         return 0
     fi
@@ -428,7 +421,7 @@ plugin_collect() {
         return 0
     fi
 
-    local result=$(_get_github_info)
+    printf -v result '%s' "$(_get_github_info)"
     local issues prs api_error outcome
     read -r issues prs api_error outcome <<<"$result"
 

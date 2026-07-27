@@ -19,17 +19,20 @@ source_guard "options" && return 0
 declare -gA _TMUX_OPTIONS_CACHE=()
 declare -g _TMUX_OPTIONS_LOADED=0
 
-
 # Plugin declared options storage
 # Format: _PLUGIN_OPTIONS[plugin] = "name\x1Ftype\x1Fdefault\x1Fdesc;name2\x1F..."
 declare -gA _PLUGIN_OPTIONS=()
-
 
 # Delimiter for option fields (ASCII Unit Separator)
 declare -g _OPT_DELIM=$'\x1F'
 
 # Plugin options value cache
 declare -gA _PLUGIN_OPTIONS_CACHE=()
+
+# O(1) lookup index: _PLUGIN_OPTIONS_INDEX[plugin|name] = "type\x1Fdefault\x1Fdescription"
+# Built incrementally by declare_option(); replaces the O(n) linear scan in
+# _get_declared_option_info (Sprint 2.1).
+declare -gA _PLUGIN_OPTIONS_INDEX=()
 
 # Default options for all plugins (add here as needed)
 _DEFAULT_PLUGIN_OPTIONS=(
@@ -62,7 +65,7 @@ _batch_load_tmux_options() {
             local value="${BASH_REMATCH[2]}"
             _TMUX_OPTIONS_CACHE["$key"]="$value"
         fi
-    done <<< "$output"
+    done <<<"$output"
 
     _TMUX_OPTIONS_LOADED=1
 }
@@ -160,8 +163,12 @@ declare_option() {
         _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+=";"
     fi
     _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+="$entry"
-}
 
+    # Populate O(1) lookup index: split entry at first \x1F, store tail (type+default+desc).
+    local index_key="${_CURRENT_PLUGIN}:${name}"
+    local tail="${entry#*$_OPT_DELIM}" # strip name field
+    _PLUGIN_OPTIONS_INDEX["$index_key"]="$tail"
+}
 
 # Internal: shared logic for getting a plugin option value (with caching, validation)
 # Usage: _get_option_value <plugin> <name>
@@ -232,22 +239,14 @@ _get_declared_option_info() {
     local -n _gdo_type_ref="$3"
     local -n _gdo_default_ref="$4"
 
-    local _gdo_options="${_PLUGIN_OPTIONS[$_gdo_plugin]:-}"
-    [[ -z "$_gdo_options" ]] && return 1
+    # O(1) lookup via _PLUGIN_OPTIONS_INDEX (built by declare_option).
+    local _gdo_index_key="${_gdo_plugin}:${_gdo_name}"
+    local _gdo_tail="${_PLUGIN_OPTIONS_INDEX[$_gdo_index_key]:-}"
+    [[ -z "$_gdo_tail" ]] && return 1
 
-    local IFS=';'
-    local _gdo_entry
-    for _gdo_entry in $_gdo_options; do
-        local _gdo_opt_name _gdo_opt_type _gdo_opt_default
-        IFS="$_OPT_DELIM" read -r _gdo_opt_name _gdo_opt_type _gdo_opt_default _ <<< "$_gdo_entry"
-        if [[ "$_gdo_opt_name" == "$_gdo_name" ]]; then
-            _gdo_type_ref="$_gdo_opt_type"
-            _gdo_default_ref="$_gdo_opt_default"
-            return 0
-        fi
-    done
-
-    return 1
+    # tail = "type\x1Fdefault\x1Fdescription"
+    IFS="$_OPT_DELIM" read -r _gdo_type_ref _gdo_default_ref _ <<<"$_gdo_tail"
+    return 0
 }
 
 # Validate option value by type
@@ -258,19 +257,19 @@ _validate_option_value() {
     local default="$3"
 
     case "$type" in
-        number)
-            if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
-                printf '%s' "$default"
-                return
-            fi
-            ;;
-        bool)
-            case "${value,,}" in
-                true|yes|on|1) value="true" ;;
-                false|no|off|0) value="false" ;;
-                *) value="$default" ;;
-            esac
-            ;;
+    number)
+        if [[ ! "$value" =~ ^-?[0-9]+$ ]]; then
+            printf '%s' "$default"
+            return
+        fi
+        ;;
+    bool)
+        case "${value,,}" in
+        true | yes | on | 1) value="true" ;;
+        false | no | off | 0) value="false" ;;
+        *) value="$default" ;;
+        esac
+        ;;
     esac
 
     printf '%s' "$value"
@@ -320,7 +319,7 @@ get_plugin_keybinding_options() {
     local entry
     for entry in $options; do
         local opt_name
-        IFS="$_OPT_DELIM" read -r opt_name _ _ _ <<< "$entry"
+        IFS="$_OPT_DELIM" read -r opt_name _ _ _ <<<"$entry"
         [[ "$opt_name" == keybinding_* ]] && printf '%s\n' "$opt_name"
     done
 }

@@ -69,14 +69,14 @@ _is_authenticated() {
         glab auth status &>/dev/null && return 0
     fi
     # Check for token option or env vars
-    local token=$(get_option "token")
+    printf -v token '%s' "$(get_option "token")"
     [[ -n "$token" ]] && return 0
     [[ -n "${GITLAB_TOKEN:-}" || -n "${GITLAB_PRIVATE_TOKEN:-}" ]] && return 0
     return 1
 }
 
 _has_repos_configured() {
-    local repos=$(get_option "repos")
+    printf -v repos '%s' "$(get_option "repos")"
     [[ -n "$repos" ]] && return 0
     # glab CLI can work without explicit repos
     has_cmd "glab" && return 0
@@ -84,7 +84,7 @@ _has_repos_configured() {
 }
 
 _get_token() {
-    local token=$(get_option "token")
+    printf -v token '%s' "$(get_option "token")"
     [[ -n "$token" ]] && {
         printf '%s' "$token"
         return 0
@@ -109,9 +109,8 @@ plugin_get_state() {
         printf 'degraded'
         return
     fi
-    local total=$(plugin_data_get "total")
-    local api_error=$(plugin_data_get "api_error")
-
+    printf -v total '%s' "$(plugin_data_get "total")"
+    printf -v api_error '%s' "$(plugin_data_get "api_error")"
     if [[ "$api_error" == "1" ]]; then
         printf 'degraded'
     elif [[ "${total:-0}" -gt 0 ]]; then
@@ -127,17 +126,16 @@ plugin_get_health() {
         return
     fi
 
-    local api_error=$(plugin_data_get "api_error")
+    printf -v api_error '%s' "$(plugin_data_get "api_error")"
     [[ "$api_error" == "1" ]] && {
         printf 'error'
         return
     }
 
-    local issues=$(plugin_data_get "issues")
-    local mrs=$(plugin_data_get "mrs")
-    local warning_threshold_issues=$(get_option "warning_threshold_issues")
-    local warning_threshold_mrs=$(get_option "warning_threshold_mrs")
-
+    printf -v issues '%s' "$(plugin_data_get "issues")"
+    printf -v mrs '%s' "$(plugin_data_get "mrs")"
+    printf -v warning_threshold_issues '%s' "$(get_option "warning_threshold_issues")"
+    printf -v warning_threshold_mrs '%s' "$(get_option "warning_threshold_mrs")"
     if [[ "${issues:-0}" -ge "$warning_threshold_issues" || "${mrs:-0}" -ge "$warning_threshold_mrs" ]]; then
         printf 'warning'
     else
@@ -151,16 +149,15 @@ plugin_get_context() {
         return
     fi
 
-    local api_error=$(plugin_data_get "api_error")
+    printf -v api_error '%s' "$(plugin_data_get "api_error")"
     [[ "$api_error" == "1" ]] && {
         printf 'api_error'
         return
     }
 
-    local total=$(plugin_data_get "total")
-    local issues=$(plugin_data_get "issues")
-    local mrs=$(plugin_data_get "mrs")
-
+    printf -v total '%s' "$(plugin_data_get "total")"
+    printf -v issues '%s' "$(plugin_data_get "issues")"
+    printf -v mrs '%s' "$(plugin_data_get "mrs")"
     total="${total:-0}"
     issues="${issues:-0}"
     mrs="${mrs:-0}"
@@ -207,8 +204,7 @@ _url_encode() {
 
 _make_gitlab_api_call() {
     local url="$1"
-    local token=$(_get_token)
-
+    printf -v token '%s' "$(_get_token)"
     # PRIVATE-TOKEN is passed via curl --config (stdin) so it never
     # appears in process argv. The body returned here is the same
     # JSON shape as make_api_call would have given.
@@ -217,8 +213,7 @@ _make_gitlab_api_call() {
 
 _make_gitlab_head_call() {
     local url="$1"
-    local token=$(_get_token)
-
+    printf -v token '%s' "$(_get_token)"
     # Same credential-safe transport for HEAD requests. The header is
     # forwarded via stdin; only the URL is in argv.
     printf 'header = "PRIVATE-TOKEN: %s"\nheader = "X-Head-Only: 1"\nrequest = "HEAD"\n' "$token" |
@@ -227,12 +222,10 @@ _make_gitlab_head_call() {
 
 _count_issues() {
     local project_encoded="$1"
-    local gitlab_url=$(get_option "url")
-
+    printf -v gitlab_url '%s' "$(get_option "url")"
     # Use issues_statistics endpoint - more efficient than listing
     local url="${gitlab_url}/api/v4/projects/${project_encoded}/issues_statistics?scope=all"
-    local response=$(_make_gitlab_api_call "$url")
-
+    printf -v response '%s' "$(_make_gitlab_api_call "$url")"
     [[ -z "$response" ]] && return 1
 
     local count
@@ -248,11 +241,9 @@ _count_issues() {
 
 _count_mrs() {
     local project_encoded="$1"
-    local gitlab_url=$(get_option "url")
-
+    printf -v gitlab_url '%s' "$(get_option "url")"
     local url="${gitlab_url}/api/v4/projects/${project_encoded}/merge_requests?state=opened&per_page=1"
-    local response=$(_make_gitlab_head_call "$url")
-
+    printf -v response '%s' "$(_make_gitlab_head_call "$url")"
     [[ -z "$response" ]] && return 1
 
     local count=$(echo "$response" | grep -i '^x-total:' | awk '{print $2}' | tr -d '\r\n')
@@ -263,9 +254,8 @@ _count_mrs() {
 
 # Use glab CLI if available and no repos configured
 _fetch_via_glab_cli() {
-    local show_issues=$(get_option "show_issues")
-    local show_mrs=$(get_option "show_mrs")
-
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_mrs '%s' "$(get_option "show_mrs")"
     local issues=0 mrs=0
 
     if [[ "$show_mrs" == "true" ]]; then
@@ -287,12 +277,11 @@ _format_status() {
     local issues="$1"
     local mrs="$2"
 
-    local show_issues=$(get_option "show_issues")
-    local show_mrs=$(get_option "show_mrs")
-    local separator=$(get_option "separator")
-    local icon_issue=$(get_option "icon_issue")
-    local icon_mr=$(get_option "icon_mr")
-
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_mrs '%s' "$(get_option "show_mrs")"
+    printf -v separator '%s' "$(get_option "separator")"
+    printf -v icon_issue '%s' "$(get_option "icon_issue")"
+    printf -v icon_mr '%s' "$(get_option "icon_mr")"
     local parts=()
 
     if [[ "$show_issues" == "true" && "$issues" -gt 0 ]]; then
@@ -315,13 +304,12 @@ _format_status() {
 }
 
 _get_gitlab_info() {
-    local repos_csv=$(get_option "repos")
-    local show_issues=$(get_option "show_issues")
-    local show_mrs=$(get_option "show_mrs")
-
+    printf -v repos_csv '%s' "$(get_option "repos")"
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_mrs '%s' "$(get_option "show_mrs")"
     # If no repos configured, try glab CLI
     if [[ -z "$repos_csv" ]] && has_cmd glab; then
-        local result=$(_fetch_via_glab_cli)
+        printf -v result '%s' "$(_fetch_via_glab_cli)"
         echo "$result 0" # issues mrs api_error
         return 0
     fi
@@ -340,7 +328,7 @@ _get_gitlab_info() {
         repo_spec=$(trim "$repo_spec")
         [[ -z "$repo_spec" || "$repo_spec" != *"/"* ]] && continue
 
-        local project_encoded=$(_url_encode "$repo_spec")
+        printf -v project_encoded '%s' "$(_url_encode "$repo_spec")"
         local issues=0 mrs=0
 
         if [[ "$show_issues" == "true" ]]; then
@@ -376,7 +364,7 @@ plugin_collect() {
         return 0
     fi
 
-    local result=$(_get_gitlab_info)
+    printf -v result '%s' "$(_get_gitlab_info)"
     local issues mrs api_error
     read -r issues mrs api_error <<<"$result"
 
@@ -403,10 +391,9 @@ plugin_render() {
         return 0
     fi
 
-    local issues=$(plugin_data_get "issues")
-    local mrs=$(plugin_data_get "mrs")
-    local total=$(plugin_data_get "total")
-
+    printf -v issues '%s' "$(plugin_data_get "issues")"
+    printf -v mrs '%s' "$(plugin_data_get "mrs")"
+    printf -v total '%s' "$(plugin_data_get "total")"
     issues="${issues:-0}"
     mrs="${mrs:-0}"
     total="${total:-0}"

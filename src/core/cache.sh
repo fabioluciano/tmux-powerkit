@@ -21,6 +21,9 @@ _CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-powerkit/data"
 declare -gA _MEMORY_CACHE=()
 declare -g _CYCLE_TIMESTAMP=0
 
+# Per-path mtime cache (Sprint 2.3): avoids repeated `stat` forks within a cycle.
+declare -gA _FILE_MTIME_CACHE=()
+
 # =============================================================================
 # Internal Functions
 # =============================================================================
@@ -38,6 +41,7 @@ _get_now() {
 cache_reset_cycle() {
     _CYCLE_TIMESTAMP=0
     _MEMORY_CACHE=()
+    _FILE_MTIME_CACHE=()
 }
 
 # =============================================================================
@@ -55,6 +59,9 @@ reset_all_cycle_caches() {
 
     # Reset color resolver cache (if loaded)
     declare -F color_reset_cycle_cache &>/dev/null && color_reset_cycle_cache
+
+    # Reset segment template cache (if loaded; Sprint 2.6)
+    [[ -v _TEMPLATE_CACHE ]] && _TEMPLATE_CACHE=()
 
     # Reset separator cache (if loaded)
     declare -F separator_reset_cache &>/dev/null && separator_reset_cache
@@ -87,12 +94,21 @@ _cache_invalidate_memory() {
     done
 }
 
-# Get file modification time in seconds since epoch
+# Get file modification time in seconds since epoch (cycle-cached).
 # Usage: _file_mtime "/path/to/file"
 _file_mtime() {
     local file="$1"
     if [[ -e "$file" ]]; then
-        stat -f%m "$file" 2>/dev/null || stat -c%Y "$file" 2>/dev/null || echo 0
+        # Path-keyed in-memory cache avoids repeated stat forks.
+        local cached="${_FILE_MTIME_CACHE[$file]:-}"
+        if [[ -n "$cached" ]]; then
+            printf '%s' "$cached"
+            return 0
+        fi
+        local mtime
+        mtime=$(stat -f%m "$file" 2>/dev/null || stat -c%Y "$file" 2>/dev/null || echo 0)
+        _FILE_MTIME_CACHE["$file"]="$mtime"
+        printf '%s' "$mtime"
     else
         echo 0
     fi

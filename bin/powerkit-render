@@ -26,12 +26,17 @@ load_powerkit_theme
 . "${POWERKIT_ROOT}/src/renderer/separator.sh"
 . "${POWERKIT_ROOT}/src/renderer/color_resolver.sh"
 
+# Batch-prime the @powerkit_* tmux option cache once, up front. Without this,
+# each get_tmux_option() call below would trigger its own `tmux show-option`
+# fork (Sprint 2.8). The function short-circuits when already loaded.
+_batch_load_tmux_options
+
 # Cache key for rendered output (includes theme to invalidate on theme change)
 _render_cache_key() {
     local side="${1:-right}"
     local theme variant
-    theme=$(get_tmux_option "@powerkit_theme" "${POWERKIT_DEFAULT_THEME}")
-    variant=$(get_tmux_option "@powerkit_theme_variant" "${POWERKIT_DEFAULT_THEME_VARIANT}")
+    printf -v theme '%s' "$(get_tmux_option "@powerkit_theme" "${POWERKIT_DEFAULT_THEME}")"
+    printf -v variant '%s' "$(get_tmux_option "@powerkit_theme_variant" "${POWERKIT_DEFAULT_THEME_VARIANT}")"
     printf 'rendered_%s__%s__%s' "$side" "$theme" "$variant"
 }
 
