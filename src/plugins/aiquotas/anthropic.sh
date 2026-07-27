@@ -99,9 +99,9 @@ _aiquotas_collect_anthropic() {
         [[ -n "$cursor" ]] && page_url="${page_url}&page=${cursor}"
 
         local body status
-        body=$(_aiquotas_http_get_meta \
+        body=$(_aiquotas_http_get_meta_authed \
             "$page_url" "$timeout" \
-            -H "x-api-key: $key" \
+            "x-api-key" "$key" \
             -H "anthropic-version: 2023-06-01" \
             -H "Accept: application/json") || {
             usage_status="unavailable"
@@ -171,9 +171,9 @@ _aiquotas_collect_anthropic() {
     local cost_error=""
     local cost_records_json='[]'
     local cost_body
-    cost_body=$(_aiquotas_http_get_meta \
+    cost_body=$(_aiquotas_http_get_meta_authed \
         "$cost_url" "$timeout" \
-        -H "x-api-key: $key" \
+        "x-api-key" "$key" \
         -H "anthropic-version: 2023-06-01" \
         -H "Accept: application/json") || {
         cost_status="unavailable"

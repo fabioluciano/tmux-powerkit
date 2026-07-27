@@ -68,17 +68,18 @@ _aiquotas_collect_zai() {
 
     # The Z.ai monitor endpoints accept the raw API key (matching the web
     # console). Some keys require the Bearer form, so retry on a 401.
-    body=$(_aiquotas_http_get_meta \
+    # The credential travels via stdin so it never appears in argv.
+    body=$(_aiquotas_http_get_meta_authed \
         "$url" "$timeout" \
-        -H "Authorization: $key" \
+        "Authorization" "$key" \
         -H "Content-Type: application/json" \
         -H "Accept-Language: en-US,en") || body=""
     status=$(_aiquotas_last_status)
 
     if [[ "$status" == "401" ]]; then
-        body=$(_aiquotas_http_get_meta \
+        body=$(_aiquotas_http_get_meta_authed \
             "$url" "$timeout" \
-            -H "Authorization: Bearer $key" \
+            "Authorization" "Bearer $key" \
             -H "Content-Type: application/json" \
             -H "Accept-Language: en-US,en") || body=""
         status=$(_aiquotas_last_status)

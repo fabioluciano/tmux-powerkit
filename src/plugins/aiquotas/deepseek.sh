@@ -59,9 +59,9 @@ _aiquotas_collect_deepseek() {
         return 0
     fi
 
-    body=$(_aiquotas_http_get_meta \
+    body=$(_aiquotas_http_get_meta_authed \
         "$url" "$timeout" \
-        -H "Authorization: Bearer $key" \
+        "Authorization" "Bearer $key" \
         -H "Accept: application/json") || {
         jq -nc '
             {schema_version:1, records:[],

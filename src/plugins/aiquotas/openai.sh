@@ -104,9 +104,9 @@ _aiquotas_collect_openai_codex() {
     fi
 
     local body status
-    body=$(_aiquotas_http_get_skim \
+    body=$(_aiquotas_http_get_meta_authed \
         "https://chatgpt.com/backend-api/wham/usage" "$timeout" \
-        -H "Authorization: Bearer $access_token" \
+        "Authorization" "Bearer $access_token" \
         -H "User-Agent: tmux-powerkit/1.0" \
         -H "ChatGPT-Account-Id: $account_id") || {
         jq -nc '
@@ -309,9 +309,9 @@ _aiquotas_collect_openai() {
         [[ -n "$cursor" ]] && page_url="${page_url}&page=${cursor}"
 
         local body status
-        body=$(_aiquotas_http_get_skim \
+        body=$(_aiquotas_http_get_meta_authed \
             "$page_url" "$timeout" \
-            -H "Authorization: Bearer $key" \
+            "Authorization" "Bearer $key" \
             -H "Accept: application/json") || {
             usage_status="unavailable"
             usage_error="usage fetch transport failure"
@@ -382,9 +382,9 @@ _aiquotas_collect_openai() {
     local cost_error=""
     local cost_records_json='[]'
     local cost_body
-    cost_body=$(_aiquotas_http_get_skim \
+    cost_body=$(_aiquotas_http_get_meta_authed \
         "$cost_url" "$timeout" \
-        -H "Authorization: Bearer $key" \
+        "Authorization" "Bearer $key" \
         -H "Accept: application/json") || {
         cost_status="unavailable"
         cost_error="cost fetch transport failure"

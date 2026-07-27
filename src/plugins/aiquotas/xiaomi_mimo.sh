@@ -72,30 +72,43 @@ _aiquotas_collect_xiaomi_mimo() {
     timeout=$(get_option "timeout")
     timeout="${timeout:-5}"
 
-    # Build curl args based on auth method
-    local -a curl_args=()
+    # Route the credential through stdin so it never appears in curl argv.
+    # Pick whichever credential the operator configured (cookie wins over
+    # bearer when both are present), and pass only the safe extra args
+    # to the helper.
+    local auth_header_name="" auth_header_value="" body
     if [[ -n "$cookies" ]]; then
-        # Session cookie authentication
-        curl_args+=(-H "Cookie: $cookies")
+        auth_header_name="Cookie"
+        auth_header_value="$cookies"
     elif [[ -n "$key" ]]; then
-        # Bearer token authentication (for private adapters)
-        curl_args+=(-H "Authorization: Bearer $key")
+        auth_header_name="Authorization"
+        auth_header_value="Bearer $key"
     fi
 
-    body=$(_aiquotas_http_get_meta \
-        "$url" "$timeout" \
-        "${curl_args[@]}" \
-        -H "Accept: application/json" \
-        -H "Content-Type: application/json" \
-        -H "x-timeZone: $(date +%Z 2>/dev/null || echo "UTC")") || {
+    if [[ -n "$auth_header_name" ]]; then
+        body=$(_aiquotas_http_get_meta_authed \
+            "$url" "$timeout" \
+            "$auth_header_name" "$auth_header_value" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -H "x-timeZone: $(date +%Z 2>/dev/null || echo "UTC")") || {
+            jq -nc '
+                {schema_version:1, records:[],
+                 provider_outcomes:[{provider:"xiaomi_mimo",source:"configured",
+                                     status:"unavailable",
+                                     error:"usage fetch transport failure"}]}
+            '
+            return 0
+        }
+    else
         jq -nc '
             {schema_version:1, records:[],
              provider_outcomes:[{provider:"xiaomi_mimo",source:"configured",
-                                 status:"unavailable",
-                                 error:"usage fetch transport failure"}]}
+                                 status:"unconfigured",
+                                 error:"xiaomi_mimo usage requires cookie or bearer key"}]}
         '
         return 0
-    }
+    fi
 
     status=$(_aiquotas_last_status)
     if [[ "$status" != 2* ]]; then

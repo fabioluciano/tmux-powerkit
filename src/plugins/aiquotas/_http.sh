@@ -47,6 +47,49 @@ _aiquotas_http_get_meta() {
     printf '%s' "$body"
 }
 
+# Credential-safe HTTP GET: header_name + header_value are routed to curl
+# via stdin (so the secret never appears in process argv). All other args
+# pass through argv as usual. Use this whenever an API key, cookie or
+# bearer token would otherwise be appended via -H "..." in argv.
+# Usage: _aiquotas_http_get_meta_authed "url" "timeout" "Header-Name" "Header-Value" [extra_argv...]
+_aiquotas_http_get_meta_authed() {
+    local url="$1"
+    local timeout="${2:-5}"
+    local header_name="$3"
+    local header_value="$4"
+    shift 4
+    local extra_args=("$@")
+    local body rc
+    body=$(printf 'header = "%s: %s"\n' "$header_name" "$header_value" | curl -s \
+        --config - \
+        --connect-timeout "$timeout" \
+        --max-time "$((timeout * 2))" \
+        "${extra_args[@]}" \
+        "$url" 2>/dev/null)
+    rc=$?
+    if ((rc != 0)); then
+        printf ''
+        return "$rc"
+    fi
+    printf '%s' "$body"
+}
+
+# Same as _aiquotas_http_get_meta_authed but for the strict (`-sf`) seam.
+_aiquotas_http_get_authed() {
+    local url="$1"
+    local timeout="${2:-5}"
+    local header_name="$3"
+    local header_value="$4"
+    shift 4
+    local extra_args=("$@")
+    curl -sf \
+        --connect-timeout "$timeout" \
+        --max-time "$((timeout * 2))" \
+        --config <(printf 'header = "%s: %s"\n' "$header_name" "$header_value") \
+        "${extra_args[@]}" \
+        "$url" 2>/dev/null
+}
+
 # Read the HTTP status the shim served for the most recent call.
 # Falls back to "200" when no shim is active (real curl has no concept of
 # last_status; the adapter contract assumes 2xx on transport success).

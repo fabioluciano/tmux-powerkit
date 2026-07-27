@@ -324,7 +324,7 @@ setup() {
             local lineno="${rest%%:*}"
             awk -v target="$lineno" '
                 BEGIN { in_seam = 0 }
-                /_aiquotas_http_get(_meta)?\(\)/ { in_seam = 1; next }
+                /_aiquotas_http_get(_meta(_authed)?|_authed)?\(\)/ { in_seam = 1; next }
                 in_seam && /^}/ { in_seam = 0; next }
                 NR == target { exit (in_seam ? 0 : 1) }
             ' "$file"
@@ -1436,7 +1436,7 @@ _setup_aiq_shim_zai() {
             local lineno="${rest%%:*}"
             awk -v target="$lineno" '
                 BEGIN { in_seam = 0 }
-                /_aiquotas_http_get(_meta)?\(\)/ { in_seam = 1; next }
+                /_aiquotas_http_get(_meta(_authed)?|_authed)?\(\)/ { in_seam = 1; next }
                 in_seam && /^}/ { in_seam = 0; next }
                 NR == target { exit (in_seam ? 0 : 1) }
             ' "$file"
@@ -2806,6 +2806,7 @@ JSON
         _aiquotas_http_get_skim() {
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
             (.provider_outcomes[0].status == \"ok\") and
@@ -2927,6 +2928,7 @@ JSON
         _aiquotas_http_get_skim() {
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":5,\"reset_at\":1784900000}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
             (.records[0].value == 80) and
@@ -2958,6 +2960,7 @@ JSON
         _aiquotas_http_get_skim() {
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
             (.records[0].dimensions.interval_remaining_percent == 20) and
@@ -2991,6 +2994,7 @@ JSON
         _aiquotas_http_get_skim() {
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":80,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":5,\"reset_at\":1784900000}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         DOC=$(_aiquotas_collect_openai "$AUTH_FILE")
         plugin_data_set "providers_count" "1"
@@ -3024,6 +3028,7 @@ JSON
         _aiquotas_http_get_skim() {
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limits\":{\"primary_window\":{\"used_percent\":100,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":20,\"reset_at\":1784900000}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
             (.records[0].value == 100) and
@@ -3057,6 +3062,7 @@ JSON
             # 5h has 0% remaining (exhausted); weekly has 90% remaining.
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"five_hour\":{\"percent_left\":0,\"reset_time_ms\":1752600000000},\"weekly\":{\"percent_left\":90,\"reset_time_ms\":1753200000000}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         _aiquotas_collect_openai_codex "$AUTH_FILE" | jq -e "
             (.records[0].value == 100) and
@@ -3093,6 +3099,7 @@ JSON
         _aiquotas_http_get_skim() {
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":100,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":10,\"reset_at\":1784900000}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         DOC=$(_aiquotas_collect_openai "$AUTH_FILE")
         plugin_data_set "providers_count" "1"
@@ -3132,6 +3139,7 @@ JSON
             # (above warn_th=80). Health must escalate because of the secondary window.
             printf "%s" "{\"plan_type\":\"plus\",\"rate_limit\":{\"primary_window\":{\"used_percent\":5,\"reset_at\":1784781808},\"secondary_window\":{\"used_percent\":85,\"reset_at\":1784900000}}}"
         }
+        _aiquotas_http_get_meta_authed() { _aiquotas_http_get_skim "$@"; }
         _aiquotas_last_status() { printf "200"; }
         DOC=$(_aiquotas_collect_openai "$AUTH_FILE")
         plugin_data_set "providers_count" "1"
