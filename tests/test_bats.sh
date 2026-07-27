@@ -98,6 +98,7 @@ BATS_FILES=(
     "$SCRIPT_DIR/plugin_nowplaying.bats"
     "$SCRIPT_DIR/plugin_volume.bats"
     "$SCRIPT_DIR/plugin_security_reliability.bats"
+    "$SCRIPT_DIR/plugin_audit_followup.bats"
     "$SCRIPT_DIR/entities_windows.bats"
     "$SCRIPT_DIR/entities_session.bats"
     "$SCRIPT_DIR/plugins_dev2.bats"
