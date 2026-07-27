@@ -47,6 +47,11 @@ plugin_declare_options() {
     # Behavior
     declare_option "info_when_paused" "bool" "false" "Use info health when paused"
 
+    # Comma-separated app priority order (Linux only). The first
+    # available player in this list wins; lower-priority players are
+    # ignored. Empty means accept whatever is currently playing.
+    declare_option "app_priority" "string" "" "Priority order of player names (Linux only)"
+
     # Icons
     declare_option "icon" "icon" $'\U000F075A' "Plugin icon (music note)"
     declare_option "icon_paused" "icon" $'\U000F03E6' "Paused icon"
@@ -189,6 +194,26 @@ _get_nowplaying_linux() {
     state_raw=$(playerctl "${playerctl_args[@]}" status 2>/dev/null)
     [[ -z "$state_raw" ]] && return 1
     state="${state_raw,,}"  # Bash 4.0+ lowercase
+
+    # When a priority list is configured, ignore every player that is
+    # not in the list so the highest-priority one always wins.
+    local app_priority
+    app_priority=$(get_option "app_priority")
+    if [[ -n "$app_priority" ]]; then
+        local priority_player=""
+        local IFS=','
+        local p
+        for p in $app_priority; do
+            p=$(trim "$p")
+            if playerctl "${playerctl_args[@]}" status --player "$p" 2>/dev/null | grep -qi .; then
+                priority_player="$p"
+                break
+            fi
+        done
+        if [[ -n "$priority_player" ]]; then
+            playerctl_args+=("--player=$priority_player")
+        fi
+    fi
 
     # Get all metadata in one call using format string
     local metadata
