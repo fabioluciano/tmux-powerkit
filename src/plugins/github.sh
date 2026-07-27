@@ -89,7 +89,7 @@ _verify_token() {
     [[ -z "$token" ]] && return 1
 
     local result
-    result=$(make_api_call "${GITHUB_API}/user" "github" "$token" 5) || return 1
+    result=$(api_fetch_with_token_header "${GITHUB_API}/user" "Authorization" "token ${token}" 5) || return 1
     return 0
 }
 

@@ -195,10 +195,12 @@ _bb_api_call() {
     email=$(get_option "email")
     token=$(get_option "token")
 
+    # Credentials travel via curl --config (stdin) rather than as argv
+    # elements, so a process inspection does not see the token.
     if [[ "$bb_type" == "datacenter" ]]; then
-        make_api_call "$url" "bearer" "$token" 5
+        api_fetch_with_bearer "$url" "$token" 5
     else
-        make_api_call "$url" "basic" "${email}:${token}" 5
+        api_fetch_with_basic_config "$url" "$email" "$token" 5
     fi
 }
 

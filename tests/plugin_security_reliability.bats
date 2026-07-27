@@ -159,6 +159,43 @@ GH
     assert_argv_does_not_contain "ghp_PK_GITHUB_SECRET_qwerty"
 }
 
+@test "github _verify_token: token is NOT in curl argv when gh is absent" {
+    # Force the _verify_token path by NOT providing gh (so gh auth
+    # status short-circuits fails). Falls through to the API path
+    # which used to leak the token via make_api_call.
+    _capture_curl_argv
+    cat >"$CURL_BODY_FILE" <<'JSON'
+{"login":"octocat"}
+JSON
+
+    run bash -c '
+        POWERKIT_ROOT="$1"; export POWERKIT_ROOT
+        PATH="/usr/bin:/bin"   # remove the mock gh from PATH
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/plugins/github.sh"
+        get_option() {
+            case "$1" in
+                token) printf "ghp_PK_GITHUB_VERIFY_SECRET_zzzz" ;;
+                repos) printf "" ;;
+                filter_user) printf "" ;;
+                show_issues) printf "true" ;;
+                show_prs)    printf "true" ;;
+                warning_threshold_issues) printf "10" ;;
+                warning_threshold_prs)    printf "10" ;;
+                *) printf "" ;;
+            esac
+        }
+        _set_plugin_context github
+        # Stub only curl (not gh). The plugin should call _verify_token
+        # which now uses api_fetch_with_token_header (stdin).
+        plugin_collect || true
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_argv_does_not_contain "ghp_PK_GITHUB_VERIFY_SECRET_zzzz"
+    # And no "Authorization: token" should appear in argv either
+    assert_argv_does_not_contain "Authorization: token"
+}
+
 # =============================================================================
 # externalip.sh — validate IP
 # =============================================================================
@@ -341,6 +378,76 @@ EOF
         plugin_collect
     ' _ "$POWERKIT_ROOT"
     assert_failure
+}
+
+@test "bitbucket cloud: email+token are NOT in curl argv" {
+    _capture_curl_argv
+    cat >"$CURL_BODY_FILE" <<'JSON'
+{"size":3,"values":[]}
+JSON
+
+    run bash -c '
+        POWERKIT_ROOT="$1"; export POWERKIT_ROOT
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/plugins/bitbucket.sh"
+        get_option() {
+            case "$1" in
+                repos) printf "owner/repo" ;;
+                show_issues) printf "true" ;;
+                show_prs)    printf "true" ;;
+                type)        printf "cloud" ;;
+                email)       printf "u@PK_BITBUCKET_SECRET.com" ;;
+                token)       printf "PK_BITBUCKET_SECRET" ;;
+                url)         printf "" ;;
+                workspace)   printf "" ;;
+                separator)   printf " " ;;
+                icon_issue)  printf "I" ;;
+                icon_pr)     printf "P" ;;
+                icon)        printf "B" ;;
+                format)      printf "compact" ;;
+                *) printf "" ;;
+            esac
+        }
+        _set_plugin_context bitbucket
+        plugin_collect || true
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_argv_does_not_contain "PK_BITBUCKET_SECRET"
+    assert_argv_does_not_contain "u@PK_BITBUCKET_SECRET.com"
+}
+
+@test "bitbucket datacenter: token is NOT in curl argv" {
+    _capture_curl_argv
+    cat >"$CURL_BODY_FILE" <<'JSON'
+{"size":3,"values":[]}
+JSON
+
+    run bash -c '
+        POWERKIT_ROOT="$1"; export POWERKIT_ROOT
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/plugins/bitbucket.sh"
+        get_option() {
+            case "$1" in
+                repos) printf "owner/repo" ;;
+                show_issues) printf "true" ;;
+                show_prs)    printf "true" ;;
+                type)        printf "datacenter" ;;
+                token)       printf "PK_BITBUCKET_DC_SECRET" ;;
+                url)         printf "https://bitbucket.example.com" ;;
+                workspace)   printf "" ;;
+                separator)   printf " " ;;
+                icon_issue)  printf "I" ;;
+                icon_pr)     printf "P" ;;
+                icon)        printf "B" ;;
+                format)      printf "compact" ;;
+                *) printf "" ;;
+            esac
+        }
+        _set_plugin_context bitbucket
+        plugin_collect || true
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_argv_does_not_contain "PK_BITBUCKET_DC_SECRET"
 }
 
 # =============================================================================
