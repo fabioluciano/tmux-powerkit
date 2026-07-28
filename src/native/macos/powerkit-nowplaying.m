@@ -62,11 +62,15 @@ BOOL isAppRunning(NSString *bundleId) {
 // Map a friendly app name to its bundle identifier. Returns nil if unknown.
 NSString *bundleIdForName(NSString *name) {
     NSString *low = [name lowercaseString];
-    if ([low isEqualToString:@"spotify"]) return @"com.spotify.client";
-    if ([low isEqualToString:@"music"] || [low isEqualToString:@"apple music"]) return @"com.apple.Music";
-    if ([low isEqualToString:@"itunes"]) return @"com.apple.iTunes";
+    if ([low isEqualToString:@"spotify"])
+        return @"com.spotify.client";
+    if ([low isEqualToString:@"music"] || [low isEqualToString:@"apple music"])
+        return @"com.apple.Music";
+    if ([low isEqualToString:@"itunes"])
+        return @"com.apple.iTunes";
     // Allow callers to pass the raw bundle id too.
-    if ([low hasPrefix:@"com."]) return name;
+    if ([low hasPrefix:@"com."])
+        return name;
     return nil;
 }
 
@@ -149,13 +153,11 @@ NSDictionary *getMusicInfo(void) {
 NSUInteger parsePriorityList(const char *raw, NSString **out) {
     if (!raw || !*raw || !out)
         return 0;
-    NSString *list = [[NSString stringWithUTF8String:raw]
-        stringByReplacingOccurrencesOfString:@"," withString:@" "];
+    NSString *list = [[NSString stringWithUTF8String:raw] stringByReplacingOccurrencesOfString:@"," withString:@" "];
     NSArray *parts = [list componentsSeparatedByString:@" "];
     NSUInteger n = 0;
     for (NSString *p in parts) {
-        NSString *trimmed = [p stringByTrimmingCharactersInSet:
-            [NSCharacterSet whitespaceCharacterSet]];
+        NSString *trimmed = [p stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
         if ([trimmed length] == 0)
             continue;
         NSString *bid = bundleIdForName(trimmed);
@@ -164,7 +166,10 @@ NSUInteger parsePriorityList(const char *raw, NSString **out) {
         // Avoid duplicates so a single app doesn't get queried twice.
         BOOL duplicate = NO;
         for (NSUInteger i = 0; i < n; i++) {
-            if ([out[i] isEqualToString:bid]) { duplicate = YES; break; }
+            if ([out[i] isEqualToString:bid]) {
+                duplicate = YES;
+                break;
+            }
         }
         if (duplicate)
             continue;
@@ -179,7 +184,8 @@ int main(int argc, const char *argv[]) {
     @autoreleasepool {
         // Parse arguments. Currently only -p <priority-list> is supported.
         NSString *priority[PRIORITY_MAX];
-        for (int i = 0; i < PRIORITY_MAX; i++) priority[i] = nil;
+        for (int i = 0; i < PRIORITY_MAX; i++)
+            priority[i] = nil;
         NSUInteger priorityCount = 0;
 
         for (int i = 1; i < argc; i++) {
@@ -198,8 +204,10 @@ int main(int argc, const char *argv[]) {
         }
 
         // Default fallback order: Spotify then Music.
-        if (!info) info = getSpotifyInfo();
-        if (!info) info = getMusicInfo();
+        if (!info)
+            info = getSpotifyInfo();
+        if (!info)
+            info = getMusicInfo();
 
         // Nothing playing
         if (!info) {
