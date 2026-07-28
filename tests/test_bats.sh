@@ -29,6 +29,7 @@ BATS_FILES=(
     # === Helpers ===
     "$SCRIPT_DIR/tmux_smoke.bats"
     "$SCRIPT_DIR/security.bats"
+    "$SCRIPT_DIR/ci_workflows.bats"
     "$SCRIPT_DIR/aiquotas.bats"
 
     # === Core ===
