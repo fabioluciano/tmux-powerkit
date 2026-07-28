@@ -55,6 +55,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y tmux bash shellcheck bats
 
+      - name: Build Bash 5.3 (Linux)
+        if: runner.os == 'Linux'
+        # PowerKit requires Bash 5.3+; Ubuntu 24.04 LTS only ships 5.2, so
+        # build the upstream release locally and prepend it to PATH so the
+        # rest of the test job uses it. Build time ~1-2 min on a 2-core runner.
+        run: |
+          set -e
+          mkdir -p /tmp/bash53
+          cd /tmp/bash53
+          curl -fsSL --retry 3 -o bash.tar.gz \
+            https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz
+          tar -xzf bash.tar.gz
+          cd bash-5.3
+          ./configure --prefix=/tmp/bash53/install >/tmp/bash-configure.log 2>&1
+          make -j"$(nproc)" >/tmp/bash-make.log 2>&1
+          make install >/tmp/bash-install.log 2>&1
+          /tmp/bash53/install/bin/bash --version | head -1
+          echo "/tmp/bash53/install/bin" >>"$GITHUB_PATH"
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
