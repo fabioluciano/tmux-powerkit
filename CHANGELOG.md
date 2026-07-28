@@ -2,6 +2,16 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.0.0](https://github.com/fabioluciano/tmux-powerkit/compare/v6.3.3...v7.0.0) (2026-07-28)
+
+### ⚠ BREAKING CHANGES
+
+* lower bash minimum to 5.2, ship performance + security overhaul (#247)
+
+### Performance Improvements
+
+* lower bash minimum to 5.2, ship performance + security overhaul ([#247](https://github.com/fabioluciano/tmux-powerkit/issues/247)) ([bc60d19](https://github.com/fabioluciano/tmux-powerkit/commit/bc60d197805c7ed1995bc9fe4664d39295ef500d))
+
 ## [6.3.3](https://github.com/fabioluciano/tmux-powerkit/compare/v6.3.2...v6.3.3) (2026-07-26)
 
 ### Bug Fixes
