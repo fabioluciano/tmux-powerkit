@@ -12,6 +12,19 @@ load 'helpers/test_helper'
 setup() {
     setup_test_root
     source "${POWERKIT_ROOT}/src/plugins/aiquotas.sh"
+    # Tests isolate from the parent tmux server: get_tmux_option would
+    # otherwise read @powerkit_plugin_aiquotas_* values left over from the
+    # developer's live tmux session (e.g. openai_source=codex) and steer
+    # collection onto a different branch than the fixtures cover. This is
+    # why several pre-existing tests (48, 51, 54, 66, 106, 117) failed
+    # with empty records in environments where the host tmux had stale
+    # aiquotas options set.
+    unset TMUX
+    # Likewise, set-environment values (e.g. MIMO_API_KEY) inherited from
+    # the host tmux leak into MiMo tests and push collection onto the
+    # HTTP-call branch instead of the unsupported branch the fixtures cover.
+    unset MIMO_SESSION_COOKIES MIMO_API_KEY XIAOMI_MIMO_API_KEY
+    unset OPENAI_ADMIN_KEY OPENAI_API_KEY ANTHROPIC_ADMIN_KEY
 }
 # Note: After the Todo 3 lazy split, _aiquotas_collect_<provider> functions
 # live in src/plugins/aiquotas/*.sh (provider adapters) and are only defined

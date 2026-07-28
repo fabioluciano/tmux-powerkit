@@ -93,7 +93,7 @@ _aiquotas_render_label() {
         openai) printf 'OAI' ;;
         deepseek) printf 'DS' ;;
         minimax) printf 'MM' ;;
-        zai) printf 'ZA' ;;
+        zai) printf 'zai' ;;
         kimicode) printf 'KM' ;;
         *) printf '%s' "$provider" ;;
         esac
