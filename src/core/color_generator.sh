@@ -305,36 +305,25 @@ _is_variant_color() {
 # Serialize all colors to a single string for caching
 # Format: key=value pairs separated by \x1F (Unit Separator)
 # Usage: serialize_theme_colors
-# Sprint 3.1: uses Bash 5.3's ${arr[@]@K} to emit alternating key/value pairs
-# without an explicit loop. The output stream is then joined into "key=value"
-# strings separated by \x1F.
+# Pure bash 5.2+ compatible: emits key=value pairs joined by \x1F.
 serialize_theme_colors() {
     local sep=$'\x1F'
-    local output="" k v
-    local -a kv_pairs=()
+    local output="" key
 
-    # Concatenate both arrays' @K output; each contributes "key1 "value1" key2 "value2"...".
-    # Use * (with default IFS=space) to avoid SC2124 (array-to-string).
-    local combined="${THEME_COLORS[*]@K} ${_COLOR_VARIANTS[*]@K}"
-
-    # Split by whitespace; pair tokens alternate: key value key value...
-    # (Bash 5.3 emits values quoted; strip surrounding quotes from values only.)
-    read -ra kv_pairs <<<"$combined"
-    local n=${#kv_pairs[@]}
-    local i=1
-    while ((i < n)); do
-        k="${kv_pairs[i - 1]}"
-        v="${kv_pairs[i]}"
-        # Strip quotes added by @K
-        if [[ "$v" == \"*\" ]]; then
-            v="${v#\"}"
-            v="${v%\"}"
-        fi
+    # Base colors
+    for key in "${!THEME_COLORS[@]}"; do
         if [[ -n "$output" ]]; then
             output+="${sep}"
         fi
-        output+="${k}=${v}"
-        i=$((i + 2))
+        output+="${key}=${THEME_COLORS[$key]}"
+    done
+
+    # Variants
+    for key in "${!_COLOR_VARIANTS[@]}"; do
+        if [[ -n "$output" ]]; then
+            output+="${sep}"
+        fi
+        output+="${key}=${_COLOR_VARIANTS[$key]}"
     done
 
     printf '%s' "$output"
@@ -342,8 +331,9 @@ serialize_theme_colors() {
 
 # Deserialize colors from cache string
 # Usage: deserialize_theme_colors "cache_content"
-# Sprint 3.1: switch from bash read -d (Homebrew bash 5.3 has issues with US as
-# record separator) to awk with RS=$'\x1F' for robust US-delimited parsing.
+# Stream content through awk with US as record separator. Robust against
+# bash versions where `read -d` mishandles US as the delimiter. Pure bash
+# 5.2+ compatible.
 deserialize_theme_colors() {
     local content="$1"
     local sep=$'\x1F'

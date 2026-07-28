@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# PowerKit requires Bash 5.3+. macOS Apple ships bash 3.2; install via Homebrew:
+# PowerKit requires Bash 5.2+. macOS Apple ships bash 3.2; install via Homebrew:
 #   brew install bash
-# Linux: Homebrew bash, Arch, recent rolling distros ship bash 5.3+.
-if (( BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 3) )); then
-    printf 'PowerKit requires Bash 5.3+, you have %s\n' "$BASH_VERSION" >&2
-    printf 'Install: brew install bash (macOS) or use distro bash 5.3+ (Linux)\n' >&2
+# Linux: Ubuntu 24.04 LTS, Debian 12, Fedora 40+ all ship bash 5.2+.
+if (( BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 2) )); then
+    printf 'PowerKit requires Bash 5.2+, you have %s\n' "$BASH_VERSION" >&2
+    printf 'Install: brew install bash (macOS) or use distro bash 5.2+ (Linux)\n' >&2
     exit 1
 fi
 # =============================================================================

@@ -13,10 +13,10 @@
 
 set -e
 
-# PowerKit scripts require Bash 5.3+ (Sprint 3.5). Fail fast on older.
-if ((BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 3))); then
-    printf 'PowerKit requires Bash 5.3+, you have %s\n' "$BASH_VERSION" >&2
-    printf 'Install: brew install bash (macOS) or use distro bash 5.3+ (Linux)\n' >&2
+# PowerKit scripts require Bash 5.2+. Fail fast on older.
+if ((BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 2))); then
+    printf 'PowerKit requires Bash 5.2+, you have %s\n' "$BASH_VERSION" >&2
+    printf 'Install: brew install bash (macOS) or use distro bash 5.2+ (Linux)\n' >&2
     exit 1
 fi
 

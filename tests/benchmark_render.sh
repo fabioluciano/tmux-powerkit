@@ -25,9 +25,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
-# Require Bash 5.3+
-if ((BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 3))); then
-    printf 'benchmark_render: Bash 5.3+ required, found %s\n' "$BASH_VERSION" >&2
+# Require Bash 5.2+
+if ((BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 2))); then
+    printf 'benchmark_render: Bash 5.2+ required, found %s\n' "$BASH_VERSION" >&2
     exit 1
 fi
 

@@ -111,9 +111,9 @@ PowerKit is a contract-based tmux status bar framework with strict separation of
 - **Renderer**: ALL UI decisions (colors, icons, formatting)
 - **Theme**: Color definitions ONLY
 
-**Target**: Bash 5.3+ (uses `$EPOCHSECONDS`/`$EPOCHREALTIME`, `assoc_expand_once`, `${arr[@]@K}`) | **Architecture**: Contract-based plugin system
+**Target**: Bash 5.2+ (uses `$EPOCHSECONDS`/`$EPOCHREALTIME`, `assoc_expand_once`) | **Architecture**: Contract-based plugin system
 
-**Bash Compatibility**: PowerKit requires Bash 5.3+. macOS Apple bash (3.2.57) is incompatible — install via `brew install bash`. Linux distros: Homebrew bash, Arch, rolling distros ship bash 5.3+ (Ubuntu 22.04 LTS = 5.1 only; Ubuntu 24.04+ LTS = 5.2; 5.3 requires newer). See `tests/test_bash_syntax.sh` for the runtime check.
+**Bash Compatibility**: PowerKit requires Bash 5.2+. macOS Apple bash (3.2.57) is incompatible — install via `brew install bash`. Linux distros: Ubuntu 24.04 LTS, Debian 12, Fedora 40+ all ship bash 5.2+. See `tests/test_bash_syntax.sh` for the runtime check.
 
 ## Directory Structure
 
