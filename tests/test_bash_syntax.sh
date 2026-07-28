@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # PowerKit Test: Bash Syntax Validation
-# Description: Validates bash 4+ syntax for all .sh files
+# Description: Validates bash 5.2+ syntax for all .sh files
 # =============================================================================
 
 set -euo pipefail
@@ -21,9 +21,10 @@ NC='\033[0m' # No Color
 echo "=== Bash Syntax Validation ==="
 echo ""
 
-# Check bash version
-if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
-    echo -e "${RED}ERROR: Bash 4+ required, found ${BASH_VERSION}${NC}"
+# Check bash version (5.2+ required)
+if ((BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 2))); then
+    echo -e "${RED}ERROR: Bash 5.2+ required, found ${BASH_VERSION}${NC}"
+    echo -e "${RED}Install: brew install bash (macOS) or use distro bash 5.2+ (Linux)${NC}"
     exit 1
 fi
 

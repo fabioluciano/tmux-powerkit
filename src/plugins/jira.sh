@@ -201,12 +201,21 @@ _fetch_jira_breakdown() {
     local flagged=0
     local next_token=""
 
+    # Avoid exposing email+token in process argv. The credential pair
+    # is written to a mode-600 temp curl config and removed via a RETURN
+    # trap; the URL stays in argv, not the secret.
+    local jira_creds
+    jira_creds=$(mktemp "${TMPDIR:-/tmp}/powerkit-jira.XXXXXX") || return 1
+    chmod 600 "$jira_creds"
+    printf -- '-u %s:%s\n' "$email" "$token" >"$jira_creds"
+    trap 'rm -f "$jira_creds"' RETURN
+
     # Paginate through results
     while true; do
-        # Build curl args with URL-encoded parameters via --data-urlencode
+        # Build curl args; the credential pair is in $jira_creds (not argv)
         local curl_args=(
             -sf --connect-timeout 10 --max-time 20
-            -u "${email}:${token}"
+            --config "$jira_creds"
             -H "Content-Type: application/json"
             -H "Accept: application/json"
             --get
@@ -221,7 +230,14 @@ _fetch_jira_breakdown() {
 
         [[ -z "$response" ]] && return 1
 
-        # Check for errors
+        # Validate JSON shape before iterating. A malformed body must
+        # NOT silently yield zero counts; that would replace the prior
+        # cache with bogus data instead of leaving it stale.
+        if ! api_validate_json "$response"; then
+            return 1
+        fi
+
+        # Check for Jira's structured error field
         if echo "$response" | jq -e '.errorMessages' &>/dev/null; then
             return 1
         fi

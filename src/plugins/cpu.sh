@@ -104,8 +104,8 @@ _get_cpu_linux() {
         total=$((total + v))
     done
 
-    # Get current timestamp (using bash built-in if available, or date)
-    local current_time="${EPOCHSECONDS:-$(date +%s)}"
+    # Get current timestamp (Bash 5.1+ builtin; no fallback needed)
+    local current_time="${EPOCHSECONDS}"
 
     # Get previous snapshot from cache (24h TTL - only invalid on reboot)
     local prev_idle prev_total prev_timestamp

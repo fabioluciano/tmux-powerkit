@@ -111,7 +111,9 @@ PowerKit is a contract-based tmux status bar framework with strict separation of
 - **Renderer**: ALL UI decisions (colors, icons, formatting)
 - **Theme**: Color definitions ONLY
 
-**Target**: Bash 5.0+ (uses `$EPOCHSECONDS`/`$EPOCHREALTIME`) | **Architecture**: Contract-based plugin system
+**Target**: Bash 5.2+ (uses `$EPOCHSECONDS`/`$EPOCHREALTIME`, `assoc_expand_once`) | **Architecture**: Contract-based plugin system
+
+**Bash Compatibility**: PowerKit requires Bash 5.2+. macOS Apple bash (3.2.57) is incompatible — install via `brew install bash`. Linux distros: Ubuntu 24.04 LTS, Debian 12, Fedora 40+ all ship bash 5.2+. See `tests/test_bash_syntax.sh` for the runtime check.
 
 ## Directory Structure
 
@@ -356,6 +358,10 @@ cache_clear_all                 # Clear all cache
 - In-memory cache per render cycle (avoids disk reads)
 - Cached timestamp per cycle (single `date +%s` call)
 - Cache location: `$XDG_CACHE_HOME/tmux-powerkit/data` or `~/.cache/tmux-powerkit/data`
+- Pure-bash arithmetic in hot paths (no `awk`/`sed` per render after Sprint 1 refactor)
+- Bash 5.1+ features: `assoc_expand_once`, `$EPOCHSECONDS`, `$EPOCHREALTIME`, namerefs, `[ -v arr[k] ]`
+
+**Benchmarking**: Run `tests/benchmark_render.sh` to measure render-cycle wall-clock time. The baseline is captured in `tests/fixtures/baseline.txt` and updated as part of each Sprint acceptance check.
 
 ### Stale-While-Revalidate (Lazy Loading)
 

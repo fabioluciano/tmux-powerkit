@@ -48,6 +48,7 @@ declare -gA AIQUOTAS_LABELS=(
     [deepseek]="DeepSeek"
     [minimax]="MiniMax"
     [zai]="zai"
+    [kimicode]="Kimi"
 )
 
 # Default URLs per provider endpoint. URL can be overridden via plugin options.
@@ -62,6 +63,7 @@ declare -gA AIQUOTAS_DEFAULT_URLS=(
     [deepseek_balance]="https://api.deepseek.com/user/balance"
     [minimax_usage]="https://api.minimax.io/v1/token_plan/remains"
     [zai_quota]="https://api.z.ai/api/monitor/usage/quota/limit"
+    [kimicode_usage]="https://api.kimi.com/coding/v1/usages"
 )
 
 # =============================================================================
@@ -131,6 +133,7 @@ _aiquotas_load_all_providers() {
     _aiquotas_load_provider deepseek
     _aiquotas_load_provider minimax
     _aiquotas_load_provider zai
+    _aiquotas_load_provider kimicode
 }
 
 # =============================================================================
@@ -204,6 +207,9 @@ plugin_declare_options() {
     # Z.ai (Zhipu GLM Coding Plan)
     declare_option "zai_quota_url" "string" "${AIQUOTAS_DEFAULT_URLS[zai_quota]}" "Z.ai quota/limit endpoint (Coding Plan 5h quota)"
 
+    # Kimi Code (Moonshot AI)
+    declare_option "kimicode_usage_url" "string" "${AIQUOTAS_DEFAULT_URLS[kimicode_usage]}" "Kimi Code usage/quota endpoint"
+
     declare_option "icon" "icon" $'\uEE9C' "Plugin icon (brain)"
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
 }
@@ -243,6 +249,7 @@ _aiquotas_collect_provider() {
     deepseek) _aiquotas_collect_deepseek 2>/dev/null ;;
     minimax) _aiquotas_collect_minimax 2>/dev/null ;;
     zai) _aiquotas_collect_zai 2>/dev/null ;;
+    kimicode) _aiquotas_collect_kimicode 2>/dev/null ;;
     *) return 64 ;;
     esac
 }
@@ -270,7 +277,7 @@ plugin_collect() {
         [[ -n "$provider" ]] || continue
 
         case "$provider" in
-        anthropic | openai | deepseek | minimax | zai)
+        anthropic | openai | deepseek | minimax | zai | kimicode)
             # Unified dispatch: every adapter owns its own HTTP+normalization
             # and returns a canonical metrics document on stdout (or empty
             # on hard transport failure). See _aiquotas_collect_provider.

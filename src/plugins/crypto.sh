@@ -177,7 +177,15 @@ plugin_collect() {
 
     local response
     response=$(_fetch_coingecko "$coins")
-    [[ -z "$response" ]] && return 0
+    [[ -z "$response" ]] && return 1
+
+    # Validate JSON before parsing. A 200 with a body that is not JSON
+    # (e.g. HTML error page from a CDN) used to fall through to jq which
+    # then returned empty for every coin, silently succeeding with zero
+    # data and overwriting the prior cache.
+    if ! api_validate_json "$response"; then
+        return 1
+    fi
 
     local currency currency_lower show_change
     currency=$(get_option "currency")
@@ -185,6 +193,7 @@ plugin_collect() {
     show_change=$(get_option "show_change")
 
     local prices_data=""
+    local attempted=0 parsed=0
     IFS=',' read -ra coin_list <<<"$coins"
 
     for coin in "${coin_list[@]}"; do
@@ -193,6 +202,7 @@ plugin_collect() {
 
         local coin_id=$(_get_coin_id "$coin")
         local price change=""
+        ((attempted++))
 
         # Extract price from JSON
         price=$(echo "$response" | jq -r ".\"$coin_id\".\"$currency_lower\" // empty" 2>/dev/null)
@@ -205,8 +215,15 @@ plugin_collect() {
         # Store: SYMBOL:PRICE:CHANGE
         [[ -n "$prices_data" ]] && prices_data+="|"
         prices_data+="${coin}:${price}:${change}"
+        ((parsed++))
     done
 
+    # When no requested coin produced a price, do not write the empty
+    # result. Returning nonzero tells the lifecycle to keep the prior
+    # cache and mark it stale.
+    if ((attempted > 0 && parsed == 0)); then
+        return 1
+    fi
     [[ -n "$prices_data" ]] && plugin_data_set "prices" "$prices_data"
 
     # Build formatted render output

@@ -8,7 +8,6 @@
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 . "${POWERKIT_ROOT}/src/contract/plugin_contract.sh"
 
-
 plugin_get_metadata() {
     metadata_set "id" "uptime"
     metadata_set "name" "Uptime"
@@ -21,7 +20,6 @@ plugin_declare_options() {
     # Cache - uptime changes slowly, no need for frequent updates
     declare_option "cache_ttl" "number" "300" "Cache duration in seconds"
 }
-
 
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'always'; }
@@ -41,7 +39,7 @@ plugin_get_context() {
 }
 
 plugin_collect() {
-    local uptime_seconds=0
+    local uptime_seconds=""
     if is_linux && [[ -r /proc/uptime ]]; then
         uptime_seconds=$(awk '{printf "%d", $1}' /proc/uptime 2>/dev/null)
     elif is_macos; then
@@ -52,10 +50,40 @@ plugin_collect() {
             ((uptime_seconds = now - boot_time))
         fi
     else
-        # Fallback: parse uptime output
-        uptime_seconds=$(uptime | awk -F'( |,|:)+' '{if ($7=="min") print $6*60; else if ($7=="hrs") print $6*3600; else print 0}')
+        # Fallback: parse uptime output. The canonical uptime layout
+        # (after the "hh:mm" prefix) is "up N day(s), hh:mm, N users,
+        # load averages: ...". With FS='( |,|:)+', the field layout
+        # is: $1=hh, $2=mm, $3=up, $4=count, $5=unit. Days may be
+        # followed by an additional hh:mm at $6 and $7. Returning -1
+        # on anything unparseable lets the caller fail collection so
+        # the lifecycle can keep the previous record as stale.
+        uptime_seconds=$(uptime | awk -F'( |,|:)+' '
+            {
+                if ($5 == "min" || $5 == "mins") {
+                    print $4 * 60
+                } else if ($5 == "hrs") {
+                    print $4 * 3600
+                } else if ($5 == "day" || $5 == "days") {
+                    base = $4 * 86400
+                    if ($6 ~ /^[0-9]+$/ && $7 ~ /^[0-9]+$/) {
+                        base += ($6 * 3600) + ($7 * 60)
+                    }
+                    print base
+                } else {
+                    print -1
+                }
+            }')
+        if [[ "$uptime_seconds" == "-1" ]]; then
+            return 1
+        fi
     fi
-    plugin_data_set "uptime" "$(format_uptime_seconds "${uptime_seconds:-0}")"
+    # If every branch failed to populate uptime_seconds, fail collection
+    # so the lifecycle can keep the previous record as stale instead of
+    # reporting 0m which is indistinguishable from a fresh boot.
+    if [[ -z "$uptime_seconds" ]]; then
+        return 1
+    fi
+    plugin_data_set "uptime" "$(format_uptime_seconds "$uptime_seconds")"
 }
 
 plugin_render() {

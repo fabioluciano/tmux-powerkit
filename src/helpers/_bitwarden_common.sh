@@ -203,16 +203,30 @@ _unlock_bitwarden_bw() {
 
         if [[ -n "$session" ]]; then
             save_bw_session "$session"
-            export BW_SESSION="$session"
+            # The session is intentionally kept inside tmux's global
+            # environment only. Do not propagate it to the helper's own
+            # shell environment: the helper shell exits as soon as the
+            # popup closes, so the propagation would either be useless
+            # or leak the token to any subprocess inherited from this
+            # shell. The password and TOTP selectors read it back
+            # through load_bw_session, which queries tmux's environment
+            # directly.
             invalidate_bitwarden_plugin_cache
             printf '%s%s✓ Vault unlocked!%s\n' "$_BW_BOLD" "$_BW_GREEN" "$_BW_RESET"
             toast " Vault unlocked" "simple"
             sleep 1
             return 0
         else
+            # Ensure no stale session is left behind on auth failure.
+            clear_bw_session 2>/dev/null || true
             printf '%s%s✗ Invalid password%s\n' "$_BW_BOLD" "$_BW_RED" "$_BW_RESET"
             printf '\n%sPress any key to try again or Ctrl-C to cancel...%s' "$_BW_DIM" "$_BW_RESET"
             read -rsn1
+            # Ctrl-C on read returns 130; abort the retry loop instead of recursing
+            if (($? == 130)); then
+                clear_bw_session 2>/dev/null || true
+                return 130
+            fi
             # Clear screen and retry
             clear
             _unlock_bitwarden_bw
@@ -220,6 +234,7 @@ _unlock_bitwarden_bw() {
         fi
         ;;
     *)
+        clear_bw_session 2>/dev/null || true
         printf '%s%s✗ Unknown status: %s%s\n' "$_BW_BOLD" "$_BW_RED" "$status" "$_BW_RESET"
         printf '\n%sPress any key to close...%s' "$_BW_DIM" "$_BW_RESET"
         read -rsn1

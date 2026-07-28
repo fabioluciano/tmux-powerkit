@@ -106,24 +106,38 @@ _get_icon_padding() {
 #            {content}, {content_bg}, {content_fg}, {prev_bg}, {next_bg}
 declare -g DEFAULT_SEGMENT_TEMPLATE='{sep_left}{icon_section}{sep_internal}{content_section}{sep_right}'
 
-# Get global or plugin-specific template
+# Per-cycle template cache (Sprint 2.6). Templates don't change mid-cycle, so
+# we cache both the global template and any plugin-specific templates.
+declare -gA _TEMPLATE_CACHE=()
+
+# Get global or plugin-specific template (cycle-cached).
 # Usage: get_segment_template ["plugin_name"]
 # shellcheck disable=SC2120  # Function designed to be called with or without arguments
 get_segment_template() {
     local plugin="${1:-}"
+    local cache_key="${plugin:-__global__}"
 
+    # Hit cache if populated this cycle.
+    if [[ -n "${_TEMPLATE_CACHE[$cache_key]:-}" ]]; then
+        printf '%s' "${_TEMPLATE_CACHE[$cache_key]}"
+        return 0
+    fi
+
+    local template=""
     # Try plugin-specific template first
     if [[ -n "$plugin" ]]; then
-        local plugin_template
-        plugin_template=$(get_tmux_option "@powerkit_plugin_${plugin}_template" "")
-        [[ -n "$plugin_template" ]] && {
-            printf '%s' "$plugin_template"
-            return
-        }
+        printf -v template '%s' "$(get_tmux_option "@powerkit_plugin_${plugin}_template" "")"
+        if [[ -n "$template" ]]; then
+            _TEMPLATE_CACHE["$cache_key"]="$template"
+            printf '%s' "$template"
+            return 0
+        fi
     fi
 
     # Fall back to global template
-    get_tmux_option "@powerkit_segment_template" "$DEFAULT_SEGMENT_TEMPLATE"
+    printf -v template '%s' "$(get_tmux_option "@powerkit_segment_template" "$DEFAULT_SEGMENT_TEMPLATE")"
+    _TEMPLATE_CACHE["$cache_key"]="$template"
+    printf '%s' "$template"
 }
 
 # =============================================================================

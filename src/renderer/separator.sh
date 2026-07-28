@@ -29,6 +29,11 @@ declare -g _SEP_CACHE_EDGE_STYLE=""
 declare -g _SEP_CACHE_EDGE_APPLY_ALL=""
 declare -g _SEP_CACHE_INITIAL_STYLE=""
 declare -g _SEP_CACHE_LEFT=""
+
+# Per-cycle build cache for (prev_bg, next_bg) → formatted tmux separator
+# (Sprint 2.9). Avoids re-emitting the same #[fg=...]/#[bg=...] tmux format
+# string on every render for the same color tuple.
+declare -gA _SEP_BUILD_CACHE=()
 declare -g _SEP_CACHE_RIGHT=""
 declare -g _SEP_CACHE_INITIAL=""
 declare -g _SEP_CACHE_FINAL=""
@@ -48,6 +53,7 @@ separator_reset_cache() {
     _SEP_CACHE_FINAL=""
     _SEP_CACHE_SPACING_MODE=""
     _SEP_CACHE_EDGE_LEFT=""
+    _SEP_BUILD_CACHE=()
     _SEP_CACHE_EDGE_RIGHT=""
 }
 
@@ -159,29 +165,29 @@ _get_separator_glyph() {
 
     if [[ "$direction" == "left" ]]; then
         case "$style" in
-            normal)           printf '%s' "$POWERKIT_SEP_SOLID_LEFT" ;;
-            rounded)          printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
-            slant)            printf '%s' "$POWERKIT_SEP_SLANT_LEFT" ;;
-            slantup|slant-up) printf '%s' "$POWERKIT_SEP_SLANT_UP_LEFT" ;;
-            flame)            printf '%s' "$POWERKIT_SEP_FLAME_LEFT" ;;
-            pixel)            printf '%s' "$POWERKIT_SEP_PIXEL_LEFT" ;;
-            honeycomb)        printf '%s' "$POWERKIT_SEP_HONEYCOMB_LEFT" ;;
-            trapezoid)        printf '%s' "$POWERKIT_SEP_TRAPEZOID_LEFT" ;;
-            none)             printf '' ;;
-            *)                printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
+        normal) printf '%s' "$POWERKIT_SEP_SOLID_LEFT" ;;
+        rounded) printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
+        slant) printf '%s' "$POWERKIT_SEP_SLANT_LEFT" ;;
+        slantup | slant-up) printf '%s' "$POWERKIT_SEP_SLANT_UP_LEFT" ;;
+        flame) printf '%s' "$POWERKIT_SEP_FLAME_LEFT" ;;
+        pixel) printf '%s' "$POWERKIT_SEP_PIXEL_LEFT" ;;
+        honeycomb) printf '%s' "$POWERKIT_SEP_HONEYCOMB_LEFT" ;;
+        trapezoid) printf '%s' "$POWERKIT_SEP_TRAPEZOID_LEFT" ;;
+        none) printf '' ;;
+        *) printf '%s' "$POWERKIT_SEP_ROUND_LEFT" ;;
         esac
     else
         case "$style" in
-            normal)           printf '%s' "$POWERKIT_SEP_SOLID_RIGHT" ;;
-            rounded)          printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
-            slant)            printf '%s' "$POWERKIT_SEP_SLANT_RIGHT" ;;
-            slantup|slant-up) printf '%s' "$POWERKIT_SEP_SLANT_UP_RIGHT" ;;
-            flame)            printf '%s' "$POWERKIT_SEP_FLAME_RIGHT" ;;
-            pixel)            printf '%s' "$POWERKIT_SEP_PIXEL_RIGHT" ;;
-            honeycomb)        printf '%s' "$POWERKIT_SEP_HONEYCOMB_RIGHT" ;;
-            trapezoid)        printf '%s' "$POWERKIT_SEP_TRAPEZOID_RIGHT" ;;
-            none)             printf '' ;;
-            *)                printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
+        normal) printf '%s' "$POWERKIT_SEP_SOLID_RIGHT" ;;
+        rounded) printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
+        slant) printf '%s' "$POWERKIT_SEP_SLANT_RIGHT" ;;
+        slantup | slant-up) printf '%s' "$POWERKIT_SEP_SLANT_UP_RIGHT" ;;
+        flame) printf '%s' "$POWERKIT_SEP_FLAME_RIGHT" ;;
+        pixel) printf '%s' "$POWERKIT_SEP_PIXEL_RIGHT" ;;
+        honeycomb) printf '%s' "$POWERKIT_SEP_HONEYCOMB_RIGHT" ;;
+        trapezoid) printf '%s' "$POWERKIT_SEP_TRAPEZOID_RIGHT" ;;
+        none) printf '' ;;
+        *) printf '%s' "$POWERKIT_SEP_ROUND_RIGHT" ;;
         esac
     fi
 }
@@ -297,12 +303,22 @@ build_right_separator() {
     local prev_bg="$1"
     local next_bg="$2"
 
+    local cache_key="r:${prev_bg}|${next_bg}"
+    local cached="${_SEP_BUILD_CACHE[$cache_key]:-}"
+    if [[ -n "$cached" ]]; then
+        printf '%s' "$cached"
+        return
+    fi
+
     local sep
     sep=$(get_right_separator)
 
     [[ -z "$sep" ]] && return
 
-    printf '#[fg=%s,bg=%s]%s' "$prev_bg" "$next_bg" "$sep"
+    local result
+    result=$(printf '#[fg=%s,bg=%s]%s' "$prev_bg" "$next_bg" "$sep")
+    _SEP_BUILD_CACHE["$cache_key"]="$result"
+    printf '%s' "$result"
 }
 
 # Build a LEFT-facing separator (◀) - used for status-right (plugins)
@@ -312,13 +328,23 @@ build_left_separator() {
     local prev_bg="$1"
     local next_bg="$2"
 
+    local cache_key="l:${prev_bg}|${next_bg}"
+    local cached="${_SEP_BUILD_CACHE[$cache_key]:-}"
+    if [[ -n "$cached" ]]; then
+        printf '%s' "$cached"
+        return
+    fi
+
     local sep
     sep=$(get_left_separator)
 
     [[ -z "$sep" ]] && return
 
     # For left-facing: fg=next (where arrow points), bg=previous (where we are)
-    printf '#[fg=%s,bg=%s]%s' "$next_bg" "$prev_bg" "$sep"
+    local result
+    result=$(printf '#[fg=%s,bg=%s]%s' "$next_bg" "$prev_bg" "$sep")
+    _SEP_BUILD_CACHE["$cache_key"]="$result"
+    printf '%s' "$result"
 }
 
 # =============================================================================
@@ -448,7 +474,7 @@ list_separator_styles() {
 is_valid_separator_style() {
     local style="$1"
     case "$style" in
-        normal|rounded|slant|slantup|slant-up|trapezoid|flame|pixel|honeycomb|none) return 0 ;;
-        *) return 1 ;;
+    normal | rounded | slant | slantup | slant-up | trapezoid | flame | pixel | honeycomb | none) return 0 ;;
+    *) return 1 ;;
     esac
 }

@@ -13,6 +13,13 @@
 
 set -e
 
+# PowerKit scripts require Bash 5.2+. Fail fast on older.
+if ((BASH_VERSINFO[0] < 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] < 2))); then
+    printf 'PowerKit requires Bash 5.2+, you have %s\n' "$BASH_VERSION" >&2
+    printf 'Install: brew install bash (macOS) or use distro bash 5.2+ (Linux)\n' >&2
+    exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 SRC_DIR="${ROOT_DIR}/src/native/macos"

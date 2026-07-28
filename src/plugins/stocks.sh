@@ -144,16 +144,38 @@ _fetch_stock_price() {
 
     [[ -z "$response" ]] && return 1
 
-    # Parse JSON manually (no jq dependency)
+    # Validate JSON shape before regex extraction. The previous code
+    # applied a sed pattern to whatever the server returned, which
+    # silently succeeded on HTML error pages, captive portals, or 429
+    # bodies. A successful empty grep is what produced zero prices
+    # without raising the cache.
+    if has_cmd jq; then
+        api_validate_json "$response" || return 1
+        # Use jq's structural path so we do not depend on a regex that
+        # the provider can change at any release.
+        local price prev_close
+        price=$(printf '%s' "$response" | jq -r '.chart.result[0].meta.regularMarketPrice // empty' 2>/dev/null) || return 1
+        prev_close=$(printf '%s' "$response" | jq -r '.chart.result[0].meta.chartPreviousClose // empty' 2>/dev/null) || return 1
+        [[ -z "$price" ]] && return 1
+
+        local change_pct
+        if [[ -n "$prev_close" && "$prev_close" != "0" ]]; then
+            change_pct=$(awk -v p="$price" -v pc="$prev_close" 'BEGIN { printf "%.2f", ((p - pc) / pc) * 100 }')
+        else
+            change_pct="0.00"
+        fi
+        printf '%s|%s' "$price" "$change_pct"
+        return 0
+    fi
+
+    # Fallback: regex parsing (kept for environments without jq).
     local price prev_close change_pct
     price=$(echo "$response" | sed -n 's/.*"regularMarketPrice":\([0-9.]*\).*/\1/p' | head -1)
     prev_close=$(echo "$response" | sed -n 's/.*"chartPreviousClose":\([0-9.]*\).*/\1/p' | head -1)
 
     [[ -z "$price" ]] && return 1
 
-    # Calculate change percentage
     if [[ -n "$prev_close" && "$prev_close" != "0" ]]; then
-        # Use awk for floating point calculation
         change_pct=$(awk -v p="$price" -v pc="$prev_close" 'BEGIN { printf "%.2f", ((p - pc) / pc) * 100 }')
     else
         change_pct="0.00"
@@ -166,17 +188,18 @@ _fetch_stock_price() {
 # Formatting Functions
 # =============================================================================
 
-# Format price for display
+# Format price for display (pure bash, no awk fork)
 _format_price() {
     local price="$1"
     local format="$2"
 
     if [[ "$format" == "short" ]]; then
         # Short format: no $ sign, round large numbers
-        if awk -v p="$price" 'BEGIN { exit (p >= 1000) ? 0 : 1 }' 2>/dev/null; then
-            awk -v p="$price" 'BEGIN { printf "%.0f", p }'
+        # Shift decimal 2 places, integer math, then format.
+        if (($(printf '%.0f' "$price") >= 1000)); then
+            printf '%.0f' "$price"
         else
-            awk -v p="$price" 'BEGIN { printf "%.2f", p }'
+            printf '%.2f' "$price"
         fi
     else
         # Full format: with $ sign
@@ -184,22 +207,52 @@ _format_price() {
     fi
 }
 
-# Format change with direction indicator
+# Format change with direction indicator (pure bash, no awk fork)
 _format_change() {
     local change="$1"
     local indicator=""
 
-    # Determine direction
-    if awk -v c="$change" 'BEGIN { exit (c > 0.01) ? 0 : 1 }' 2>/dev/null; then
-        indicator="↑"
-    elif awk -v c="$change" 'BEGIN { exit (c < -0.01) ? 0 : 1 }' 2>/dev/null; then
-        indicator="↓"
-        change="${change#-}" # Remove negative sign for display
+    # Split "[-]X.Y[Z...]" into integer and fractional parts without awk.
+    local sign="" int_part frac_part
+    if [[ "$change" == -* ]]; then
+        sign="-"
+        change="${change#-}"
+    fi
+    int_part="${change%%.*}"
+    [[ "$int_part" == "$change" ]] && int_part="${change}" || int_part="${int_part:-0}"
+    frac_part="${change#*.}"
+    [[ "$frac_part" == "$change" ]] && frac_part="0"
+
+    # One decimal digit for display (matches original "%.1f%%").
+    local d1="${frac_part:0:1}"
+    d1="${d1:-0}"
+
+    # Determine direction from sign and magnitude using integer math.
+    # Treat |change| >= 0.05 as movement; below that is flat.
+    local int_cmp=0
+    if ((${#frac_part} == 0)); then
+        int_cmp=$((10#$int_part))
     else
-        indicator="→"
+        # Compare |change| to 0.05 using integer cents: 5 cents = 0.05
+        local cents=$((10#${int_part:-0} * 100 + 10#${frac_part:0:2}))
+        ((${#frac_part} < 2)) && cents=$((cents * 10))
+        ((${#frac_part} > 2)) && cents=$((cents / 10 ** (${#frac_part} - 2)))
+        int_cmp=$cents
     fi
 
-    printf '%s%.1f%%' "$indicator" "$change"
+    if [[ -n "$sign" ]]; then
+        # Original was negative; display as ↓ with magnitude (no sign prefix).
+        indicator="↓"
+        change="${int_part}.${d1}"
+    elif ((int_cmp > 5)); then
+        indicator="↑"
+        change="${int_part}.${d1}"
+    else
+        indicator="→"
+        change="${int_part}.${d1}"
+    fi
+
+    printf '%s%s%%' "$indicator" "$change"
 }
 
 # =============================================================================
@@ -216,13 +269,17 @@ plugin_collect() {
     IFS=',' read -ra ticker_list <<<"$tickers"
 
     local prices_data="" changes_data=""
+    local attempted=0 parsed=0
     for ticker in "${ticker_list[@]}"; do
         ticker=$(trim "$ticker")
         ticker="${ticker^^}" # Bash 4.0+ uppercase
         [[ -z "$ticker" ]] && continue
 
+        ((attempted++))
         local stock_data
-        stock_data=$(_fetch_stock_price "$ticker")
+        if ! stock_data=$(_fetch_stock_price "$ticker"); then
+            continue
+        fi
 
         if [[ -n "$stock_data" ]]; then
             IFS='|' read -r price change <<<"$stock_data"
@@ -231,8 +288,16 @@ plugin_collect() {
 
             [[ -n "$changes_data" ]] && changes_data+="|"
             changes_data+="${ticker}:${change}"
+            ((parsed++))
         fi
     done
+
+    # When no ticker produced a price, refuse to overwrite the prior
+    # cache so the lifecycle can keep the previous record and mark it
+    # stale.
+    if ((attempted > 0 && parsed == 0)); then
+        return 1
+    fi
 
     [[ -n "$prices_data" ]] && plugin_data_set "prices" "$prices_data"
     [[ -n "$changes_data" ]] && plugin_data_set "changes" "$changes_data"

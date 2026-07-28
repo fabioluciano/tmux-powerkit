@@ -43,7 +43,7 @@ _is_explicit_three_element_order() {
 
     # Count elements
     local -a parts
-    IFS=',' read -ra parts <<< "$order"
+    IFS=',' read -ra parts <<<"$order"
 
     # Must have exactly 3 elements for centered layout
     [[ ${#parts[@]} -eq 3 ]] && return 0
@@ -59,10 +59,13 @@ _is_explicit_three_element_order() {
 _expand_order() {
     local order="$1"
 
-    [[ "$order" == *"windows"* ]] && { printf '%s' "$order"; return; }
+    [[ "$order" == *"windows"* ]] && {
+        printf '%s' "$order"
+        return
+    }
 
     local -a parts
-    IFS=',' read -ra parts <<< "$order"
+    IFS=',' read -ra parts <<<"$order"
 
     if [[ ${#parts[@]} -ge 2 ]]; then
         local last_idx=$((${#parts[@]} - 1))
@@ -89,15 +92,15 @@ _render_entity() {
     local align="${3:-}"
 
     case "$entity" in
-        windows)
-            _get_windows_format "$side" "$align"
-            ;;
-        plugins)
-            plugins_render "$side"
-            ;;
-        *)
-            "${entity}_render" "$side"
-            ;;
+    windows)
+        _get_windows_format "$side" "$align"
+        ;;
+    plugins)
+        plugins_render "$side"
+        ;;
+    *)
+        "${entity}_render" "$side"
+        ;;
     esac
 }
 
@@ -111,7 +114,7 @@ _split_at_windows() {
     _AFTER_WINDOWS=()
 
     local -a entities
-    IFS=',' read -ra entities <<< "$order"
+    IFS=',' read -ra entities <<<"$order"
 
     local found_windows=0
     for entity in "${entities[@]}"; do
@@ -231,20 +234,20 @@ _get_windows_format_left_centered() {
     local fmt=""
     local status_bg active_bg inactive_bg sep_char transparent
 
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+    printf -v transparent '%s' "$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")"
 
     # In transparent mode, hide edge separators
     if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
+        printf -v status_bg '%s' "$(resolve_color "background")"
     else
-        status_bg=$(resolve_color "statusbar-bg")
+        printf -v status_bg '%s' "$(resolve_color "statusbar-bg")"
     fi
 
-    active_bg=$(resolve_color "window-active-base")
-    inactive_bg=$(resolve_color "window-inactive-base")
+    printf -v active_bg '%s' "$(resolve_color "window-active-base")"
+    printf -v inactive_bg '%s' "$(resolve_color "window-inactive-base")"
 
     # Edge separator glyph (right-pointing) - respects :all suffix
-    sep_char=$(get_edge_right_separator)
+    printf -v sep_char '%s' "$(get_edge_right_separator)"
 
     # === WINDOWS LIST (left-aligned, no entry separator) ===
     fmt+='#[list=on align=left]'
@@ -325,19 +328,19 @@ _get_windows_format_right_centered() {
     local fmt=""
     local status_bg transparent
 
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+    printf -v transparent '%s' "$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")"
 
     # In transparent mode, hide edge separators
     if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
+        printf -v status_bg '%s' "$(resolve_color "background")"
     else
-        status_bg=$(resolve_color "statusbar-bg")
+        printf -v status_bg '%s' "$(resolve_color "statusbar-bg")"
     fi
 
     # Index backgrounds (for entry separator - first window index)
     local active_index_bg inactive_index_bg
-    active_index_bg=$(resolve_color "window-active-base-lighter")
-    inactive_index_bg=$(resolve_color "window-inactive-base-lighter")
+    printf -v active_index_bg '%s' "$(resolve_color "window-active-base-lighter")"
+    printf -v inactive_index_bg '%s' "$(resolve_color "window-inactive-base-lighter")"
 
     # === ENTRY EDGE SEPARATOR ===
     # Left-pointing (◀) for right element - per rule: right element edge points LEFT
@@ -345,13 +348,13 @@ _get_windows_format_right_centered() {
     # Use #{base-index} to support both base-index=0 and base-index=1
     # Respect @powerkit_active_window_show_index and @powerkit_inactive_window_show_index
     local entry_sep_char show_index_active show_index_inactive
-    entry_sep_char=$(get_edge_left_separator)
-    show_index_active=$(get_tmux_option "@powerkit_active_window_show_index" "true")
-    show_index_inactive=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
+    printf -v entry_sep_char '%s' "$(get_edge_left_separator)"
+    printf -v show_index_active '%s' "$(get_tmux_option "@powerkit_active_window_show_index" "true")"
+    printf -v show_index_inactive '%s' "$(get_tmux_option "@powerkit_inactive_window_show_index" "true")"
 
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg first_content_bg first_bg
-        first_content_bg=$(resolve_color "window-inactive-base")
+        printf -v first_content_bg '%s' "$(resolve_color "window-inactive-base")"
 
         # Determine which background to use based on show_index settings
         if [[ "$show_index_active" == "false" && "$show_index_inactive" == "false" ]]; then
@@ -418,23 +421,23 @@ _get_windows_format_centered() {
     local fmt=""
     local status_bg active_bg inactive_bg sep_char transparent
 
-    transparent=$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")
+    printf -v transparent '%s' "$(get_tmux_option "@powerkit_transparent" "${POWERKIT_DEFAULT_TRANSPARENT}")"
 
     # In transparent mode, hide edge separators
     if [[ "$transparent" == "true" ]]; then
-        status_bg=$(resolve_color "background")
+        printf -v status_bg '%s' "$(resolve_color "background")"
     else
-        status_bg=$(resolve_color "statusbar-bg")
+        printf -v status_bg '%s' "$(resolve_color "statusbar-bg")"
     fi
 
     # Content backgrounds (for exit separator - last window content)
-    active_bg=$(resolve_color "window-active-base")
-    inactive_bg=$(resolve_color "window-inactive-base")
+    printf -v active_bg '%s' "$(resolve_color "window-active-base")"
+    printf -v inactive_bg '%s' "$(resolve_color "window-inactive-base")"
 
     # Index backgrounds (for entry separator - first window index)
     local active_index_bg inactive_index_bg
-    active_index_bg=$(resolve_color "window-active-base-lighter")
-    inactive_index_bg=$(resolve_color "window-inactive-base-lighter")
+    printf -v active_index_bg '%s' "$(resolve_color "window-active-base-lighter")"
+    printf -v inactive_index_bg '%s' "$(resolve_color "window-inactive-base-lighter")"
 
     # === ENTRY EDGE SEPARATOR ===
     # Left-pointing (◀) for entry - receiving from left gap
@@ -442,13 +445,13 @@ _get_windows_format_centered() {
     # Use #{base-index} to support both base-index=0 and base-index=1
     # Respect @powerkit_active_window_show_index and @powerkit_inactive_window_show_index
     local entry_sep_char show_index_active show_index_inactive
-    entry_sep_char=$(get_edge_left_separator)
-    show_index_active=$(get_tmux_option "@powerkit_active_window_show_index" "true")
-    show_index_inactive=$(get_tmux_option "@powerkit_inactive_window_show_index" "true")
+    printf -v entry_sep_char '%s' "$(get_edge_left_separator)"
+    printf -v show_index_active '%s' "$(get_tmux_option "@powerkit_active_window_show_index" "true")"
+    printf -v show_index_inactive '%s' "$(get_tmux_option "@powerkit_inactive_window_show_index" "true")"
 
     if [[ -n "$entry_sep_char" ]]; then
         local first_index_bg first_content_bg first_bg
-        first_content_bg=$(resolve_color "window-inactive-base")
+        printf -v first_content_bg '%s' "$(resolve_color "window-inactive-base")"
 
         # Determine which background to use based on show_index settings
         if [[ "$show_index_active" == "false" && "$show_index_inactive" == "false" ]]; then
@@ -757,12 +760,12 @@ _compose_line() {
     local side="${2:-left}"
 
     local -a entities
-    IFS=',' read -ra entities <<< "$order"
+    IFS=',' read -ra entities <<<"$order"
 
     local result="" prev_entity=""
 
     for entity in "${entities[@]}"; do
-        entity="${entity// /}"  # trim whitespace
+        entity="${entity// /}" # trim whitespace
 
         # Add separator BETWEEN entities (not before first)
         [[ -n "$prev_entity" ]] && result+=$(_build_inter_entity_separator "$prev_entity" "$entity" "$side")
@@ -836,7 +839,7 @@ _apply_single_standard() {
     local left_content=""
     if [[ ${#_BEFORE_WINDOWS[@]} -gt 0 ]]; then
         local first_left="${_BEFORE_WINDOWS[0]}"
-        local last_left="${_BEFORE_WINDOWS[${#_BEFORE_WINDOWS[@]}-1]}"
+        local last_left="${_BEFORE_WINDOWS[${#_BEFORE_WINDOWS[@]} - 1]}"
 
         # Add entry edge separator for first entity when :all suffix is enabled
         if [[ "$apply_all_edges" == "true" ]]; then
@@ -844,7 +847,10 @@ _apply_single_standard() {
         fi
 
         local left_order
-        left_order=$(IFS=','; echo "${_BEFORE_WINDOWS[*]}")
+        left_order=$(
+            IFS=','
+            echo "${_BEFORE_WINDOWS[*]}"
+        )
         left_content+=$(_compose_line "$left_order" "left")
 
         if [[ "$window_spacing_enabled" == "true" ]]; then
@@ -888,11 +894,14 @@ _apply_single_standard() {
         local first_right="${_AFTER_WINDOWS[0]}"
 
         # Plugins handle their own initial separator
-        [[ "$first_right" != "plugins" ]] && \
+        [[ "$first_right" != "plugins" ]] &&
             right_content+=$(_build_inter_entity_separator "windows" "$first_right" "right")
 
         local right_order
-        right_order=$(IFS=','; echo "${_AFTER_WINDOWS[*]}")
+        right_order=$(
+            IFS=','
+            echo "${_AFTER_WINDOWS[*]}"
+        )
         right_content+=$(_compose_line "$right_order" "right")
     fi
 
@@ -923,10 +932,13 @@ _apply_single_inverted() {
     local left_content=""
     if [[ ${#_BEFORE_WINDOWS[@]} -gt 0 ]]; then
         local left_order
-        left_order=$(IFS=','; echo "${_BEFORE_WINDOWS[*]}")
+        left_order=$(
+            IFS=','
+            echo "${_BEFORE_WINDOWS[*]}"
+        )
         left_content=$(_compose_line "$left_order" "left")
 
-        local last_left="${_BEFORE_WINDOWS[${#_BEFORE_WINDOWS[@]}-1]}"
+        local last_left="${_BEFORE_WINDOWS[${#_BEFORE_WINDOWS[@]} - 1]}"
         left_content+=$(_build_edge_separator "$last_left" "end" "left")
     fi
 
@@ -991,7 +1003,7 @@ _apply_single_inverted() {
 _apply_single_centered() {
     local order="$1"
     local -a entities
-    IFS=',' read -ra entities <<< "$order"
+    IFS=',' read -ra entities <<<"$order"
 
     # With exactly 3 elements, positions are clear
     local left_entity="${entities[0]}"
@@ -1089,7 +1101,7 @@ _apply_double_layout() {
     status_bg=$(resolve_color "statusbar-bg")
 
     local -a entities
-    IFS=',' read -ra entities <<< "$order"
+    IFS=',' read -ra entities <<<"$order"
 
     # Split entities into line0 and line1
     local first_entity="${entities[0]}"
@@ -1198,9 +1210,9 @@ _build_line_content() {
     # Add edge separator at end (only for left-aligned line 0)
     if [[ "$side" == "left" && -n "$last_entity" ]]; then
         case "$last_entity" in
-            windows) content+=$(_build_left_edge_separator) ;;
-            plugins) ;; # Plugins add their own
-            *) content+=$(_build_edge_separator "$last_entity" "end" "left") ;;
+        windows) content+=$(_build_left_edge_separator) ;;
+        plugins) ;; # Plugins add their own
+        *) content+=$(_build_edge_separator "$last_entity" "end" "left") ;;
         esac
     fi
 

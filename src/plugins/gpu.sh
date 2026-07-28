@@ -113,9 +113,9 @@ plugin_get_health() {
     usage_warn="${usage_warn:-70}"
     usage_crit="${usage_crit:-90}"
 
-    if (( usage >= usage_crit )); then
+    if ((usage >= usage_crit)); then
         health="error"
-    elif (( usage >= usage_warn )); then
+    elif ((usage >= usage_warn)); then
         [[ "$health" != "error" ]] && health="warning"
     fi
 
@@ -129,10 +129,10 @@ plugin_get_health() {
     mem_crit="${mem_crit:-90}"
 
     if [[ "${mem_total:-0}" -gt 0 ]]; then
-        mem_percent=$(( (mem_used * 100) / mem_total ))
-        if (( mem_percent >= mem_crit )); then
+        mem_percent=$(((mem_used * 100) / mem_total))
+        if ((mem_percent >= mem_crit)); then
             health="error"
-        elif (( mem_percent >= mem_warn )); then
+        elif ((mem_percent >= mem_warn)); then
             [[ "$health" != "error" ]] && health="warning"
         fi
     fi
@@ -146,9 +146,9 @@ plugin_get_health() {
     temp_warn="${temp_warn:-70}"
     temp_crit="${temp_crit:-85}"
 
-    if (( temp >= temp_crit )); then
+    if ((temp >= temp_crit)); then
         health="error"
-    elif (( temp >= temp_warn )); then
+    elif ((temp >= temp_warn)); then
         [[ "$health" != "error" ]] && health="warning"
     fi
 
@@ -158,12 +158,12 @@ plugin_get_health() {
 plugin_get_context() {
     local usage=$(plugin_data_get "usage")
     usage="${usage:-0}"
-    
-    if (( usage == 0 )); then
+
+    if ((usage == 0)); then
         printf 'idle'
-    elif (( usage < 30 )); then
+    elif ((usage < 30)); then
         printf 'light'
-    elif (( usage < 70 )); then
+    elif ((usage < 70)); then
         printf 'moderate'
     else
         printf 'heavy'
@@ -199,8 +199,8 @@ _collect_intel_gpu() {
     [[ -z "$freq_cur" || -z "$freq_max" ]] && return 1
 
     # Calculate usage as percentage of max frequency
-    if (( freq_max > 0 )); then
-        usage=$(( (freq_cur * 100) / freq_max ))
+    if ((freq_max > 0)); then
+        usage=$(((freq_cur * 100) / freq_max))
     else
         usage=0
     fi
@@ -242,24 +242,30 @@ plugin_collect() {
             # Get temperature
             temp=$("$powerkit_gpu" -t 2>/dev/null)
 
-            [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && { available=1; gpu_type="macos"; }
+            [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && {
+                available=1
+                gpu_type="macos"
+            }
         fi
     else
         # Linux: NVIDIA GPU via nvidia-smi
         if has_cmd "nvidia-smi"; then
-            # Check if nvidia-smi works (driver might be broken/mismatched)
-            if nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -1 | grep -q .; then
-                usage=$(nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)
-                temp=$(nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null | head -1)
-
-                # Get memory used/total in MB
-                local mem_used mem_total
-                mem_used=$(nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1)
-                mem_total=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits 2>/dev/null | head -1)
+            # Check if nvidia-smi works (driver might be broken/mismatched),
+            # AND batch-collect all metrics in a single invocation (Sprint 2.10:
+            # reduces ~5 forks to 1). The query returns 5 CSV rows of 5 columns;
+            # we read just the first GPU (head -1) for simplicity.
+            local nvidia_csv
+            nvidia_csv=$(nvidia-smi --query-gpu=utilization.gpu,temperature.gpu,memory.used,memory.total,name \
+                --format=csv,noheader,nounits 2>/dev/null | head -1)
+            if [[ -n "$nvidia_csv" ]]; then
+                IFS=',' read -r usage temp mem_used mem_total _ <<<"$nvidia_csv"
                 mem_used_mb="${mem_used:-0}"
                 mem_total_mb="${mem_total:-0}"
 
-                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && { available=1; gpu_type="nvidia"; }
+                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && {
+                    available=1
+                    gpu_type="nvidia"
+                }
             fi
         fi
 
@@ -277,7 +283,7 @@ plugin_collect() {
                 if [[ -n "$hwmon_dir" && -f "${hwmon_dir}/temp1_input" ]]; then
                     local temp_milli
                     temp_milli=$(cat "${hwmon_dir}/temp1_input" 2>/dev/null)
-                    temp=$(( temp_milli / 1000 ))
+                    temp=$((temp_milli / 1000))
                 fi
 
                 # AMD VRAM via drm (if available)
@@ -286,11 +292,14 @@ plugin_collect() {
                     vram_used=$(cat "${amd_gpu_dir}/mem_info_vram_used" 2>/dev/null)
                     vram_total=$(cat "${amd_gpu_dir}/mem_info_vram_total" 2>/dev/null)
                     # Convert bytes to MB
-                    mem_used_mb=$(( vram_used / 1048576 ))
-                    mem_total_mb=$(( vram_total / 1048576 ))
+                    mem_used_mb=$((vram_used / 1048576))
+                    mem_total_mb=$((vram_total / 1048576))
                 fi
 
-                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && { available=1; gpu_type="amd"; }
+                [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && {
+                    available=1
+                    gpu_type="amd"
+                }
             fi
         fi
 
@@ -300,7 +309,7 @@ plugin_collect() {
             intel_dir=$(_find_intel_gpu_dir)
             if [[ -n "$intel_dir" ]]; then
                 _collect_intel_gpu "$intel_dir"
-                return  # Intel collection sets all data internally
+                return # Intel collection sets all data internally
             fi
         fi
     fi
@@ -316,9 +325,9 @@ plugin_collect() {
 # Format MB to human-readable (M or G)
 _format_memory_value() {
     local mb="$1"
-    if (( mb >= 1024 )); then
-        local gb_int=$(( mb / 1024 ))
-        local gb_dec=$(( (mb % 1024) * 10 / 1024 ))
+    if ((mb >= 1024)); then
+        local gb_int=$((mb / 1024))
+        local gb_dec=$(((mb % 1024) * 10 / 1024))
         printf '%d.%dG' "$gb_int" "$gb_dec"
     else
         printf '%dM' "$mb"
@@ -331,30 +340,30 @@ _format_memory() {
     local format="$3"
 
     case "$format" in
-        memory_usage)
-            # Format: used / allocated (e.g., "409M / 4.1G")
-            local used_str total_str
-            used_str="$(_format_memory_value "${mem_used_mb:-0}")"
-            total_str="$(_format_memory_value "${mem_total_mb:-0}")"
-            printf '%s/%s' "$used_str" "$total_str"
-            ;;
-        memory_percentage)
-            # Format: percentage of allocation (e.g., "10%")
-            if [[ "${mem_total_mb:-0}" -gt 0 ]]; then
-                local percent=$(( (mem_used_mb * 100) / mem_total_mb ))
-                printf '%d%%' "$percent"
-            else
-                printf '0%%'
-            fi
-            ;;
-        memory_use|*)
-            # Format: only used (e.g., "409M")
-            if [[ -n "$mem_used_mb" && "$mem_used_mb" != "0" ]]; then
-                _format_memory_value "$mem_used_mb"
-            else
-                printf '0M'
-            fi
-            ;;
+    memory_usage)
+        # Format: used / allocated (e.g., "409M / 4.1G")
+        local used_str total_str
+        used_str="$(_format_memory_value "${mem_used_mb:-0}")"
+        total_str="$(_format_memory_value "${mem_total_mb:-0}")"
+        printf '%s/%s' "$used_str" "$total_str"
+        ;;
+    memory_percentage)
+        # Format: percentage of allocation (e.g., "10%")
+        if [[ "${mem_total_mb:-0}" -gt 0 ]]; then
+            local percent=$(((mem_used_mb * 100) / mem_total_mb))
+            printf '%d%%' "$percent"
+        else
+            printf '0%%'
+        fi
+        ;;
+    memory_use | *)
+        # Format: only used (e.g., "409M")
+        if [[ -n "$mem_used_mb" && "$mem_used_mb" != "0" ]]; then
+            _format_memory_value "$mem_used_mb"
+        else
+            printf '0M'
+        fi
+        ;;
     esac
 }
 
@@ -402,40 +411,39 @@ plugin_render() {
     # Build parts array based on requested metrics
     local IFS=','
     local requested_metrics
-    read -ra requested_metrics <<< "$metric"
+    read -ra requested_metrics <<<"$metric"
 
     for m in "${requested_metrics[@]}"; do
         # Trim whitespace
         m="${m// /}"
         case "$m" in
-            usage)
-                parts+=("${icon_usage}${usage:-0}%")
-                ;;
-            memory)
-                # Skip memory for Intel (uses shared system memory)
-                [[ "$gpu_type" == "intel" ]] && continue
-                parts+=("${icon_memory}${memory_str}")
-                ;;
-            temp)
-                # Skip temp for Intel if not available
-                [[ "$gpu_type" == "intel" ]] && continue
-                parts+=("${icon_temp}${temp:-0}°C")
-                ;;
-            freq)
-                # Frequency metric (mainly useful for Intel)
-                if [[ -n "$freq_cur" ]]; then
-                    parts+=("${icon_freq}${freq_cur}/${freq_max}MHz")
-                fi
-                ;;
+        usage)
+            parts+=("${icon_usage}${usage:-0}%")
+            ;;
+        memory)
+            # Skip memory for Intel (uses shared system memory)
+            [[ "$gpu_type" == "intel" ]] && continue
+            parts+=("${icon_memory}${memory_str}")
+            ;;
+        temp)
+            # Skip temp for Intel if not available
+            [[ "$gpu_type" == "intel" ]] && continue
+            parts+=("${icon_temp}${temp:-0}°C")
+            ;;
+        freq)
+            # Frequency metric (mainly useful for Intel)
+            if [[ -n "$freq_cur" ]]; then
+                parts+=("${icon_freq}${freq_cur}/${freq_max}MHz")
+            fi
+            ;;
         esac
     done
 
     # Output parts with separator
     local first=1
     for part in "${parts[@]}"; do
-        (( first )) || printf '%s' "$separator"
+        ((first)) || printf '%s' "$separator"
         printf '%s' "$part"
         first=0
     done
 }
-

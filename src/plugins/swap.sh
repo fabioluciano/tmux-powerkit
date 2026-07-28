@@ -47,9 +47,6 @@ plugin_declare_options() {
 
     # Cache
     declare_option "cache_ttl" "number" "30" "Cache duration in seconds"
-
-    # Optional: Include compressed memory (macOS only)
-    declare_option "include_compressed" "bool" "false" "Include compressed memory in swap total (macOS only)"
 }
 
 # =============================================================================
@@ -164,15 +161,25 @@ _collect_macos() {
     return 1
 }
 
-# Helper to convert value with unit to bytes
+# Helper to convert a decimal value with a unit suffix to bytes.
+# macOS sysctl reports values like "1234.50M", "0.75G", "2.00T".
+# The previous implementation used ${value%.*} which truncated the
+# decimal portion, so "1234.5" became 1234 and could even collapse
+# to zero when the integer part was less than 1. Use awk for floating
+# point math so the original precision is preserved.
 _to_bytes() {
     local value="$1"
     local unit="$2"
 
+    if ! printf '%s' "$value" | grep -Eq '^[0-9]+(\.[0-9]+)?$'; then
+        echo "0"
+        return
+    fi
+
     case "$unit" in
-    M) echo "$((${value%.*} * 1024 * 1024))" ;;
-    G) echo "$((${value%.*} * 1024 * 1024 * 1024))" ;;
-    T) echo "$((${value%.*} * 1024 * 1024 * 1024 * 1024))" ;;
+    M) awk -v v="$value" 'BEGIN { printf "%d", v * 1024 * 1024 }' ;;
+    G) awk -v v="$value" 'BEGIN { printf "%d", v * 1024 * 1024 * 1024 }' ;;
+    T) awk -v v="$value" 'BEGIN { printf "%d", v * 1024 * 1024 * 1024 * 1024 }' ;;
     *) echo "0" ;;
     esac
 }

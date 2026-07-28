@@ -89,7 +89,7 @@ _verify_token() {
     [[ -z "$token" ]] && return 1
 
     local result
-    result=$(make_api_call "${GITHUB_API}/user" "github" "$token" 5) || return 1
+    result=$(api_fetch_with_token_header "${GITHUB_API}/user" "Authorization" "token ${token}" 5) || return 1
     return 0
 }
 
@@ -176,16 +176,15 @@ plugin_get_context() {
         return
     fi
 
-    local api_error=$(plugin_data_get "api_error")
+    printf -v api_error '%s' "$(plugin_data_get "api_error")"
     [[ "$api_error" == "1" ]] && {
         printf 'api_error'
         return
     }
 
-    local total=$(plugin_data_get "total")
-    local issues=$(plugin_data_get "issues")
-    local prs=$(plugin_data_get "prs")
-
+    printf -v total '%s' "$(plugin_data_get "total")"
+    printf -v issues '%s' "$(plugin_data_get "issues")"
+    printf -v prs '%s' "$(plugin_data_get "prs")"
     total="${total:-0}"
     issues="${issues:-0}"
     prs="${prs:-0}"
@@ -211,9 +210,11 @@ plugin_get_icon() { get_option "icon"; }
 
 _make_github_api_call() {
     local url="$1"
-    local token=$(_get_token)
-
-    make_api_call "$url" "github" "$token" 5
+    printf -v token '%s' "$(_get_token)"
+    # The token is passed via curl --config (stdin) so it never
+    # appears in process argv. The GitHub API accepts the same
+    # Authorization header that make_api_call was sending.
+    api_fetch_with_token_header "$url" "Authorization" "token ${token}" 5
 }
 
 _get_api_error_message() {
@@ -225,7 +226,7 @@ _is_valid_api_response() {
     local response="$1"
     [[ -z "$response" ]] && return 1
 
-    local error_msg=$(_get_api_error_message "$response")
+    printf -v error_msg '%s' "$(_get_api_error_message "$response")"
     [[ -n "$error_msg" ]] && return 1
 
     return 0
@@ -241,13 +242,12 @@ _count_issues() {
     [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
 
     local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
-    local response=$(_make_github_api_call "$url")
-
+    printf -v response '%s' "$(_make_github_api_call "$url")"
     # Validate response using api_validate_response
     api_validate_response "$response" || return 1
 
     if has_cmd jq; then
-        local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
+        printf -v error_msg '%s' "$(echo "$response" | jq -r '.message // empty' 2>/dev/null)"
         [[ -n "$error_msg" ]] && return 1
         echo "$response" | jq -r '.total_count // 0' 2>/dev/null
     else
@@ -266,13 +266,12 @@ _count_prs() {
     [[ -n "$filter_user" ]] && query="${query}+author:${filter_user}"
 
     local url="$GITHUB_API/search/issues?q=${query}&per_page=1"
-    local response=$(_make_github_api_call "$url")
-
+    printf -v response '%s' "$(_make_github_api_call "$url")"
     # Validate response using api_validate_response
     api_validate_response "$response" || return 1
 
     if has_cmd jq; then
-        local error_msg=$(echo "$response" | jq -r '.message // empty' 2>/dev/null)
+        printf -v error_msg '%s' "$(echo "$response" | jq -r '.message // empty' 2>/dev/null)"
         [[ -n "$error_msg" ]] && return 1
         echo "$response" | jq -r '.total_count // 0' 2>/dev/null
     else
@@ -282,9 +281,8 @@ _count_prs() {
 
 # Use gh CLI if available
 _fetch_via_gh_cli() {
-    local show_issues=$(get_option "show_issues")
-    local show_prs=$(get_option "show_prs")
-
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_prs '%s' "$(get_option "show_prs")"
     local issues=0 prs=0
 
     # Check if gh has a default repo set, if not use search API
@@ -318,13 +316,12 @@ _format_repo_status() {
     local issues="$1"
     local prs="$2"
 
-    local show_issues=$(get_option "show_issues")
-    local show_prs=$(get_option "show_prs")
-    local format=$(get_option "format")
-    local separator=$(get_option "separator")
-    local icon_issue=$(get_option "icon_issue")
-    local icon_pr=$(get_option "icon_pr")
-
+    printf -v show_issues '%s' "$(get_option "show_issues")"
+    printf -v show_prs '%s' "$(get_option "show_prs")"
+    printf -v format '%s' "$(get_option "format")"
+    printf -v separator '%s' "$(get_option "separator")"
+    printf -v icon_issue '%s' "$(get_option "icon_issue")"
+    printf -v icon_pr '%s' "$(get_option "icon_pr")"
     local parts=()
 
     if [[ "$show_issues" == "true" && "$issues" -gt 0 ]]; then
@@ -347,12 +344,11 @@ _format_repo_status() {
 }
 
 _get_github_info() {
-    local repos_csv=$(get_option "repos")
-    local filter_user=$(get_option "filter_user")
-
+    printf -v repos_csv '%s' "$(get_option "repos")"
+    printf -v filter_user '%s' "$(get_option "filter_user")"
     # If no repos configured, try gh CLI for user's repos
     if [[ -z "$repos_csv" ]] && has_cmd gh; then
-        local result=$(_fetch_via_gh_cli)
+        printf -v result '%s' "$(_fetch_via_gh_cli)"
         echo "$result"
         return 0
     fi
@@ -366,6 +362,7 @@ _get_github_info() {
 
     local total_issues=0 total_prs=0
     local api_error=0
+    local attempted=0 failed=0
 
     for repo_spec in "${repos[@]}"; do
         repo_spec=$(trim "$repo_spec")
@@ -377,24 +374,39 @@ _get_github_info() {
         local issues=0 prs=0
 
         if [[ "$(get_option "show_issues")" == "true" ]]; then
+            ((attempted++))
             if ! issues=$(_count_issues "$owner" "$repo" "$filter_user"); then
                 api_error=1
+                ((failed++))
                 issues=0
+            else
+                total_issues=$((total_issues + issues))
             fi
         fi
 
         if [[ "$(get_option "show_prs")" == "true" ]]; then
+            ((attempted++))
             if ! prs=$(_count_prs "$owner" "$repo" "$filter_user"); then
                 api_error=1
+                ((failed++))
                 prs=0
+            else
+                total_prs=$((total_prs + prs))
             fi
         fi
-
-        total_issues=$((total_issues + issues))
-        total_prs=$((total_prs + prs))
     done
 
-    echo "$total_issues $total_prs $api_error"
+    # Surface a canonical outcome so consumers can distinguish
+    # unauthorized / rate_limited / transport errors instead of seeing
+    # a single generic api_error flag.
+    local outcome="success"
+    if ((attempted > 0 && failed == attempted)); then
+        outcome="transport_error"
+    elif ((api_error > 0)); then
+        outcome="partial_failure"
+    fi
+
+    echo "$total_issues $total_prs $api_error $outcome"
 }
 
 plugin_collect() {
@@ -409,13 +421,14 @@ plugin_collect() {
         return 0
     fi
 
-    local result=$(_get_github_info)
-    local issues prs api_error
-    read -r issues prs api_error <<<"$result"
+    printf -v result '%s' "$(_get_github_info)"
+    local issues prs api_error outcome
+    read -r issues prs api_error outcome <<<"$result"
 
     issues="${issues:-0}"
     prs="${prs:-0}"
     api_error="${api_error:-0}"
+    outcome="${outcome:-success}"
 
     local total=$((issues + prs))
 
@@ -423,6 +436,11 @@ plugin_collect() {
     plugin_data_set "prs" "$prs"
     plugin_data_set "total" "$total"
     plugin_data_set "api_error" "$api_error"
+    plugin_data_set "api_outcome" "$outcome"
+
+    # If every requested counter failed, refuse to overwrite the prior
+    # cache so the lifecycle can mark it stale.
+    [[ "$outcome" == "transport_error" ]] && return 1
 }
 
 plugin_render() {

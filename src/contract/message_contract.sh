@@ -29,10 +29,10 @@ source_guard "contract_message" && return 0
 # =============================================================================
 
 declare -gra MESSAGE_SEVERITIES=(
-    "info"     # Informational
-    "success"  # Success/confirmation
-    "warning"  # Warning
-    "error"    # Error/failure
+    "info"    # Informational
+    "success" # Success/confirmation
+    "warning" # Warning
+    "error"   # Error/failure
 )
 
 # =============================================================================
@@ -50,7 +50,10 @@ message_show() {
     local valid=0
     local s
     for s in "${MESSAGE_SEVERITIES[@]}"; do
-        [[ "$severity" == "$s" ]] && { valid=1; break; }
+        [[ "$severity" == "$s" ]] && {
+            valid=1
+            break
+        }
     done
     [[ "$valid" -eq 0 ]] && severity="info"
 
@@ -61,10 +64,10 @@ message_show() {
     # Get icon based on severity
     local icon
     case "$severity" in
-        info)    icon=$'\uf05a' ;;  #
-        success) icon=$'\uf00c' ;;  #
-        warning) icon=$'\uf071' ;;  #
-        error)   icon=$'\uf057' ;;  #
+    info) icon=$'\uf05a' ;;    #
+    success) icon=$'\uf00c' ;; #
+    warning) icon=$'\uf071' ;; #
+    error) icon=$'\uf057' ;;   #
     esac
 
     # Calculate duration in milliseconds
@@ -118,15 +121,12 @@ message_popup() {
         return
     fi
 
-    # Check if tmux supports display-popup (tmux 3.2+)
-    local tmux_version
-    tmux_version=$(tmux -V 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
-
-    if awk -v ver="$tmux_version" 'BEGIN { exit !(ver >= 3.2) }' 2>/dev/null; then
+    # Check if tmux supports display-popup (tmux 3.2+, pure bash)
+    if popup_supported; then
         # Create temporary file for content
         local temp_file
         temp_file=$(mktemp)
-        printf '%s' "$content" > "$temp_file"
+        printf '%s' "$content" >"$temp_file"
 
         # Show popup using pk_popup
         pk_popup -T "$title" -w "$width" -H "$height" "cat '$temp_file'; rm -f '$temp_file'; read -n1"
@@ -151,10 +151,7 @@ message_popup_cmd() {
         return
     fi
 
-    local tmux_version
-    tmux_version=$(tmux -V 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
-
-    if awk -v ver="$tmux_version" 'BEGIN { exit !(ver >= 3.2) }' 2>/dev/null; then
+    if popup_supported; then
         pk_popup -T "$title" -w "$width" -H "$height" "$cmd; read -n1"
     else
         tmux display-message "PowerKit: $title - Use tmux 3.2+ for popups"
@@ -169,7 +166,7 @@ message_popup_cmd() {
 # Usage: message_confirm "Are you sure?" && echo "confirmed"
 message_confirm() {
     local prompt="$1"
-    local _default="${2:-n}"  # Reserved for future use
+    local _default="${2:-n}" # Reserved for future use
 
     if [[ -z "${TMUX:-}" ]]; then
         read -rp "$prompt [y/n]: " answer
@@ -219,14 +216,27 @@ message_clear() {
 # Notification Helpers
 # =============================================================================
 
-# Check if popups are supported
+# Check if popups are supported (pure bash version comparison)
 popup_supported() {
     [[ -n "${TMUX:-}" ]] || return 1
 
     local tmux_version
     tmux_version=$(tmux -V 2>/dev/null | grep -oE '[0-9]+\.[0-9]+' | head -1)
 
-    awk -v ver="$tmux_version" 'BEGIN { exit !(ver >= 3.2) }' 2>/dev/null
+    # Compare "X.Y" using split-and-compare-on-integer-parts.
+    local major minor
+    major="${tmux_version%%.*}"
+    minor="${tmux_version#*.}"
+    [[ "$major" =~ ^[0-9]+$ ]] || return 1
+    [[ "$minor" =~ ^[0-9]+$ ]] || minor=0
+
+    # Required: 3.2+
+    if ((major > 3)); then
+        return 0
+    elif ((major == 3 && minor >= 2)); then
+        return 0
+    fi
+    return 1
 }
 
 # Get message style based on severity

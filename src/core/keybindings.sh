@@ -97,7 +97,7 @@ check_keybinding_conflicts() {
                     echo ""
                     echo "To dismiss this warning permanently, delete this file:"
                     echo "  rm '$log_file'"
-                } >> "$log_file"
+                } >>"$log_file"
             fi
 
             log_warn "keybindings" "Detected ${conflict_count} keybinding conflict(s). See $log_file"
@@ -121,8 +121,15 @@ _setup_keybinding() {
     local name="$1"
     local config="$2"
 
+    # Special-case: theme_selector uses an fzf popup directly, not the
+    # standard helper pipeline (display-menu can't handle 42+ themes).
+    if [[ "$name" == "theme_selector" ]]; then
+        setup_theme_selector_keybinding
+        return 0
+    fi
+
     # Parse config: type:key_opt:key_def:width_opt:width_def:height_opt:height_def:helper:action
-    IFS=':' read -r bind_type key_option key_default width_option width_default height_option height_default helper action <<< "$config"
+    IFS=':' read -r bind_type key_option key_default width_option width_default height_option height_default helper action <<<"$config"
 
     # Get key from tmux option or use default
     local key
@@ -164,27 +171,27 @@ _setup_keybinding() {
 
     # Setup based on type
     case "$bind_type" in
-        popup)
-            local cmd="bash '$helper_path'"
-            if [[ -n "$action" ]]; then cmd="bash '$helper_path' $action"; fi
-            pk_bind_popup "$key" "$cmd" "$width" "$height" "core:$name"
-            ;;
+    popup)
+        local cmd="bash '$helper_path'"
+        if [[ -n "$action" ]]; then cmd="bash '$helper_path' $action"; fi
+        pk_bind_popup "$key" "$cmd" "$width" "$height" "core:$name"
+        ;;
 
-        shell)
-            local cmd="bash '$helper_path'"
-            if [[ -n "$action" ]]; then cmd="bash '$helper_path' $action"; fi
-            pk_bind_shell "$key" "$cmd" "core:$name"
-            ;;
+    shell)
+        local cmd="bash '$helper_path'"
+        if [[ -n "$action" ]]; then cmd="bash '$helper_path' $action"; fi
+        pk_bind_shell "$key" "$cmd" "core:$name"
+        ;;
 
-        command)
-            # Special handling for built-in commands
-            _setup_command_keybinding "$name" "$key"
-            ;;
+    command)
+        # Special handling for built-in commands
+        _setup_command_keybinding "$name" "$key"
+        ;;
 
-        *)
-            log_warn "keybindings" "Unknown keybinding type '$bind_type' for '$name'"
-            return 1
-            ;;
+    *)
+        log_warn "keybindings" "Unknown keybinding type '$bind_type' for '$name'"
+        return 1
+        ;;
     esac
 
     log_debug "keybindings" "Setup keybinding: $name -> $key ($bind_type)"
@@ -197,19 +204,19 @@ _setup_command_keybinding() {
     local key="$2"
 
     case "$name" in
-        cache_clear)
-            local cmd="POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && powerkit_bootstrap_minimal && cache_clear_all && load_powerkit_theme && toast \"PowerKit cache cleared!\" \"info\"'; tmux refresh-client -S"
-            pk_bind_smart "$key" "$cmd" -s "core:cache_clear"
-            ;;
-        reload_config)
-            # Reload tmux config - tries common config paths, shows info-styled toast
-            local cmd="if [ -f ~/.config/tmux/tmux.conf ]; then tmux source-file ~/.config/tmux/tmux.conf; elif [ -f ~/.tmux.conf ]; then tmux source-file ~/.tmux.conf; fi; POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && load_powerkit_theme && toast \"TMUX configuration reloaded!\" \"info\"'"
-            pk_bind_smart "$key" "$cmd" -s "core:reload_config"
-            ;;
-        *)
-            log_warn "keybindings" "Unknown command keybinding: $name"
-            return 1
-            ;;
+    cache_clear)
+        local cmd="POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && powerkit_bootstrap_minimal && cache_clear_all && load_powerkit_theme && toast \"PowerKit cache cleared!\" \"info\"'; tmux refresh-client -S"
+        pk_bind_smart "$key" "$cmd" -s "core:cache_clear"
+        ;;
+    reload_config)
+        # Reload tmux config - tries common config paths, shows info-styled toast
+        local cmd="if [ -f ~/.config/tmux/tmux.conf ]; then tmux source-file ~/.config/tmux/tmux.conf; elif [ -f ~/.tmux.conf ]; then tmux source-file ~/.tmux.conf; fi; POWERKIT_ROOT='${POWERKIT_ROOT}' bash -c '. \"\${POWERKIT_ROOT}/src/core/bootstrap.sh\" && load_powerkit_theme && toast \"TMUX configuration reloaded!\" \"info\"'"
+        pk_bind_smart "$key" "$cmd" -s "core:reload_config"
+        ;;
+    *)
+        log_warn "keybindings" "Unknown command keybinding: $name"
+        return 1
+        ;;
     esac
 }
 
@@ -227,13 +234,8 @@ setup_powerkit_keybindings() {
 
     # Iterate through all configured keybindings
     for name in "${!POWERKIT_CORE_KEYBINDINGS[@]}"; do
-        # Skip theme_selector - it needs special handling (display-menu doesn't work via run-shell)
-        [[ "$name" == "theme_selector" ]] && continue
         _setup_keybinding "$name" "${POWERKIT_CORE_KEYBINDINGS[$name]}"
     done
-
-    # Setup theme selector separately (requires display-menu directly, not via run-shell)
-    setup_theme_selector_keybinding
 
     log_debug "keybindings" "Global keybindings setup complete (${#POWERKIT_CORE_KEYBINDINGS[@]} bindings)"
 }

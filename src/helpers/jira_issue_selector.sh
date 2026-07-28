@@ -59,18 +59,19 @@ COLOR_BOLD="${POWERKIT_ANSI_BOLD}"
 # =============================================================================
 
 # Make authenticated Jira API call
+#
+# Jira uses HTTP Basic auth: email:api_token base64-encoded. The base64
+# blob is built via process substitution and piped into curl --config
+# via stdin, so neither the cleartext credentials nor the encoded blob
+# appears in process argv.
 jira_api_call() {
     local endpoint="$1"
     local url="${_url}/rest/api/3/${endpoint}"
 
-    # Base64 encode credentials
-    local auth
-    auth=$(printf '%s:%s' "$_email" "$_token" | base64 | tr -d '\n')
-
-    safe_curl "$url" 10 \
-        -H "Authorization: Basic ${auth}" \
-        -H "Content-Type: application/json" \
-        -H "Accept: application/json"
+    # Build the Authorization line as a curl config body, then pipe it
+    # through stdin. The base64 blob lives only in the pipeline.
+    printf 'header = "Content-Type: application/json"\nheader = "Accept: application/json"\n' |
+        safe_curl_with_auth "$_email:$_token" "$url" 10
 }
 
 # Build JQL query for fetching issues
@@ -102,24 +103,24 @@ url_encode() {
 get_status_color() {
     local status_category="$1"
     case "$status_category" in
-        "In Progress") echo "$COLOR_IN_PROGRESS" ;;
-        "To Do")       echo "$COLOR_TODO" ;;
-        "Done")        echo "$COLOR_DONE" ;;
-        *)             echo "$COLOR_DIM" ;;
+    "In Progress") echo "$COLOR_IN_PROGRESS" ;;
+    "To Do") echo "$COLOR_TODO" ;;
+    "Done") echo "$COLOR_DONE" ;;
+    *) echo "$COLOR_DIM" ;;
     esac
 }
 
 # Determine if status name indicates flagged/blocked
 is_flagged_by_status() {
     local status_name="$1"
-    local lower_status="${status_name,,}"  # Bash 4.0+ lowercase
+    local lower_status="${status_name,,}" # Bash 4.0+ lowercase
 
     # Check for flagged-related keywords in status name
-    if [[ "$lower_status" == *blocked* ]] || \
-       [[ "$lower_status" == *impediment* ]] || \
-       [[ "$lower_status" == *waiting* ]] || \
-       [[ "$lower_status" == *"on hold"* ]] || \
-       [[ "$lower_status" == *paused* ]]; then
+    if [[ "$lower_status" == *blocked* ]] ||
+        [[ "$lower_status" == *impediment* ]] ||
+        [[ "$lower_status" == *waiting* ]] ||
+        [[ "$lower_status" == *"on hold"* ]] ||
+        [[ "$lower_status" == *paused* ]]; then
         return 0
     fi
     return 1
@@ -243,7 +244,7 @@ format_issue() {
 
     # Truncate summary if too long
     if [[ ${#summary} -gt $COL_SUMMARY ]]; then
-        summary="${summary:0:$((COL_SUMMARY-3))}..."
+        summary="${summary:0:$((COL_SUMMARY - 3))}..."
     fi
 
     # Pad strings to fixed width BEFORE adding colors
@@ -286,12 +287,12 @@ format_issue() {
 create_separator() {
     local label="$1"
     local color="$2"
-    local width=$((COL_STATUS + COL_KEY + COL_SUMMARY + COL_PRIORITY + 12))  # 12 for separators
+    local width=$((COL_STATUS + COL_KEY + COL_SUMMARY + COL_PRIORITY + 12)) # 12 for separators
     local line=""
     local i
 
     # Create dashed line
-    for ((i=0; i<width; i++)); do
+    for ((i = 0; i < width; i++)); do
         line+="─"
     done
 
@@ -370,7 +371,7 @@ Required: @powerkit_plugin_jira_domain, @powerkit_plugin_jira_email, @powerkit_p
     while IFS= read -r issue_json; do
         [[ -z "$issue_json" ]] && continue
         raw_formatted+="$(format_issue "$issue_json")"$'\n'
-    done <<< "$issues"
+    done <<<"$issues"
 
     if [[ -z "$raw_formatted" ]]; then
         show_error_and_wait "Error: Could not format issues."
@@ -394,15 +395,15 @@ Required: @powerkit_plugin_jira_domain, @powerkit_plugin_jira_email, @powerkit_p
         # Add section separator when section changes
         if [[ "$current_section" != "$prev_section" ]]; then
             case "$current_section" in
-                1) formatted+="$(create_separator "FLAGGED" "$COLOR_FLAGGED")"$'\n' ;;
-                2) formatted+="$(create_separator "IN PROGRESS" "$COLOR_IN_PROGRESS")"$'\n' ;;
-                3) formatted+="$(create_separator "BACKLOG" "$COLOR_TODO")"$'\n' ;;
+            1) formatted+="$(create_separator "FLAGGED" "$COLOR_FLAGGED")"$'\n' ;;
+            2) formatted+="$(create_separator "IN PROGRESS" "$COLOR_IN_PROGRESS")"$'\n' ;;
+            3) formatted+="$(create_separator "BACKLOG" "$COLOR_TODO")"$'\n' ;;
             esac
             prev_section="$current_section"
         fi
 
         formatted+="$content"$'\n'
-    done <<< "$sorted_lines"
+    done <<<"$sorted_lines"
 
     # Use ui_filter for selection with header
     local selected
@@ -452,11 +453,11 @@ helper_main() {
     local action="${1:-browse}"
 
     case "$action" in
-        browse|"") main ;;
-        *)
-            echo "Unknown action: $action" >&2
-            return 1
-            ;;
+    browse | "") main ;;
+    *)
+        echo "Unknown action: $action" >&2
+        return 1
+        ;;
     esac
 }
 

@@ -50,7 +50,7 @@ declare -gA _UNIVERSAL_COLORS=(
 # Usage: _hex_to_rgb "#ff5500"
 # Returns: "r g b" (space-separated decimal values)
 _hex_to_rgb() {
-    local hex="${1#\#}"  # Remove # if present
+    local hex="${1#\#}" # Remove # if present
 
     # Validate hex format
     if [[ ! "$hex" =~ ^[0-9a-fA-F]{6}$ ]]; then
@@ -77,9 +77,9 @@ _rgb_to_hex() {
 # Usage: _clamp 300  # Returns 255
 _clamp() {
     local val=$1
-    if (( val < 0 )); then
+    if ((val < 0)); then
         echo 0
-    elif (( val > 255 )); then
+    elif ((val > 255)); then
         echo 255
     else
         echo "$val"
@@ -95,7 +95,7 @@ _clamp() {
 _percent_to_int() {
     local percent="$1"
     local percent_int="${percent%.*}${percent#*.}"
-    percent_int="${percent_int:0:3}"  # Limit to 3 digits
+    percent_int="${percent_int:0:3}" # Limit to 3 digits
     [[ ${#percent_int} -lt 3 ]] && percent_int="${percent_int}0"
     printf '%s' "$percent_int"
 }
@@ -108,14 +108,17 @@ _generate_lighter_from_rgb() {
     percent_int=$(_percent_to_int "$percent")
 
     # Move each component toward 255 (white)
-    local new_r=$(( r + (255 - r) * percent_int / 1000 ))
-    local new_g=$(( g + (255 - g) * percent_int / 1000 ))
-    local new_b=$(( b + (255 - b) * percent_int / 1000 ))
+    local new_r=$((r + (255 - r) * percent_int / 1000))
+    local new_g=$((g + (255 - g) * percent_int / 1000))
+    local new_b=$((b + (255 - b) * percent_int / 1000))
 
     # Inline clamp for performance
-    (( new_r > 255 )) && new_r=255; (( new_r < 0 )) && new_r=0
-    (( new_g > 255 )) && new_g=255; (( new_g < 0 )) && new_g=0
-    (( new_b > 255 )) && new_b=255; (( new_b < 0 )) && new_b=0
+    ((new_r > 255)) && new_r=255
+    ((new_r < 0)) && new_r=0
+    ((new_g > 255)) && new_g=255
+    ((new_g < 0)) && new_g=0
+    ((new_b > 255)) && new_b=255
+    ((new_b < 0)) && new_b=0
 
     printf '#%02x%02x%02x' "$new_r" "$new_g" "$new_b"
 }
@@ -126,17 +129,20 @@ _generate_darker_from_rgb() {
     local r=$1 g=$2 b=$3 percent="$4"
     local percent_int factor
     percent_int=$(_percent_to_int "$percent")
-    factor=$(( 1000 - percent_int ))
+    factor=$((1000 - percent_int))
 
     # Scale each component toward 0 (black)
-    local new_r=$(( r * factor / 1000 ))
-    local new_g=$(( g * factor / 1000 ))
-    local new_b=$(( b * factor / 1000 ))
+    local new_r=$((r * factor / 1000))
+    local new_g=$((g * factor / 1000))
+    local new_b=$((b * factor / 1000))
 
     # Inline clamp for performance
-    (( new_r > 255 )) && new_r=255; (( new_r < 0 )) && new_r=0
-    (( new_g > 255 )) && new_g=255; (( new_g < 0 )) && new_g=0
-    (( new_b > 255 )) && new_b=255; (( new_b < 0 )) && new_b=0
+    ((new_r > 255)) && new_r=255
+    ((new_r < 0)) && new_r=0
+    ((new_g > 255)) && new_g=255
+    ((new_g < 0)) && new_g=0
+    ((new_b > 255)) && new_b=255
+    ((new_b < 0)) && new_b=0
 
     printf '#%02x%02x%02x' "$new_r" "$new_g" "$new_b"
 }
@@ -150,7 +156,7 @@ color_lighter() {
 
     local rgb
     rgb=$(_hex_to_rgb "$hex") || return 1
-    read -r r g b <<< "$rgb"
+    read -r r g b <<<"$rgb"
 
     _generate_lighter_from_rgb "$r" "$g" "$b" "$percent"
 }
@@ -164,7 +170,7 @@ color_darker() {
 
     local rgb
     rgb=$(_hex_to_rgb "$hex") || return 1
-    read -r r g b <<< "$rgb"
+    read -r r g b <<<"$rgb"
 
     _generate_darker_from_rgb "$r" "$g" "$b" "$percent"
 }
@@ -200,7 +206,7 @@ generate_color_variants() {
 
         # Pre-parse RGB once (instead of 6 times)
         rgb=$(_hex_to_rgb "$base_color") || continue
-        read -r r g b <<< "$rgb"
+        read -r r g b <<<"$rgb"
 
         # Generate light variants (toward white) using pre-parsed RGB
         _COLOR_VARIANTS["${color_name}-light"]=$(_generate_lighter_from_rgb "$r" "$g" "$b" "$_COLOR_LIGHT_PERCENT")
@@ -248,9 +254,9 @@ get_color() {
 # Usage: has_color "secondary-lighter"
 has_color() {
     local name="$1"
-    [[ -n "${_UNIVERSAL_COLORS[$name]:-}" ]] || \
-    [[ -n "${_COLOR_VARIANTS[$name]:-}" ]] || \
-    [[ -n "${THEME_COLORS[$name]:-}" ]]
+    [[ -n "${_UNIVERSAL_COLORS[$name]:-}" ]] ||
+        [[ -n "${_COLOR_VARIANTS[$name]:-}" ]] ||
+        [[ -n "${THEME_COLORS[$name]:-}" ]]
 }
 
 # Get all available color names
@@ -299,20 +305,24 @@ _is_variant_color() {
 # Serialize all colors to a single string for caching
 # Format: key=value pairs separated by \x1F (Unit Separator)
 # Usage: serialize_theme_colors
+# Pure bash 5.2+ compatible: emits key=value pairs joined by \x1F.
 serialize_theme_colors() {
-    local output=""
-    local key
     local sep=$'\x1F'
+    local output="" key
 
-    # Serialize base colors
+    # Base colors
     for key in "${!THEME_COLORS[@]}"; do
-        [[ -n "$output" ]] && output+="$sep"
+        if [[ -n "$output" ]]; then
+            output+="${sep}"
+        fi
         output+="${key}=${THEME_COLORS[$key]}"
     done
 
-    # Serialize variants
+    # Variants
     for key in "${!_COLOR_VARIANTS[@]}"; do
-        [[ -n "$output" ]] && output+="$sep"
+        if [[ -n "$output" ]]; then
+            output+="${sep}"
+        fi
         output+="${key}=${_COLOR_VARIANTS[$key]}"
     done
 
@@ -321,6 +331,9 @@ serialize_theme_colors() {
 
 # Deserialize colors from cache string
 # Usage: deserialize_theme_colors "cache_content"
+# Stream content through awk with US as record separator. Robust against
+# bash versions where `read -d` mishandles US as the delimiter. Pure bash
+# 5.2+ compatible.
 deserialize_theme_colors() {
     local content="$1"
     local sep=$'\x1F'
@@ -329,9 +342,10 @@ deserialize_theme_colors() {
     THEME_COLORS=()
     _COLOR_VARIANTS=()
 
-    # Parse all colors, routing to correct array based on suffix
+    # Stream content through awk with US as record separator.
+    # Each record is "key=value"; route to correct assoc based on suffix.
     local entry key value
-    while IFS= read -r -d "$sep" entry || [[ -n "$entry" ]]; do
+    while IFS= read -r entry; do
         [[ -z "$entry" ]] && continue
         key="${entry%%=*}"
         value="${entry#*=}"
@@ -340,5 +354,5 @@ deserialize_theme_colors() {
         else
             THEME_COLORS["$key"]="$value"
         fi
-    done <<< "$content"
+    done < <(printf "%s" "$content" | awk -v sep="$sep" 'BEGIN{RS=sep} NF')
 }

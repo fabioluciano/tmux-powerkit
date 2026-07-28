@@ -80,16 +80,16 @@ plugin_get_context() {
     read_rate=$(plugin_data_get "read_rate")
     write_rate=$(plugin_data_get "write_rate")
     total_rate=$(plugin_data_get "total_rate")
-    
+
     read_rate="${read_rate:-0}"
     write_rate="${write_rate:-0}"
     total_rate="${total_rate:-0}"
-    
-    if (( total_rate == 0 )); then
+
+    if ((total_rate == 0)); then
         printf 'idle'
-    elif (( read_rate > write_rate * 2 )); then
+    elif ((read_rate > write_rate * 2)); then
         printf 'read_heavy'
-    elif (( write_rate > read_rate * 2 )); then
+    elif ((write_rate > read_rate * 2)); then
         printf 'write_heavy'
     else
         printf 'balanced'
@@ -104,47 +104,50 @@ plugin_get_icon() { get_option "icon"; }
 
 _get_throughput_macos() {
     local now=$EPOCHSECONDS
-    
+
     # Get current bytes from ioreg (all disks combined)
     local stats
     stats=$(ioreg -c IOBlockStorageDriver -r -w 0 2>/dev/null | grep -o '"Statistics" = {[^}]*}')
-    
-    [[ -z "$stats" ]] && { printf '0|0'; return 1; }
-    
+
+    [[ -z "$stats" ]] && {
+        printf '0|0'
+        return 1
+    }
+
     # Sum bytes from all disks
     local total_read_bytes=0
     local total_write_bytes=0
-    
+
     while IFS= read -r line; do
         local read_bytes write_bytes
         read_bytes=$(echo "$line" | grep -o '"Bytes (Read)"=[0-9]*' | grep -o '[0-9]*')
         write_bytes=$(echo "$line" | grep -o '"Bytes (Write)"=[0-9]*' | grep -o '[0-9]*')
         total_read_bytes=$((total_read_bytes + ${read_bytes:-0}))
         total_write_bytes=$((total_write_bytes + ${write_bytes:-0}))
-    done <<< "$stats"
-    
+    done <<<"$stats"
+
     # Read previous state from cache
     local prev_state prev_time=0 prev_read=0 prev_write=0
     if prev_state=$(cache_get "iops_state" 86400); then
-        IFS='|' read -r prev_time prev_read prev_write <<< "$prev_state"
+        IFS='|' read -r prev_time prev_read prev_write <<<"$prev_state"
     fi
-    
+
     # Save current state to cache
     cache_set "iops_state" "${now}|${total_read_bytes}|${total_write_bytes}"
-    
+
     # Calculate delta (bytes per second)
     local time_delta=$((now - prev_time))
-    if (( time_delta > 0 && prev_time > 0 )); then
+    if ((time_delta > 0 && prev_time > 0)); then
         local read_delta=$((total_read_bytes - prev_read))
         local write_delta=$((total_write_bytes - prev_write))
-        
+
         # Avoid negative values (can happen on system restart)
-        (( read_delta < 0 )) && read_delta=0
-        (( write_delta < 0 )) && write_delta=0
-        
+        ((read_delta < 0)) && read_delta=0
+        ((write_delta < 0)) && write_delta=0
+
         local read_rate=$((read_delta / time_delta))
         local write_rate=$((write_delta / time_delta))
-        
+
         printf '%d|%d' "$read_rate" "$write_rate"
     else
         # First run, no delta available
@@ -157,8 +160,8 @@ _get_util_macos() {
     total_rate=$(plugin_data_get "total_rate")
     total_rate="${total_rate:-0}"
 
-    local pseudo_util=$(( total_rate / 10485760 ))
-    (( pseudo_util > 100 )) && pseudo_util=100
+    local pseudo_util=$((total_rate / 10485760))
+    ((pseudo_util > 100)) && pseudo_util=100
     printf '%d' "$pseudo_util"
 }
 
@@ -168,22 +171,25 @@ _get_util_macos() {
 
 _get_throughput_linux() {
     local now=$EPOCHSECONDS
-    
+
     # Read from /proc/diskstats (sectors read/written)
     # Format: major minor name reads_completed reads_merged sectors_read ms_reading writes_completed writes_merged sectors_written ...
     local stats
     stats=$(cat /proc/diskstats 2>/dev/null)
-    
-    [[ -z "$stats" ]] && { printf '0|0'; return 1; }
-    
+
+    [[ -z "$stats" ]] && {
+        printf '0|0'
+        return 1
+    }
+
     # Sum sectors from all real disks (sd*, nvme*, vd*)
     local total_read_sectors=0
     local total_write_sectors=0
-    
+
     while IFS= read -r line; do
         local name read_sectors write_sectors
         name=$(echo "$line" | awk '{print $3}')
-        
+
         # Only count main disks, not partitions (sda not sda1, nvme0n1 not nvme0n1p1)
         if [[ "$name" =~ ^(sd[a-z]|nvme[0-9]+n[0-9]+|vd[a-z])$ ]]; then
             read_sectors=$(echo "$line" | awk '{print $6}')
@@ -191,34 +197,34 @@ _get_throughput_linux() {
             total_read_sectors=$((total_read_sectors + ${read_sectors:-0}))
             total_write_sectors=$((total_write_sectors + ${write_sectors:-0}))
         fi
-    done <<< "$stats"
-    
+    done <<<"$stats"
+
     # Convert sectors to bytes (sector = 512 bytes)
     local total_read_bytes=$((total_read_sectors * 512))
     local total_write_bytes=$((total_write_sectors * 512))
-    
+
     # Read previous state from cache
     local prev_state prev_time=0 prev_read=0 prev_write=0
     if prev_state=$(cache_get "iops_state" 86400); then
-        IFS='|' read -r prev_time prev_read prev_write <<< "$prev_state"
+        IFS='|' read -r prev_time prev_read prev_write <<<"$prev_state"
     fi
-    
+
     # Save current state to cache
     cache_set "iops_state" "${now}|${total_read_bytes}|${total_write_bytes}"
-    
+
     # Calculate delta (bytes per second)
     local time_delta=$((now - prev_time))
-    if (( time_delta > 0 && prev_time > 0 )); then
+    if ((time_delta > 0 && prev_time > 0)); then
         local read_delta=$((total_read_bytes - prev_read))
         local write_delta=$((total_write_bytes - prev_write))
-        
+
         # Avoid negative values
-        (( read_delta < 0 )) && read_delta=0
-        (( write_delta < 0 )) && write_delta=0
-        
+        ((read_delta < 0)) && read_delta=0
+        ((write_delta < 0)) && write_delta=0
+
         local read_rate=$((read_delta / time_delta))
         local write_rate=$((write_delta / time_delta))
-        
+
         printf '%d|%d' "$read_rate" "$write_rate"
     else
         printf '0|0'
@@ -226,17 +232,17 @@ _get_throughput_linux() {
 }
 
 _get_util_linux() {
-    local now=${EPOCHSECONDS:-$(date +%s)}
+    local now=${EPOCHSECONDS}
 
     local total_io_ms=0
     while IFS= read -r line; do
         local fields
-        read -ra fields <<< "$line"
+        read -ra fields <<<"$line"
         local dev="${fields[2]}"
         [[ "$dev" =~ ^(loop|dm-|sr) ]] && continue
         local io_ms="${fields[12]:-0}"
         total_io_ms=$((total_io_ms + io_ms))
-    done < /proc/diskstats 2>/dev/null
+    done </proc/diskstats 2>/dev/null
 
     local prev_io_ms prev_time
     prev_io_ms=$(cache_get "iops_util_io_ms" 86400)
@@ -245,16 +251,19 @@ _get_util_linux() {
     cache_set "iops_util_io_ms" "$total_io_ms"
     cache_set "iops_util_time" "$now"
 
-    [[ -z "$prev_io_ms" || -z "$prev_time" ]] && { printf '0'; return; }
+    [[ -z "$prev_io_ms" || -z "$prev_time" ]] && {
+        printf '0'
+        return
+    }
 
     local delta_io=$((total_io_ms - prev_io_ms))
-    local delta_time=$(( (now - prev_time) * 1000 ))
+    local delta_time=$(((now - prev_time) * 1000))
 
-    (( delta_io < 0 )) && delta_io=0
+    ((delta_io < 0)) && delta_io=0
 
-    if (( delta_time > 0 )); then
-        local util=$(( delta_io * 100 / delta_time ))
-        (( util > 100 )) && util=100
+    if ((delta_time > 0)); then
+        local util=$((delta_io * 100 / delta_time))
+        ((util > 100)) && util=100
         printf '%d' "$util"
     else
         printf '0'
@@ -278,7 +287,7 @@ plugin_collect() {
     data=$(_get_throughput)
 
     local read_rate write_rate
-    IFS='|' read -r read_rate write_rate <<< "$data"
+    IFS='|' read -r read_rate write_rate <<<"$data"
 
     read_rate="${read_rate:-0}"
     write_rate="${write_rate:-0}"
@@ -314,4 +323,3 @@ plugin_render() {
 
     [[ ${#parts[@]} -gt 0 ]] && join_with_separator "$separator" "${parts[@]}"
 }
-
