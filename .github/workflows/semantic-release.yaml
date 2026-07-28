@@ -33,17 +33,16 @@ jobs:
       - name: Install Homebrew Bash 5.2+
         run: |
           # macOS Apple /bin/bash is 3.2.57; PowerKit requires 5.2+.
-          # Install via brew and prepend to PATH so subsequent steps use it.
-          if ! [[ "/opt/homebrew/bin/bash" == */bash5* ]] && ! /opt/homebrew/bin/bash -c '(( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2) ))'; then
-            brew install bash
-          fi
-          /opt/homebrew/bin/bash --version | head -1
-          echo "/opt/homebrew/bin" >>"$GITHUB_PATH"
+          brew list --versions bash >/dev/null || brew install bash
+          homebrew_bash="$(brew --prefix bash)/bin/bash"
+          "$homebrew_bash" -c '(( BASH_VERSINFO[0] > 5 || (BASH_VERSINFO[0] == 5 && BASH_VERSINFO[1] >= 2) ))'
+          "$homebrew_bash" --version | head -1
+          echo "HOMEBREW_BASH=$homebrew_bash" >>"$GITHUB_ENV"
 
       - name: Validate Build Environment
         run: |
           echo "=== Build Environment ==="
-          echo "Shell: $BASH_VERSION (${BASH:-/bin/bash})"
+          echo "Build shell: $($HOMEBREW_BASH --version | head -1)"
           echo "OS: $(sw_vers -productName) $(sw_vers -productVersion)"
           echo "Architecture: $(uname -m)"
           echo "Xcode: $(xcodebuild -version | head -n 1)"
@@ -53,7 +52,7 @@ jobs:
         env:
           BUILD_SUFFIX: ${{ matrix.suffix }}
         run: |
-          NEXT_RELEASE_VERSION=build sh scripts/build.sh $BUILD_SUFFIX
+          NEXT_RELEASE_VERSION=build "$HOMEBREW_BASH" scripts/build.sh "$BUILD_SUFFIX"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
