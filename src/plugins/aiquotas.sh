@@ -28,7 +28,7 @@
 #   * _metrics.sh — _aiquotas_metrics_document (canonical jq document builder)
 #   * _render.sh  — record→text render helpers (compact / detailed)
 #   * _health.sh  — _aiquotas_worst_health / _aiquotas_threshold_health
-#   * <provider>.sh — per-adapter files (anthropic, openai, deepseek, minimax, xiaomi_mimo)
+#   * <provider>.sh — per-adapter files (anthropic, openai, deepseek, minimax, zai, kimicode, xiaomi_mimo)
 #
 # HTTP collection uses _aiquotas_http_get, a single seam that can be intercepted
 # by an HTTP shim in tests/helpers/shims/curl (Todo 2) without modifying this file.
