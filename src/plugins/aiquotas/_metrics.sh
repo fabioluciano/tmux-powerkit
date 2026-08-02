@@ -223,6 +223,72 @@ _aiquotas_metrics_document() {
                 end
             end;
 
+        def emit_kimicode:
+            # Kimi Code / Moonshot AI official envelope:
+            # {usage:{limit,used,remaining,resetTime},
+            #  limits:[{window:{duration,timeUnit},
+            #           detail:{limit,remaining,resetTime}}]}
+            #
+            # usage.* are STRINGS (tonumber required). Emit a single quota
+            # record for the primary window and surface the secondary
+            # (limits[0].detail) as dimensions so the renderer can pick it up
+            # without a second record. Mirrors the emit_zai compact pattern.
+            if (has("usage") | not) or ((.usage | type) != "object")
+            then error("unknown schema")
+            else
+                ((.usage.limit      // "" | tonumber? // null) as $limit |
+                 (.usage.used       // "" | tonumber? // null) as $used |
+                 (.usage.remaining  // "" | tonumber? // null) as $remaining |
+                 (.usage.resetTime  // null) as $reset |
+                 (.limits[0].detail.remaining // "" | tonumber? // null) as $secondary_remaining |
+                 (.limits[0].window.duration // null) as $duration |
+                 (.limits[0].window.timeUnit // null) as $time_unit |
+                 # Resolve the secondary window label. Kimi uses 5h (300m) and
+                 # weekly (10080m) variants; fall back to the raw duration
+                 # when neither matches so unknown windows still render.
+                 (if $duration == null then null
+                  elif ($duration == 300) and ($time_unit == "TIME_UNIT_MINUTE") then "5h"
+                  elif ($duration == 10080) and ($time_unit == "TIME_UNIT_MINUTE") then "weekly"
+                  else "window_\($duration)"
+                  end) as $secondary_label |
+                 # usage.remaining is a percent (0-100); the secondary
+                 # window also reports percent in detail.remaining.
+                 ($remaining // null) as $primary_remaining_pct |
+                 ($secondary_remaining // null) as $secondary_remaining_pct |
+                 if $limit == null or $used == null or $primary_remaining_pct == null
+                 then error("unknown schema")
+                 else
+                     # Clamp value (used%) into [0, 100].
+                     (if $used > 100 then 100
+                      elif $used < 0 then 0
+                      else $used end) as $value_pct |
+                     (100 - $value_pct) as $remaining_pct |
+                     record(
+                         "quota";
+                         $value_pct;
+                         100;
+                         $remaining_pct;
+                         "percent";
+                         null;
+                         null;
+                         null;
+                         $reset;
+                         "official";
+                         ({resource: "coding_plan"} +
+                          (if $secondary_label != null
+                           then {line_item: $secondary_label}
+                           else {} end) +
+                          {interval_remaining_percent: $primary_remaining_pct} +
+                          (if $secondary_remaining_pct != null
+                           then {weekly_remaining_percent:
+                                   (if $secondary_label == "weekly"
+                                    then null
+                                    else $secondary_remaining_pct end)}
+                           else {} end))
+                     )
+                 end)
+            end;
+
         def emit_zai:
             # Z.ai quota envelope. Unwrap data.data.limits ?? data.limits.
             (.data.limits // .limits // empty) as $limits |
@@ -303,6 +369,13 @@ _aiquotas_metrics_document() {
         elif ($provider == "zai") and ($schema == "")
         then
             (try emit_zai catch null) as $rec |
+            if $rec == null
+            then doc([]; "official"; "unsupported"; "unknown schema")
+            else doc([ $rec ]; "official"; "ok"; null)
+            end
+        elif ($provider == "kimicode") and ($schema == "")
+        then
+            (try emit_kimicode catch null) as $rec |
             if $rec == null
             then doc([]; "official"; "unsupported"; "unknown schema")
             else doc([ $rec ]; "official"; "ok"; null)

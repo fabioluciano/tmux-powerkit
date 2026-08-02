@@ -1,0 +1,13 @@
+# Kimi Code (Moonshot AI) fixtures manifest.
+#
+# Format per line (tab-separated):
+#   STATUS <TAB> BODY_FILE <TAB> EXPECTED_URL_REGEX
+#
+# Lines starting with "#" are ignored. The shim consumes the Nth
+# non-comment line on the Nth invocation; on URL mismatch it FAIL HARD
+# (exit 70) to prevent accidental network access.
+#
+# Dedicated manifest so existing fixtures stay stable.
+
+# Kimi Code: happy path — primary window 61% used, secondary 5h window intact
+200	tests/fixtures/aiquotas/kimicode-usage.json	^https://api\.kimi\.com/coding/v1/usages$

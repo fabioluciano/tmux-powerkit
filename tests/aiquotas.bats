@@ -1423,6 +1423,146 @@ _setup_aiq_shim_zai() {
     assert_success
 }
 
+# ---------- Kimi Code (Moonshot AI) -----------------------------------------
+
+_setup_aiq_shim_kimicode() {
+    export AIQUOTAS_HTTP_SCENARIO="$POWERKIT_ROOT/tests/fixtures/aiquotas/http/kimicode-providers.tsv"
+    export AIQUOTAS_HTTP_STATE
+    AIQUOTAS_HTTP_STATE="$(mktemp -d -t aiquotas_http_kimicode.XXXXXX)"
+    : >"$AIQUOTAS_HTTP_STATE/counter"
+    export PATH="$POWERKIT_ROOT/tests/helpers/shims:$PATH"
+}
+
+@test "kimicode metrics: usage envelope -> quota record value=used%, limit=100, remaining=100-used%" {
+    run _aiquotas_metrics_document "kimicode" \
+        '{"usage":{"limit":"100","used":"61","remaining":"39","resetTime":"2026-08-06T14:47:32Z"},
+          "limits":[{"window":{"duration":300,"timeUnit":"TIME_UNIT_MINUTE"},
+                     "detail":{"limit":"100","remaining":"100","resetTime":"2026-08-02T09:47:32Z"}}]}'
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].metric_kind == "quota") and
+        (.records[0].unit == "percent") and
+        (.records[0].value == 61) and
+        (.records[0].limit == 100) and
+        (.records[0].remaining == 39) and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.interval_remaining_percent == 39) and
+        (.records[0].dimensions.weekly_remaining_percent == 100) and
+        (.records[0].dimensions.resource == "coding_plan") and
+        (.records[0].reset_at == "2026-08-06T14:47:32Z") and
+        (.provider_outcomes[0].provider == "kimicode") and
+        (.provider_outcomes[0].status == "ok")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "kimicode metrics: weekly secondary window labels line_item as weekly, not 5h" {
+    run _aiquotas_metrics_document "kimicode" \
+        '{"usage":{"limit":"100","used":"50","remaining":"50","resetTime":"2026-08-09T00:00:00Z"},
+          "limits":[{"window":{"duration":10080,"timeUnit":"TIME_UNIT_MINUTE"},
+                     "detail":{"limit":"100","remaining":"100","resetTime":"2026-08-09T00:00:00Z"}}]}'
+    assert_success
+    run jq -e '
+        (.records[0].dimensions.line_item == "weekly") and
+        # weekly_remaining_percent is intentionally null when secondary IS the weekly
+        (.records[0].dimensions.weekly_remaining_percent == null)
+    ' <<<"$output"
+    assert_success
+}
+
+@test "kimicode metrics: missing usage -> unsupported/unknown schema, no records" {
+    run _aiquotas_metrics_document "kimicode" '{"foo":"bar","limits":[]}'
+    assert_success
+    run jq -e '
+        (.records | length == 0) and
+        (.provider_outcomes[0].provider == "kimicode") and
+        (.provider_outcomes[0].status == "unsupported")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "kimicode metrics: clamps negative and >100 used values to [0,100]" {
+    # used=150 (out-of-range) clamps to 100; used=-5 clamps to 0.
+    run _aiquotas_metrics_document "kimicode" \
+        '{"usage":{"limit":"100","used":"150","remaining":"-50","resetTime":null}}'
+    assert_success
+    run jq -e '
+        (.records[0].value == 100) and
+        (.records[0].remaining == 0)
+    ' <<<"$output"
+    assert_success
+}
+
+@test "_aiquotas_collect_kimicode is defined as a callable function" {
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider kimicode
+        declare -F _aiquotas_collect_kimicode >/dev/null && echo DEFINED || echo MISSING
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "DEFINED" ]]
+}
+
+@test "Kimi Code adapter: missing KIMI_CODE_API_KEY returns status=unconfigured WITHOUT calling curl" {
+    run bash -c '
+        unset KIMI_CODE_API_KEY
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider kimicode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        _aiquotas_collect_kimicode
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    run jq -e '
+        (.schema_version == 1) and
+        (.records | length == 0) and
+        (.provider_outcomes[0].provider == "kimicode") and
+        (.provider_outcomes[0].source == "official") and
+        (.provider_outcomes[0].status == "unconfigured")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "Kimi Code adapter: happy path -> one quota record with primary+secondary dimensions" {
+    _setup_aiq_shim_kimicode
+    run bash -c '
+        export AIQUOTAS_HTTP_SCENARIO="$1/tests/fixtures/aiquotas/http/kimicode-providers.tsv"
+        export AIQUOTAS_HTTP_STATE
+        AIQUOTAS_HTTP_STATE="$(mktemp -d -t aqkm.XXXXXX)"
+        : >"$AIQUOTAS_HTTP_STATE/counter"
+        export KIMI_CODE_API_KEY="sk-kimi-dummy-fixture-only-0000000000000000"
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider kimicode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        _aiquotas_collect_kimicode
+    ' _ "$POWERKIT_ROOT"
+    _teardown_aiq_shim
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].metric_kind == "quota") and
+        (.records[0].unit == "percent") and
+        (.records[0].value == 61) and
+        (.records[0].remaining == 39) and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.interval_remaining_percent == 39) and
+        (.records[0].dimensions.weekly_remaining_percent == 100) and
+        (.records[0].dimensions.resource == "coding_plan") and
+        (.provider_outcomes[0].status == "ok")
+    ' <<<"$output"
+    assert_success
+}
+
 # ---------- HTTP seam discipline (no direct curl outside the seam) ----------------
 
 @test "Todo 3 adapters do not call curl directly outside _aiquotas_http_get_seam" {
