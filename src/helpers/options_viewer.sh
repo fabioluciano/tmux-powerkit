@@ -76,6 +76,7 @@ declare -a THEME_OPTIONS=(
     "@powerkit_zoomed_window_icon||icon|Zoomed pane indicator"
     "@powerkit_pane_synchronized_icon||icon|Synchronized panes indicator"
     "@powerkit_window_default_icon||icon|Default window icon"
+    "@powerkit_window_command_icons||string|Per-command icon overrides (cmd=icon,...)"
     "@powerkit_active_window_title|#W|tmux format|Active window title format"
     "@powerkit_inactive_window_title|#W|tmux format|Inactive window title format"
     "@powerkit_window_index_style|text|text,numeric,box,box_outline,box_multiple,box_multiple_outline,circle,circle_outline|Window index display style"
