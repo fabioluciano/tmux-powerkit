@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.0.2](https://github.com/fabioluciano/tmux-powerkit/compare/v7.0.1...v7.0.2) (2026-08-10)
+
+### Bug Fixes
+
+* **renderer:** derive window boundaries from tmux flags ([#253](https://github.com/fabioluciano/tmux-powerkit/issues/253)) ([c9dc163](https://github.com/fabioluciano/tmux-powerkit/commit/c9dc1636ac26691f0585ec2e319cf5b7064fdc26))
+
 ## [7.0.1](https://github.com/fabioluciano/tmux-powerkit/compare/v7.0.0...v7.0.1) (2026-08-02)
 
 ### Bug Fixes
