@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.0.2...v7.1.0) (2026-08-17)
+
+### Features
+
+* **packages:** add multi-backend support with 17 package managers ([#256](https://github.com/fabioluciano/tmux-powerkit/issues/256)) ([114428e](https://github.com/fabioluciano/tmux-powerkit/commit/114428e066ab480c50255452b52e1456ec3e5cf9))
+
 ## [7.0.2](https://github.com/fabioluciano/tmux-powerkit/compare/v7.0.1...v7.0.2) (2026-08-10)
 
 ### Bug Fixes
