@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.1.0...v7.2.0) (2026-08-28)
+
+### Features
+
+* **theme:** add last-horizon, lumon, lupine, retro82 and solitude themes ([#258](https://github.com/fabioluciano/tmux-powerkit/issues/258)) ([fa0519f](https://github.com/fabioluciano/tmux-powerkit/commit/fa0519f77104c30768e76774ee4109acd97bdec7))
+
 ## [7.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.0.2...v7.1.0) (2026-08-17)
 
 ### Features
