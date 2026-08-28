@@ -10,7 +10,7 @@
 
 ## The Ultimate tmux Status Bar Framework
 
-48 Plugins • 43 Themes • Infinite Possibilities
+48 Plugins • 48 Themes • Infinite Possibilities
 
 [![Version](https://img.shields.io/github/v/release/fabioluciano/tmux-powerkit?style=for-the-badge&logo=github&logoColor=white)](https://github.com/fabioluciano/tmux-powerkit/releases)
 [![License](https://img.shields.io/github/license/fabioluciano/tmux-powerkit?style=for-the-badge)](LICENSE)
@@ -33,7 +33,7 @@ Transform your tmux status bar into a powerful, beautiful, and intelligent comma
 
 ### 🎨 **Beautiful by Default**
 
-Choose from **43 carefully crafted themes** with **71 variants** including Catppuccin, Dracula, Monokai, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
+Choose from **48 carefully crafted themes** with **75 variants** including Catppuccin, Dracula, Monokai, Nord, Tokyo Night, and more. Every theme supports automatic color variants (light/lighter/dark/darker) for perfect contrast.
 
 ### ⚡ **Blazingly Fast**
 
@@ -168,84 +168,84 @@ set -g @powerkit_transparent "true"
 
 Monitor every aspect of your system in real-time:
 
-| Plugin | Description | Highlights |
-| -------- | ------------- | ----------- |
-| `battery` | Battery level with charge state | Shows charging status, time remaining, health indicators |
-| `cpu` | CPU usage with per-core support | Thresholds, multi-core detection, platform-specific |
-| `memory` | RAM usage and availability | Multiple formats (percentage, usage, available) |
-| `swap` | Swap memory usage | Cross-platform, threshold alerts, multiple display formats |
-| `disk` | Disk usage by mount point | Configurable thresholds, multiple drives |
-| `loadavg` | System load average | 1/5/15 minute averages, per-core normalization |
-| `temperature` | CPU temperature | macOS (osx-cpu-temp), Linux (hwmon) |
-| `fan` | Fan speed monitoring | Dell SMM, ThinkPad, generic hwmon, macOS |
-| `gpu` | GPU utilization | NVIDIA, AMD, Intel, macOS support |
-| `iops` | Disk I/O operations | Read/write operations per second |
-| `brightness` | Screen brightness | Linux only (sysfs, brightnessctl, light, xbacklight) |
-| `uptime` | System uptime | Human-readable format |
-| `hostname` | System hostname | Color-coded by environment |
-| `topproc` | Top CPU process | Process name and usage %, threshold alerts |
-| `sysstatus` | Aggregated system health badge | Combined OK/WARN/CRIT across CPU, memory, disk, temperature |
+| Plugin        | Description                     | Highlights                                                  |
+| ------------- | ------------------------------- | ----------------------------------------------------------- |
+| `battery`     | Battery level with charge state | Shows charging status, time remaining, health indicators    |
+| `cpu`         | CPU usage with per-core support | Thresholds, multi-core detection, platform-specific         |
+| `memory`      | RAM usage and availability      | Multiple formats (percentage, usage, available)             |
+| `swap`        | Swap memory usage               | Cross-platform, threshold alerts, multiple display formats  |
+| `disk`        | Disk usage by mount point       | Configurable thresholds, multiple drives                    |
+| `loadavg`     | System load average             | 1/5/15 minute averages, per-core normalization              |
+| `temperature` | CPU temperature                 | macOS (osx-cpu-temp), Linux (hwmon)                         |
+| `fan`         | Fan speed monitoring            | Dell SMM, ThinkPad, generic hwmon, macOS                    |
+| `gpu`         | GPU utilization                 | NVIDIA, AMD, Intel, macOS support                           |
+| `iops`        | Disk I/O operations             | Read/write operations per second                            |
+| `brightness`  | Screen brightness               | Linux only (sysfs, brightnessctl, light, xbacklight)        |
+| `uptime`      | System uptime                   | Human-readable format                                       |
+| `hostname`    | System hostname                 | Color-coded by environment                                  |
+| `topproc`     | Top CPU process                 | Process name and usage %, threshold alerts                  |
+| `sysstatus`   | Aggregated system health badge  | Combined OK/WARN/CRIT across CPU, memory, disk, temperature |
 
 ### 🌐 Network (8 plugins)
 
 Stay connected and informed:
 
-| Plugin | Description | Features |
-| -------- | ------------- | ---------- |
-| `netspeed` | Upload/download speed | Real-time bandwidth monitoring |
-| `wifi` | WiFi SSID + signal strength | Signal quality indicators |
-| `vpn` | VPN connection status | Detects active VPN tunnels |
-| `ping` | Network latency | Configurable host, threshold alerts |
-| `external_ip` | Public IP address | Cached with configurable TTL |
-| `ssh` | SSH session indicator | Shows when connected via SSH |
-| `weather` | Weather from wttr.in | Location-based, customizable format |
+| Plugin         | Description                  | Features                                        |
+| -------------- | ---------------------------- | ----------------------------------------------- |
+| `netspeed`     | Upload/download speed        | Real-time bandwidth monitoring                  |
+| `wifi`         | WiFi SSID + signal strength  | Signal quality indicators                       |
+| `vpn`          | VPN connection status        | Detects active VPN tunnels                      |
+| `ping`         | Network latency              | Configurable host, threshold alerts             |
+| `external_ip`  | Public IP address            | Cached with configurable TTL                    |
+| `ssh`          | SSH session indicator        | Shows when connected via SSH                    |
+| `weather`      | Weather from wttr.in         | Location-based, customizable format             |
 | `connectivity` | Internet connectivity status | Online/offline indicator, configurable endpoint |
 
 ### 🎵 Media (6 plugins)
 
 Control your media experience:
 
-| Plugin | Description | Platform |
-| -------- | ------------- | ---------- |
-| `volume` | System volume level | macOS only |
-| `nowplaying` | Current music track | Music.app, Spotify (macOS) |
-| `audiodevices` | Active audio output device | macOS (SwitchAudioSource) |
-| `camera` | Camera usage indicator | macOS (lsof) |
-| `microphone` | Microphone mute status | macOS (osascript) |
-| `bluetooth` | Bluetooth status + devices | macOS (blueutil), Linux (bluetoothctl) |
+| Plugin         | Description                | Platform                               |
+| -------------- | -------------------------- | -------------------------------------- |
+| `volume`       | System volume level        | macOS only                             |
+| `nowplaying`   | Current music track        | Music.app, Spotify (macOS)             |
+| `audiodevices` | Active audio output device | macOS (SwitchAudioSource)              |
+| `camera`       | Camera usage indicator     | macOS (lsof)                           |
+| `microphone`   | Microphone mute status     | macOS (osascript)                      |
+| `bluetooth`    | Bluetooth status + devices | macOS (blueutil), Linux (bluetoothctl) |
 
 ### 💻 Development (13 plugins)
 
 Supercharge your development workflow:
 
-| Plugin | Description | Features |
-| -------- | ------------- | ---------- |
-| `git` | Git branch + status | Modified files, branch info, repo state |
-| `github` | GitHub notifications | PRs, issues, notifications (gh CLI) |
-| `gitlab` | GitLab merge requests | MRs, todos (glab CLI) |
-| `bitbucket` | Bitbucket pull requests | PR count via API |
-| `jira` | Jira assigned issues | Issue count via API |
-| `kubernetes` | K8s context + namespace | Current context and namespace |
-| `terraform` | Terraform workspace | Active workspace indicator |
-| `cloud` | Cloud provider profile | AWS/Azure/GCP active profile |
-| `cloudstatus` | Cloud service status | Service health monitoring |
-| `yadm` | yadm dotfile status | Modified/untracked dotfiles, ahead/behind counts |
-| `chezmoi` | chezmoi dotfile status | Pending dotfile changes |
-| `packages` | Pending system updates | brew, apt, yum, pacman support |
-| `docker` | Docker or Podman containers | Running, stopped, and unhealthy container counts |
+| Plugin        | Description                 | Features                                         |
+| ------------- | --------------------------- | ------------------------------------------------ |
+| `git`         | Git branch + status         | Modified files, branch info, repo state          |
+| `github`      | GitHub notifications        | PRs, issues, notifications (gh CLI)              |
+| `gitlab`      | GitLab merge requests       | MRs, todos (glab CLI)                            |
+| `bitbucket`   | Bitbucket pull requests     | PR count via API                                 |
+| `jira`        | Jira assigned issues        | Issue count via API                              |
+| `kubernetes`  | K8s context + namespace     | Current context and namespace                    |
+| `terraform`   | Terraform workspace         | Active workspace indicator                       |
+| `cloud`       | Cloud provider profile      | AWS/Azure/GCP active profile                     |
+| `cloudstatus` | Cloud service status        | Service health monitoring                        |
+| `yadm`        | yadm dotfile status         | Modified/untracked dotfiles, ahead/behind counts |
+| `chezmoi`     | chezmoi dotfile status      | Pending dotfile changes                          |
+| `packages`    | Pending system updates      | brew, apt, yum, pacman support                   |
+| `docker`      | Docker or Podman containers | Running, stopped, and unhealthy container counts |
 
 ### ⏰ Productivity (6 plugins)
 
 Boost your productivity:
 
-| Plugin | Description | Features |
-| -------- | ------------- | ---------- |
-| `datetime` | Date and time | 15 format presets, fully customizable |
-| `timezones` | Multiple timezones | Display multiple zones simultaneously |
-| `pomodoro` | Pomodoro timer | Work/break phases, keybindings |
-| `bitwarden` | Bitwarden vault status | Lock status, quick access |
-| `smartkey` | Custom environment variables | Display any env var or command output |
-| `appearance` | macOS appearance | Light/dark mode and theme switching |
+| Plugin       | Description                  | Features                              |
+| ------------ | ---------------------------- | ------------------------------------- |
+| `datetime`   | Date and time                | 15 format presets, fully customizable |
+| `timezones`  | Multiple timezones           | Display multiple zones simultaneously |
+| `pomodoro`   | Pomodoro timer               | Work/break phases, keybindings        |
+| `bitwarden`  | Bitwarden vault status       | Lock status, quick access             |
+| `smartkey`   | Custom environment variables | Display any env var or command output |
+| `appearance` | macOS appearance             | Light/dark mode and theme switching   |
 
 ### 💰 Financial (2 plugins)
 
@@ -260,7 +260,7 @@ Track your investments:
 
 ## 🎨 Themes
 
-PowerKit comes with **43 beautiful themes** and **71 variants**, each carefully designed for optimal readability and aesthetics
+PowerKit comes with **48 beautiful themes** and **75 variants**, each carefully designed for optimal readability and aesthetics
 
 ### Popular Themes
 
@@ -320,17 +320,17 @@ set -g @powerkit_theme_variant "dark"
 
 Choose from **9 beautiful separator styles** to customize your status bar appearance:
 
-| Style          | Right | Left  | Unicode   |
-| -------------- | ----- | ----- | --------- |
-| **normal**     |       |       | E0B0/E0B2 |
-| **rounded**    |       |       | E0B4/E0B6 |
-| **slant**      |       |       | E0B8/E0BA |
-| **slantup**    |       |       | E0BC/E0BE |
-| **trapezoid**  |       |       | E0C8/E0CA |
-| **flame**      |       |       | E0C0/E0C2 |
-| **pixel**      |       |       | E0C4/E0C6 |
-| **honeycomb**  |       |       | E0CC/E0CD |
-| **none**       | -     | -     | -         |
+| Style         | Right | Left | Unicode   |
+| ------------- | ----- | ---- | --------- |
+| **normal**    |       |      | E0B0/E0B2 |
+| **rounded**   |       |      | E0B4/E0B6 |
+| **slant**     |       |      | E0B8/E0BA |
+| **slantup**   |       |      | E0BC/E0BE |
+| **trapezoid** |       |      | E0C8/E0CA |
+| **flame**     |       |      | E0C0/E0C2 |
+| **pixel**     |       |      | E0C4/E0C6 |
+| **honeycomb** |       |      | E0CC/E0CD |
+| **none**      | -     | -    | -         |
 
 ```bash
 # Configure separator style
@@ -670,17 +670,17 @@ The system automatically generates **6 color variants** (light/lighter/lightest/
 
 ## 📚 Complete Documentation
 
-| Resource | Description |
-| ---------- | ------------- |
-| [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation) | Detailed setup instructions |
-| [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start) | Get started in 5 minutes |
-| [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained |
-| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins) | Detailed docs for all available plugins |
-| [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes) | Preview all themes and variants |
-| [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins) | Create your own plugins |
-| [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes) | Create custom themes |
-| [**Architecture**](https://github.com/fabioluciano/tmux-powerkit/wiki/Architecture) | Understanding the contract system |
-| [**API Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/API-Reference) | Core APIs and utilities |
+| Resource                                                                                        | Description                             |
+| ----------------------------------------------------------------------------------------------- | --------------------------------------- |
+| [**Installation Guide**](https://github.com/fabioluciano/tmux-powerkit/wiki/Installation)       | Detailed setup instructions             |
+| [**Quick Start**](https://github.com/fabioluciano/tmux-powerkit/wiki/Quick-Start)               | Get started in 5 minutes                |
+| [**Configuration Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/Configuration) | All configuration options explained     |
+| [**Plugin Documentation**](https://github.com/fabioluciano/tmux-powerkit/wiki/Home#plugins)     | Detailed docs for all available plugins |
+| [**Theme Gallery**](https://github.com/fabioluciano/tmux-powerkit/wiki/Themes)                  | Preview all themes and variants         |
+| [**Developing Plugins**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingPlugins)  | Create your own plugins                 |
+| [**Developing Themes**](https://github.com/fabioluciano/tmux-powerkit/wiki/DevelopingThemes)    | Create custom themes                    |
+| [**Architecture**](https://github.com/fabioluciano/tmux-powerkit/wiki/Architecture)             | Understanding the contract system       |
+| [**API Reference**](https://github.com/fabioluciano/tmux-powerkit/wiki/API-Reference)           | Core APIs and utilities                 |
 
 ### 📋 Complete Options Reference
 
@@ -707,10 +707,10 @@ Use this file as a reference or copy the options you need to your `~/.tmux.conf`
 
 ### Bash Version Features Used
 
-| Version | Features Used |
-| --------- | -------------- |
-| 5.0+ | `$EPOCHSECONDS`, `$EPOCHREALTIME`, `${var,,}`, `${var^^}` |
-| 5.1+ | `assoc_expand_once` (performance optimization) |
+| Version | Features Used                                             |
+| ------- | --------------------------------------------------------- |
+| 5.0+    | `$EPOCHSECONDS`, `$EPOCHREALTIME`, `${var,,}`, `${var^^}` |
+| 5.1+    | `assoc_expand_once` (performance optimization)            |
 
 ### Platform Support
 
