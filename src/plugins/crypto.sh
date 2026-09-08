@@ -120,13 +120,11 @@ _format_price() {
 
     if [[ "$format" == "short" ]]; then
         # Convert to K, M notation
-        if [[ $(echo "$price >= 1000000" | bc -l 2>/dev/null || echo 0) -eq 1 ]]; then
-            awk -v p="$price" 'BEGIN { printf "%.1fM", p/1000000 }'
-        elif [[ $(echo "$price >= 1000" | bc -l 2>/dev/null || echo 0) -eq 1 ]]; then
-            awk -v p="$price" 'BEGIN { printf "%.1fk", p/1000 }'
-        else
-            awk -v p="$price" 'BEGIN { printf "%.0f", p }'
-        fi
+        awk -v p="$price" 'BEGIN {
+            if (p >= 1000000) printf "%.1fM", p/1000000
+            else if (p >= 1000) printf "%.1fk", p/1000
+            else printf "%.0f", p
+        }'
     else
         # Full format with commas
         printf "%'.2f" "$price" 2>/dev/null || printf "%.2f" "$price"
