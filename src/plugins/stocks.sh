@@ -227,30 +227,21 @@ _format_change() {
     local d1="${frac_part:0:1}"
     d1="${d1:-0}"
 
-    # Determine direction from sign and magnitude using integer math.
-    # Treat |change| >= 0.05 as movement; below that is flat.
-    local int_cmp=0
-    if ((${#frac_part} == 0)); then
-        int_cmp=$((10#$int_part))
-    else
-        # Compare |change| to 0.05 using integer cents: 5 cents = 0.05
-        local cents=$((10#${int_part:-0} * 100 + 10#${frac_part:0:2}))
-        ((${#frac_part} < 2)) && cents=$((cents * 10))
-        ((${#frac_part} > 2)) && cents=$((cents / 10 ** (${#frac_part} - 2)))
-        int_cmp=$cents
-    fi
+    # Determine direction from sign and magnitude using integer cents:
+    # 5 cents = 0.05% threshold; below that is flat.
+    local f2="${frac_part:0:2}"
+    [[ ${#f2} -eq 1 ]] && f2="${f2}0"
+    [[ ${#f2} -eq 0 ]] && f2="00"
+    local cents=$(( 10#${int_part:-0} * 100 + 10#$f2 ))
 
-    if [[ -n "$sign" ]]; then
-        # Original was negative; display as ↓ with magnitude (no sign prefix).
-        indicator="↓"
-        change="${int_part}.${d1}"
-    elif ((int_cmp > 5)); then
-        indicator="↑"
-        change="${int_part}.${d1}"
-    else
+    if (( cents <= 5 )); then
         indicator="→"
-        change="${int_part}.${d1}"
+    elif [[ -n "$sign" ]]; then
+        indicator="↓"
+    else
+        indicator="↑"
     fi
+    change="${int_part}.${d1}"
 
     printf '%s%s%%' "$indicator" "$change"
 }
