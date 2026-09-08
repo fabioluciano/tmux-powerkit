@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.3.0...v7.4.0) (2026-09-08)
+
+### Features
+
+* performance improvements ([#259](https://github.com/fabioluciano/tmux-powerkit/issues/259)) ([0680000](https://github.com/fabioluciano/tmux-powerkit/commit/06800003be80ad9831b7060c69102a6cfa4eb887))
+
 ## [7.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.2.0...v7.3.0) (2026-09-08)
 
 ### Features
