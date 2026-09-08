@@ -184,7 +184,11 @@ _collect_temp_health() {
         # Linux: /sys/class/thermal/thermal_zone0/temp (millidegrees)
         if [[ -f /sys/class/thermal/thermal_zone0/temp ]]; then
             temp_c=$(cat /sys/class/thermal/thermal_zone0/temp 2>/dev/null)
-            temp_c=$((temp_c / 1000))
+            if [[ "$temp_c" =~ ^[0-9]+$ ]]; then
+                temp_c=$((temp_c / 1000))
+            else
+                temp_c=""
+            fi
         fi
     fi
 
