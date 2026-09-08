@@ -195,12 +195,16 @@ load_powerkit_theme() {
         variant="$_CURRENT_VARIANT"
     fi
 
-    # Tmux options override cache
-    local opt_theme opt_variant
+    local opt_theme opt_variant custom_path
     opt_theme=$(get_tmux_option "@powerkit_theme" "")
     opt_variant=$(get_tmux_option "@powerkit_theme_variant" "")
+    custom_path=$(get_tmux_option "@powerkit_custom_theme_path" "")
 
-    if [[ -n "$opt_theme" ]]; then theme="$opt_theme"; fi
+    if [[ -n "$opt_theme" ]]; then
+        theme="$opt_theme"
+    elif [[ -n "$custom_path" ]]; then
+        theme="custom"
+    fi
     if [[ -n "$opt_variant" ]]; then variant="$opt_variant"; fi
 
     # Fall back to defaults if not set

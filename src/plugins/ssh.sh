@@ -67,6 +67,11 @@ _is_ssh_session() {
     # Check environment variables (fastest method)
     [[ -n "${SSH_CLIENT:-}" || -n "${SSH_TTY:-}" || -n "${SSH_CONNECTION:-}" ]] && return 0
 
+    # Also check tmux session/pane environment
+    local tmux_ssh
+    tmux_ssh=$(tmux show-environment SSH_CLIENT 2>/dev/null || tmux show-environment -g SSH_CLIENT 2>/dev/null)
+    [[ -n "$tmux_ssh" && "$tmux_ssh" != "-SSH_CLIENT" ]] && return 0
+
     # Check parent process
     local parent_cmd
     parent_cmd=$(ps -o comm= -p $PPID 2>/dev/null)
@@ -85,7 +90,7 @@ _is_ssh_in_pane() {
     local pid cmd
     for pid in $pane_pid $(pgrep -P "$pane_pid" 2>/dev/null); do
         cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
-        [[ "$cmd" == "ssh" ]] && return 0
+        [[ "$(basename "$cmd")" == "ssh" ]] && return 0
     done
 
     return 1
@@ -100,7 +105,7 @@ _get_ssh_destination() {
     local pid cmd args dest
     for pid in $pane_pid $(pgrep -P "$pane_pid" 2>/dev/null); do
         cmd=$(ps -p "$pid" -o comm= 2>/dev/null)
-        if [[ "$cmd" == "ssh" ]]; then
+        if [[ "$(basename "$cmd")" == "ssh" ]]; then
             args=$(ps -p "$pid" -o args= 2>/dev/null)
             # Extract destination: skip flags (-X, -p 22, etc) and get user@host or host
             # Parse args to find the destination (first non-flag argument after 'ssh')

@@ -197,37 +197,6 @@ format_bytes() {
 }
 
 # Internal: render scaled bytes with N decimals + suffix.
-# Pure bash for precision in {0,1,2}; uses int/frac decomposition.
-_format_byte_scaled() {
-    local bytes="$1" divisor="$2" precision="$3" suffix="$4"
-    local int_part=$((bytes / divisor))
-    local frac=$(((bytes % divisor) * 100 / divisor)) # 2-decimal residual
-
-    if ((precision == 0)); then
-        printf '%d%s' "$int_part" "$suffix"
-        return
-    fi
-
-    # Round frac to "precision" decimals.
-    local carry=0
-    if ((precision == 1)); then
-        # Look at the second decimal: round up if >=5.
-        local second=$(((bytes % divisor) * 100 % divisor * 10 / divisor))
-        ((second >= 5)) && carry=1
-        frac=$(((bytes % divisor) * 10 / divisor)) # 1-decimal frac
-    fi
-    int_part=$((int_part + carry))
-
-    printf '%d.' "$int_part"
-    if ((precision == 1)); then
-        printf '%d' "$frac"
-    elif ((precision == 2)); then
-        printf '%02d' "$frac"
-    fi
-    printf '%s' "$suffix"
-}
-
-# Internal: render scaled bytes with N decimals + suffix.
 # Usage: _format_byte_scaled <bytes> <divisor> <precision> <suffix>
 # Avoids multiplication overflow by scaling in chunks when bytes is huge.
 _format_byte_scaled() {

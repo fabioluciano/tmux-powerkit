@@ -90,11 +90,12 @@ plugin_get_health() { printf 'ok'; }
 
 plugin_get_context() {
     local level=$(plugin_data_get "level")
-    level="${level:-50}"
+    local num_level="${level%%[^0-9]*}"
+    num_level="${num_level:-50}"
 
-    if (( level <= 30 )); then
+    if (( num_level <= 30 )); then
         printf 'low'
-    elif (( level <= 70 )); then
+    elif (( num_level <= 70 )); then
         printf 'medium'
     else
         printf 'high'
@@ -103,11 +104,12 @@ plugin_get_context() {
 
 plugin_get_icon() {
     local level=$(plugin_data_get "level")
-    level="${level:-50}"
+    local num_level="${level%%[^0-9]*}"
+    num_level="${num_level:-50}"
 
-    if (( level <= 30 )); then
+    if (( num_level <= 30 )); then
         get_option "icon_low"
-    elif (( level <= 70 )); then
+    elif (( num_level <= 70 )); then
         get_option "icon_medium"
     else
         get_option "icon"
@@ -275,7 +277,11 @@ plugin_collect() {
         level=$(_get_brightness_linux)
     fi
 
-    [[ -n "$level" ]] && plugin_data_set "level" "$level"
+    if [[ -n "$level" ]]; then
+        plugin_data_set "level" "$level"
+    else
+        return 1
+    fi
 }
 
 # =============================================================================

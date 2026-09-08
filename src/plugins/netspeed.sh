@@ -46,9 +46,9 @@ plugin_declare_options() {
     declare_option "icon_download" "icon" $'\U000F01DA' "Icon for download"
     declare_option "icon_upload" "icon" $'\U000F0552' "Icon for upload"
 
-    # Thresholds (bytes/s, 0 = disabled)
-    declare_option "warning_threshold"  "number" "0" "Warning threshold (bytes/s, 0=disabled)"
-    declare_option "critical_threshold" "number" "0" "Critical threshold (bytes/s, 0=disabled)"
+    # Thresholds (KB/s, 0 = disabled)
+    declare_option "warning_threshold"  "number" "0" "Warning threshold (KB/s, 0=disabled)"
+    declare_option "critical_threshold" "number" "0" "Critical threshold (KB/s, 0=disabled)"
 
     # Cache
     declare_option "cache_ttl" "number" "2" "Cache duration in seconds"

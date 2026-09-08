@@ -85,9 +85,9 @@ plugin_get_health() {
     warning_mult="${warning_mult:-2}"
     critical_mult="${critical_mult:-4}"
 
-    # Calculate thresholds (multiplied by cores)
-    local warn_th=$((num_cores * warning_mult))
-    local crit_th=$((num_cores * critical_mult))
+    # Calculate thresholds (multiplied by cores, supporting float multipliers)
+    local warn_th crit_th
+    read -r warn_th crit_th < <(awk -v c="$num_cores" -v w="$warning_mult" -v k="$critical_mult" 'BEGIN { printf "%.2f %.2f", c * w, c * k }')
 
     # Higher is worse - use float version for load average
     evaluate_threshold_health_float "${load:-0}" "$warn_th" "$crit_th"
@@ -133,63 +133,34 @@ _format_loadavg() {
     esac
 }
 
-_get_loadavg_linux() {
-    local one five fifteen
-    
-    if [[ -r /proc/loadavg ]]; then
+_get_raw_loadavg() {
+    local one="" five="" fifteen=""
+    if is_macos; then
+        local sysctl_out
+        sysctl_out=$(sysctl -n vm.loadavg 2>/dev/null)
+        if [[ -n "$sysctl_out" ]]; then
+            read -r _ one five fifteen _ <<< "$sysctl_out"
+        else
+            local uptime_out
+            uptime_out=$(uptime 2>/dev/null)
+            if [[ "$uptime_out" =~ load\ averages?:\ ([0-9]+\.[0-9]+)\ ([0-9]+\.[0-9]+)\ ([0-9]+\.[0-9]+) ]]; then
+                one="${BASH_REMATCH[1]}"
+                five="${BASH_REMATCH[2]}"
+                fifteen="${BASH_REMATCH[3]}"
+            fi
+        fi
+    elif [[ -r /proc/loadavg ]]; then
         read -r one five fifteen _ < /proc/loadavg
     else
-        # Fallback: parse uptime output using bash regex (avoids forks)
         local uptime_out
         uptime_out=$(uptime 2>/dev/null)
-        # Extract load averages from "load average: 1.23, 4.56, 7.89"
         if [[ "$uptime_out" =~ load\ average:\ ([0-9]+\.[0-9]+),\ ([0-9]+\.[0-9]+),\ ([0-9]+\.[0-9]+) ]]; then
             one="${BASH_REMATCH[1]}"
             five="${BASH_REMATCH[2]}"
             fifteen="${BASH_REMATCH[3]}"
         fi
     fi
-    
-    _format_loadavg "$one" "$five" "$fifteen"
-}
-
-_get_loadavg_macos() {
-    local sysctl_out one five fifteen
-    sysctl_out=$(sysctl -n vm.loadavg 2>/dev/null)
-
-    if [[ -n "$sysctl_out" ]]; then
-        # Output format: "{ 1.23 4.56 7.89 }" - use bash to parse
-        read -r _ one five fifteen _ <<< "$sysctl_out"
-    else
-        # Fallback: parse uptime output using bash regex (avoids forks)
-        local uptime_out
-        uptime_out=$(uptime 2>/dev/null)
-        # Extract load averages from "load averages: 1.23 4.56 7.89"
-        if [[ "$uptime_out" =~ load\ averages?:\ ([0-9]+\.[0-9]+)\ ([0-9]+\.[0-9]+)\ ([0-9]+\.[0-9]+) ]]; then
-            one="${BASH_REMATCH[1]}"
-            five="${BASH_REMATCH[2]}"
-            fifteen="${BASH_REMATCH[3]}"
-        fi
-    fi
-    
-    _format_loadavg "$one" "$five" "$fifteen"
-}
-
-_get_load_value() {
-    # Get just the first load value for threshold comparison
-    local one five fifteen
-    
-    if is_macos; then
-        local sysctl_out
-        sysctl_out=$(sysctl -n vm.loadavg 2>/dev/null)
-        if [[ -n "$sysctl_out" ]]; then
-            read -r _ one five fifteen _ <<< "$sysctl_out"
-        fi
-    elif [[ -r /proc/loadavg ]]; then
-        read -r one five fifteen _ < /proc/loadavg
-    fi
-    
-    printf '%s' "${one:-0}"
+    printf '%s %s %s' "${one:-0}" "${five:-0}" "${fifteen:-0}"
 }
 
 # =============================================================================
@@ -197,26 +168,15 @@ _get_load_value() {
 # =============================================================================
 
 plugin_collect() {
-    local result num_cores load_value
-    
-    # Get CPU cores (cache for performance)
+    local num_cores load_raw one five fifteen result
     num_cores=$(_get_cpu_cores)
-    
-    # Get load average based on platform
-    if is_linux; then
-        result=$(_get_loadavg_linux)
-    elif is_macos; then
-        result=$(_get_loadavg_macos)
-    else
-        result="N/A"
-    fi
-    
-    # Get first load value for threshold comparison
-    load_value=$(_get_load_value)
-    
+    load_raw=$(_get_raw_loadavg)
+    read -r one five fifteen <<< "$load_raw"
+    result=$(_format_loadavg "$one" "$five" "$fifteen")
+
     plugin_data_set "result" "$result"
     plugin_data_set "num_cores" "$num_cores"
-    plugin_data_set "load_value" "$load_value"
+    plugin_data_set "load_value" "${one:-0}"
 }
 
 plugin_render() {

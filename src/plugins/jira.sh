@@ -208,10 +208,16 @@ _fetch_jira_breakdown() {
     jira_creds=$(mktemp "${TMPDIR:-/tmp}/powerkit-jira.XXXXXX") || return 1
     chmod 600 "$jira_creds"
     printf -- '-u %s:%s\n' "$email" "$token" >"$jira_creds"
-    trap 'rm -f "$jira_creds"' RETURN
+    trap 'rm -f "${jira_creds:-}" 2>/dev/null; trap - RETURN' RETURN
 
     # Paginate through results
+    local in_progress=0 todo=0 flagged=0
+    local next_token=""
+    local page_count=0
+    local max_pages=10
+
     while true; do
+        ((page_count++ > max_pages)) && break
         # Build curl args; the credential pair is in $jira_creds (not argv)
         local curl_args=(
             -sf --connect-timeout 10 --max-time 20
@@ -237,8 +243,8 @@ _fetch_jira_breakdown() {
             return 1
         fi
 
-        # Check for Jira's structured error field
-        if echo "$response" | jq -e '.errorMessages' &>/dev/null; then
+        # Check for Jira's structured error field (must be non-empty)
+        if echo "$response" | jq -e '(.errorMessages // []) | length > 0' &>/dev/null; then
             return 1
         fi
 

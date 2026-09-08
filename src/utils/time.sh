@@ -18,11 +18,11 @@ time_iso_start() {
     else
         ts=$((EPOCHSECONDS - days * 86400))
     fi
-    printf '%(%Y-%m-%dT%H:%M:%SZ)T' "$ts"
+    TZ=UTC printf '%(%Y-%m-%dT%H:%M:%SZ)T' "$ts"
 }
 
 # Print ISO-8601 Zulu timestamp for "now".
-time_iso_now() { printf '%(%Y-%m-%dT%H:%M:%SZ)T' "$EPOCHSECONDS"; }
+time_iso_now() { TZ=UTC printf '%(%Y-%m-%dT%H:%M:%SZ)T' "$EPOCHSECONDS"; }
 
 # Print Unix epoch seconds `days` days in the past.
 # Usage: time_epoch_start [days_in_past]

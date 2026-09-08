@@ -139,8 +139,6 @@ plugin_collect() {
     source_path=$(chezmoi source-path 2>/dev/null) || return 0
     [[ -n "$source_path" && -d "$source_path" ]] || return 0
 
-    plugin_data_set "available" "1"
-
     exclude_types=$(get_option "exclude_types")
 
     # Use chezmoi status in a non-interactive safe mode.
@@ -148,6 +146,8 @@ plugin_collect() {
     # manager prompts, while still detecting real source/target differences for
     # the remaining entry types.
     status_output=$(chezmoi status --no-pager --no-tty --exclude "$exclude_types" 2>/dev/null) || return 1
+
+    plugin_data_set "available" "1"
 
     if [[ -z "$status_output" ]]; then
         count=0

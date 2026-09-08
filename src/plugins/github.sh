@@ -289,19 +289,19 @@ _fetch_via_gh_cli() {
     if ! gh repo set-default --view &>/dev/null; then
         # Use gh search for user's issues/PRs across all repos
         if [[ "$show_issues" == "true" ]]; then
-            issues=$(gh search issues --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+            issues=$(gh search issues --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || true)
         fi
 
         if [[ "$show_prs" == "true" ]]; then
-            prs=$(gh search prs --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+            prs=$(gh search prs --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || true)
         fi
     else
         if [[ "$show_issues" == "true" ]]; then
-            issues=$(gh issue list --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+            issues=$(gh issue list --assignee "@me" --state open --json number 2>/dev/null | grep -c '"number"' || true)
         fi
 
         if [[ "$show_prs" == "true" ]]; then
-            prs=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || echo "0")
+            prs=$(gh pr list --author "@me" --state open --json number 2>/dev/null | grep -c '"number"' || true)
         fi
     fi
 

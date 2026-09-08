@@ -342,10 +342,11 @@ deserialize_theme_colors() {
     THEME_COLORS=()
     _COLOR_VARIANTS=()
 
-    # Stream content through awk with US as record separator.
+    # Parse content using US as delimiter in pure Bash 5.2 (no awk subprocess).
     # Each record is "key=value"; route to correct assoc based on suffix.
     local entry key value
-    while IFS= read -r entry; do
+    while IFS= read -r -d "$sep" entry || [[ -n "$entry" ]]; do
+        entry="${entry%$'\n'}"
         [[ -z "$entry" ]] && continue
         key="${entry%%=*}"
         value="${entry#*=}"
@@ -354,5 +355,5 @@ deserialize_theme_colors() {
         else
             THEME_COLORS["$key"]="$value"
         fi
-    done < <(printf "%s" "$content" | awk -v sep="$sep" 'BEGIN{RS=sep} NF')
+    done <<< "$content"
 }

@@ -95,7 +95,11 @@ _detect_linux() {
 }
 
 _is_camera_active() {
-    is_macos && _detect_macos || _detect_linux
+    if is_macos; then
+        _detect_macos
+    else
+        _detect_linux
+    fi
 }
 
 # =============================================================================

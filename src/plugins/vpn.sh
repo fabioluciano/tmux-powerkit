@@ -138,7 +138,7 @@ _detect_tailscale() {
 _detect_openvpn() {
     pgrep -x "openvpn" &>/dev/null || return 1
     local cfg name
-    cfg=$(pgrep -a openvpn 2>/dev/null | grep -o -- '--config [^ ]*' | head -1 | awk '{print $2}')
+    cfg=$(ps -eo args 2>/dev/null | grep '[o]penvpn' | grep -o -- '--config [^ ]*' | head -1 | awk '{print $2}')
     if [[ -n "$cfg" ]]; then
         name=$(basename "$cfg" .ovpn 2>/dev/null)
         [[ "$name" == "$cfg" ]] && name=$(basename "$cfg" .conf 2>/dev/null)

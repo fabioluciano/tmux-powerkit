@@ -218,7 +218,8 @@ _count_issues() {
 
     # Cloud API
     url="${bitbucket_url}/repositories/$workspace/$repo_slug/issues?q=state=%22new%22+OR+state=%22open%22&pagelen=0"
-    response=$(_bb_api_call "$url")
+    response=$(_bb_api_call "$url") || return 1
+    [[ -z "$response" ]] && return 1
     json_get_size "$response"
 }
 
@@ -234,7 +235,8 @@ _count_prs() {
         url="${bitbucket_url}/repositories/$workspace/$repo_slug/pullrequests?state=OPEN&pagelen=0"
     fi
 
-    response=$(_bb_api_call "$url")
+    response=$(_bb_api_call "$url") || return 1
+    [[ -z "$response" ]] && return 1
     json_get_size "$response"
 }
 

@@ -251,6 +251,16 @@ POWERKIT_DEFAULT_STALE_MULTIPLIER="3"
 POWERKIT_DEFAULT_STALE_COLOR_VARIANT="-darkest"
 
 # =============================================================================
+# BATTERY SAVER MODE
+# =============================================================================
+# @powerkit_battery_saver - Battery saving mode
+# Values: "off", "auto" (default), "on"
+# When active (or "auto" while discharging on battery):
+#   - Doubles plugin cache TTLs to reduce polling CPU consumption
+#   - Increases minimum tmux status-interval to 10s
+POWERKIT_DEFAULT_BATTERY_SAVER="auto"
+
+# =============================================================================
 # SEPARATOR CONFIGURATION
 # =============================================================================
 # @powerkit_separator_style - Main separator style between segments

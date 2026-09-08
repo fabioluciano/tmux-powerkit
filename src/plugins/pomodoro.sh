@@ -157,18 +157,31 @@ _clear_state() {
 
 _get_duration_for_phase() {
     local phase="$1"
+    local dur
     case "$phase" in
-    work) echo $(($(get_option "work_duration") * 60)) ;;
-    short_break) echo $(($(get_option "short_break") * 60)) ;;
-    long_break) echo $(($(get_option "long_break") * 60)) ;;
+    work)
+        dur=$(get_option "work_duration")
+        echo "$(( ${dur:-25} * 60 ))"
+        ;;
+    short_break)
+        dur=$(get_option "short_break")
+        echo "$(( ${dur:-5} * 60 ))"
+        ;;
+    long_break)
+        dur=$(get_option "long_break")
+        echo "$(( ${dur:-15} * 60 ))"
+        ;;
     *) echo 0 ;;
     esac
 }
 
 _should_long_break() {
-    local sessions="$1"
-    local sessions_before=$(get_option "sessions_before_long")
+    local sessions="${1:-0}"
+    local sessions_before
+    sessions_before=$(get_option "sessions_before_long")
+    sessions_before="${sessions_before:-4}"
 
+    (( sessions_before <= 0 )) && return 1
     [[ "$sessions" -gt 0 && $((sessions % sessions_before)) -eq 0 ]]
 }
 

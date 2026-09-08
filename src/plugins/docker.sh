@@ -51,11 +51,13 @@ _container_timeout() {
 }
 
 plugin_check_dependencies() {
-    [[ -n "$(_container_runtime)" ]]
-}
-
-plugin_should_be_active() {
-    [[ -n "$(_container_runtime)" ]]
+    local configured
+    configured=$(get_option "runtime")
+    case "$configured" in
+    docker) require_cmd "docker" || return 1 ;;
+    podman) require_cmd "podman" || return 1 ;;
+    *)      require_any_cmd "docker" "podman" || return 1 ;;
+    esac
 }
 
 plugin_get_content_type() { printf 'dynamic'; }

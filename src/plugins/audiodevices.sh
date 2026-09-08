@@ -113,7 +113,7 @@ _get_audio_input() {
         local src
         src=$(pactl get-default-source 2>/dev/null)
         [[ -n "$src" ]] && pactl list sources 2>/dev/null |
-            grep -A 20 "Name: $src" | grep "Description:" |
+            grep -A 20 "Name: $src" | grep "Description:" | head -n 1 |
             cut -d: -f2- | sed 's/^ *//'
     fi
 }
@@ -125,7 +125,7 @@ _get_audio_output() {
         local sink
         sink=$(pactl get-default-sink 2>/dev/null)
         [[ -n "$sink" ]] && pactl list sinks 2>/dev/null |
-            grep -A 20 "Name: $sink" | grep "Description:" |
+            grep -A 20 "Name: $sink" | grep "Description:" | head -n 1 |
             cut -d: -f2- | sed 's/^ *//'
     fi
 }
@@ -142,9 +142,10 @@ plugin_collect() {
     local prev_mode
     prev_mode=$(cache_get "$prev_mode_key" "86400" 2>/dev/null || echo "")
     if [[ -n "$prev_mode" && "$prev_mode" != "$show" ]]; then
-        cache_clear "plugin_audiodevices"
+        cache_clear "plugin_audiodevices_data"
+        cache_clear "plugin_audiodevices_ttl"
     fi
-    cache_set "$prev_mode_key" "$show" "86400" 2>/dev/null || true
+    cache_set "$prev_mode_key" "$show" 2>/dev/null || true
 
     # Skip if audio system not available
     [[ "$show" == "off" ]] && return 0

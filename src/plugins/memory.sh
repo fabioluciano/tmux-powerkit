@@ -145,11 +145,12 @@ _collect_macos_vm_stat() {
     page_size=$(sysctl -n hw.pagesize 2>/dev/null || echo 4096)
     mem_total=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
 
-    # vm_stat shows pages: active + wired = used
+    # vm_stat shows pages: active + wired + compressed = used
     pages_used=$(vm_stat 2>/dev/null | awk '
         /Pages active:/ {active = $3; gsub(/\./, "", active)}
         /Pages wired down:/ {wired = $4; gsub(/\./, "", wired)}
-        END {print (active + 0) + (wired + 0)}
+        /Pages occupied by compressor:/ {comp = $5; gsub(/\./, "", comp)}
+        END {print (active + 0) + (wired + 0) + (comp + 0)}
     ')
 
     [[ -z "$pages_used" ]] && return 1
@@ -172,14 +173,7 @@ _collect_macos() {
 _bytes_to_human() {
     local bytes="$1"
     bytes="${bytes:-0}"
-
-    local gb=$((bytes / 1073741824))
-
-    if [[ $gb -gt 0 ]]; then
-        awk -v b="$bytes" 'BEGIN {printf "%.1fG", b / 1073741824}'
-    else
-        awk -v b="$bytes" 'BEGIN {printf "%.0fM", b / 1048576}'
-    fi
+    format_bytes "$bytes" 1
 }
 
 # =============================================================================
