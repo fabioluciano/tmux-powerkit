@@ -107,13 +107,39 @@ discover_plugins() {
         return 0
     }
 
-    # Parse comma-separated list
+    if declare -F _parse_plugin_list &>/dev/null; then
+        _parse_plugin_list "$plugins_str"
+        local plugin_name
+        for plugin_name in "${_PARSED_PLUGINS[@]}"; do
+            trim_inplace plugin_name
+            [[ -z "$plugin_name" ]] && continue
+            if [[ "$plugin_name" == external\(* ]]; then
+                _register_external_plugin "$plugin_name"
+            else
+                _register_plugin "$plugin_name"
+            fi
+        done
+        log_info "lifecycle" "Discovered ${#_PLUGINS[@]} plugins"
+        return 0
+    fi
+
+    # Parse comma-separated list, stripping group(...) wrapper if present
     local IFS=','
     local plugin_name
     for plugin_name in $plugins_str; do
         # Trim whitespace (uses nameref - zero subshells)
         trim_inplace plugin_name
 
+        [[ -z "$plugin_name" ]] && continue
+
+        # Handle group(...) wrappers
+        if [[ "$plugin_name" == group\(* ]]; then
+            plugin_name="${plugin_name#group(}"
+        fi
+        if [[ "$plugin_name" == *\) && "$plugin_name" != external\(* ]]; then
+            plugin_name="${plugin_name%)}"
+        fi
+        trim_inplace plugin_name
         [[ -z "$plugin_name" ]] && continue
 
         # Check if it's an external plugin
@@ -607,7 +633,7 @@ _spawn_plugin_refresh() {
         # Get health
         if ! declare -F plugin_get_health &>/dev/null; then
             printf 'failed'
-            return 1
+            exit 1
         fi
         health=$(plugin_get_health)
 
@@ -616,7 +642,7 @@ _spawn_plugin_refresh() {
         # Get icon
         if ! declare -F plugin_get_icon &>/dev/null; then
             printf 'failed'
-            return 1
+            exit 1
         fi
         icon=$(plugin_get_icon)
 
@@ -842,7 +868,7 @@ collect_plugin_render_data() {
 
     # Get stale multiplier
     local stale_multiplier
-    stale_multiplier="${POWERKIT_DEFAULT_STALE_MULTIPLIER:-3}"
+    stale_multiplier=$(get_tmux_option "@powerkit_stale_multiplier" "${POWERKIT_DEFAULT_STALE_MULTIPLIER:-3}")
     local stale_limit=$((ttl * stale_multiplier))
 
     # STALE WINDOW: TTL < age <= TTL*multiplier → return cache + background refresh
