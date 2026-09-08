@@ -58,12 +58,20 @@ plugin_get_presence() { printf 'conditional'; }
 
 plugin_get_state() {
     local latency=$(plugin_data_get "latency")
-    [[ -n "$latency" && "$latency" != "-1" ]] && printf 'active' || printf 'inactive'
+    if [[ -z "$latency" || "$latency" == "-1" ]]; then
+        printf 'inactive'
+    else
+        printf 'active'
+    fi
 }
 
 plugin_get_health() {
     local latency warn_th crit_th
     latency=$(plugin_data_get "latency")
+    if [[ "$latency" == "-1" ]]; then
+        printf 'error'
+        return
+    fi
     warn_th=$(get_option "warning_threshold")
     crit_th=$(get_option "critical_threshold")
 
@@ -104,7 +112,7 @@ _get_ping_latency() {
 
     local result
     if is_macos; then
-        result=$(ping -c "$count" -t "$timeout" "$host" 2>/dev/null | tail -1)
+        result=$(ping -c "$count" -W "$((timeout * 1000))" "$host" 2>/dev/null | tail -1)
     else
         result=$(ping -c "$count" -W "$timeout" "$host" 2>/dev/null | tail -1)
     fi
