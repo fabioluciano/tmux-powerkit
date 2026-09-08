@@ -88,10 +88,7 @@ _get_bt_macos_blueutil() {
     # Check power state
     [[ "$(blueutil -p 2>/dev/null)" == "0" ]] && { echo "off:"; return 0; }
 
-    local devices="" line name mac bat sp_info battery_info
-
-    # Get system_profiler info for battery details (AirPods, etc.)
-    sp_info=$(system_profiler SPBluetoothDataType 2>/dev/null)
+    local devices="" line name mac bat sp_info="" battery_info
 
     while IFS= read -r line; do
         name="" mac="" bat=""
@@ -104,10 +101,14 @@ _get_bt_macos_blueutil() {
         # Try blueutil for battery first
         bat=$(blueutil --info "$mac" 2>/dev/null | grep -i battery | grep -oE '[0-9]+' | head -1)
 
-        # Fallback: system_profiler for devices like AirPods
+        # Fallback: system_profiler for devices like AirPods (lazy fetch)
         battery_info=""
-        if [[ -z "$bat" && -n "$sp_info" ]]; then
-            battery_info=$(echo "$sp_info" | awk -v device="$name" '
+        if [[ -z "$bat" ]]; then
+            if [[ -z "$sp_info" ]]; then
+                sp_info=$(system_profiler SPBluetoothDataType 2>/dev/null)
+            fi
+            if [[ -n "$sp_info" ]]; then
+                battery_info=$(echo "$sp_info" | awk -v device="$name" '
                 # Start capturing when we find our device
                 $0 ~ device ":" { in_device=1; next }
                 # Stop when we hit another device or Not Connected section
@@ -130,6 +131,7 @@ _get_bt_macos_blueutil() {
                 }
                 END { print batteries }
             ')
+            fi
         fi
 
         [[ -n "$devices" ]] && devices+="|"
