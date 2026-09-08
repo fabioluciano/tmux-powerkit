@@ -216,7 +216,7 @@ _make_gitlab_head_call() {
     printf -v token '%s' "$(_get_token)"
     # Same credential-safe transport for HEAD requests. The header is
     # forwarded via stdin; only the URL is in argv.
-    printf 'header = "PRIVATE-TOKEN: %s"\nheader = "X-Head-Only: 1"\nrequest = "HEAD"\n' "$token" |
+    printf 'header = "PRIVATE-TOKEN: %s"\nhead = true\n' "$token" |
         curl -sf --config - --connect-timeout 5 --max-time 10 "$url" 2>/dev/null
 }
 
@@ -235,7 +235,7 @@ _count_issues() {
         count=$(echo "$response" | grep -o '"opened":[0-9]*' | grep -o '[0-9]*' | head -1)
     fi
 
-    [[ -z "$count" || "$count" == "null" ]] && return 1
+    [[ -z "$count" ]] && return 1
     echo "$count"
 }
 
@@ -259,11 +259,11 @@ _fetch_via_glab_cli() {
     local issues=0 mrs=0
 
     if [[ "$show_mrs" == "true" ]]; then
-        mrs=$(glab mr list --assignee @me --state opened 2>/dev/null | wc -l | tr -d ' ')
+        mrs=$(glab mr list --assignee @me --state opened 2>/dev/null | grep -c '^[!#]' || true)
     fi
 
     if [[ "$show_issues" == "true" ]]; then
-        issues=$(glab issue list --assignee @me --state opened 2>/dev/null | wc -l | tr -d ' ')
+        issues=$(glab issue list --assignee @me --state opened 2>/dev/null | grep -c '^#' || true)
     fi
 
     echo "$issues $mrs"
