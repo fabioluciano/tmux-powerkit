@@ -110,8 +110,7 @@ discover_plugins() {
         _parse_plugin_list "$plugins_str"
         items=("${_PARSED_PLUGINS[@]}")
     else
-        local IFS=','
-        items=($plugins_str)
+        IFS=',' read -r -a items <<< "$plugins_str"
     fi
 
     local plugin_name
