@@ -147,10 +147,15 @@ plugin_collect() {
             # Clean branch name
             branch="${branch%%...*}"
             branch="${branch%% \[*}"
-            if [[ "$branch" == "HEAD (detached "* ]]; then
+            if [[ "$branch" == "No commits yet on "* ]]; then
+                branch="${branch#No commits yet on }"
+            elif [[ "$branch" == "HEAD (detached "* ]]; then
                 detached=1
                 branch="${branch#HEAD (detached }"
                 branch="${branch%)}"
+            elif [[ "$branch" == "HEAD (no branch)" ]]; then
+                detached=1
+                branch="HEAD"
             fi
         elif [[ -n "$line" ]]; then
             # File change line
