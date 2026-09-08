@@ -212,7 +212,8 @@ _get_charging_status() {
 
     # Normalize status
     case "$status" in
-        charging|"not charging") echo "charging" ;;
+        charging) echo "charging" ;;
+        "not charging") echo "ac_power" ;;
         full|charged) echo "charged" ;;
         discharging) echo "discharging" ;;
         *) echo "unknown" ;;
@@ -425,7 +426,7 @@ plugin_get_icon() {
     warn_th=$(get_option "warning_threshold")
     plugin_get_icon_by_range "${percent:-100}" \
         "${crit_th:-15}:icon_critical" \
-        "${warn_th:-30}:icon_low" \
+        "${warn_th:-30}:icon_warning" \
         "icon"
 }
 
