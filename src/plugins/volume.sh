@@ -161,11 +161,11 @@ _is_muted_wpctl() {
 # =============================================================================
 
 _get_volume_pactl() {
-    pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -oP '\d+%' | head -1 | tr -d '%'
+    pactl get-sink-volume @DEFAULT_SINK@ 2>/dev/null | grep -oE '[0-9]+%' | head -1 | tr -d '%'
 }
 
 _is_muted_pactl() {
-    [[ "$(pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -oP 'yes|no')" == "yes" ]]
+    pactl get-sink-mute @DEFAULT_SINK@ 2>/dev/null | grep -q 'yes'
 }
 
 # =============================================================================
@@ -185,7 +185,7 @@ _is_muted_pamixer() {
 # =============================================================================
 
 _get_volume_amixer() {
-    amixer sget Master 2>/dev/null | grep -oP '\[\d+%\]' | head -1 | tr -d '[]%'
+    amixer sget Master 2>/dev/null | grep -oE '\[[0-9]+%\]' | head -1 | tr -d '[]%'
 }
 
 _is_muted_amixer() {
@@ -237,8 +237,13 @@ plugin_collect() {
     if [[ "$backend" == "macos" ]]; then
         local res
         res=$(osascript -e 'set s to get volume settings' -e '(output volume of s as text) & ":" & (output muted of s as text)' 2>/dev/null)
-        volume="${res%%:*}"
-        [[ "${res##*:}" == "true" ]] && muted=1 || muted=0
+        if [[ "$res" == *:* ]]; then
+            volume="${res%%:*}"
+            [[ "${res##*:}" == "true" ]] && muted=1 || muted=0
+        else
+            volume=$(_get_volume_macos)
+            _is_muted_macos && muted=1 || muted=0
+        fi
     else
         volume=$(_volume_get_percentage)
         _volume_is_muted && muted=1
