@@ -50,7 +50,7 @@ _check_and_log_conflict() {
 
     # Check if this key is already bound
     local existing_binding
-    existing_binding=$(tmux list-keys -T prefix 2>/dev/null | grep "bind-key.*-T prefix.*$key " || true)
+    existing_binding=$(tmux list-keys -T prefix 2>/dev/null | awk -v k="$key" '$1=="bind-key" && $3=="prefix" && $4==k {print; exit}' || true)
 
     [[ -z "$existing_binding" ]] && return 0
 
@@ -558,48 +558,21 @@ pk_popup_delayed() {
     # Run popup in background with delay
     # Wait for a client to be attached before showing the popup
     # This handles the case where PowerKit starts during detached session creation
-    # Sanitize all interpolated values with printf %q
-    local safe_delay safe_width safe_height safe_command
-    safe_delay=$(printf '%q' "$delay")
-    safe_width=$(printf '%q' "$width")
-    safe_height=$(printf '%q' "$height")
-    safe_command=$(printf '%q' "$command")
-
-    local popup_script
-    popup_script=$(
-        cat <<'SCRIPT_EOF'
-delay=DELAY_PLACEHOLDER
-width="WIDTH_PLACEHOLDER"
-height="HEIGHT_PLACEHOLDER"
-command="COMMAND_PLACEHOLDER"
-
-# Wait for initial delay
+    local script='
+delay="$1"; width="$2"; height="$3"; command="$4"
 sleep "$delay"
-
-# Wait up to 30 seconds for a client to attach
 max_wait=30
 waited=0
 while [[ $waited -lt $max_wait ]]; do
     if tmux list-clients 2>/dev/null | grep -q .; then
-        # Client found, show popup
         tmux display-popup -E $width $height "$command"
         exit 0
     fi
     sleep 1
     ((waited++))
 done
-# No client attached after timeout, skip popup silently
-SCRIPT_EOF
-    )
-
-    # Substitute placeholders with sanitized values
-    popup_script="${popup_script//DELAY_PLACEHOLDER/$safe_delay}"
-    popup_script="${popup_script//WIDTH_PLACEHOLDER/$safe_width}"
-    popup_script="${popup_script//HEIGHT_PLACEHOLDER/$safe_height}"
-    popup_script="${popup_script//COMMAND_PLACEHOLDER/$safe_command}"
-
-    # Execute via bash
-    tmux run-shell -b "bash -c '$popup_script'" 2>/dev/null || true
+'
+    tmux run-shell -b "$(printf 'bash -c %q bash %q %q %q %q' "$script" "$delay" "$width" "$height" "$command")" 2>/dev/null || true
 }
 
 # =============================================================================
