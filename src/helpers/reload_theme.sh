@@ -3,13 +3,14 @@
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
-# Delete all theme caches (files)
-rm -f ~/.cache/tmux-powerkit/data/theme_colors__* 2>/dev/null || true
-rm -f ~/.cache/tmux-powerkit/data/current_theme 2>/dev/null || true
-
 # Bootstrap minimal to get functions
 . "${POWERKIT_ROOT}/src/core/bootstrap.sh"
 powerkit_bootstrap_minimal
+
+# Delete all theme caches (files)
+_cache_dir="$(get_cache_dir)"
+rm -f "${_cache_dir}/theme_colors__"* 2>/dev/null || true
+rm -f "${_cache_dir}/current_theme" 2>/dev/null || true
 
 # CRITICAL: Clear in-memory global variables that cause fast-path to skip reload
 unset _CURRENT_THEME
