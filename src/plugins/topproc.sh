@@ -24,7 +24,7 @@ plugin_get_metadata() {
 
 plugin_check_dependencies() {
     # ps is POSIX - available on both macOS and Linux
-    has_cmd "ps" || return 1
+    require_cmd "ps" || return 1
     return 0
 }
 
@@ -87,14 +87,14 @@ plugin_collect() {
     
     # BSD/macOS and GNU ps both support -A -o %cpu,comm
     # macOS returns full path for some procs (e.g. /usr/sbin/coreaudiod), extract basename
-    result=$(ps -A -o %cpu,comm 2>/dev/null | awk 'NR>1 {print $1, $2}' | sort -rn | head -1)
+    result=$(ps -A -o %cpu,comm 2>/dev/null | sort -k1 -rn | head -1)
 
     if [[ -n "$result" ]]; then
-        local proc_pct proc_name
+        local proc_pct proc_cmd proc_name
+        read -r proc_pct proc_cmd <<< "$result"
 
-        # Parse: "87.5 /usr/sbin/coreaudiod" → proc_pct=87.5 proc_name=coreaudiod
-        proc_pct=$(echo "$result" | awk '{print $1}')
-        proc_name=$(echo "$result" | awk '{sub(/.*\//, "", $NF); print $NF}')
+        # Extract basename of process command
+        proc_name="${proc_cmd##*/}"
 
         # Truncate process name
         proc_name=$(truncate_text "$proc_name" "${max_length:-15}")
