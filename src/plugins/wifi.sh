@@ -99,7 +99,7 @@ _get_wifi_macos_ipconfig() {
     local iface
     iface=$(_get_wifi_macos_interface)
     local ssid
-    ssid=$(ipconfig getsummary "$iface" 2>/dev/null | awk '/ SSID :/{print $3}')
+    ssid=$(ipconfig getsummary "$iface" 2>/dev/null | awk -F': ' '/ SSID :/{print $2}')
     [[ -n "$ssid" && "$ssid" != "<redacted>" && "$ssid" != *"redacted"* ]] && {
         printf '%s:75' "$ssid"
         return 0
@@ -232,7 +232,7 @@ _get_wifi_linux_iwconfig() {
     has_cmd iwconfig || return 1
 
     local interface
-    interface=$(iwconfig 2>&1 | grep -o "^[a-zA-Z0-9]*" | head -1)
+    interface=$(iwconfig 2>/dev/null | grep 'IEEE 802.11' | awk '{print $1}' | head -1)
     [[ -z "$interface" ]] && return 1
 
     local info
