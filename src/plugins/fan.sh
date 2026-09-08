@@ -62,7 +62,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Display options
     declare_option "source" "string" "auto" "Fan source (auto|dell|thinkpad|hwmon)"
-    declare_option "format" "string" "icon_k" "Display format (rpm|krpm|number|icon|icon_k)"
+    declare_option "format" "string" "krpm" "Display format (rpm|krpm|number)"
     declare_option "selection" "string" "active" "Fan selection: active (RPM>0) or all (include idle)"
     declare_option "separator" "string" " | " "Separator between multiple fans"
 
@@ -328,19 +328,15 @@ _get_fan_speed() {
 
 _format_rpm() {
     local rpm="$1"
-    local format icon
+    local format
     format=$(get_option "format")
 
     case "$format" in
     number) printf '%s' "$rpm" ;;
-    krpm) awk "BEGIN {printf \"%.1fk\", $rpm / 1000}" ;;
-    icon)
-        icon=$(get_option "icon")
-        printf '%s %s' "$icon" "$rpm"
-        ;;
-    icon_k)
-        icon=$(get_option "icon")
-        awk -v icon="$icon" "BEGIN {printf \"%s %.1fk\", icon, $rpm / 1000}"
+    krpm|icon_k)
+        local k=$((rpm / 1000))
+        local d=$(((rpm % 1000) / 100))
+        printf '%d.%dk' "$k" "$d"
         ;;
     *) printf '%s' "$rpm" ;;
     esac
