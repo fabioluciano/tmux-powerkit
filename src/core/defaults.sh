@@ -379,6 +379,14 @@ POWERKIT_DEFAULT_WINDOW_BELL_ICON=$'\U000f009a' # nf-md-bell_alert
 # @powerkit_window_marked_icon - Icon for marked windows (M flag)
 POWERKIT_DEFAULT_WINDOW_MARKED_ICON=$'\U000f0306' # nf-md-bookmark
 
+# @powerkit_window_command_icons - Per-command icon overrides
+# Overrides (or extends) the built-in command->icon map (WINDOW_ICON_MAP).
+# Format: comma-separated "command=icon" pairs. User entries take precedence
+# over the built-in map, so this can remap commands like fish/bash to a
+# different glyph without editing the source.
+#   Example: set -g @powerkit_window_command_icons 'fish=,node='
+# Default: empty (built-in map only)
+
 # @powerkit_pane_synchronized_icon - Icon for synchronized panes
 POWERKIT_DEFAULT_PANE_SYNCHRONIZED_ICON=$'\U00002735'
 
