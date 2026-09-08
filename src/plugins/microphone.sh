@@ -166,7 +166,7 @@ _detect_linux_usage() {
             # Filter out system processes and monitors
             local recording_apps
             recording_apps=$(echo "$source_outputs" | grep -E "(application\.name|State:)" |
-                            grep -B1 "State: RUNNING\|State: CORKED" |
+                            grep -B1 -E "State: (RUNNING|CORKED)" |
                             grep "application\.name" |
                             grep -viE "(PulseAudio|PipeWire|monitor|volume|meter)")
 
