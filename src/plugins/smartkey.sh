@@ -100,10 +100,14 @@ _check_gpg_card_prompt() {
 
         # Check if pinentry has TTY (interactive prompt active)
         [[ -d "/proc/$pinentry_pid/fd" ]] || return 1
-        # Use find instead of ls|grep to check for tty/pts file descriptors
-        find -L "/proc/$pinentry_pid/fd" -maxdepth 1 -type c 2>/dev/null | while read -r fd; do
-            [[ "$(readlink "$fd" 2>/dev/null)" =~ (tty|pts) ]] && exit 0
-        done && return 0
+        local has_tty=0
+        while read -r fd; do
+            if [[ "$(readlink "$fd" 2>/dev/null)" =~ (tty|pts) ]]; then
+                has_tty=1
+                break
+            fi
+        done < <(find -L "/proc/$pinentry_pid/fd" -maxdepth 1 -type c 2>/dev/null)
+        [[ "$has_tty" -eq 1 ]] && return 0
         return 1
     fi
 }
@@ -160,8 +164,17 @@ _check_scdaemon_signing() {
     # GETINFO scd_running returns quickly if not blocked
     # EPOCHREALTIME format: seconds.microseconds (e.g., 1704412800.123456)
     local start_us=${EPOCHREALTIME//./}
-    timeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
-    local result_code=$?
+    local result_code
+    if has_cmd timeout; then
+        timeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
+        result_code=$?
+    elif has_cmd gtimeout; then
+        gtimeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
+        result_code=$?
+    else
+        gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
+        result_code=$?
+    fi
     local end_us=${EPOCHREALTIME//./}
 
     # If command timed out or took > 200ms, likely waiting for user
