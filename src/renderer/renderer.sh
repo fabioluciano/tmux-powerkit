@@ -43,9 +43,14 @@ configure_status_bar() {
     status_style=$(build_status_style)
     tmux set-option -g status-style "$status_style"
 
-    # Refresh interval
+    # Refresh interval (relaxed on battery to conserve power)
     local interval
     interval=$(get_tmux_option "@powerkit_status_interval" "${POWERKIT_DEFAULT_STATUS_INTERVAL}")
+    local battery_saver
+    battery_saver=$(get_tmux_option "@powerkit_battery_saver" "${POWERKIT_DEFAULT_BATTERY_SAVER:-auto}")
+    if [[ "$battery_saver" == "on" ]] || { [[ "$battery_saver" == "auto" ]] && is_on_battery; }; then
+        (( interval < 10 )) && interval=10
+    fi
     tmux set-option -g status-interval "$interval"
 
     # Status bar lengths - ensure enough space for plugins and session

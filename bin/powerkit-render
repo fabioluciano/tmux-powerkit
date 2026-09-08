@@ -40,8 +40,17 @@ _render_cache_key() {
     printf 'rendered_%s__%s__%s' "$side" "$theme" "$variant"
 }
 
-# TTL for render cache (matches status-interval)
-_RENDER_CACHE_TTL=5
+# TTL for render cache (matches status-interval and adapts to battery saver)
+_get_render_cache_ttl() {
+    local interval
+    interval=$(get_tmux_option "@powerkit_status_interval" "${POWERKIT_DEFAULT_STATUS_INTERVAL:-5}")
+    local battery_saver
+    battery_saver=$(get_tmux_option "@powerkit_battery_saver" "${POWERKIT_DEFAULT_BATTERY_SAVER:-auto}")
+    if [[ "$battery_saver" == "on" ]] || { [[ "$battery_saver" == "auto" ]] && is_on_battery; }; then
+        (( interval < 10 )) && interval=10
+    fi
+    printf '%s' "${interval:-5}"
+}
 
 _render_lock_dir() {
     printf '%s/.render_lock' "$_CACHE_DIR"
@@ -200,8 +209,9 @@ cache_key=$(_render_cache_key "$side")
 
 # Fast path: return fresh cached render immediately
 # Note: cache can be empty when all conditional plugins are hidden
-if cache_valid "$cache_key" "$_RENDER_CACHE_TTL"; then
-    cached_render=$(cache_get "$cache_key" "$_RENDER_CACHE_TTL" 2>/dev/null) || cached_render=""
+render_ttl=$(_get_render_cache_ttl)
+if cache_valid "$cache_key" "$render_ttl"; then
+    cached_render=$(cache_get "$cache_key" "$render_ttl" 2>/dev/null) || cached_render=""
     printf '%s' "$cached_render"
     exit 0
 fi

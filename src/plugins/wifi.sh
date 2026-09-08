@@ -76,17 +76,30 @@ plugin_declare_options() {
     declare_option "icon_disconnected" "icon" $'\U000F092E' "Disconnected icon"
 
     # Cache
-    declare_option "cache_ttl" "number" "5" "Cache duration in seconds"
+    declare_option "cache_ttl" "number" "15" "Cache duration in seconds"
 }
 
 # =============================================================================
 # macOS WiFi Detection - Multiple Methods
 # =============================================================================
 
+# Cache interface to avoid running networksetup -listallhardwareports on every cycle
+_POWERKIT_MACOS_WIFI_IFACE=""
+
+_get_wifi_macos_interface() {
+    if [[ -z "$_POWERKIT_MACOS_WIFI_IFACE" ]]; then
+        _POWERKIT_MACOS_WIFI_IFACE=$(networksetup -listallhardwareports 2>/dev/null | awk '/Wi-Fi|AirPort/{getline; print $2}')
+        _POWERKIT_MACOS_WIFI_IFACE="${_POWERKIT_MACOS_WIFI_IFACE:-en0}"
+    fi
+    printf '%s' "$_POWERKIT_MACOS_WIFI_IFACE"
+}
+
 # Method 1: ipconfig (fastest, requires Location Services)
 _get_wifi_macos_ipconfig() {
+    local iface
+    iface=$(_get_wifi_macos_interface)
     local ssid
-    ssid=$(ipconfig getsummary en0 2>/dev/null | awk '/ SSID :/{print $3}')
+    ssid=$(ipconfig getsummary "$iface" 2>/dev/null | awk '/ SSID :/{print $3}')
     [[ -n "$ssid" && "$ssid" != "<redacted>" && "$ssid" != *"redacted"* ]] && {
         printf '%s:75' "$ssid"
         return 0
@@ -94,31 +107,26 @@ _get_wifi_macos_ipconfig() {
     return 1
 }
 
-# Method 2: system_profiler (comprehensive, slower)
-_get_wifi_macos_system_profiler() {
-    local wifi_data
-    wifi_data=$(system_profiler SPAirPortDataType 2>/dev/null | awk '
-        /Status: Connected/ {connected = 1}
-        /Current Network Information:/ {if (connected) {getline; gsub(/^[[:space:]]+|:$/, ""); ssid = $0}}
-        /RSSI:/ {if (connected) {gsub(/[^-0-9]/, ""); rssi = $0}}
-        END {if (connected && ssid) print ssid ":" rssi; else exit 1}
-    ')
-    [[ -z "$wifi_data" ]] && return 1
+# Method 2: networksetup (fast, ~20ms, reliable across all macOS versions)
+_get_wifi_macos_networksetup() {
+    has_cmd networksetup || return 1
 
-    local ssid="${wifi_data%%:*}" rssi="${wifi_data##*:}"
-    [[ -z "$ssid" || "$ssid" == "<redacted>" || "$ssid" == *"redacted"* ]] && ssid="WiFi"
+    local wifi_interface
+    wifi_interface=$(_get_wifi_macos_interface)
 
-    # Convert RSSI to percentage (RSSI -100 = 0%, -50 = 100%)
-    local signal=75
-    if [[ -n "$rssi" && "$rssi" =~ ^-?[0-9]+$ ]]; then
-        signal=$(( (rssi + 100) * 100 / 50 ))
-        (( signal > 100 )) && signal=100
-        (( signal < 0 )) && signal=0
+    local output
+    output=$(networksetup -getairportnetwork "$wifi_interface" 2>/dev/null)
+    # Check for known disconnected / off states
+    if [[ -z "$output" ]] || [[ "$output" == *"not associated"* ]] || [[ "$output" == *"not turned on"* ]] || [[ "$output" == *"power is off"* ]]; then
+        return 1
     fi
-    printf '%s:%d' "$ssid" "$signal"
+
+    local ssid="${output#Current Wi-Fi Network: }"
+    [[ -z "$ssid" || "$ssid" == "$output" ]] && return 1
+    printf '%s:75' "$ssid"
 }
 
-# Method 3: airport utility (deprecated but reliable)
+# Method 3: airport utility (deprecated on modern macOS, fast if present)
 _get_wifi_macos_airport() {
     local airport="/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport"
     [[ -x "$airport" ]] || return 1
@@ -142,29 +150,35 @@ _get_wifi_macos_airport() {
     printf '%s:%d' "$ssid" "$signal_percent"
 }
 
-# Method 4: networksetup (fallback)
-_get_wifi_macos_networksetup() {
-    has_cmd networksetup || return 1
+# Method 4: system_profiler (slow, 7-10s; available for manual debug, omitted from hot polling)
+_get_wifi_macos_system_profiler() {
+    local wifi_data
+    wifi_data=$(system_profiler SPAirPortDataType 2>/dev/null | awk '
+        /Status: Connected/ {connected = 1}
+        /Current Network Information:/ {if (connected) {getline; gsub(/^[[:space:]]+|:$/, ""); ssid = $0}}
+        /RSSI:/ {if (connected) {gsub(/[^-0-9]/, ""); rssi = $0}}
+        END {if (connected && ssid) print ssid ":" rssi; else exit 1}
+    ')
+    [[ -z "$wifi_data" ]] && return 1
 
-    local wifi_interface
-    wifi_interface=$(networksetup -listallhardwareports 2>/dev/null | awk '/Wi-Fi|AirPort/{getline; print $2}')
-    [[ -z "$wifi_interface" ]] && wifi_interface="en0"
+    local ssid="${wifi_data%%:*}" rssi="${wifi_data##*:}"
+    [[ -z "$ssid" || "$ssid" == "<redacted>" || "$ssid" == *"redacted"* ]] && ssid="WiFi"
 
-    local output
-    output=$(networksetup -getairportnetwork "$wifi_interface" 2>/dev/null)
-    echo "$output" | grep -q "not associated" && return 1
-
-    local ssid="${output#Current Wi-Fi Network: }"
-    [[ -z "$ssid" ]] && return 1
-    printf '%s:75' "$ssid"
+    # Convert RSSI to percentage (RSSI -100 = 0%, -50 = 100%)
+    local signal=75
+    if [[ -n "$rssi" && "$rssi" =~ ^-?[0-9]+$ ]]; then
+        signal=$(( (rssi + 100) * 100 / 50 ))
+        (( signal > 100 )) && signal=100
+        (( signal < 0 )) && signal=0
+    fi
+    printf '%s:%d' "$ssid" "$signal"
 }
 
-# macOS entry point - try all methods
+# macOS entry point - try fast methods
 _get_wifi_macos() {
     _get_wifi_macos_ipconfig 2>/dev/null ||
-    _get_wifi_macos_system_profiler 2>/dev/null ||
-    _get_wifi_macos_airport 2>/dev/null ||
-    _get_wifi_macos_networksetup
+    _get_wifi_macos_networksetup 2>/dev/null ||
+    _get_wifi_macos_airport 2>/dev/null
 }
 
 # =============================================================================
@@ -253,12 +267,10 @@ _get_wifi_ip() {
     local ip=""
 
     if is_macos; then
-        ip=$(ipconfig getifaddr en0 2>/dev/null)
-        if [[ -z "$ip" ]]; then
-            local iface
-            iface=$(networksetup -listallhardwareports 2>/dev/null | awk '/Wi-Fi|AirPort/{getline; print $2}')
-            [[ -n "$iface" ]] && ip=$(ipconfig getifaddr "$iface" 2>/dev/null)
-        fi
+        local iface
+        iface=$(_get_wifi_macos_interface)
+        ip=$(ipconfig getifaddr "$iface" 2>/dev/null)
+        [[ -z "$ip" && "$iface" != "en0" ]] && ip=$(ipconfig getifaddr en0 2>/dev/null)
     elif is_linux; then
         local iface
         has_cmd iw && iface=$(iw dev 2>/dev/null | awk '/Interface/{print $2}' | head -1)

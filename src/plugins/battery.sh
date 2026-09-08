@@ -256,15 +256,55 @@ _get_time_remaining() {
 # =============================================================================
 
 plugin_collect() {
-    # Check if battery exists
-    if ! _has_battery; then
-        plugin_data_set "available" "0"
-        return
-    fi
+    local percent="0" status="unknown" time_remaining=""
 
-    local percent status
-    percent=$(_get_percentage)
-    status=$(_get_charging_status)
+    if is_macos && has_cmd pmset; then
+        local out
+        out=$(pmset -g batt 2>/dev/null)
+        if [[ "$out" != *"InternalBattery"* ]]; then
+            plugin_data_set "available" "0"
+            return 0
+        fi
+
+        # Percentage
+        if [[ "$out" =~ ([0-9]+)% ]]; then
+            percent="${BASH_REMATCH[1]}"
+        fi
+
+        # Status
+        if [[ "$out" == *"AC Power"* ]]; then
+            if [[ "$out" =~ (charging|finishing\ charge) ]]; then
+                status="charging"
+            elif [[ "$out" == *"charged"* ]]; then
+                status="charged"
+            else
+                status="ac_power"
+            fi
+        else
+            status="discharging"
+        fi
+
+        # Time remaining
+        if [[ "$out" =~ ([0-9]+:[0-9]+) ]]; then
+            time_remaining="${BASH_REMATCH[1]}"
+        elif [[ "$out" == *"(no estimate)"* ]]; then
+            time_remaining="..."
+        fi
+    else
+        # Check if battery exists
+        if ! _has_battery; then
+            plugin_data_set "available" "0"
+            return 0
+        fi
+
+        percent=$(_get_percentage)
+        status=$(_get_charging_status)
+
+        # Collect time remaining for discharging state
+        if [[ "$status" == "discharging" ]]; then
+            time_remaining=$(_get_time_remaining)
+        fi
+    fi
 
     plugin_data_set "available" "1"
     plugin_data_set "percent" "$percent"
@@ -280,11 +320,6 @@ plugin_collect() {
             ;;
     esac
 
-    # Collect time remaining for discharging state
-    local time_remaining=""
-    if [[ "$status" == "discharging" ]]; then
-        time_remaining=$(_get_time_remaining)
-    fi
     plugin_data_set "time_remaining" "${time_remaining:-}"
 }
 

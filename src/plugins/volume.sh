@@ -231,9 +231,18 @@ _volume_is_muted() {
 
 plugin_collect() {
     local volume muted=0
+    local backend
+    backend=$(_detect_audio_backend)
 
-    volume=$(_volume_get_percentage)
-    _volume_is_muted && muted=1
+    if [[ "$backend" == "macos" ]]; then
+        local res
+        res=$(osascript -e 'set s to get volume settings' -e '(output volume of s as text) & ":" & (output muted of s as text)' 2>/dev/null)
+        volume="${res%%:*}"
+        [[ "${res##*:}" == "true" ]] && muted=1 || muted=0
+    else
+        volume=$(_volume_get_percentage)
+        _volume_is_muted && muted=1
+    fi
 
     plugin_data_set "volume" "${volume:-0}"
     plugin_data_set "muted" "$muted"

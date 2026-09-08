@@ -27,6 +27,9 @@ declare -gA _PLUGIN_STATES=()
 # External plugin counter (for unique ID generation without subshells)
 declare -g _EXTERNAL_PLUGIN_COUNTER=0
 
+# Plugins that implement plugin_should_be_active() for pane/dynamic context checks
+declare -gA _PLUGINS_WITH_CONTEXT_CHECK=([git]=1 [terraform]=1 [docker]=1 [swap]=1)
+
 # =============================================================================
 # Visibility Helpers
 # =============================================================================
@@ -74,7 +77,19 @@ _get_plugin_icon() {
 # Must be called AFTER plugin is sourced and options declared
 # Usage: ttl=$(_get_plugin_cache_ttl)
 _get_plugin_cache_ttl() {
-    get_option "cache_ttl" 2>/dev/null || echo 30
+    local ttl
+    ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
+
+    # Battery saver multiplier
+    local battery_saver
+    battery_saver=$(get_tmux_option "@powerkit_battery_saver" "${POWERKIT_DEFAULT_BATTERY_SAVER:-auto}")
+    if [[ "$battery_saver" == "on" ]] || { [[ "$battery_saver" == "auto" ]] && is_on_battery; }; then
+        # Double TTL when on battery (minimum 10s)
+        (( ttl = ttl * 2 ))
+        (( ttl < 10 )) && ttl=10
+    fi
+
+    printf '%s' "$ttl"
 }
 
 # =============================================================================
@@ -569,7 +584,11 @@ _spawn_plugin_refresh() {
         declare -F plugin_declare_options &>/dev/null && plugin_declare_options
 
         # Check dependencies
-        declare -F plugin_check_dependencies &>/dev/null && plugin_check_dependencies || exit 1
+        if declare -F plugin_check_dependencies &>/dev/null && ! plugin_check_dependencies; then
+            cache_set "plugin_${name}_data" "HIDDEN"
+            cache_set "plugin_${name}_ttl" "${_DEFAULT_CACHE_TTL_LONG:-3600}"
+            exit 0
+        fi
 
         # Collect data
         plugin_data_clear
@@ -630,8 +649,9 @@ _collect_plugin_sync() {
     # Check dependencies (calls require_macos_binary for macOS plugins)
     if declare -F plugin_check_dependencies &>/dev/null; then
         if ! plugin_check_dependencies; then
-            # Dependencies not met - return HIDDEN and cache it
+            # Dependencies not met - return HIDDEN and cache it with long TTL
             cache_set "$cache_key" "HIDDEN"
+            cache_set "$ttl_cache_key" "${_DEFAULT_CACHE_TTL_LONG:-3600}"
             printf 'HIDDEN'
             return 0
         fi
@@ -802,8 +822,8 @@ collect_plugin_render_data() {
 
     # FRESH: age <= TTL → return cache immediately
     if [[ $cache_age -ge 0 && $cache_age -le $ttl && -n "$cached_data" ]]; then
-        # Quick check: if cached data is not "HIDDEN", verify visibility conditions
-        if [[ "$cached_data" != "HIDDEN" ]]; then
+        # For plugins with dynamic context checks (e.g. git, terraform, docker, swap), verify visibility
+        if [[ "$cached_data" != "HIDDEN" && -v _PLUGINS_WITH_CONTEXT_CHECK[$name] ]]; then
             clear_options_cache "$name" 2>/dev/null || true
             # shellcheck disable=SC1090
             . "$plugin_file"
@@ -835,18 +855,20 @@ collect_plugin_render_data() {
     #
     # This ensures plugins don't constantly appear "stale" just because their cache
     # is slightly older than TTL - which would happen with TTL close to status-interval.
-    if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" && "$cached_data" != "HIDDEN" ]]; then
-        # Source plugin for visibility check
-        clear_options_cache "$name" 2>/dev/null || true
-        # shellcheck disable=SC1090
-        . "$plugin_file"
-        declare -F plugin_declare_options &>/dev/null && plugin_declare_options
+    if [[ $cache_age -gt $ttl && $cache_age -le $stale_limit && -n "$cached_data" ]]; then
+        # For plugins with dynamic context checks, verify visibility before refresh
+        if [[ -v _PLUGINS_WITH_CONTEXT_CHECK[$name] ]]; then
+            clear_options_cache "$name" 2>/dev/null || true
+            # shellcheck disable=SC1090
+            . "$plugin_file"
+            declare -F plugin_declare_options &>/dev/null && plugin_declare_options
 
-        # Use unified visibility check
-        if ! _check_plugin_context_visibility; then
-            _spawn_plugin_refresh "$name"
-            printf 'HIDDEN'
-            return 0
+            # Use unified visibility check
+            if ! _check_plugin_context_visibility; then
+                _spawn_plugin_refresh "$name"
+                printf 'HIDDEN'
+                return 0
+            fi
         fi
 
         _spawn_plugin_refresh "$name"

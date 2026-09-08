@@ -506,3 +506,55 @@ get_os_icon() {
             ;;
     esac
 }
+
+# =============================================================================
+# Power Source Detection
+# =============================================================================
+
+declare -g _CACHED_POWER_STATE=""
+declare -g _CACHED_POWER_TIME=0
+
+# Check if system is currently running on battery power
+# Cached for 15 seconds to avoid repeated hardware/system queries
+# Usage: is_on_battery && echo "battery" || echo "ac"
+is_on_battery() {
+    local now="${EPOCHSECONDS:-$(date +%s)}"
+    if (( now - _CACHED_POWER_TIME < 15 )) && [[ -n "$_CACHED_POWER_STATE" ]]; then
+        [[ "$_CACHED_POWER_STATE" == "battery" ]]
+        return
+    fi
+
+    _CACHED_POWER_TIME="$now"
+    _CACHED_POWER_STATE="ac"
+
+    if is_macos; then
+        local batt_out
+        batt_out=$(pmset -g batt 2>/dev/null)
+        if [[ "$batt_out" == *"Battery Power"* ]]; then
+            _CACHED_POWER_STATE="battery"
+        fi
+    elif is_linux; then
+        local ac_online=0
+        local ac
+        for ac in /sys/class/power_supply/AC* /sys/class/power_supply/ADP* /sys/class/power_supply/mains; do
+            if [[ -f "$ac/online" ]]; then
+                if [[ "$(<"$ac/online")" == "1" ]]; then
+                    ac_online=1
+                    break
+                fi
+            fi
+        done
+        if (( ac_online == 0 )); then
+            local bat
+            for bat in /sys/class/power_supply/BAT*; do
+                if [[ -f "$bat/status" && "$(<"$bat/status")" == "Discharging" ]]; then
+                    _CACHED_POWER_STATE="battery"
+                    break
+                fi
+            done
+        fi
+    fi
+
+    [[ "$_CACHED_POWER_STATE" == "battery" ]]
+}
+
