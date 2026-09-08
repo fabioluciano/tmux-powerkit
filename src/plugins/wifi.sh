@@ -150,30 +150,6 @@ _get_wifi_macos_airport() {
     printf '%s:%d' "$ssid" "$signal_percent"
 }
 
-# Method 4: system_profiler (slow, 7-10s; available for manual debug, omitted from hot polling)
-_get_wifi_macos_system_profiler() {
-    local wifi_data
-    wifi_data=$(system_profiler SPAirPortDataType 2>/dev/null | awk '
-        /Status: Connected/ {connected = 1}
-        /Current Network Information:/ {if (connected) {getline; gsub(/^[[:space:]]+|:$/, ""); ssid = $0}}
-        /RSSI:/ {if (connected) {gsub(/[^-0-9]/, ""); rssi = $0}}
-        END {if (connected && ssid) print ssid ":" rssi; else exit 1}
-    ')
-    [[ -z "$wifi_data" ]] && return 1
-
-    local ssid="${wifi_data%%:*}" rssi="${wifi_data##*:}"
-    [[ -z "$ssid" || "$ssid" == "<redacted>" || "$ssid" == *"redacted"* ]] && ssid="WiFi"
-
-    # Convert RSSI to percentage (RSSI -100 = 0%, -50 = 100%)
-    local signal=75
-    if [[ -n "$rssi" && "$rssi" =~ ^-?[0-9]+$ ]]; then
-        signal=$(( (rssi + 100) * 100 / 50 ))
-        (( signal > 100 )) && signal=100
-        (( signal < 0 )) && signal=0
-    fi
-    printf '%s:%d' "$ssid" "$signal"
-}
-
 # macOS entry point - try fast methods
 _get_wifi_macos() {
     _get_wifi_macos_ipconfig 2>/dev/null ||

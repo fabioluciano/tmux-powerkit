@@ -87,8 +87,7 @@ plugin_get_health() {
 
     # Calculate thresholds (multiplied by cores, supporting float multipliers)
     local warn_th crit_th
-    warn_th=$(awk -v c="$num_cores" -v m="$warning_mult" 'BEGIN { printf "%.2f", c * m }')
-    crit_th=$(awk -v c="$num_cores" -v m="$critical_mult" 'BEGIN { printf "%.2f", c * m }')
+    read -r warn_th crit_th < <(awk -v c="$num_cores" -v w="$warning_mult" -v k="$critical_mult" 'BEGIN { printf "%.2f %.2f", c * w, c * k }')
 
     # Higher is worse - use float version for load average
     evaluate_threshold_health_float "${load:-0}" "$warn_th" "$crit_th"

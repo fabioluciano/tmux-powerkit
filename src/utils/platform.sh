@@ -558,3 +558,11 @@ is_on_battery() {
     [[ "$_CACHED_POWER_STATE" == "battery" ]]
 }
 
+# Check if battery saver mode is active (based on @powerkit_battery_saver and battery status)
+# Usage: is_battery_saver_active && ...
+is_battery_saver_active() {
+    local mode
+    mode=$(get_tmux_option "@powerkit_battery_saver" "${POWERKIT_DEFAULT_BATTERY_SAVER:-auto}" 2>/dev/null || echo "auto")
+    [[ "$mode" == "on" ]] || { [[ "$mode" == "auto" ]] && is_on_battery; }
+}
+

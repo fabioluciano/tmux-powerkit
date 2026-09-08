@@ -28,7 +28,7 @@ declare -gA _PLUGIN_STATES=()
 declare -g _EXTERNAL_PLUGIN_COUNTER=0
 
 # Plugins that implement plugin_should_be_active() for pane/dynamic context checks
-declare -gA _PLUGINS_WITH_CONTEXT_CHECK=([git]=1 [terraform]=1 [docker]=1 [swap]=1)
+declare -gA _PLUGINS_WITH_CONTEXT_CHECK=([git]=1 [terraform]=1)
 
 # =============================================================================
 # Visibility Helpers
@@ -81,9 +81,7 @@ _get_plugin_cache_ttl() {
     ttl=$(get_option "cache_ttl" 2>/dev/null || echo 30)
 
     # Battery saver multiplier
-    local battery_saver
-    battery_saver=$(get_tmux_option "@powerkit_battery_saver" "${POWERKIT_DEFAULT_BATTERY_SAVER:-auto}")
-    if [[ "$battery_saver" == "on" ]] || { [[ "$battery_saver" == "auto" ]] && is_on_battery; }; then
+    if is_battery_saver_active; then
         # Double TTL when on battery (minimum 10s)
         (( ttl = ttl * 2 ))
         (( ttl < 10 )) && ttl=10
@@ -107,29 +105,18 @@ discover_plugins() {
         return 0
     }
 
+    local items=()
     if declare -F _parse_plugin_list &>/dev/null; then
         _parse_plugin_list "$plugins_str"
-        local plugin_name
-        for plugin_name in "${_PARSED_PLUGINS[@]}"; do
-            trim_inplace plugin_name
-            [[ -z "$plugin_name" ]] && continue
-            if [[ "$plugin_name" == external\(* ]]; then
-                _register_external_plugin "$plugin_name"
-            else
-                _register_plugin "$plugin_name"
-            fi
-        done
-        log_info "lifecycle" "Discovered ${#_PLUGINS[@]} plugins"
-        return 0
+        items=("${_PARSED_PLUGINS[@]}")
+    else
+        local IFS=','
+        items=($plugins_str)
     fi
 
-    # Parse comma-separated list, stripping group(...) wrapper if present
-    local IFS=','
     local plugin_name
-    for plugin_name in $plugins_str; do
-        # Trim whitespace (uses nameref - zero subshells)
+    for plugin_name in "${items[@]}"; do
         trim_inplace plugin_name
-
         [[ -z "$plugin_name" ]] && continue
 
         # Handle group(...) wrappers
@@ -142,8 +129,6 @@ discover_plugins() {
         trim_inplace plugin_name
         [[ -z "$plugin_name" ]] && continue
 
-        # Check if it's an external plugin
-        # External plugins have format: external("...")
         if [[ "$plugin_name" == external\(* ]]; then
             _register_external_plugin "$plugin_name"
         else

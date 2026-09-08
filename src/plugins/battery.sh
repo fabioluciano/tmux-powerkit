@@ -92,8 +92,6 @@ plugin_declare_options() {
 _has_battery() {
     if is_wsl; then
         [[ -n "$(find /sys/class/power_supply/*/capacity 2>/dev/null | head -1)" ]]
-    elif is_macos && has_cmd pmset; then
-        pmset -g batt 2>/dev/null | grep -q "InternalBattery"
     elif has_cmd acpi; then
         acpi -b 2>/dev/null | grep -q "Battery"
     elif has_cmd upower; then
@@ -118,8 +116,6 @@ _get_percentage() {
         local f
         f=$(find /sys/class/power_supply/*/capacity 2>/dev/null | head -1)
         [[ -n "$f" ]] && percent=$(cat "$f" 2>/dev/null)
-    elif is_macos && has_cmd pmset; then
-        percent=$(pmset -g batt 2>/dev/null | awk '/[0-9]+%/ {gsub(/[%;]/, "", $3); print $3; exit}')
     elif has_cmd acpi; then
         percent=$(acpi -b 2>/dev/null | awk -F'[,%]' '/Battery/ {gsub(/ /, "", $2); print $2; exit}')
     elif has_cmd upower; then
@@ -154,20 +150,6 @@ _get_charging_status() {
         if [[ -n "$f" ]]; then
             status=$(cat "$f" 2>/dev/null)
             status="${status,,}"
-        fi
-    elif is_macos && has_cmd pmset; then
-        local out
-        out=$(pmset -g batt 2>/dev/null)
-        if echo "$out" | grep -q "AC Power"; then
-            if echo "$out" | grep -qE "charging|finishing charge"; then
-                status="charging"
-            elif echo "$out" | grep -q "charged"; then
-                status="charged"
-            else
-                status="ac_power"
-            fi
-        else
-            status="discharging"
         fi
     elif has_cmd acpi; then
         if acpi -b 2>/dev/null | grep -qiE "^Battery.*: Charging"; then
@@ -224,15 +206,7 @@ _get_charging_status() {
 _get_time_remaining() {
     local time=""
 
-    if is_macos && has_cmd pmset; then
-        local out
-        out=$(pmset -g batt 2>/dev/null)
-        if echo "$out" | grep -q "(no estimate)"; then
-            time="..."
-        else
-            time=$(echo "$out" | grep -oE '[0-9]+:[0-9]+' | head -1)
-        fi
-    elif has_cmd acpi; then
+    if has_cmd acpi; then
         time=$(acpi -b 2>/dev/null | grep -oE '[0-9]+:[0-9]+:[0-9]+' | head -1 | cut -d: -f1-2)
     elif has_cmd upower; then
         local bat sec unit

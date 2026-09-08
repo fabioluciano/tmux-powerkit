@@ -164,17 +164,10 @@ _check_scdaemon_signing() {
     # GETINFO scd_running returns quickly if not blocked
     # EPOCHREALTIME format: seconds.microseconds (e.g., 1704412800.123456)
     local start_us=${EPOCHREALTIME//./}
-    local result_code
-    if has_cmd timeout; then
-        timeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
-        result_code=$?
-    elif has_cmd gtimeout; then
-        gtimeout 0.3 gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
-        result_code=$?
-    else
-        gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
-        result_code=$?
-    fi
+    local timeout_cmd=""
+    has_cmd timeout && timeout_cmd="timeout 0.3" || { has_cmd gtimeout && timeout_cmd="gtimeout 0.3"; }
+    $timeout_cmd gpg-connect-agent "SCD GETINFO status" /bye &>/dev/null 2>&1
+    local result_code=$?
     local end_us=${EPOCHREALTIME//./}
 
     # If command timed out or took > 200ms, likely waiting for user
