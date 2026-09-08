@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.2.0...v7.3.0) (2026-09-08)
+
+### Features
+
+* **windows:** add per-command window icon overrides ([#254](https://github.com/fabioluciano/tmux-powerkit/issues/254)) ([126d41d](https://github.com/fabioluciano/tmux-powerkit/commit/126d41d8c4a084bc26c9a097d623b6e84f20726b))
+
 ## [7.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.1.0...v7.2.0) (2026-08-28)
 
 ### Features
