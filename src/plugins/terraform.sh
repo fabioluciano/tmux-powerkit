@@ -86,8 +86,13 @@ plugin_get_presence() { printf 'conditional'; }
 # This is called BEFORE returning cached data to ensure the plugin
 # disappears immediately when switching to a non-Terraform directory
 plugin_should_be_active() {
-    local path
-    path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    local pane path
+    pane="${POWERKIT_PANE:-}"
+    if [[ -n "$pane" && "$pane" != "#{pane_id}" ]]; then
+        path=$(tmux display-message -p -t "$pane" '#{pane_current_path}' 2>/dev/null)
+    else
+        path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    fi
     [[ -n "$path" && -d "$path" ]] && _is_tf_directory "$path"
 }
 
@@ -245,7 +250,10 @@ _get_terraform_workspace() {
 }
 
 plugin_collect() {
-    local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    local pane path
+    pane="${POWERKIT_PANE:-}"
+    [[ -z "$pane" || "$pane" == "#{pane_id}" ]] && return 0
+    path=$(tmux display-message -p -t "$pane" '#{pane_current_path}' 2>/dev/null)
     [[ -z "$path" || ! -d "$path" ]] && return 0
 
     # Only show in Terraform directories
@@ -294,4 +302,3 @@ plugin_setup_keybindings() {
     # terraform_workspace_selector uses display-menu (not popup)
     pk_bind_shell "$ws_key" "bash '$helper_script' select" "terraform:workspace"
 }
-

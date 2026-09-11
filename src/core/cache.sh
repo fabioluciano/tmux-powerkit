@@ -301,8 +301,46 @@ cache_clear_all() {
 # Get plugin cache key
 # Usage: _plugin_cache_key "plugin_name"
 _plugin_cache_key() {
+    _plugin_data_cache_key "$1"
+}
+
+# Get plugin data cache key
+# Usage: _plugin_data_cache_key "plugin_name"
+_plugin_data_cache_key() {
+    _plugin_scoped_cache_key "$1" "data"
+}
+
+# Get plugin ttl cache key
+# Usage: _plugin_ttl_cache_key "plugin_name"
+_plugin_ttl_cache_key() {
+    _plugin_scoped_cache_key "$1" "ttl"
+}
+
+# Scope pane-context plugins to a pane so cached data cannot leak between panes.
+# POWERKIT_PANE is injected by the status line using #{pane_id}.
+# Usage: _plugin_scoped_cache_key "plugin_name" "suffix"
+_plugin_scoped_cache_key() {
     local plugin="$1"
-    printf 'plugin_%s' "$plugin"
+    local suffix="$2"
+    case "$plugin" in
+        git|terraform)
+            local pane="${POWERKIT_PANE:-}"
+            local session="${POWERKIT_SESSION:-}"
+            if [[ -n "$pane" && "$pane" != "#{pane_id}" ]]; then
+                printf 'plugin_%s_%s_%s' "$plugin" "${pane#%}" "$suffix"
+                return
+            fi
+            if [[ "$plugin" == "git" ]]; then
+                printf 'plugin_%s_no_target_%s' "$plugin" "$suffix"
+                return
+            fi
+            if [[ -n "$session" && "$session" != "#{session_name}" ]]; then
+                printf 'plugin_%s_%s_%s' "$plugin" "$session" "$suffix"
+                return
+            fi
+            ;;
+    esac
+    printf 'plugin_%s_%s' "$plugin" "$suffix"
 }
 
 # Store plugin output in cache

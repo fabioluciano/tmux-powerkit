@@ -29,7 +29,7 @@ plugins_render() {
     local side="${1:-right}"
 
     # Pass side to powerkit-render so it knows which direction separators should point
-    printf '#(%s %s)' "${POWERKIT_ROOT}/bin/powerkit-render" "$side"
+    printf '#(POWERKIT_SESSION=#{session_name} POWERKIT_PANE=#{pane_id} %s %s)' "${POWERKIT_ROOT}/bin/powerkit-render" "$side"
 }
 
 # Get the background color of plugins

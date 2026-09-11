@@ -595,8 +595,8 @@ _spawn_plugin_refresh() {
 
         # Check dependencies
         if declare -F plugin_check_dependencies &>/dev/null && ! plugin_check_dependencies; then
-            cache_set "plugin_${name}_data" "HIDDEN"
-            cache_set "plugin_${name}_ttl" "${_DEFAULT_CACHE_TTL_LONG:-3600}"
+            cache_set "$(_plugin_data_cache_key "$name")" "HIDDEN"
+            cache_set "$(_plugin_ttl_cache_key "$name")" "${_DEFAULT_CACHE_TTL_LONG:-3600}"
             exit 0
         fi
 
@@ -610,7 +610,7 @@ _spawn_plugin_refresh() {
         # Check visibility using unified helper
         presence=$(plugin_get_presence)
         if is_plugin_hidden_by_presence "$presence" "$state"; then
-            cache_set "plugin_${name}_data" "HIDDEN"
+            cache_set "$(_plugin_data_cache_key "$name")" "HIDDEN"
             exit 0
         fi
 
@@ -635,11 +635,11 @@ _spawn_plugin_refresh() {
 
         output=$(_build_plugin_output "$icon" "$content" "$state" "$health")
 
-        cache_set "plugin_${name}_data" "$output"
+        cache_set "$(_plugin_data_cache_key "$name")" "$output"
 
         # Cache TTL
         ttl=$(_get_plugin_cache_ttl)
-        cache_set "plugin_${name}_ttl" "$ttl"
+        cache_set "$(_plugin_ttl_cache_key "$name")" "$ttl"
     ' _ "$name" "$lock_dir" "$POWERKIT_ROOT" &>/dev/null &
     disown
 }
@@ -792,8 +792,8 @@ collect_plugin_render_data() {
     _set_plugin_context "$name"
 
     # Cache keys
-    local cache_key="plugin_${name}_data"
-    local ttl_cache_key="plugin_${name}_ttl"
+    local cache_key="$(_plugin_data_cache_key "$name")"
+    local ttl_cache_key="$(_plugin_ttl_cache_key "$name")"
 
     # Get TTL (use cached value to avoid sourcing plugin just for TTL)
     local ttl
