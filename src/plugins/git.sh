@@ -9,6 +9,14 @@
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 . "${POWERKIT_ROOT}/src/contract/plugin_contract.sh"
 
+_powerkit_git_active_pane_path() {
+    local pane path
+    pane="${POWERKIT_PANE:-}"
+    [[ -z "$pane" || "$pane" == "#{pane_id}" ]] && return
+    path=$(tmux display-message -p -t "$pane" '#{pane_current_path}' 2>/dev/null)
+    printf '%s' "$path"
+}
+
 # =============================================================================
 # Plugin Contract: Metadata
 # =============================================================================
@@ -57,7 +65,7 @@ plugin_get_presence() { printf 'conditional'; }
 # disappears immediately when switching to a non-git directory
 plugin_should_be_active() {
     local path
-    path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    path=$(_powerkit_git_active_pane_path)
     [[ -n "$path" ]] && git -C "$path" rev-parse --is-inside-work-tree &>/dev/null
 }
 
@@ -120,7 +128,8 @@ plugin_get_icon() {
 # =============================================================================
 
 plugin_collect() {
-    local path=$(tmux display-message -p '#{pane_current_path}' 2>/dev/null)
+    local path
+    path=$(_powerkit_git_active_pane_path)
     [[ -z "$path" || ! -d "$path" ]] && return
 
     # Check if inside a git repository
