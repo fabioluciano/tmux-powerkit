@@ -198,6 +198,7 @@ _render_background() {
         # Render and cache using cache_set (cache_key includes theme for invalidation)
         output=$(render_plugins "$side")
         cache_set "$cache_key" "$output"
+        tmux refresh-client -S 2>/dev/null || true
     ' _ "$POWERKIT_ROOT" "$side" "$cache_key" "$lock_token" "$lock_dir" &>/dev/null &
     disown
 }
