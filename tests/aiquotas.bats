@@ -3304,3 +3304,459 @@ JSON
     assert_success
     [[ "$output" == "warning" ]]
 }
+
+# ---------- Claude subscription (Pro / Max / Team) ---------------------------
+
+_setup_aiq_shim_claudecode() {
+    export AIQUOTAS_HTTP_SCENARIO="$POWERKIT_ROOT/tests/fixtures/aiquotas/http/claudecode-providers.tsv"
+    export AIQUOTAS_HTTP_STATE
+    AIQUOTAS_HTTP_STATE="$(mktemp -d -t aiquotas_http_cc.XXXXXX)"
+    : >"$AIQUOTAS_HTTP_STATE/counter"
+    export PATH="$POWERKIT_ROOT/tests/helpers/shims:$PATH"
+}
+
+@test "claudecode metrics: limits[] -> 5h quota record, weekly dimension, no model" {
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[
+           {"kind":"session","percent":12,"resets_at":"2026-09-17T14:00:00.684028+00:00","scope":null},
+           {"kind":"weekly_all","percent":38,"resets_at":"2026-09-18T07:00:00.684045+00:00","scope":null},
+           {"kind":"weekly_scoped","percent":13,"resets_at":"2026-09-18T06:59:59.684213+00:00",
+            "scope":{"model":{"display_name":"Fable"}}}]}'
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].metric_kind == "quota") and
+        (.records[0].unit == "percent") and
+        (.records[0].value == 12) and
+        (.records[0].limit == 100) and
+        (.records[0].remaining == 88) and
+        (.records[0].dimensions.resource == "subscription") and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.interval_remaining_percent == 88) and
+        (.records[0].dimensions.weekly_remaining_percent == 62) and
+        (.records[0].dimensions.model == null) and
+        (.records[0].window_start == "2026-09-17T09:00:00Z") and
+        (.records[0].window_end == "2026-09-17T14:00:00Z")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: rows are classified on kind, not on array order" {
+    # Same payload with the rows reversed must produce the same record. Guards
+    # against anyone reintroducing an index- or label-based lookup.
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[
+           {"kind":"weekly_all","percent":38,"resets_at":null,"scope":null},
+           {"kind":"session","percent":12,"resets_at":null,"scope":null}]}'
+    assert_success
+    run jq -e '
+        (.records[0].value == 12) and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.weekly_remaining_percent == 62)
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: unscoped row wins over a scoped sibling of the same kind, regardless of order" {
+    # A scoped session row listed first must not shadow the account-wide one.
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[
+           {"kind":"session","percent":50,"resets_at":null,"scope":{"surface":"web"}},
+           {"kind":"session","percent":12,"resets_at":null,"scope":null},
+           {"kind":"weekly_all","percent":38,"resets_at":null,"scope":null}]}'
+    assert_success
+    run jq -e '
+        (.records[0].value == 12) and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.weekly_remaining_percent == 62)
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: a row with null percent falls through to the top-level object" {
+    # Present-but-empty row: the five_hour object still carries the number.
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[
+           {"kind":"session","percent":null,"resets_at":null,"scope":null},
+           {"kind":"weekly_all","percent":38,"resets_at":null,"scope":null}],
+          "five_hour":{"utilization":8.0,"resets_at":"2026-09-17T14:00:00.1+00:00"}}'
+    assert_success
+    run jq -e '
+        (.records[0].value == 8) and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.weekly_remaining_percent == 62) and
+        (.records[0].window_end == "2026-09-17T14:00:00Z")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: falls back to five_hour/seven_day when limits[] absent" {
+    run _aiquotas_metrics_document "claudecode" \
+        '{"five_hour":{"utilization":8.0,"resets_at":"2026-09-17T14:00:00.1+00:00"},
+          "seven_day":{"utilization":38.0,"resets_at":"2026-09-18T07:00:00.1+00:00"}}'
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].value == 8) and
+        (.records[0].remaining == 92) and
+        (.records[0].dimensions.line_item == "5h") and
+        (.records[0].dimensions.weekly_remaining_percent == 62)
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: weekly-only payload uses weekly as primary, no weekly dimension" {
+    # With weekly already the record, a weekly dimension would make the
+    # renderer print the same number on both sides of the slash.
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[{"kind":"weekly_all","percent":38,"resets_at":"2026-09-18T07:00:00Z","scope":null}]}'
+    assert_success
+    run jq -e '
+        (.records[0].value == 38) and
+        (.records[0].dimensions.line_item == "weekly") and
+        (.records[0].dimensions.weekly_remaining_percent == null) and
+        (.records[0].window_start == "2026-09-11T07:00:00Z")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: clamps percent >100 and <0 into [0,100]" {
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[{"kind":"session","percent":150,"resets_at":null,"scope":null}]}'
+    assert_success
+    run jq -e '(.records[0].value == 100) and (.records[0].remaining == 0)' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: unparseable reset timestamp yields null windows, not a wrong one" {
+    # A non-UTC offset is not something fromdateiso8601 can fold, so the
+    # boundaries drop out rather than being silently misreported.
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[{"kind":"session","percent":12,"resets_at":"2026-09-17T14:00:00+02:00","scope":null}]}'
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].value == 12) and
+        (.records[0].window_start == null) and
+        (.records[0].window_end == null) and
+        (.records[0].reset_at == null)
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode metrics: only unknown window kinds -> unsupported, no records" {
+    run _aiquotas_metrics_document "claudecode" \
+        '{"limits":[{"kind":"tangelo","percent":5}]}'
+    assert_success
+    run jq -e '
+        (.records | length == 0) and
+        (.provider_outcomes[0].status == "unsupported")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "_aiquotas_collect_claudecode is defined as a callable function" {
+    run bash -c '
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        declare -F _aiquotas_collect_claudecode >/dev/null && echo DEFINED || echo MISSING
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "DEFINED"
+}
+
+@test "claudecode adapter: no token and no credentials file -> unconfigured WITHOUT calling curl" {
+    run bash -c '
+        unset CLAUDE_CODE_OAUTH_TOKEN
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                claudecode_credentials_file) printf "/nonexistent/credentials.json" ;;
+                claudecode_usage_url) printf "https://api.anthropic.com/api/oauth/usage" ;;
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_collect_claudecode
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    run jq -e '
+        (.schema_version == 1) and
+        (.records | length == 0) and
+        (.provider_outcomes[0].provider == "claudecode") and
+        (.provider_outcomes[0].source == "official") and
+        (.provider_outcomes[0].status == "unconfigured")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode adapter: credentials path with a literal ~/ prefix is expanded against HOME" {
+    run bash -c '
+        unset CLAUDE_CODE_OAUTH_TOKEN
+        export HOME
+        HOME="$(mktemp -d -t aqtcc_home.XXXXXX)"
+        mkdir -p "$HOME/.claude"
+        printf "%s" "{\"claudeAiOauth\":{\"accessToken\":\"sk-ant-oat01-dummy-fixture-only-0000\"}}" >"$HOME/.claude/.credentials.json"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                claudecode_credentials_file) printf "~/.claude/.credentials.json" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_claudecode_token
+        rm -rf "$HOME"
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "sk-ant-oat01-dummy-fixture-only-0000"
+}
+
+@test "claudecode adapter: CLAUDE_CODE_OAUTH_TOKEN is preferred over the credentials file" {
+    _setup_aiq_shim_claudecode
+    run bash -c '
+        export AIQUOTAS_HTTP_SCENARIO="$1/tests/fixtures/aiquotas/http/claudecode-providers.tsv"
+        export AIQUOTAS_HTTP_STATE
+        AIQUOTAS_HTTP_STATE="$(mktemp -d -t aqtcc.XXXXXX)"
+        : >"$AIQUOTAS_HTTP_STATE/counter"
+        # Env token set, credentials file deliberately absent: reaching the
+        # shim at all proves the env var was used.
+        export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-dummy-fixture-only-0000"
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                claudecode_credentials_file) printf "/nonexistent/credentials.json" ;;
+                claudecode_usage_url) printf "https://api.anthropic.com/api/oauth/usage" ;;
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_collect_claudecode
+    ' _ "$POWERKIT_ROOT"
+    _teardown_aiq_shim
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].value == 12) and
+        (.records[0].dimensions.weekly_remaining_percent == 62) and
+        (.provider_outcomes[0].status == "ok")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode adapter: token is read from the credentials file when env is unset" {
+    _setup_aiq_shim_claudecode
+    run bash -c '
+        export AIQUOTAS_HTTP_SCENARIO="$1/tests/fixtures/aiquotas/http/claudecode-providers.tsv"
+        export AIQUOTAS_HTTP_STATE
+        AIQUOTAS_HTTP_STATE="$(mktemp -d -t aqtcc.XXXXXX)"
+        : >"$AIQUOTAS_HTTP_STATE/counter"
+        unset CLAUDE_CODE_OAUTH_TOKEN
+        CREDS="$(mktemp -t aqtcc_creds.XXXXXX)"
+        printf "%s" "{\"claudeAiOauth\":{\"accessToken\":\"sk-ant-oat01-dummy-fixture-only-0000\"}}" >"$CREDS"
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        get_option() {
+            case "$1" in
+                claudecode_credentials_file) printf "%s" "$CREDS" ;;
+                claudecode_usage_url) printf "https://api.anthropic.com/api/oauth/usage" ;;
+                timeout) printf "5" ;;
+                *) printf "" ;;
+            esac
+        }
+        _aiquotas_collect_claudecode
+        rm -f "$CREDS"
+    ' _ "$POWERKIT_ROOT"
+    _teardown_aiq_shim
+    assert_success
+    run jq -e '
+        (.records | length == 1) and
+        (.records[0].value == 12) and
+        (.provider_outcomes[0].status == "ok")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode adapter: 401 (expired token) -> status=unauthorized, no records" {
+    _setup_aiq_shim_claudecode
+    # Manifest line 2 is the 401 (pre-seed counter to 1).
+    run bash -c '
+        export AIQUOTAS_HTTP_SCENARIO="$1/tests/fixtures/aiquotas/http/claudecode-providers.tsv"
+        export AIQUOTAS_HTTP_STATE
+        AIQUOTAS_HTTP_STATE="$(mktemp -d -t aqtcc.XXXXXX)"
+        printf "%d\n" 1 >"$AIQUOTAS_HTTP_STATE/counter"
+        export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-dummy-fixture-only-0000"
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        _aiquotas_collect_claudecode
+    ' _ "$POWERKIT_ROOT"
+    _teardown_aiq_shim
+    assert_success
+    run jq -e '
+        (.records | length == 0) and
+        (.provider_outcomes[0].status == "unauthorized")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode adapter: 429 (endpoint rate limit) -> status=rate_limited" {
+    _setup_aiq_shim_claudecode
+    # Manifest line 3 is the 429 (pre-seed counter to 2).
+    run bash -c '
+        export AIQUOTAS_HTTP_SCENARIO="$1/tests/fixtures/aiquotas/http/claudecode-providers.tsv"
+        export AIQUOTAS_HTTP_STATE
+        AIQUOTAS_HTTP_STATE="$(mktemp -d -t aqtcc.XXXXXX)"
+        printf "%d\n" 2 >"$AIQUOTAS_HTTP_STATE/counter"
+        export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-dummy-fixture-only-0000"
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        _aiquotas_collect_claudecode
+    ' _ "$POWERKIT_ROOT"
+    _teardown_aiq_shim
+    assert_success
+    run jq -e '
+        (.records | length == 0) and
+        (.provider_outcomes[0].status == "rate_limited")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode adapter: unrecognised window shape -> unsupported, no records" {
+    _setup_aiq_shim_claudecode
+    # Manifest line 4 is the malformed body (pre-seed counter to 3).
+    run bash -c '
+        export AIQUOTAS_HTTP_SCENARIO="$1/tests/fixtures/aiquotas/http/claudecode-providers.tsv"
+        export AIQUOTAS_HTTP_STATE
+        AIQUOTAS_HTTP_STATE="$(mktemp -d -t aqtcc.XXXXXX)"
+        printf "%d\n" 3 >"$AIQUOTAS_HTTP_STATE/counter"
+        export CLAUDE_CODE_OAUTH_TOKEN="sk-ant-oat01-dummy-fixture-only-0000"
+        export PATH="$1/tests/helpers/shims:$PATH"
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _aiquotas_load_provider claudecode
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        _aiquotas_collect_claudecode
+    ' _ "$POWERKIT_ROOT"
+    _teardown_aiq_shim
+    assert_success
+    run jq -e '
+        (.records | length == 0) and
+        (.provider_outcomes[0].status == "unsupported")
+    ' <<<"$output"
+    assert_success
+}
+
+@test "claudecode compact render: dual-window shows interval/weekly % left" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/claudecode-usage.json")
+        DOC=$(_aiquotas_metrics_document "claudecode" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_claudecode" "$DOC"
+        plugin_data_set "outcome_claudecode" "{\"provider\":\"claudecode\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        get_option() {
+            case "$1" in
+                providers) printf "claudecode" ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "Claude Code 88/62% left"
+}
+
+@test "claudecode compact_content: short label and no trailing ' left'" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/claudecode-usage.json")
+        DOC=$(_aiquotas_metrics_document "claudecode" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_claudecode" "$DOC"
+        plugin_data_set "outcome_claudecode" "{\"provider\":\"claudecode\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        get_option() {
+            case "$1" in
+                providers) printf "claudecode" ;;
+                compact_content) printf "true" ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_render
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "CC 88/62%"
+}
+
+@test "claudecode: healthy 5h but near-exhausted weekly escalates health to error" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/contract/plugin_contract.sh"
+        source "$1/src/plugins/aiquotas.sh"
+        _set_plugin_context aiquotas
+        plugin_declare_options
+        PAYLOAD=$(cat "$1/tests/fixtures/aiquotas/claudecode-weekly-exhausted.json")
+        DOC=$(_aiquotas_metrics_document "claudecode" "$PAYLOAD")
+        plugin_data_set "providers_count" "1"
+        plugin_data_set "providers_failed" "0"
+        plugin_data_set "document_claudecode" "$DOC"
+        plugin_data_set "outcome_claudecode" "{\"provider\":\"claudecode\",\"source\":\"official\",\"status\":\"ok\",\"error\":null}"
+        get_option() {
+            case "$1" in
+                providers) printf "claudecode" ;;
+                warning_threshold) printf "80" ;;
+                critical_threshold) printf "95" ;;
+                *) printf "" ;;
+            esac
+        }
+        plugin_get_health
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    [[ "$output" == "error" ]]
+}
