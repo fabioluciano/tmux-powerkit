@@ -3,6 +3,8 @@ load './helpers/test_helper.bash'
 
 setup() {
     setup_test_root
+    # Plugin lookups now require the pane id supplied by the status format.
+    export POWERKIT_PANE="%1"
     mock_dir="$BATS_TEST_TMPDIR/bin"
     mkdir -p "$mock_dir"
     export PATH="$mock_dir:$PATH"

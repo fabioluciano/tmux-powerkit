@@ -7,6 +7,8 @@ load './helpers/test_helper.bash'
 
 setup() {
     setup_test_root
+    # Plugin lookups now require the pane id supplied by the status format.
+    export POWERKIT_PANE="%1"
 }
 
 # =============================================================================
