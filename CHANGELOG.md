@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.5.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.4.0...v7.5.0) (2026-09-27)
+
+### Features
+
+* **aiquotas:** add claudecode provider for Claude subscription usage ([#261](https://github.com/fabioluciano/tmux-powerkit/issues/261)) ([df27378](https://github.com/fabioluciano/tmux-powerkit/commit/df2737875120af90e80f9381b176451c0e3653eb))
+
 ## [7.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.3.0...v7.4.0) (2026-09-08)
 
 ### Features
