@@ -126,9 +126,10 @@ plugin_collect() {
     # Check if inside a git repository
     git -C "$path" rev-parse --is-inside-work-tree &>/dev/null || return
 
-    # Get git status
+    # Get git status (--no-optional-locks: avoid taking index.lock, which
+    # races with user git commands when run from the periodic status bar)
     local status_output
-    status_output=$(git -C "$path" status --porcelain=v1 --branch 2>/dev/null)
+    status_output=$(git --no-optional-locks -C "$path" status --porcelain=v1 --branch 2>/dev/null)
 
     # Parse branch, changes and ahead/behind
     local branch="" modified=0 changed=0 untracked=0 staged=0 unstaged=0 conflicts=0 detached=0 ahead=0 behind=0
