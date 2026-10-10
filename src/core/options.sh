@@ -65,6 +65,9 @@ _batch_load_tmux_options() {
             local value="${BASH_REMATCH[2]}"
             if [[ "$value" =~ ^\"(.*)\"$ ]]; then
                 value="${BASH_REMATCH[1]}"
+            elif [[ "$value" == "''" ]]; then
+                # tmux serializes an empty string as two single quotes.
+                value=""
             fi
             _TMUX_OPTIONS_CACHE["$key"]="$value"
         fi
