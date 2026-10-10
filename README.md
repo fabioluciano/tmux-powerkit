@@ -256,6 +256,12 @@ Track your investments:
 | `crypto` | Cryptocurrency prices | CoinGecko API     |
 | `stocks` | Stock prices          | Yahoo Finance API |
 
+### Sports
+
+| Plugin       | Description            | Source                                                               |
+| ------------ | ---------------------- | -------------------------------------------------------------------- |
+| `livetennis` | Live tennis snapshots  | [Setup and request limits](docs/plugins/livetennis.md)               |
+
 ---
 
 ## 🎨 Themes
