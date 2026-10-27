@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.6.2](https://github.com/fabioluciano/tmux-powerkit/compare/v7.6.1...v7.6.2) (2026-10-27)
+
+### Bug Fixes
+
+* **github:** return success after collecting plugin data ([#269](https://github.com/fabioluciano/tmux-powerkit/issues/269)) ([64f1923](https://github.com/fabioluciano/tmux-powerkit/commit/64f1923b8caf8c5b19e23c2ece18b000941b117b))
+
 ## [7.6.1](https://github.com/fabioluciano/tmux-powerkit/compare/v7.6.0...v7.6.1) (2026-10-27)
 
 ### Bug Fixes
