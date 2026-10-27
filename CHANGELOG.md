@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.7.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.6.2...v7.7.0) (2026-10-27)
+
+### Features
+
+* **renderer:** add icon_only default plugin option ([#267](https://github.com/fabioluciano/tmux-powerkit/issues/267)) ([d382ff2](https://github.com/fabioluciano/tmux-powerkit/commit/d382ff250b6c227991f2cde842b00d3aac89dac1))
+
 ## [7.6.2](https://github.com/fabioluciano/tmux-powerkit/compare/v7.6.1...v7.6.2) (2026-10-27)
 
 ### Bug Fixes
