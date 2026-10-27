@@ -441,6 +441,7 @@ plugin_collect() {
     # If every requested counter failed, refuse to overwrite the prior
     # cache so the lifecycle can mark it stale.
     [[ "$outcome" == "transport_error" ]] && return 1
+    return 0
 }
 
 plugin_render() {

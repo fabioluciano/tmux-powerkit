@@ -36,6 +36,19 @@ setup() {
 # Behavioral Tests
 # =============================================================================
 
+@test "github: successful collection returns zero" {
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/plugins/github.sh"
+        _set_plugin_context github
+        plugin_declare_options
+        _is_authenticated() { return 0; }
+        _get_github_info() { echo "1 2 0 success"; }
+        plugin_collect
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+}
+
 @test "github: unauthenticated → state=failed, health=error" {
     run bash -c '
         source "$1/src/core/bootstrap.sh"
