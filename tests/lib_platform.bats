@@ -2,7 +2,7 @@
 # =============================================================================
 # BATS tests for src/utils/platform.sh
 # Covers: get_os, is_macos, is_linux, has_cmd, get_arch,
-#         is_in_tmux, get_terminal
+#         is_in_tmux, get_terminal, macos_cycle_appearance
 # =============================================================================
 
 load './helpers/test_helper.bash'
@@ -166,4 +166,58 @@ setup() {
         [[ "$first" == "$second" && "$second" == "$third" ]]
     ' _ "$POWERKIT_ROOT/src/utils/platform.sh"
     assert_success
+}
+# =============================================================================
+# macos_cycle_appearance (system calls stubbed)
+# =============================================================================
+
+_cycle_from() {
+    # $1 = current mode, $2 = AppleInterfaceStyle ("Dark" or empty)
+    run bash -c '
+        source "$1/src/utils/platform.sh"
+        MODE="$2"
+        is_macos() { return 0; }
+        get_macos_appearance_mode() { printf "%s" "$MODE"; }
+        defaults() {
+            if [[ "$1 $3" == "read AppleInterfaceStyle" ]]; then
+                [[ -n "$STYLE" ]] && printf "%s\n" "$STYLE" || return 1
+            else
+                printf "defaults %s\n" "$*"
+            fi
+        }
+        osascript() { printf "osascript %s\n" "$*"; }
+        macos_dispatch_appearance() { printf "dispatch %s\n" "$1"; }
+        macos_cycle_appearance
+    ' _ "$POWERKIT_ROOT" "$1"
+}
+
+@test "macos_cycle_appearance from auto while light forces dark" {
+    STYLE="" _cycle_from auto
+    assert_success
+    assert_output --partial "dark mode to true"
+    assert_output --partial "dispatch 1"
+}
+
+@test "macos_cycle_appearance from auto while dark forces light" {
+    STYLE="Dark" _cycle_from auto
+    assert_success
+    assert_output --partial "dark mode to false"
+    assert_output --partial "dispatch 0"
+}
+
+@test "macos_cycle_appearance from forced dark restores light, then returns to auto" {
+    STYLE="Dark" _cycle_from dark
+    assert_success
+    # Restore first: writing the auto key alone leaves the forced appearance on screen
+    assert_line --index 0 --partial "dark mode to false"
+    assert_line --index 1 --partial "AppleInterfaceStyleSwitchesAutomatically -bool true"
+    assert_line --index 2 "dispatch 0"
+}
+
+@test "macos_cycle_appearance from forced light restores dark, then returns to auto" {
+    STYLE="" _cycle_from light
+    assert_success
+    assert_line --index 0 --partial "dark mode to true"
+    assert_line --index 1 --partial "AppleInterfaceStyleSwitchesAutomatically -bool true"
+    assert_line --index 2 "dispatch 1"
 }

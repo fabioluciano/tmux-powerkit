@@ -347,7 +347,8 @@ macos_dispatch_appearance() {
     done < <(tmux list-panes -a -F '#{pane_pid}' 2>/dev/null)
 }
 
-# Cycle macOS appearance: auto → dark → light → auto
+# Toggle macOS appearance: auto → the opposite of what auto shows now;
+# dark or light → back to auto. Every click changes what is on screen.
 # Usage: macos_cycle_appearance
 # Applies the next mode via osascript/defaults and dispatches to all processes.
 # Returns 1 on non-macOS.
@@ -358,10 +359,11 @@ macos_cycle_appearance() {
     current=$(get_macos_appearance_mode)
 
     case "$current" in
-        auto)  next="dark"  ;;
-        dark)  next="light" ;;
-        light) next="auto"  ;;
-        *)     next="auto"  ;;
+        auto)
+            dark_style=$(defaults read -g AppleInterfaceStyle 2>/dev/null) || dark_style=""
+            [[ "$dark_style" == "Dark" ]] && next="light" || next="dark"
+            ;;
+        *) next="auto" ;;
     esac
 
     case "$next" in
@@ -376,9 +378,17 @@ macos_cycle_appearance() {
             dark_val=0
             ;;
         auto)
+            # Writing the auto key alone doesn't make macOS re-apply its
+            # schedule, so the forced appearance would stay on screen. Restore
+            # what auto showed when the toggle left it (the opposite of the
+            # forced mode), then hand control back to macOS.
+            [[ "$current" == "dark" ]] && dark_val=0 || dark_val=1
+            if [[ $dark_val -eq 1 ]]; then
+                osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to true' 2>/dev/null
+            else
+                osascript -e 'tell application "System Events" to tell appearance preferences to set dark mode to false' 2>/dev/null
+            fi
             defaults write -g AppleInterfaceStyleSwitchesAutomatically -bool true 2>/dev/null
-            dark_style=$(defaults read -g AppleInterfaceStyle 2>/dev/null) || dark_style=""
-            [[ "$dark_style" == "Dark" ]] && dark_val=1 || dark_val=0
             ;;
     esac
 

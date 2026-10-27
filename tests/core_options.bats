@@ -391,3 +391,14 @@ EOF
     assert_success
     assert_output --partial "show_only_on_threshold"
 }
+
+@test "icon_only is injected as default option" {
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        _set_plugin_context "plug"
+        declare_option "myopt" "string" "val" "desc"
+        get_plugin_declared_options "plug"
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output --partial "icon_only"
+}

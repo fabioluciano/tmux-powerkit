@@ -1597,13 +1597,14 @@ Consolidated theme color cache replaces per-color calculation caching:
 
 ### Plugin Options
 
-Default option added to all plugins:
+Default options added to all plugins:
 
 ```bash
 declare_option "show_only_on_threshold" "bool" "false" "Only show when warning or critical threshold is exceeded"
+declare_option "icon_only" "bool" "false" "Show only the icon, hiding the text"
 ```
 
-- Default: `false` (show always)
+- Default: `false` for both (show always; show icon and text)
 - Injected automatically via `_inject_default_plugin_options()` in `src/core/options.sh`
 - Renderer filters via `get_named_plugin_option()` in `src/renderer/segment_builder.sh`
 

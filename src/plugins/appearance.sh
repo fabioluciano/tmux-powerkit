@@ -20,7 +20,7 @@
 #   - dark:  Forced dark mode
 #   - light: Forced light mode
 #
-# Toggle cycle: auto → dark → light → auto
+# Toggle: auto → opposite of the current appearance; dark or light → auto
 #   Triggered by keybinding_toggle or mouse click on the plugin segment.
 #   The toggle (appearance_toggle.sh) owns all theme changes for forced modes.
 #

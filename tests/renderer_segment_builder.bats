@@ -184,6 +184,38 @@ setup() {
     refute_output ""
 }
 
+@test "render_plugin_segment icon_only=1 renders the icon without content" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/renderer/separator.sh"
+        source "$1/src/renderer/color_resolver.sh"
+        source "$1/src/renderer/segment_builder.sh"
+        separator_ensure_cache
+        render_plugin_segment "🔋" "50%" "active" "ok" "#ff0000" "#ffffff" "#00ff00" "#000000" "#000000" 0 0 "right" 1
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output --partial "#[fg=#ffffff,bg=#ff0000]🔋 "
+    # Internal separator kept (fg=content_bg on icon_bg), content section dropped
+    assert_output --partial "#[fg=#00ff00,bg=#ff0000]"
+    refute_output --partial "50%"
+    refute_output --partial "#[fg=#000000,bg=#00ff00"
+}
+
+@test "render_plugin_segment icon_only=1 without an icon falls back to content" {
+    run bash -c '
+        unset TMUX
+        source "$1/src/core/bootstrap.sh"
+        source "$1/src/renderer/separator.sh"
+        source "$1/src/renderer/color_resolver.sh"
+        source "$1/src/renderer/segment_builder.sh"
+        separator_ensure_cache
+        render_plugin_segment "" "50%" "active" "ok" "#ff0000" "#ffffff" "#00ff00" "#000000" "#000000" 0 0 "right" 1
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output --partial "50%"
+}
+
 @test "render_plugin_segment is_first=1 includes edge opening separator" {
     run bash -c '
         unset TMUX

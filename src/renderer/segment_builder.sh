@@ -332,7 +332,7 @@ build_icon_segment() {
 
 # Render a plugin segment for status bar
 # This is the main function used by powerkit-render
-# Usage: render_plugin_segment "icon" "content" "state" "health" "icon_bg" "icon_fg" "content_bg" "content_fg" "prev_bg" ["is_first"] ["is_last"] ["side"]
+# Usage: render_plugin_segment "icon" "content" "state" "health" "icon_bg" "icon_fg" "content_bg" "content_fg" "prev_bg" ["is_first"] ["is_last"] ["side"] ["icon_only"]
 # - is_first: 1 if this is the first plugin (affects opening separator)
 # - is_last: 1 if this is the last plugin (affects closing separator)
 # - side: "left" or "right" (default: "right" for backwards compatibility)
@@ -342,6 +342,9 @@ build_icon_segment() {
 #   - "right": plugins on right side of bar → LEFT-pointing separators (◀)
 #     - First plugin: edge opening separator (from statusbar)
 #     - Last plugin: NO closing separator (next element follows)
+# - icon_only: 1 to drop the content text, keeping the icon and the internal
+#   separator so the boundary with the next segment stays visible; ignored when
+#   there is no icon.
 # Returns: formatted segment string
 render_plugin_segment() {
     local icon="$1"
@@ -358,6 +361,7 @@ render_plugin_segment() {
     local is_first="${10:-0}"
     local is_last="${11:-0}"
     local side="${12:-right}"
+    local icon_only="${13:-0}"
 
     local sep_internal
     sep_internal=$(get_internal_separator_for_side "$side")
@@ -414,6 +418,10 @@ render_plugin_segment() {
         else
             # Left-pointing (◀): fg=destination (content), bg=source (icon)
             segment+="#[fg=${content_bg},bg=${icon_bg}]${sep_internal}#[none]"
+        fi
+        if [[ "$icon_only" == "1" ]]; then
+            printf '%s' "$segment"
+            return 0
         fi
     fi
 
@@ -884,9 +892,17 @@ render_plugins() {
         local content_bg content_fg icon_bg icon_fg
         read -r content_bg content_fg icon_bg icon_fg <<<"$(_resolve_plugin_colors "$is_external" "$state" "$health" "$stale" "$accent" "$accent_icon" "$group_color")"
 
+        # Icon-only display (default plugin option): hides the text.
+        # External plugins have no declared options.
+        local icon_only=0
+        if [[ $is_external -eq 0 &&
+            "$(get_named_plugin_option "$plugin_name" "icon_only" 2>/dev/null || echo "false")" == "true" ]]; then
+            icon_only=1
+        fi
+
         # Render segment (pass is_first, is_last and side for correct separator styling)
         local segment
-        segment=$(render_plugin_segment "$icon" "$content" "$state" "$health" "$icon_bg" "$icon_fg" "$content_bg" "$content_fg" "$prev_bg" "$is_first" "$is_last" "$side")
+        segment=$(render_plugin_segment "$icon" "$content" "$state" "$health" "$icon_bg" "$icon_fg" "$content_bg" "$content_fg" "$prev_bg" "$is_first" "$is_last" "$side" "$icon_only")
 
         # Wrap with named range so mouse bindings can target individual plugins
         # via #{mouse_status_range} == "user|<plugin_name>". External plugins are

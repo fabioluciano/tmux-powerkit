@@ -37,6 +37,7 @@ declare -gA _PLUGIN_OPTIONS_INDEX=()
 # Default options for all plugins (add here as needed)
 _DEFAULT_PLUGIN_OPTIONS=(
     "show_only_on_threshold${_OPT_DELIM}bool${_OPT_DELIM}false${_OPT_DELIM}Only show when warning or critical threshold is exceeded"
+    "icon_only${_OPT_DELIM}bool${_OPT_DELIM}false${_OPT_DELIM}Show only the icon, hiding the text"
 )
 
 # =============================================================================

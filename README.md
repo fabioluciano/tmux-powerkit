@@ -384,6 +384,13 @@ You can control the edge separator background color when a plugin's icon is hidd
 set -g @powerkit_plugin_no_icon_bg_style "content" # default is "icon"
 ```
 
+The reverse is also possible: show only a plugin's icon and hide its text. The segment keeps its colors and mouse range; the option has no effect when the plugin has no icon, or on external plugins.
+
+```bash
+set -g @powerkit_plugin_<name>_icon_only "true"   # default is "false"
+set -g @powerkit_plugin_appearance_icon_only "true"
+```
+
 ### Plugin-Specific Options
 
 Every plugin is highly customizable. Example with the `battery` plugin:

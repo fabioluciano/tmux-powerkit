@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Helper: appearance_toggle
-# Description: Cycles macOS appearance mode: auto → dark → light → auto
+# Description: Toggles macOS appearance: auto → opposite of the current appearance; dark or light → auto
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
