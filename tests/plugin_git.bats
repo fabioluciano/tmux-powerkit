@@ -26,6 +26,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     status)
@@ -69,6 +70,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     status)
@@ -105,6 +107,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     status)
@@ -142,6 +145,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     status)
@@ -185,6 +189,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     status)
@@ -221,6 +226,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     *) echo "ok" ;;
@@ -250,6 +256,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse)
         echo "fatal: not a git repository" >&2
@@ -282,6 +289,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse) echo "true" ;;
     status)
@@ -343,6 +351,7 @@ EOF
     chmod +x "$mock_dir/tmux"
     cat >"$mock_dir/git" <<'EOF'
 #!/usr/bin/env bash
+[[ "${1:-}" == "--no-optional-locks" ]] && shift
 case "$3" in
         rev-parse)
         echo "fatal: not a git repository" >&2
