@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.6.1](https://github.com/fabioluciano/tmux-powerkit/compare/v7.6.0...v7.6.1) (2026-10-27)
+
+### Bug Fixes
+
+* **bitwarden:** restore clipboard utilities and update git test mocks ([#270](https://github.com/fabioluciano/tmux-powerkit/issues/270)) ([d5a8fa8](https://github.com/fabioluciano/tmux-powerkit/commit/d5a8fa8f14e8df50b3d94d95f02d72515bd49ee0))
+
 ## [7.6.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.5.1...v7.6.0) (2026-10-15)
 
 ### Features

@@ -50,6 +50,7 @@ BATS_FILES=(
 
     # === Utils ===
     "$SCRIPT_DIR/lib_platform.bats"
+    "$SCRIPT_DIR/lib_clipboard.bats"
     "$SCRIPT_DIR/lib_strings.bats"
     "$SCRIPT_DIR/lib_api.bats"
     "$SCRIPT_DIR/lib_network.bats"
