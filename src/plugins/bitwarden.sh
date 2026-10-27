@@ -108,7 +108,7 @@ plugin_get_icon() {
 # Load BW_SESSION from tmux environment
 _load_bw_session() {
     local session output
-    output=$(tmux show-environment BW_SESSION 2>/dev/null) || true
+    output=$(tmux show-environment BW_SESSION 2>/dev/null || tmux show-environment -g BW_SESSION 2>/dev/null) || true
     if [[ -n "$output" && "$output" != "-BW_SESSION" ]]; then
         session="${output#BW_SESSION=}"
         [[ -n "$session" ]] && export BW_SESSION="$session"
@@ -174,7 +174,7 @@ plugin_collect() {
     has_cmd bw || has_cmd rbw || return 0
 
     local status
-    status=$(_get_vault_status) || return 0
+    status=$(_get_vault_status) || return 1
 
     if [[ "$status" == "unlocked" ]]; then
         plugin_data_set "unlocked" "1"

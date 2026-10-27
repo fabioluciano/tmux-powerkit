@@ -163,8 +163,7 @@ to_upper() {
 # Capitalize first letter
 # Usage: capitalize "hello world"  # Returns "Hello world"
 capitalize() {
-    local text="$1"
-    printf '%s%s' "${text:0:1}" "${text:1}" | { read -r first rest; printf '%s%s' "${first^}" "$rest"; }
+    printf '%s' "${1^}"
 }
 
 # =============================================================================

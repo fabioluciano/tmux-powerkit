@@ -228,8 +228,38 @@ window_get_icon_format() {
         substitutions+="${substitutions:+;}s|^${cmd}$|${icon}|"
     done
 
-    printf '#{?#{m/r:^(%s)$,#{pane_current_command}},#{%s:pane_current_command},%s}' \
+    local format
+    printf -v format '#{?#{m/r:^(%s)$,#{pane_current_command}},#{%s:pane_current_command},%s}' \
         "$command_pattern" "$substitutions" "$default_icon"
+
+    # User-defined per-command icon overrides from ~/.tmux.conf.
+    # Format: "cmd=icon,cmd=icon" (e.g. "fish=,node=").
+    # Applied after the built-in map so user entries take precedence.
+    #
+    # These stay as #{?...} conditionals rather than being folded into the
+    # substitution list above: an override value may itself be a format (e.g.
+    # "#{E:@cc_icon}", used to drive a live per-pane glyph), and a substitution
+    # replacement is emitted literally rather than expanded.
+    local overrides
+    overrides=$(get_tmux_option "@powerkit_window_command_icons" "")
+    if [[ -n "$overrides" ]]; then
+        local pair
+        local -a override_pairs
+        IFS=',' read -ra override_pairs <<< "$overrides"
+        for pair in "${override_pairs[@]}"; do
+            # Skip entries without a '=' separator
+            [[ "$pair" != *"="* ]] && continue
+            cmd="${pair%%=*}"
+            icon="${pair#*=}"
+            # Trim surrounding whitespace from the command name
+            cmd="${cmd#"${cmd%%[![:space:]]*}"}"
+            cmd="${cmd%"${cmd##*[![:space:]]}"}"
+            [[ -z "$cmd" ]] && continue
+            format="#{?#{==:#{pane_current_command},$cmd},$icon,$format}"
+        done
+    fi
+
+    printf '%s' "$format"
 }
 
 # Simpler icon format (just returns default or custom)

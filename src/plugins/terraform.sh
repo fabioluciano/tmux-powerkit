@@ -204,8 +204,10 @@ _detect_tool() {
 _is_tf_directory() {
     local path="$1"
     [[ -d "${path}/.terraform" ]] && return 0
-    ls "${path}"/*.tf &>/dev/null 2>&1 && return 0
-    ls "${path}"/terragrunt*.hcl &>/dev/null 2>&1 && return 0
+    local f
+    for f in "${path}"/*.tf "${path}"/terragrunt*.hcl; do
+        [[ -e "$f" ]] && return 0
+    done
     return 1
 }
 

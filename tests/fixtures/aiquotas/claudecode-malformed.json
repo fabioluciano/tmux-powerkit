@@ -1,0 +1,6 @@
+{
+  "limits": [
+    { "kind": "tangelo", "group": "promo", "percent": 5, "severity": "normal" }
+  ],
+  "extra_usage": null
+}

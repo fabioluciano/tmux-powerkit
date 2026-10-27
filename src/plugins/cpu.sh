@@ -192,9 +192,9 @@ _get_cpu_macos_top() {
 
     if [[ "$top_line" =~ ([0-9.]+)%\ user,?[[:space:]]*([0-9.]+)%\ sys,?[[:space:]]*([0-9.]+)%\ idle ]]; then
         idle="${BASH_REMATCH[3]}"
-        # Use awk instead of bc (more portable, no external dependency)
-        busy=$(awk -v i="$idle" 'BEGIN {printf "%.0f", 100 - i}')
-        printf '%.0f' "${busy:-0}"
+        local idle_int="${idle%.*}"
+        busy=$(( 100 - ${idle_int:-0} ))
+        printf '%d' "${busy:-0}"
         return 0
     fi
 

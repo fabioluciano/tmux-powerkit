@@ -266,7 +266,7 @@ _setup_plugin_keybindings() {
                 local key
                 for key in "${_conflict_check_keys[@]}"; do
                     local existing_cmd
-                    existing_cmd=$(tmux list-keys -T prefix 2>/dev/null | grep -E "^bind-key[[:space:]]+-T[[:space:]]+prefix[[:space:]]+${key//[\/\\]/\\\\}" | grep -v "powerkit" | head -1 | awk '{$1=$2=$3=$4=""; print $0}' | sed 's/^ *//')
+                    existing_cmd=$(tmux list-keys -T prefix 2>/dev/null | awk -v k="$key" '$1=="bind-key" && $3=="prefix" && $4==k && !/powerkit/ { $1=$2=$3=$4=""; sub(/^[[:space:]]+/, ""); print; exit }')
 
                     if [[ -n "$existing_cmd" ]]; then
                         log_info "bootstrap" "Skipping keybindings for $plugin_name: key '$key' already bound (action=skip)"

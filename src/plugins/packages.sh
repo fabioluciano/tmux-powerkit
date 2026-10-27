@@ -130,6 +130,7 @@ _invalidate_backend_cache() {
     local log_file="${_PKG_LOG_FILES[$backend]:-}"
 
     # brew / zb / port: use a directory mtime instead of a log file
+    local dir
     case "$backend" in
     brew)
         local brew_prefix
@@ -269,7 +270,7 @@ _count_updates_brew() {
         done
     fi
 
-    outdated=$(_timeout_pkg command brew "${brew_args[@]}" 2>/dev/null || echo '')
+    outdated=$(HOMEBREW_NO_AUTO_UPDATE=1 _timeout_pkg command brew "${brew_args[@]}" 2>/dev/null || echo '')
     if [[ -z "$outdated" ]]; then
         count=0
     else
@@ -308,9 +309,7 @@ _count_updates_apt() {
 
 _count_updates_dnf() {
     local count
-    count=$(_timeout_pkg command dnf check-update -q 2>/dev/null | grep -c . || echo 0)
-    # dnf adds header lines, subtract them
-    ((count > 3)) && count=$((count - 3)) || count=0
+    count=$(_timeout_pkg command dnf check-update -q 2>/dev/null | grep -c '^[^[:space:]]' || echo 0)
     printf '%s' "$count"
 }
 
@@ -495,8 +494,10 @@ plugin_collect() {
         if [[ -n "$sec_cached" ]]; then
             sec_count="$sec_cached"
         else
-            sec_count=$(_count_security_updates "$backend") || sec_count=""
-            [[ -n "$sec_count" ]] && cache_set "$sec_key" "$sec_count"
+            if ! sec_count=$(_count_security_updates "$backend"); then
+                sec_count="0"
+            fi
+            cache_set "$sec_key" "${sec_count:-0}"
         fi
         (( sec_total += ${sec_count:-0} ))
     done

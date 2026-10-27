@@ -83,7 +83,7 @@ build_message_command_style() {
 # Returns: color value
 build_clock_format() {
     local color
-    color=$(resolve_color "#c0caf5")
+    color=$(resolve_color "session-fg")
 
     printf '%s' "$color"
 }

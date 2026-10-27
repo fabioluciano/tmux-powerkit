@@ -574,27 +574,17 @@ _check_rate_limit() {
     local hour_bucket
     hour_bucket=$(date +"%Y%m%d%H")
     local cache_key="weather_rate_limit:${hour_bucket}"
-    local pending_key="weather_rate_pending:${hour_bucket}"
 
-    local current_count pending_count effective
+    local current_count
     current_count=$(cache_get "$cache_key" "3600") || current_count="0"
-    pending_count=$(cache_get "$pending_key" "120") || pending_count="0"
-    effective=$((current_count + pending_count))
 
     # Check if over limit
-    if ((effective >= max_per_hour)); then
-        log_debug "weather" "Rate limit exceeded: ${effective}/${max_per_hour}"
+    if ((current_count >= max_per_hour)); then
+        log_debug "weather" "Rate limit exceeded: ${current_count}/${max_per_hour}"
         return 1
     fi
 
-    # Reserve a slot. The reservation lives in a short-TTL cache so a
-    # crash mid-request still releases the slot within 2 minutes.
-    cache_set "$pending_key" "$((pending_count + 1))" "120"
-
-    # Also bump the persistent counter so the cap is observed even
-    # before the request returns. The release helper rolls it back if
-    # the request fails.
-    cache_set "$cache_key" "$((current_count + 1))" "3600"
+    cache_set "$cache_key" "$((current_count + 1))"
     return 0
 }
 
@@ -605,14 +595,11 @@ _release_rate_limit() {
     local hour_bucket
     hour_bucket=$(date +"%Y%m%d%H")
     local cache_key="weather_rate_limit:${hour_bucket}"
-    local pending_key="weather_rate_pending:${hour_bucket}"
 
-    local current_count pending_count
+    local current_count
     current_count=$(cache_get "$cache_key" "3600") || current_count="0"
-    pending_count=$(cache_get "$pending_key" "120") || pending_count="0"
 
-    ((current_count > 0)) && cache_set "$cache_key" "$((current_count - 1))" "3600"
-    ((pending_count > 0)) && cache_set "$pending_key" "$((pending_count - 1))" "120"
+    ((current_count > 0)) && cache_set "$cache_key" "$((current_count - 1))"
 }
 
 # =============================================================================

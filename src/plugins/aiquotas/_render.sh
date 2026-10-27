@@ -95,6 +95,7 @@ _aiquotas_render_label() {
         minimax) printf 'MM' ;;
         zai) printf 'zai' ;;
         kimicode) printf 'KM' ;;
+        claudecode) printf 'CC' ;;
         *) printf '%s' "$provider" ;;
         esac
         return

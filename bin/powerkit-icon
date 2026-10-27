@@ -22,9 +22,9 @@ if declare -F plugin_check_dependencies &>/dev/null; then
     plugin_check_dependencies || exit 1
 fi
 
-declare -F plugin_declare_options &>/dev/null && plugin_declare_options
-
 _set_plugin_context "$name"
+
+declare -F plugin_declare_options &>/dev/null && plugin_declare_options
 
 plugin_data_clear
 plugin_collect || exit 1

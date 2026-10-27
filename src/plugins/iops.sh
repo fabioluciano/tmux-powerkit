@@ -26,7 +26,7 @@ plugin_check_dependencies() {
     if is_macos; then
         require_cmd "ioreg" || return 1
     else
-        require_cmd "iostat" || return 1
+        [[ -r /proc/diskstats ]] || return 1
     fi
     return 0
 }
@@ -187,15 +187,16 @@ _get_throughput_linux() {
     local total_write_sectors=0
 
     while IFS= read -r line; do
-        local name read_sectors write_sectors
-        name=$(echo "$line" | awk '{print $3}')
+        local fields
+        read -ra fields <<<"$line"
+        local name="${fields[2]:-}"
 
         # Only count main disks, not partitions (sda not sda1, nvme0n1 not nvme0n1p1)
-        if [[ "$name" =~ ^(sd[a-z]|nvme[0-9]+n[0-9]+|vd[a-z])$ ]]; then
-            read_sectors=$(echo "$line" | awk '{print $6}')
-            write_sectors=$(echo "$line" | awk '{print $10}')
-            total_read_sectors=$((total_read_sectors + ${read_sectors:-0}))
-            total_write_sectors=$((total_write_sectors + ${write_sectors:-0}))
+        if [[ "$name" =~ ^(sd[a-z]+|nvme[0-9]+n[0-9]+|vd[a-z]+|xvd[a-z]+|mmcblk[0-9]+)$ ]]; then
+            local read_sectors="${fields[5]:-0}"
+            local write_sectors="${fields[9]:-0}"
+            total_read_sectors=$((total_read_sectors + read_sectors))
+            total_write_sectors=$((total_write_sectors + write_sectors))
         fi
     done <<<"$stats"
 

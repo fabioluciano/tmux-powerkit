@@ -83,6 +83,7 @@ BATS_FILES=(
     "$SCRIPT_DIR/plugin_disk.bats"
     "$SCRIPT_DIR/plugin_battery.bats"
     "$SCRIPT_DIR/plugin_github.bats"
+    "$SCRIPT_DIR/plugin_livetennis.bats"
     "$SCRIPT_DIR/plugin_hostname.bats"
     "$SCRIPT_DIR/plugin_wifi.bats"
     "$SCRIPT_DIR/plugin_memory.bats"

@@ -62,41 +62,44 @@ plugin_get_state() {
 }
 
 plugin_get_health() {
-    local ahead=$(plugin_data_get "ahead")
-    local modified=$(plugin_data_get "modified")
+    local ahead modified
+    ahead=$(plugin_data_get "ahead")
+    modified=$(plugin_data_get "modified")
 
     # Commits not pushed -> warning (needs attention)
-    [[ "$ahead" -gt 0 ]] && {
+    if (( ${ahead:-0} > 0 )); then
         printf 'warning'
         return
-    }
+    fi
     # Local modifications -> info (informational)
-    [[ "$modified" == "1" ]] && {
+    if [[ "$modified" == "1" ]]; then
         printf 'info'
         return
-    }
+    fi
     # Clean state
     printf 'ok'
 }
 
 plugin_get_context() {
-    local ahead=$(plugin_data_get "ahead")
-    local modified=$(plugin_data_get "modified")
+    local ahead modified
+    ahead=$(plugin_data_get "ahead")
+    modified=$(plugin_data_get "modified")
 
-    [[ "$ahead" -gt 0 ]] && {
+    if (( ${ahead:-0} > 0 )); then
         printf 'unpushed'
         return
-    }
-    [[ "$modified" == "1" ]] && {
+    fi
+    if [[ "$modified" == "1" ]]; then
         printf 'modified'
         return
-    }
+    fi
     printf 'clean'
 }
 
 plugin_get_icon() {
-    local context=$(plugin_get_context)
-    [[ "$context" == "modified" ]] && get_option "icon_modified" || get_option "icon"
+    local modified
+    modified=$(plugin_data_get "modified")
+    [[ "$modified" == "1" ]] && get_option "icon_modified" || get_option "icon"
 }
 
 # =============================================================================

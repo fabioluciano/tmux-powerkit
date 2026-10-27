@@ -118,6 +118,18 @@ plugin_get_icon() {
     esac
 }
 
+_cloud_timeout() {
+    local duration="$1"
+    shift
+    if has_cmd timeout; then
+        timeout "$duration" "$@"
+    elif has_cmd gtimeout; then
+        gtimeout "$duration" "$@"
+    else
+        "$@"
+    fi
+}
+
 # =============================================================================
 # AWS Detection
 # =============================================================================
@@ -140,7 +152,9 @@ _is_aws_session_active() {
             [[ -z "$has_token" ]] && continue
             expires_at=$(jq -r '.expiresAt // empty' "$cache_file" 2>/dev/null)
             [[ -z "$expires_at" ]] && continue
-            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expires_at" +%s 2>/dev/null ||
+            local exp_clean="${expires_at%%.*}"
+            [[ "$expires_at" == *Z* ]] && exp_clean="${exp_clean}Z"
+            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$exp_clean" +%s 2>/dev/null ||
                 date -d "$expires_at" +%s 2>/dev/null)
             [[ -n "$expires_epoch" && "$expires_epoch" -gt "$now" ]] && return 0
         done
@@ -155,14 +169,16 @@ _is_aws_session_active() {
             [[ -f "$cache_file" ]] || continue
             expiration=$(jq -r '.Credentials.Expiration // empty' "$cache_file" 2>/dev/null)
             [[ -z "$expiration" ]] && continue
-            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$expiration" +%s 2>/dev/null ||
+            local exp_clean="${expiration%%.*}"
+            [[ "$expiration" == *Z* ]] && exp_clean="${exp_clean}Z"
+            expires_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$exp_clean" +%s 2>/dev/null ||
                 date -d "$expiration" +%s 2>/dev/null)
             [[ -n "$expires_epoch" && "$expires_epoch" -gt "$now" ]] && return 0
         done
     fi
 
     # Method 3: Quick STS check (fallback)
-    has_cmd aws && timeout 2 aws sts get-caller-identity --profile "$profile" &>/dev/null && return 0
+    has_cmd aws && _cloud_timeout 2 aws sts get-caller-identity --profile "$profile" &>/dev/null && return 0
 
     return 1
 }
@@ -230,7 +246,7 @@ _get_aws_context() {
 
     [[ -n "$region" && "$show_region" == "true" ]] && context="${profile}@${region}" || context="$profile"
     if [[ "$logged_in" == "true" && "$show_account" == "true" ]]; then
-        account=$(timeout 2 aws sts get-caller-identity --profile "$profile" --query Account --output text 2>/dev/null)
+        account=$(_cloud_timeout 2 aws sts get-caller-identity --profile "$profile" --query Account --output text 2>/dev/null)
         [[ "$account" =~ ^[0-9]{12}$ ]] && context+="@${account}"
     fi
 
@@ -264,7 +280,7 @@ _is_gcp_session_active() {
     [[ -f "$cfg" ]] && grep -q "^account" "$cfg" 2>/dev/null && return 0
 
     # Fallback: Quick gcloud check
-    has_cmd gcloud && timeout 2 gcloud auth print-access-token &>/dev/null && return 0
+    has_cmd gcloud && _cloud_timeout 2 gcloud auth print-access-token &>/dev/null && return 0
 
     return 1
 }
@@ -317,7 +333,8 @@ _is_azure_session_active() {
         local now=$EPOCHSECONDS expires expires_epoch
         expires=$(jq -r '.[0].expiresOn // empty' "$tokens" 2>/dev/null)
         if [[ -n "$expires" ]]; then
-            expires_epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$expires" +%s 2>/dev/null ||
+            local exp_clean="${expires%%.*}"
+            expires_epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$exp_clean" +%s 2>/dev/null ||
                 date -d "$expires" +%s 2>/dev/null)
             [[ -n "$expires_epoch" && "$expires_epoch" -gt "$now" ]] && return 0
         fi
@@ -328,7 +345,7 @@ _is_azure_session_active() {
     [[ -f "$msal_cache" ]] && has_cmd jq && jq -e '.AccessToken | length > 0' "$msal_cache" &>/dev/null && return 0
 
     # Fallback: Quick az check
-    has_cmd az && timeout 2 az account show &>/dev/null && return 0
+    has_cmd az && _cloud_timeout 2 az account show &>/dev/null && return 0
 
     return 1
 }
@@ -427,7 +444,13 @@ _get_cloud_context() {
 
 plugin_collect() {
     local result provider context logged_in
-    result=$(_get_cloud_context) || return 0
+    if ! result=$(_get_cloud_context); then
+        plugin_data_set "provider" ""
+        plugin_data_set "context" ""
+        plugin_data_set "logged_in" "false"
+        plugin_data_set "credential_status" ""
+        return 0
+    fi
 
     # Parse "provider:context:logged_in"
     provider="${result%%:*}"

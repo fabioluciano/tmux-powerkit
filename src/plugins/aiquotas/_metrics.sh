@@ -337,6 +337,103 @@ _aiquotas_metrics_document() {
                 end
             end;
 
+        # Percent helpers for the Claude Code adapter. Kept as named defs
+        # rather than inlined because emit_claudecode clamps two independent
+        # windows and has to parse a timestamp format the others do not use.
+        def clamp_pct:
+            if . == null then null
+            elif . > 100 then 100
+            elif . < 0 then 0
+            else . end;
+
+        # Claude returns RFC 3339 with fractional seconds and a numeric offset
+        # ("2026-09-18T07:00:00.684045+00:00"), which fromdateiso8601 rejects
+        # outright. Strip the fraction and fold "+00:00" to "Z" before parsing.
+        # A non-UTC offset yields null rather than a silently wrong instant:
+        # that costs the window boundaries, so the threshold evaluator skips
+        # the record, but it never reports a wrong reset time.
+        def reset_epoch($iso):
+            if ($iso | type) != "string" then null
+            else ($iso
+                  | sub("\\.[0-9]+"; "")
+                  | sub("\\+00:00$"; "Z")
+                  | fromdateiso8601? // null)
+            end;
+
+        def emit_claudecode:
+            # Claude subscription usage: the windows that claude /usage shows.
+            #
+            # Primary source is limits[], classified on .kind and never on a
+            # label, per the schema Claude Code itself ships. Falls back to the
+            # top-level five_hour / seven_day objects, which carry the same
+            # numbers, so an older or newer server shape still renders.
+            #
+            # Modelled as ONE quota record over a 0-100 scale like zai and
+            # kimicode: the 5h window is the record and the weekly window
+            # rides along in weekly_remaining_percent, which is what the
+            # dual-window compact renderer and the weekly health escalation in
+            # _health.sh both read. Many sibling keys in the response are
+            # null-valued codenames for unreleased window types, so only the
+            # known kinds are read.
+            #
+            # weekly_scoped is deliberately ignored. The canonical record holds
+            # exactly one interval and one weekly percentage, and Claude reports
+            # three windows, so the scoped number has nowhere to go. Carrying
+            # only its model name would imply the account-wide figures were
+            # scoped to that model. A second record for it is the obvious
+            # follow-up.
+            ((.limits // []) | if type == "array" then . else [] end) as $limits |
+            # Prefer the account-wide (unscoped) row of each kind, then any row
+            # of that kind, so a scoped sibling listed first cannot win on
+            # array order.
+            def pick_row($kind):
+                ($limits | map(select(.kind == $kind))) as $rows |
+                (($rows | map(select((.scope // null) == null)) | .[0]) // $rows[0] // null);
+            pick_row("session")    as $row5 |
+            pick_row("weekly_all") as $rowwk |
+            # Row value first, top-level object second: a present row with a
+            # null percent still falls through to five_hour / seven_day.
+            (($row5.percent  // null) // (.five_hour.utilization? // null)) as $pct5 |
+            (($rowwk.percent // null) // (.seven_day.utilization? // null)) as $pctwk |
+            (($row5.resets_at  // null) // (.five_hour.resets_at? // null)) as $reset5 |
+            (($rowwk.resets_at // null) // (.seven_day.resets_at? // null)) as $resetwk |
+            if (($pct5 | type) != "number") and (($pctwk | type) != "number")
+            then error("unknown schema")
+            else
+                (($pct5 | type) == "number") as $has5 |
+                # Prefer the 5h window, fall back to weekly, mirroring emit_zai.
+                (if $has5 then "5h"    else "weekly" end) as $label |
+                (if $has5 then $pct5   else $pctwk    end) as $raw |
+                (if $has5 then $reset5 else $resetwk  end) as $reset |
+                # Window length, so window_start can be derived from the reset.
+                (if $has5 then 18000   else 604800    end) as $span |
+                ($raw | clamp_pct) as $pct |
+                reset_epoch($reset) as $epoch |
+                (if $epoch != null then ($epoch | todate) else null end) as $we_iso |
+                (if $epoch != null then (($epoch - $span) | todate) else null end) as $ws_iso |
+                record(
+                    "quota";
+                    $pct;
+                    100;
+                    (100 - $pct);
+                    "percent";
+                    null;
+                    $ws_iso;
+                    $we_iso;
+                    $we_iso;
+                    "official";
+                    ({resource: "subscription", line_item: $label} +
+                     {interval_remaining_percent: (100 - $pct)} +
+                     # Only when 5h is the primary. With weekly already the
+                     # record, a weekly dimension would duplicate it and the
+                     # renderer would print the same number twice.
+                     (if $has5 and (($pctwk | type) == "number")
+                      then {weekly_remaining_percent: (100 - ($pctwk | clamp_pct))}
+                      else {} end) +
+                     {})
+                )
+            end;
+
         # ---- top-level dispatch -------------------------------------------
         . as $root |
         if (type != "object") or has("error")
@@ -376,6 +473,13 @@ _aiquotas_metrics_document() {
         elif ($provider == "kimicode") and ($schema == "")
         then
             (try emit_kimicode catch null) as $rec |
+            if $rec == null
+            then doc([]; "official"; "unsupported"; "unknown schema")
+            else doc([ $rec ]; "official"; "ok"; null)
+            end
+        elif ($provider == "claudecode") and ($schema == "")
+        then
+            (try emit_claudecode catch null) as $rec |
             if $rec == null
             then doc([]; "official"; "unsupported"; "unknown schema")
             else doc([ $rec ]; "official"; "ok"; null)

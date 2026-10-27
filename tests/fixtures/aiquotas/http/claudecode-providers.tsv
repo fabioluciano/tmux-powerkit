@@ -1,0 +1,22 @@
+# Claude subscription (Pro / Max / Team) usage fixtures manifest.
+#
+# Format per line (tab-separated):
+#   STATUS <TAB> BODY_FILE <TAB> EXPECTED_URL_REGEX
+#
+# Lines starting with "#" are ignored. The shim consumes the Nth
+# non-comment line on the Nth invocation; on URL mismatch it FAIL HARD
+# (exit 70) to prevent accidental network access.
+#
+# Dedicated manifest so existing fixtures stay stable.
+
+# 1. happy path — 5h 12% used, weekly 38% used, scoped row names the model
+200	tests/fixtures/aiquotas/claudecode-usage.json	^https://api\.anthropic\.com/api/oauth/usage$
+
+# 2. expired OAuth token — the common failure, Claude Code refreshes it
+401	tests/fixtures/aiquotas/401.json	^https://api\.anthropic\.com/api/oauth/usage$
+
+# 3. rate limited — the endpoint 429s when polled hard
+429	tests/fixtures/aiquotas/429.json	^https://api\.anthropic\.com/api/oauth/usage$
+
+# 4. unrecognised window shape
+200	tests/fixtures/aiquotas/claudecode-malformed.json	^https://api\.anthropic\.com/api/oauth/usage$

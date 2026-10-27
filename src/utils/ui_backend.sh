@@ -738,8 +738,10 @@ ui_toast_popup() {
 
     [[ -z "$message" ]] && return 0
 
+    local safe_msg
+    safe_msg=$(printf '%q' "$message")
     tmux display-popup -E -w "$width" -h "$height" \
-        "printf '%s\n\nPress any key...' '$message'; read -rsn1"
+        "printf '%s\n\nPress any key...\n' $safe_msg; read -rsn1"
 }
 
 # Display toast notification (convenience wrapper)

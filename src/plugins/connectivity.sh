@@ -23,8 +23,7 @@ plugin_get_metadata() {
 # =============================================================================
 
 plugin_check_dependencies() {
-    # network.sh is already sourced via plugin_contract.sh
-    has_cmd "curl" || return 1
+    require_cmd "curl" || return 1
     return 0
 }
 

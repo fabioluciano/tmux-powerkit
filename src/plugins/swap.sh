@@ -177,9 +177,9 @@ _to_bytes() {
     fi
 
     case "$unit" in
-    M) awk -v v="$value" 'BEGIN { printf "%d", v * 1024 * 1024 }' ;;
-    G) awk -v v="$value" 'BEGIN { printf "%d", v * 1024 * 1024 * 1024 }' ;;
-    T) awk -v v="$value" 'BEGIN { printf "%d", v * 1024 * 1024 * 1024 * 1024 }' ;;
+    M) awk -v v="$value" 'BEGIN { printf "%.0f", v * 1024 * 1024 }' ;;
+    G) awk -v v="$value" 'BEGIN { printf "%.0f", v * 1024 * 1024 * 1024 }' ;;
+    T) awk -v v="$value" 'BEGIN { printf "%.0f", v * 1024 * 1024 * 1024 * 1024 }' ;;
     *) echo "0" ;;
     esac
 }
@@ -228,22 +228,6 @@ plugin_collect() {
 
 plugin_get_content_type() { printf 'dynamic'; }
 plugin_get_presence() { printf 'conditional'; }
-
-# =============================================================================
-# Plugin Contract: Quick Context Check (Optional)
-# =============================================================================
-
-# Implement for quick validation of cached data relevance
-plugin_should_be_active() {
-    # Quick check if swap is still present
-    if is_macos; then
-        # Quick check for swap on macOS
-        sysctl -n vm.swapusage &>/dev/null || vm_stat &>/dev/null
-    else
-        # Quick check for swap on Linux
-        [[ -f /proc/meminfo ]] && grep -q "^SwapTotal:" /proc/meminfo 2>/dev/null
-    fi
-}
 
 # =============================================================================
 # Plugin Contract: State and Health

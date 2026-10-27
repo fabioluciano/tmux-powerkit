@@ -2,6 +2,42 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.6.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.5.1...v7.6.0) (2026-10-15)
+
+### Features
+
+* **livetennis:** add live match snapshots ([#265](https://github.com/fabioluciano/tmux-powerkit/issues/265)) ([cb57b3c](https://github.com/fabioluciano/tmux-powerkit/commit/cb57b3cb383d49c3672e5388648dc0dacd1b5c1d))
+
+## [7.5.1](https://github.com/fabioluciano/tmux-powerkit/compare/v7.5.0...v7.5.1) (2026-10-11)
+
+### Bug Fixes
+
+* **git:** avoid index.lock contention in status polling ([#264](https://github.com/fabioluciano/tmux-powerkit/issues/264)) ([ae24ba1](https://github.com/fabioluciano/tmux-powerkit/commit/ae24ba1be7def89371725cce467940be4d5e5be6))
+
+## [7.5.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.4.0...v7.5.0) (2026-09-27)
+
+### Features
+
+* **aiquotas:** add claudecode provider for Claude subscription usage ([#261](https://github.com/fabioluciano/tmux-powerkit/issues/261)) ([df27378](https://github.com/fabioluciano/tmux-powerkit/commit/df2737875120af90e80f9381b176451c0e3653eb))
+
+## [7.4.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.3.0...v7.4.0) (2026-09-08)
+
+### Features
+
+* performance improvements ([#259](https://github.com/fabioluciano/tmux-powerkit/issues/259)) ([0680000](https://github.com/fabioluciano/tmux-powerkit/commit/06800003be80ad9831b7060c69102a6cfa4eb887))
+
+## [7.3.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.2.0...v7.3.0) (2026-09-08)
+
+### Features
+
+* **windows:** add per-command window icon overrides ([#254](https://github.com/fabioluciano/tmux-powerkit/issues/254)) ([126d41d](https://github.com/fabioluciano/tmux-powerkit/commit/126d41d8c4a084bc26c9a097d623b6e84f20726b))
+
+## [7.2.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.1.0...v7.2.0) (2026-08-28)
+
+### Features
+
+* **theme:** add last-horizon, lumon, lupine, retro82 and solitude themes ([#258](https://github.com/fabioluciano/tmux-powerkit/issues/258)) ([fa0519f](https://github.com/fabioluciano/tmux-powerkit/commit/fa0519f77104c30768e76774ee4109acd97bdec7))
+
 ## [7.1.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.0.2...v7.1.0) (2026-08-17)
 
 ### Features

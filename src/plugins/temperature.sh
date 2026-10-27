@@ -303,11 +303,11 @@ plugin_collect() {
         temp=$(_get_temp_macos "$source")
     fi
 
-    if [[ -n "$temp" && "$temp" =~ ^[0-9]+$ ]]; then
+    if [[ -n "$temp" && "$temp" =~ ^-?[0-9]+$ ]]; then
         plugin_data_set "temp_c" "$temp"
         plugin_data_set "available" "1"
     else
-        plugin_data_set "temp_c" "0"
+        plugin_data_set "temp_c" ""
         plugin_data_set "available" "0"
     fi
 }
@@ -329,9 +329,19 @@ plugin_get_presence() {
 # =============================================================================
 
 plugin_get_state() {
-    local available
+    local available temp_c hide_below
     available=$(plugin_data_get "available")
-    [[ "$available" == "1" ]] && printf 'active' || printf 'inactive'
+    [[ "$available" != "1" ]] && { printf 'inactive'; return; }
+
+    hide_below=$(get_option "hide_below_threshold")
+    if [[ -n "$hide_below" ]]; then
+        temp_c=$(plugin_data_get "temp_c")
+        if [[ -n "$temp_c" && "$temp_c" -lt "$hide_below" ]]; then
+            printf 'inactive'
+            return
+        fi
+    fi
+    printf 'active'
 }
 
 # =============================================================================
@@ -398,7 +408,7 @@ plugin_render() {
     show_unit=$(get_option "show_unit")
     hide_below=$(get_option "hide_below_threshold")
 
-    [[ -z "$temp_c" || "$temp_c" == "0" ]] && return
+    [[ -z "$temp_c" ]] && return
 
     # Convert thresholds if using Fahrenheit
     local display_temp="$temp_c"

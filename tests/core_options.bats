@@ -11,6 +11,67 @@ setup() {
     export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/cache"
 }
 
+mock_tmux_batch() {
+    export OPTIONS_TEST_FIXTURE="$BATS_TEST_TMPDIR/options"
+    printf '%s\n' "$@" >"$OPTIONS_TEST_FIXTURE"
+    local mock_dir="$BATS_TEST_TMPDIR/bin"
+    mkdir -p "$mock_dir"
+    cat >"$mock_dir/tmux" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == "show-options -g" ]]; then
+    cat "$OPTIONS_TEST_FIXTURE"
+else
+    exit 1
+fi
+EOF
+    chmod +x "$mock_dir/tmux"
+    export PATH="$mock_dir:$PATH"
+    export TMUX="options-test"
+}
+
+@test "batch options decode tmux empty strings without decoding other apostrophes" {
+    mock_tmux_batch "@powerkit_empty ''" '@powerkit_double_empty ""' \
+        "@powerkit_apostrophes \"''\"" "@powerkit_name \"O'Connell\"" \
+        "@powerkit_literal 'word'"
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        _batch_load_tmux_options
+        [[ ${_TMUX_OPTIONS_CACHE[@powerkit_empty]+present} ]] || exit 1
+        printf "empty=<%s> double=<%s> apostrophes=<%s> name=<%s> literal=<%s>" \
+            "${_TMUX_OPTIONS_CACHE[@powerkit_empty]}" \
+            "${_TMUX_OPTIONS_CACHE[@powerkit_double_empty]}" \
+            "${_TMUX_OPTIONS_CACHE[@powerkit_apostrophes]}" \
+            "${_TMUX_OPTIONS_CACHE[@powerkit_name]}" \
+            "${_TMUX_OPTIONS_CACHE[@powerkit_literal]}"
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "empty=<> double=<> apostrophes=<''> name=<O'Connell> literal=<'word'>"
+}
+
+@test "get_option returns an empty configured player name" {
+    mock_tmux_batch "@powerkit_plugin_livetennis_player ''"
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        _set_plugin_context livetennis
+        declare_option player string "" "Player name"
+        printf "<%s>" "$(get_option player)"
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "<>"
+}
+
+@test "an empty configured string overrides its nonempty declared default" {
+    mock_tmux_batch "@powerkit_plugin_testplug_player ''"
+    run bash -c '
+        source "$1/src/core/bootstrap.sh"
+        _set_plugin_context testplug
+        declare_option player string Sinner "Player name"
+        printf "<%s>" "$(get_option player)"
+    ' _ "$POWERKIT_ROOT"
+    assert_success
+    assert_output "<>"
+}
+
 # ---------------------------------------------------------------------------
 # declare_option
 # ---------------------------------------------------------------------------

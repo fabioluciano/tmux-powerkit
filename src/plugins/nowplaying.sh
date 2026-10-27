@@ -199,11 +199,6 @@ _get_nowplaying_linux() {
         done
     fi
 
-    local state_raw
-    state_raw=$(playerctl "${playerctl_args[@]}" status 2>/dev/null)
-    [[ -z "$state_raw" ]] && return 1
-    state="${state_raw,,}"  # Bash 4.0+ lowercase
-
     # When a priority list is configured, ignore every player that is
     # not in the list so the highest-priority one always wins.
     local app_priority
@@ -214,7 +209,7 @@ _get_nowplaying_linux() {
         local p
         for p in $app_priority; do
             p=$(trim "$p")
-            if playerctl "${playerctl_args[@]}" status --player "$p" 2>/dev/null | grep -qi .; then
+            if playerctl status --player "$p" 2>/dev/null | grep -qi .; then
                 priority_player="$p"
                 break
             fi
@@ -223,6 +218,11 @@ _get_nowplaying_linux() {
             playerctl_args+=("--player=$priority_player")
         fi
     fi
+
+    local state_raw
+    state_raw=$(playerctl "${playerctl_args[@]}" status 2>/dev/null)
+    [[ -z "$state_raw" ]] && return 1
+    state="${state_raw,,}"  # Bash 4.0+ lowercase
 
     # Get all metadata in one call using format string
     local metadata

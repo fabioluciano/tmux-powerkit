@@ -124,7 +124,7 @@ _get_disk_percent() {
     local real_mount
     real_mount=$(_resolve_mount "$mount")
 
-    /bin/df -Pk "$real_mount" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }'
+    df -Pk "$real_mount" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }'
 }
 
 # Get inode percentage used. Falls back to the platform's non-POSIX form.
@@ -132,7 +132,7 @@ _get_inode_percent() {
     local mount="$1"
     local real_mount output
     real_mount=$(_resolve_mount "$mount")
-    output=$(/bin/df -Pi "$real_mount" 2>/dev/null || /bin/df -i "$real_mount" 2>/dev/null)
+    output=$(df -Pi "$real_mount" 2>/dev/null || df -i "$real_mount" 2>/dev/null)
     awk 'NR==2 { gsub(/%/, "", $5); print $5 }' <<<"$output"
 }
 
@@ -148,7 +148,7 @@ _get_disk_info() {
     local GB=$((1024 * 1024 * 1024))
     local TB=$((1024 * 1024 * 1024 * 1024))
 
-    /bin/df -Pk "$real_mount" 2>/dev/null | awk -v fmt="$format" \
+    df -Pk "$real_mount" 2>/dev/null | awk -v fmt="$format" \
         -v KB="$KB" -v MB="$MB" -v GB="$GB" -v TB="$TB" '
         NR==2 {
             gsub(/%/, "", $5)
@@ -280,7 +280,7 @@ plugin_get_health() {
     fi
 
     # Higher is worse (default behavior)
-    evaluate_threshold_health "${max_pct:-0}" "${warn_th:-70}" "${crit_th:-90}"
+    evaluate_threshold_health "${max_pct:-0}" "${warn_th:-80}" "${crit_th:-90}"
 }
 
 # =============================================================================

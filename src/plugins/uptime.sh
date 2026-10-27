@@ -57,22 +57,39 @@ plugin_collect() {
         # followed by an additional hh:mm at $6 and $7. Returning -1
         # on anything unparseable lets the caller fail collection so
         # the lifecycle can keep the previous record as stale.
-        uptime_seconds=$(uptime | awk -F'( |,|:)+' '
-            {
-                if ($5 == "min" || $5 == "mins") {
-                    print $4 * 60
-                } else if ($5 == "hrs") {
-                    print $4 * 3600
-                } else if ($5 == "day" || $5 == "days") {
-                    base = $4 * 86400
-                    if ($6 ~ /^[0-9]+$/ && $7 ~ /^[0-9]+$/) {
-                        base += ($6 * 3600) + ($7 * 60)
-                    }
-                    print base
-                } else {
-                    print -1
+        uptime_seconds=$(uptime 2>/dev/null | awk '{
+            sub(/^[[:space:]]+/, "")
+            up_idx = 0
+            for (i = 1; i <= NF; i++) {
+                if ($i == "up") {
+                    up_idx = i
+                    break
                 }
-            }')
+            }
+            if (!up_idx) { print -1; exit }
+            val = $(up_idx + 1)
+            unit = $(up_idx + 2)
+            gsub(/,/, "", val)
+            gsub(/,/, "", unit)
+
+            if (unit ~ /^min/) {
+                print val * 60
+            } else if (unit ~ /^hr/) {
+                print val * 3600
+            } else if (unit ~ /^day/) {
+                base = val * 86400
+                time_str = $(up_idx + 3)
+                gsub(/,/, "", time_str)
+                if (split(time_str, t, ":") == 2) {
+                    base += (t[1] * 3600) + (t[2] * 60)
+                }
+                print base
+            } else if (split(val, t, ":") == 2) {
+                print (t[1] * 3600) + (t[2] * 60)
+            } else {
+                print -1
+            }
+        }')
         if [[ "$uptime_seconds" == "-1" ]]; then
             return 1
         fi

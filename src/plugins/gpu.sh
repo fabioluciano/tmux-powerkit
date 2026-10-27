@@ -128,7 +128,7 @@ plugin_get_health() {
     mem_warn="${mem_warn:-70}"
     mem_crit="${mem_crit:-90}"
 
-    if [[ "${mem_total:-0}" -gt 0 ]]; then
+    if [[ "${mem_total:-0}" =~ ^[0-9]+$ && "${mem_total:-0}" -gt 0 && "${mem_used:-0}" =~ ^[0-9]+$ ]]; then
         mem_percent=$(((mem_used * 100) / mem_total))
         if ((mem_percent >= mem_crit)); then
             health="error"
@@ -142,7 +142,7 @@ plugin_get_health() {
     temp=$(plugin_data_get "temp")
     temp_warn=$(get_option "temp_warning_threshold")
     temp_crit=$(get_option "temp_critical_threshold")
-    temp="${temp:-0}"
+    [[ "$temp" =~ ^[0-9]+$ ]] || temp=0
     temp_warn="${temp_warn:-70}"
     temp_crit="${temp_crit:-85}"
 
@@ -259,8 +259,15 @@ plugin_collect() {
                 --format=csv,noheader,nounits 2>/dev/null | head -1)
             if [[ -n "$nvidia_csv" ]]; then
                 IFS=',' read -r usage temp mem_used mem_total _ <<<"$nvidia_csv"
-                mem_used_mb="${mem_used:-0}"
-                mem_total_mb="${mem_total:-0}"
+                usage=$(trim "$usage")
+                temp=$(trim "$temp")
+                mem_used=$(trim "$mem_used")
+                mem_total=$(trim "$mem_total")
+                [[ "$temp" =~ ^[0-9]+$ ]] || temp=""
+                [[ "$mem_used" =~ ^[0-9]+$ ]] || mem_used="0"
+                [[ "$mem_total" =~ ^[0-9]+$ ]] || mem_total="0"
+                mem_used_mb="$mem_used"
+                mem_total_mb="$mem_total"
 
                 [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && {
                     available=1
@@ -283,7 +290,7 @@ plugin_collect() {
                 if [[ -n "$hwmon_dir" && -f "${hwmon_dir}/temp1_input" ]]; then
                     local temp_milli
                     temp_milli=$(cat "${hwmon_dir}/temp1_input" 2>/dev/null)
-                    temp=$((temp_milli / 1000))
+                    [[ "$temp_milli" =~ ^[0-9]+$ ]] && temp=$((temp_milli / 1000))
                 fi
 
                 # AMD VRAM via drm (if available)
@@ -292,8 +299,10 @@ plugin_collect() {
                     vram_used=$(cat "${amd_gpu_dir}/mem_info_vram_used" 2>/dev/null)
                     vram_total=$(cat "${amd_gpu_dir}/mem_info_vram_total" 2>/dev/null)
                     # Convert bytes to MB
-                    mem_used_mb=$((vram_used / 1048576))
-                    mem_total_mb=$((vram_total / 1048576))
+                    if [[ "$vram_used" =~ ^[0-9]+$ && "$vram_total" =~ ^[0-9]+$ ]]; then
+                        mem_used_mb=$((vram_used / 1048576))
+                        mem_total_mb=$((vram_total / 1048576))
+                    fi
                 fi
 
                 [[ -n "$usage" && "$usage" =~ ^[0-9]+$ ]] && {

@@ -346,6 +346,8 @@ _pane_resolve_color() {
 #
 # The function is safe to call repeatedly - it only updates if there's a mismatch.
 sync_pane_flash_appearance() {
+    is_macos || return 0
+
     # platform.sh is always loaded before pane_contract.sh via bootstrap
     local system_appearance
     system_appearance=$(get_macos_appearance)

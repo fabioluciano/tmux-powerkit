@@ -144,7 +144,20 @@ plugin_get_icon() { get_option "icon"; }
 # =============================================================================
 
 _get_kubeconfig_path() {
-    printf '%s' "${KUBECONFIG:-$HOME/.kube/config}"
+    local kcfg="${KUBECONFIG:-$HOME/.kube/config}"
+    if [[ "$kcfg" == *":"* ]]; then
+        local p
+        local IFS=':'
+        for p in $kcfg; do
+            if [[ -f "$p" ]]; then
+                printf '%s' "$p"
+                return 0
+            fi
+        done
+        printf '%s' "${kcfg%%:*}"
+        return 0
+    fi
+    printf '%s' "$kcfg"
 }
 
 # Get kubeconfig modification time for change detection
@@ -169,7 +182,7 @@ _kubeconfig_changed() {
         if [[ "$current_mtime" != "$cached_mtime" ]]; then
             # Changed - update cache and invalidate connectivity
             cache_set "kubernetes_kubeconfig_mtime" "$current_mtime"
-            cache_invalidate "kubernetes_connectivity"
+            cache_clear "kubernetes_connectivity"
             return 0
         fi
         return 1

@@ -240,11 +240,21 @@ require_cmd() {
 
 # Require at least one of the given commands
 # Usage: require_any_cmd "nvidia-smi" "rocm-smi" || return 1
+#        require_any_cmd "osx-cpu-temp" "smctemp" "istats" 1  # Optional (last arg is 1)
 require_any_cmd() {
+    local optional=0
+    local cmds=("$@")
+
+    # Check if last argument is the optional flag
+    if [[ ${#cmds[@]} -gt 0 && "${cmds[-1]}" == "1" ]]; then
+        optional=1
+        unset 'cmds[-1]'
+    fi
+
     local found=0
     local cmd
 
-    for cmd in "$@"; do
+    for cmd in "${cmds[@]}"; do
         if has_cmd "$cmd"; then
             found=1
             break
@@ -252,9 +262,15 @@ require_any_cmd() {
     done
 
     if [[ "$found" -eq 0 ]]; then
-        log_warn "plugin_contract" "None of the required commands found: $*"
-        _MISSING_DEPS+=("one of: $*")
-        return 1
+        if [[ "$optional" -eq 1 ]]; then
+            _MISSING_OPTIONAL_DEPS+=("one of: ${cmds[*]}")
+            log_debug "plugin_contract" "Optional dependency missing: one of: ${cmds[*]}"
+            return 0
+        else
+            log_warn "plugin_contract" "None of the required commands found: ${cmds[*]}"
+            _MISSING_DEPS+=("one of: ${cmds[*]}")
+            return 1
+        fi
     fi
 
     return 0

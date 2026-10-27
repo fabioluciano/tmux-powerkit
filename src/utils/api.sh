@@ -148,7 +148,7 @@ api_fetch_with_basic_config() {
     local cfg
     cfg=$(mktemp "${TMPDIR:-/tmp}/powerkit-curl.XXXXXX") || return 1
     chmod 600 "$cfg"
-    trap 'rm -f "$cfg"' RETURN
+    trap 'rm -f "${cfg:-}" 2>/dev/null; trap - RETURN' RETURN
     printf -- '-u %s:%s\n' "$user" "$password" >"$cfg"
     curl -sf --config "$cfg" --connect-timeout "$timeout" --max-time "$((timeout * 2))" \
         "$url" 2>/dev/null

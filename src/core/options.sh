@@ -60,9 +60,15 @@ _batch_load_tmux_options() {
     while IFS= read -r line; do
         [[ -z "$line" ]] && continue
         # Parse: @powerkit_option "value" or @powerkit_option value
-        if [[ "$line" =~ ^(@powerkit[a-zA-Z0-9_]+)[[:space:]]+\"?([^\"]*)\"?$ ]]; then
+        if [[ "$line" =~ ^(@powerkit[a-zA-Z0-9_]+)[[:space:]]+(.*)$ ]]; then
             local key="${BASH_REMATCH[1]}"
             local value="${BASH_REMATCH[2]}"
+            if [[ "$value" =~ ^\"(.*)\"$ ]]; then
+                value="${BASH_REMATCH[1]}"
+            elif [[ "$value" == "''" ]]; then
+                # tmux serializes an empty string as two single quotes.
+                value=""
+            fi
             _TMUX_OPTIONS_CACHE["$key"]="$value"
         fi
     done <<<"$output"
@@ -82,7 +88,7 @@ _inject_default_plugin_options() {
         local name
         name="${opt%%${_OPT_DELIM}*}"
         local current_opts="${_PLUGIN_OPTIONS[$_CURRENT_PLUGIN]:-}"
-        if [[ ",${current_opts}," != *,${name}${_OPT_DELIM}* ]]; then
+        if [[ ";${current_opts};" != *";${name}${_OPT_DELIM}"* ]]; then
             if [[ -n "$current_opts" ]]; then _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+=";"; fi
             _PLUGIN_OPTIONS["$_CURRENT_PLUGIN"]+="$opt"
         fi

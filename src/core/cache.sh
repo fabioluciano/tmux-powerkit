@@ -92,6 +92,11 @@ _cache_invalidate_memory() {
     for mem_key in "${!_MEMORY_CACHE[@]}"; do
         [[ "$mem_key" == "$mem_prefix"* ]] && unset "_MEMORY_CACHE[$mem_key]"
     done
+
+    # Invalidate file mtime cache as well
+    local safe_key="${key//[^a-zA-Z0-9_-]/_}"
+    local cache_file="${_CACHE_DIR}/${safe_key}"
+    unset '_FILE_MTIME_CACHE['"$cache_file"']'
 }
 
 # Get file modification time in seconds since epoch (cycle-cached).
@@ -268,7 +273,15 @@ cache_clear_prefix() {
 
     local file
     for file in "$_CACHE_DIR/${safe_prefix}"*; do
-        [[ -f "$file" ]] && rm -f "$file" 2>/dev/null || true
+        if [[ -f "$file" ]]; then
+            rm -f "$file" 2>/dev/null || true
+            unset '_FILE_MTIME_CACHE['"$file"']'
+        fi
+    done
+
+    local mem_key
+    for mem_key in "${!_MEMORY_CACHE[@]}"; do
+        [[ "$mem_key" == "${prefix}"* || "$mem_key" == "${safe_prefix}"* ]] && unset "_MEMORY_CACHE[$mem_key]"
     done
 }
 
@@ -278,6 +291,7 @@ cache_clear_all() {
     _ensure_cache_dir
     rm -f "$_CACHE_DIR"/* 2>/dev/null || true
     _MEMORY_CACHE=()
+    _FILE_MTIME_CACHE=()
 }
 
 # =============================================================================
