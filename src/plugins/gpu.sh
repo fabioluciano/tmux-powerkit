@@ -8,7 +8,7 @@
 # Supported GPUs:
 #   - NVIDIA: Full support (usage, memory, temp)
 #   - AMD: Full support (usage, memory, temp via sysfs)
-#   - Intel: Frequency-based usage proxy (no dedicated memory)
+#   - Intel: RC6 residency-based usage (no dedicated memory)
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -56,7 +56,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Display options
     # metric: usage, memory, temp, freq, all, or comma-separated (e.g., "usage,temp")
-    # Note: Intel GPUs only support usage (frequency-based) and freq metrics
+    # Note: Intel GPUs only support usage (RC6 residency-based) and freq metrics
     declare_option "metric" "string" "all" "Metrics to display: usage, memory, temp, freq, all, or comma-separated"
     declare_option "separator" "string" " | " "Separator for multiple metrics"
     declare_option "show_metric_icons" "bool" "true" "Show icons next to each metric"
@@ -191,6 +191,10 @@ _find_intel_gpu_dir() {
 _collect_intel_gpu() {
     local card_dir="$1"
     local usage freq_cur freq_max
+    local state_file="${XDG_RUNTIME_DIR:-/tmp}/powerkit-gpu-rc6"
+    local rc6_file="${card_dir}/gt/gt0/rc6_residency_ms"
+    local ns_per_ms=1000000
+    local rc6_now now_ms prev_rc6 prev_ms
 
     # Read current and max frequency
     freq_cur=$(cat "${card_dir}/gt/gt0/rps_cur_freq_mhz" 2>/dev/null)
@@ -198,11 +202,17 @@ _collect_intel_gpu() {
 
     [[ -z "$freq_cur" || -z "$freq_max" ]] && return 1
 
-    # Calculate usage as percentage of max frequency
-    if ((freq_max > 0)); then
-        usage=$(((freq_cur * 100) / freq_max))
-    else
-        usage=0
+    # Usage = 100% minus the share of time spent in RC6 idle since the last sample
+    usage=0
+    rc6_now=$(cat "$rc6_file" 2>/dev/null)
+    now_ms=$(($(date +%s%N) / ns_per_ms))
+    if [[ -n "$rc6_now" ]]; then
+        if read -r prev_rc6 prev_ms <"$state_file" 2>/dev/null && ((now_ms > prev_ms)); then
+            usage=$((100 - ((rc6_now - prev_rc6) * 100) / (now_ms - prev_ms)))
+            ((usage < 0)) && usage=0
+            ((usage > 100)) && usage=100
+        fi
+        printf '%s %s\n' "$rc6_now" "$now_ms" >"$state_file"
     fi
 
     plugin_data_set "usage" "$usage"
@@ -312,7 +322,7 @@ plugin_collect() {
             fi
         fi
 
-        # Linux: Intel GPU via i915/xe driver (frequency-based)
+        # Linux: Intel GPU via i915/xe driver (RC6 residency-based usage)
         if [[ "$available" -eq 0 ]]; then
             local intel_dir
             intel_dir=$(_find_intel_gpu_dir)
