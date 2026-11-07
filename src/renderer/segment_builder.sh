@@ -650,7 +650,9 @@ _resolve_plugin_colors() {
         else
             local icon_fg_variant
             icon_fg_variant=$(get_contrast_variant "$icon_bg")
-            icon_fg=$(resolve_color "${effective_icon_accent}-${icon_fg_variant}")
+            # "<color>-lighter" is a valid icon background but has no
+            # fg variants of its own; take the fg from the base color
+            icon_fg=$(resolve_color "${effective_icon_accent%-lighter}-${icon_fg_variant}")
         fi
 
         printf '%s %s %s %s' "$content_bg" "$content_fg" "$icon_bg" "$icon_fg"
