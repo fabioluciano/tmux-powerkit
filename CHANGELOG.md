@@ -2,6 +2,13 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v7.7.0...v7.7.1) (2026-11-08)
+
+### Bug Fixes
+
+* **gpu:** measure Intel usage from RC6 residency instead of clock ratio ([#272](https://github.com/fabioluciano/tmux-powerkit/issues/272)) ([cbd076b](https://github.com/fabioluciano/tmux-powerkit/commit/cbd076bd7f8745ebfe4c235bd3200156aadbf204))
+* **options:** unescape quoted tmux option values ([#273](https://github.com/fabioluciano/tmux-powerkit/issues/273)) ([082d646](https://github.com/fabioluciano/tmux-powerkit/commit/082d646d2ef3d514a24b9edc02fff419585a1ae7))
+
 ## [7.7.0](https://github.com/fabioluciano/tmux-powerkit/compare/v7.6.2...v7.7.0) (2026-10-27)
 
 ### Features
