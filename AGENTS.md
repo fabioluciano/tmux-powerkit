@@ -56,7 +56,7 @@ Mocha is the most popular variant with excellent contrast.
 21. **git** - Branch + modified files status
 22. **github** - Notifications/PRs/issues (gh CLI)
 23. **gitlab** - Merge requests/todos (glab CLI)
-24. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: frequency-based, macOS: powerkit-gpu)
+24. **gpu** - GPU usage (NVIDIA: nvidia-smi, AMD: sysfs, Intel: RC6 residency-based, macOS: powerkit-gpu)
 25. **hostname** - System hostname
 26. **iops** - Disk I/O operations (iostat)
 27. **jira** - Assigned issues count (API)
