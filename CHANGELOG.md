@@ -2,6 +2,12 @@
 
 All notable changes to tmux-powerkit will be documented in this file.
 
+## [7.7.2](https://github.com/fabioluciano/tmux-powerkit/compare/v7.7.1...v7.7.2) (2026-11-09)
+
+### Bug Fixes
+
+* **gpu:** measure Intel usage from DRM engine busy time instead of RC6 residency ([#274](https://github.com/fabioluciano/tmux-powerkit/issues/274)) ([1d3eabc](https://github.com/fabioluciano/tmux-powerkit/commit/1d3eabc3083d065535cafed0b4b19cf3eac9d727))
+
 ## [7.7.1](https://github.com/fabioluciano/tmux-powerkit/compare/v7.7.0...v7.7.1) (2026-11-08)
 
 ### Bug Fixes
