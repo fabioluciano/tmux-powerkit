@@ -8,7 +8,7 @@
 # Supported GPUs:
 #   - NVIDIA: Full support (usage, memory, temp)
 #   - AMD: Full support (usage, memory, temp via sysfs)
-#   - Intel: RC6 residency-based usage (no dedicated memory)
+#   - Intel: engine busy time from DRM fdinfo, RC6-based fallback (no dedicated memory)
 # =============================================================================
 
 POWERKIT_ROOT="${POWERKIT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
@@ -56,7 +56,7 @@ plugin_check_dependencies() {
 plugin_declare_options() {
     # Display options
     # metric: usage, memory, temp, freq, all, or comma-separated (e.g., "usage,temp")
-    # Note: Intel GPUs only support usage (RC6 residency-based) and freq metrics
+    # Note: Intel GPUs only support usage (engine busy time) and freq metrics
     declare_option "metric" "string" "all" "Metrics to display: usage, memory, temp, freq, all, or comma-separated"
     declare_option "separator" "string" " | " "Separator for multiple metrics"
     declare_option "show_metric_icons" "bool" "true" "Show icons next to each metric"
@@ -188,13 +188,81 @@ _find_intel_gpu_dir() {
     return 1
 }
 
-_collect_intel_gpu() {
+# List "client_id engine ns" for every i915 client from DRM fdinfo
+_read_intel_drm_clients() {
+    local driver_name="i915"
+    awk -v want_driver="$driver_name" '
+        function flush(   e) {
+            if (driver == want_driver && id != "") for (e in ns) print id, e, ns[e]
+            driver = ""; id = ""; delete ns
+        }
+        FNR == 1 { flush() }
+        $1 == "drm-driver:" { driver = $2 }
+        $1 == "drm-client-id:" { id = $2 }
+        $1 ~ /^drm-engine-(render|copy|video|video-enhance|compute):$/ { ns[substr($1, 12, length($1) - 12)] = $2 }
+        END { flush() }
+    ' /proc/[0-9]*/fdinfo/* 2>/dev/null
+}
+
+# Busiest engine percentage from ns deltas of clients present in both samples
+_calc_intel_usage() {
+    local state_file="$1" now_ns="$2" clients="$3"
+    local max_percent=100
+    [[ -f "$state_file" ]] || : >"$state_file"
+    awk -v now="$now_ns" -v cap="$max_percent" '
+        FNR == NR { if ($1 == "T") prev_t = $2; else prev[$1 " " $2] = $3; next }
+        NF == 3 { cur[$1 " " $2] = $3 }
+        END {
+            best = 0
+            if (prev_t > 0 && now > prev_t) {
+                for (k in cur) if (k in prev && cur[k] >= prev[k]) { split(k, p, " "); sum[p[2]] += cur[k] - prev[k] }
+                for (e in sum) { pct = sum[e] * 100 / (now - prev_t); if (pct > best) best = pct }
+            }
+            if (best > cap) best = cap
+            printf "%d\n", best
+        }
+    ' "$state_file" - <<<"$clients"
+}
+
+# Usage from real engine busy time; returns 1 when no fdinfo data is available
+_intel_usage_from_fdinfo() {
+    local state_file="${XDG_RUNTIME_DIR:-/tmp}/powerkit-gpu-busy"
+    local now_ns clients usage
+
+    clients=$(_read_intel_drm_clients)
+    [[ -z "$clients" ]] && return 1
+
+    now_ns=$(date +%s%N)
+    usage=$(_calc_intel_usage "$state_file" "$now_ns" "$clients")
+    { printf 'T %s\n' "$now_ns"; printf '%s\n' "$clients"; } >"$state_file"
+    printf '%s' "$usage"
+}
+
+# Fallback: usage = 100% minus the share of time spent in RC6 idle since the last sample
+_intel_usage_from_rc6() {
     local card_dir="$1"
-    local usage freq_cur freq_max
     local state_file="${XDG_RUNTIME_DIR:-/tmp}/powerkit-gpu-rc6"
     local rc6_file="${card_dir}/gt/gt0/rc6_residency_ms"
     local ns_per_ms=1000000
+    local usage=0
     local rc6_now now_ms prev_rc6 prev_ms
+
+    rc6_now=$(cat "$rc6_file" 2>/dev/null)
+    now_ms=$(($(date +%s%N) / ns_per_ms))
+    if [[ -n "$rc6_now" ]]; then
+        if read -r prev_rc6 prev_ms 2>/dev/null <"$state_file" && ((now_ms > prev_ms)); then
+            usage=$((100 - ((rc6_now - prev_rc6) * 100) / (now_ms - prev_ms)))
+            ((usage < 0)) && usage=0
+            ((usage > 100)) && usage=100
+        fi
+        printf '%s %s\n' "$rc6_now" "$now_ms" >"$state_file"
+    fi
+    printf '%s' "$usage"
+}
+
+_collect_intel_gpu() {
+    local card_dir="$1"
+    local usage freq_cur freq_max
 
     # Read current and max frequency
     freq_cur=$(cat "${card_dir}/gt/gt0/rps_cur_freq_mhz" 2>/dev/null)
@@ -202,18 +270,8 @@ _collect_intel_gpu() {
 
     [[ -z "$freq_cur" || -z "$freq_max" ]] && return 1
 
-    # Usage = 100% minus the share of time spent in RC6 idle since the last sample
-    usage=0
-    rc6_now=$(cat "$rc6_file" 2>/dev/null)
-    now_ms=$(($(date +%s%N) / ns_per_ms))
-    if [[ -n "$rc6_now" ]]; then
-        if read -r prev_rc6 prev_ms <"$state_file" 2>/dev/null && ((now_ms > prev_ms)); then
-            usage=$((100 - ((rc6_now - prev_rc6) * 100) / (now_ms - prev_ms)))
-            ((usage < 0)) && usage=0
-            ((usage > 100)) && usage=100
-        fi
-        printf '%s %s\n' "$rc6_now" "$now_ms" >"$state_file"
-    fi
+    # Prefer real engine busy time from fdinfo, fall back to RC6 when fdinfo has no data
+    usage=$(_intel_usage_from_fdinfo) || usage=$(_intel_usage_from_rc6 "$card_dir")
 
     plugin_data_set "usage" "$usage"
     plugin_data_set "freq_cur" "$freq_cur"
